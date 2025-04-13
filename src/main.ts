@@ -284,10 +284,10 @@ class ChronosEventModal extends Modal {
       setting.settingEl.querySelectorAll("button").forEach((btn) => {
         btn.style.border = "none";
       });
-    }
 
-    // Add border to selected button
-    selectedBtn.style.border = "2px solid white";
+      // Add border to selected button
+      selectedBtn.style.border = "2px solid white";
+    }
   }
 
   saveEvent() {
