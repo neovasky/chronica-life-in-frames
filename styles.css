@@ -66,17 +66,7 @@
 .chronos-year-label {
   font-size: 12px;
   color: var(--text-muted);
-  position: absolute;
-  transform: translateX(-50%); /* Center the label */
-}
-
-/* Month labels */
-.chronos-month-label {
-  font-size: 10px;
-  color: var(--text-muted);
-  position: absolute;
-  transform: translateX(-50%);
-  top: 15px; /* Position below year labels */
+  font-weight: bold; /* Make year labels stand out */
 }
 
 /* Week labels on the left */
@@ -91,25 +81,24 @@
 .chronos-week-label {
   font-size: 12px;
   color: var(--text-muted);
+  font-weight: bold; /* Make week labels stand out */
 }
 
 /* Timeline grid */
 .chronos-grid {
   display: grid;
-  grid-template-columns: repeat(90, 16px); /* Default for 90 years */
-  grid-template-rows: repeat(52, 16px); /* 52 weeks per year */
-  grid-gap: 2px;
+  /* Size and gap handled in JS for dynamic sizing */
   position: relative;
-  column-gap: 2px; /* Default gap */
 }
 
 /* Grid cells */
 .chronos-grid-cell {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   border-radius: 2px;
   cursor: pointer;
   transition: transform 0.1s, box-shadow 0.1s;
+  position: relative; /* Needed for month indicator */
 }
 
 .chronos-grid-cell:hover {
@@ -127,39 +116,28 @@
   border: 1px solid rgba(255, 255, 255, 0.4);
 }
 
-/* Visual separations - Enhanced */
+/* Visual separations */
 .chronos-grid-cell.month-start {
-  border-top: 3px solid rgba(128, 128, 128, 0.5);
-  margin-top: 2px; /* Add space for month separation */
+  border-top: 2px solid rgba(128, 128, 128, 0.5);
 }
 
 .chronos-grid-cell.decade-start {
-  border-left: 4px solid rgba(128, 128, 128, 0.7);
-  margin-left: 8px; /* Increased space for decade separation */
+  /* Border handled by margin in JS */
+  border-left: 3px solid rgba(128, 128, 128, 0.5);
 }
 
-/* We also need a special rule for decade + month start */
-.chronos-grid-cell.decade-start.month-start {
-  border-top: 3px solid rgba(128, 128, 128, 0.5);
-  border-left: 4px solid rgba(128, 128, 128, 0.7);
+/* Month indicator styling */
+.month-indicator {
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: bold;
+  user-select: none;
+  pointer-events: none;
 }
 
-/* Future event highlight */
-.chronos-grid-cell.future-event-highlight {
-  box-shadow: 0 0 8px rgba(255, 215, 0, 0.7);
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0% {
-    box-shadow: 0 0 8px rgba(255, 215, 0, 0.7);
-  }
-  50% {
-    box-shadow: 0 0 12px rgba(255, 215, 0, 0.9);
-  }
-  100% {
-    box-shadow: 0 0 8px rgba(255, 215, 0, 0.7);
-  }
+/* Row gap styling */
+.chronos-grid-cell.row-gap {
+  /* Gap handled by margin in JS */
+  border-top: 3px solid rgba(128, 128, 128, 0.3);
 }
 
 /* Legend */
@@ -214,16 +192,153 @@
   font-style: italic;
 }
 
+/* Event type modal styling */
+.chronos-radio-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.chronos-radio-label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 5px 10px;
+  border-radius: 4px;
+  background-color: var(--background-secondary);
+}
+
+.chronos-radio-label:hover {
+  background-color: var(--background-modifier-hover);
+}
+
+.chronos-color-box {
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+  margin-right: 5px;
+  display: inline-block;
+}
+
+.chronos-custom-type-settings {
+  margin-top: 15px;
+  padding: 10px;
+  background-color: var(--background-secondary);
+  border-radius: 4px;
+}
+
+/* Custom event type management */
+.event-type-add-section {
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: var(--background-secondary);
+  border-radius: 4px;
+}
+
+.event-type-add-section input[type="text"] {
+  margin-right: 10px;
+  padding: 5px;
+  width: 200px;
+}
+
+.event-type-add-section input[type="color"] {
+  margin-right: 10px;
+  vertical-align: middle;
+}
+
+.add-type-button,
+.close-button {
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 14px;
+  margin-top: 10px;
+}
+
+.existing-types-list {
+  margin-top: 15px;
+}
+
+.event-type-item {
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  margin-bottom: 8px;
+  background-color: var(--background-secondary);
+  border-radius: 4px;
+}
+
+.event-type-color {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  margin-right: 10px;
+}
+
+.event-type-name {
+  flex-grow: 1;
+}
+
+.edit-type-button,
+.delete-type-button {
+  margin-left: 10px;
+  background-color: var(--background-modifier-border);
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.edit-type-button:hover,
+.delete-type-button:hover {
+  background-color: var(--background-modifier-hover);
+}
+
+.built-in-note,
+.custom-types-note,
+.no-custom-types {
+  font-style: italic;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+/* Edit type modal */
+.edit-name-container,
+.edit-color-container {
+  margin-bottom: 15px;
+}
+
+.edit-name-container label,
+.edit-color-container label {
+  display: block;
+  margin-bottom: 5px;
+}
+
+.save-edit-button,
+.cancel-edit-button {
+  margin-right: 10px;
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+.cancel-edit-button {
+  background-color: var(--background-modifier-border);
+  color: var(--text-normal);
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
-  .chronos-grid {
-    grid-template-columns: repeat(90, 14px);
-    grid-template-rows: repeat(52, 14px);
-  }
-
   .chronos-grid-cell {
-    width: 14px;
-    height: 14px;
+    width: 16px;
+    height: 16px;
   }
 
   .chronos-controls {
