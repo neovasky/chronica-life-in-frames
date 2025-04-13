@@ -630,23 +630,21 @@ class ChronosTimelineView extends ItemView {
     });
     // Render custom event type legends.
     this.plugin.settings.customEventTypes.forEach((customType) => {
-      const customLegendEl = legendEl.createEl("div", {
-        cls: "chronos-legend-item",
+      legendItems.push({
+        text: customType.name,
+        color: customType.color,
       });
-      const customColorEl = customLegendEl.createEl("div", {
-        cls: "chronos-legend-color",
-      });
-      customColorEl.style.backgroundColor = customType.color;
-      customLegendEl.createEl("span", { text: customType.name });
     });
-    contentEl.createEl("div", {
-      cls: "chronos-footer",
-      text: this.plugin.settings.quote,
+    const customLegendEl = legendEl.createEl("div", {
+      cls: "chronos-legend-item",
+    });
+    const customColorEl = customLegendEl.createEl("div", {
+      cls: "chronos-legend-color",
     });
   }
 
   renderYearLabels(parent: HTMLElement) {
-    // Create or clear the container for the year labels.
+    // Create or clear the container for the year labels
     let yearLabelsContainer = parent.querySelector(
       ".chronos-year-labels"
     ) as HTMLElement;
@@ -661,48 +659,61 @@ class ChronosTimelineView extends ItemView {
     const cellSize = 16; // cell width in pixels
     const totalYears = this.plugin.settings.lifespan;
 
-    // Compute the left offset uniformly for each year so that:
-    // Computed offset = (i * cellSize) + (cellSize/2) + 32.
-    // (That +32 cancels out the container’s negative margin, so the visual position is ideal.)
-    for (let i = 0; i < totalYears; i++) {
-      const colGap = Math.floor(i / 10); // same logic as grid
-      const leftOffset = (i + colGap) * cellSize + cellSize / 2 + 32;
-      const label = document.createElement("div");
-      label.classList.add("chronos-year-label");
-      label.innerText = i.toString();
-      label.style.left = `${leftOffset}px`;
+    // Create year labels with proper positioning
+    const weekLabels = parent.createEl("div", {});
+
+    for (let i = 0; i < 52; i++) {
+      // Use the same row calculation as the grid
+      const rowGap = Math.floor(i / 10);
+      const gridRowPosition = i + rowGap;
+
+      const label = weekLabels.createEl("div", { cls: "chronos-week-label" });
+      label.style.position = "absolute";
+
+      // Position based on cell height (16px) + gap (2px), matching the grid layout
+      label.style.top = `${gridRowPosition * 18 + 8}px`; // +8px for vertical centering
+      label.style.left = "8px"; // Add a bit more padding for better visibility
+      label.style.width = "20px";
+      label.style.textAlign = "right";
+      label.innerText = `${i + 1}`;
+
+      // Highlight every 10th week
+      if ((i + 1) % 10 === 0) {
+        label.classList.add("decade-week");
+      }
+
       yearLabelsContainer.appendChild(label);
     }
   }
 
   renderWeeksGrid(container: HTMLElement) {
     container.empty();
+
+    // Create a proper chronos-grid container
+    const gridContainer = container.createEl("div", { cls: "chronos-grid" });
+
     const now = new Date();
     const birthdayDate = new Date(this.plugin.settings.birthday);
     const lifespan = this.plugin.settings.lifespan;
 
-    function getFullWeekAge(birthday: Date, today: Date): number {
-      const diffMs = today.getTime() - birthday.getTime();
-      const msPerWeek = 1000 * 60 * 60 * 24 * 7;
-      return Math.floor(diffMs / msPerWeek);
-    }
-
+    // Remove duplicate function - use the plugin's method
     const ageInWeeks = this.plugin.getFullWeekAge(birthdayDate, now);
 
     const cellSize = 16;
     const weeksCount = 52;
     const totalYears = lifespan;
-    const extraCols = Math.floor(totalYears - 1 / 10);
+    const extraCols = Math.floor(totalYears / 10);
     const totalCols = totalYears + extraCols;
-    const extraRows = Math.floor((weeksCount - 1) / 10);
+    const extraRows = Math.floor(weeksCount / 10);
     const totalRows = weeksCount + extraRows;
 
-    container.style.display = "grid";
-    container.style.gridGap = "2px";
-    container.style.gridTemplateColumns = new Array(totalCols)
+    // Apply grid to the grid container, not the view container
+    gridContainer.style.display = "grid";
+    gridContainer.style.gridGap = "2px";
+    gridContainer.style.gridTemplateColumns = new Array(totalCols)
       .fill(`${cellSize}px`)
       .join(" ");
-    container.style.gridTemplateRows = new Array(totalRows)
+    gridContainer.style.gridTemplateRows = new Array(totalRows)
       .fill(`${cellSize}px`)
       .join(" ");
 
@@ -734,7 +745,8 @@ class ChronosTimelineView extends ItemView {
             "Dec",
           ];
           const monthIndex = Math.floor((week / weeksCount) * 12) % 12;
-          cell.setAttribute("data-month", monthNames[monthIndex]);
+          const monthName = monthNames[monthIndex];
+          cell.setAttribute("data-month", monthName);
         }
         const weekIndex = year * 52 + week;
         const cellDate = new Date(birthdayDate);

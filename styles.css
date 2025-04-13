@@ -65,18 +65,26 @@
 
 .chronos-year-label {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--text-normal);
+  opacity: 0.7;
   position: absolute;
-  transform: translateX(-10%);
+  transform: translateX(-50%);
+  font-weight: normal;
+}
+
+.chronos-year-label.decade-marker {
+  color: var(--text-accent);
+  font-weight: bold;
+  font-size: 14px;
+  opacity: 1;
 }
 
 /* Month labels */
 .chronos-month-label {
   font-size: 10px;
   color: var(--text-muted);
-  position: absolute;
   transform: translateX(-50%);
-  top: 15px;
+  position: absolute;
 }
 
 /* Week labels on the left */
@@ -89,7 +97,13 @@
 
 .chronos-week-label {
   font-size: 10px;
-  color: var(--text-muted);
+  color: var(--text-normal);
+  opacity: 0.8;
+}
+
+.chronos-week-label.decade-week {
+  color: var(--text-accent);
+  font-weight: bold;
 }
 
 .chronos-year-label:nth-child(11),
@@ -101,7 +115,7 @@
 .chronos-year-label:nth-child(71),
 .chronos-year-label:nth-child(81),
 .chronos-year-label:nth-child(91) {
-  transform: translateX(16px);
+  transform: translateX(-50%); /* Reset the transform to be consistent */
 }
 
 /* Timeline grid */
