@@ -1,0 +1,167 @@
+/* ChronOS Timeline Plugin Styles */
+
+/* Main container */
+.chronos-timeline-container {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Title styling */
+.chronos-title {
+  font-size: 28px;
+  font-weight: 300;
+  font-style: italic;
+  text-align: center;
+  margin-bottom: 20px;
+  color: var(--text-normal);
+}
+
+/* Controls bar */
+.chronos-controls {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+  gap: 10px;
+}
+
+.chronos-controls button {
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.chronos-controls button:hover {
+  background-color: var(--interactive-accent-hover);
+}
+
+/* Main view container */
+.chronos-view {
+  position: relative;
+  overflow: auto;
+  flex-grow: 1;
+  margin-bottom: 15px;
+  background-color: var(--background-primary);
+  border-radius: 6px;
+  padding: 10px 40px 20px 40px; /* Add padding for labels */
+}
+
+/* Year labels at the top */
+.chronos-year-labels {
+  position: relative;
+  height: 20px;
+  margin-bottom: 5px;
+  margin-left: 40px; /* Align with grid */
+}
+
+.chronos-year-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Week labels on the left */
+.chronos-week-labels {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 40px;
+  height: 100%;
+}
+
+.chronos-week-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Timeline grid */
+.chronos-grid {
+  display: grid;
+  grid-template-columns: repeat(90, 16px); /* Default for 90 years */
+  grid-template-rows: repeat(52, 16px); /* 52 weeks per year */
+  grid-gap: 2px;
+  position: relative;
+}
+
+/* Grid cells */
+.chronos-grid-cell {
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.chronos-grid-cell:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+  z-index: 10;
+}
+
+.chronos-grid-cell.present {
+  box-shadow: 0 0 8px var(--text-accent);
+  z-index: 5;
+}
+
+.chronos-grid-cell.event {
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+/* Legend */
+.chronos-legend {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.chronos-legend-item {
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  color: var(--text-normal);
+}
+
+.chronos-legend-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+  margin-right: 5px;
+}
+
+/* Footer with quote */
+.chronos-footer {
+  text-align: center;
+  font-style: italic;
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-top: 10px;
+  padding: 10px;
+}
+
+/* Modal styling */
+.modal .setting-item {
+  border-top: 1px solid var(--background-modifier-border);
+  padding-top: 18px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .chronos-grid {
+    grid-template-columns: repeat(90, 14px);
+    grid-template-rows: repeat(52, 14px);
+  }
+
+  .chronos-grid-cell {
+    width: 14px;
+    height: 14px;
+  }
+}
