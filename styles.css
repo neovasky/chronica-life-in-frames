@@ -66,6 +66,17 @@
 .chronos-year-label {
   font-size: 12px;
   color: var(--text-muted);
+  position: absolute;
+  transform: translateX(-50%); /* Center the label */
+}
+
+/* Month labels */
+.chronos-month-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  position: absolute;
+  transform: translateX(-50%);
+  top: 15px; /* Position below year labels */
 }
 
 /* Week labels on the left */
@@ -116,20 +127,39 @@
   border: 1px solid rgba(255, 255, 255, 0.4);
 }
 
-/* Visual separations */
+/* Visual separations - Enhanced */
 .chronos-grid-cell.month-start {
-  border-top: 2px solid rgba(128, 128, 128, 0.3);
+  border-top: 3px solid rgba(128, 128, 128, 0.5);
+  margin-top: 2px; /* Add space for month separation */
 }
 
 .chronos-grid-cell.decade-start {
-  border-left: 3px solid rgba(128, 128, 128, 0.5);
-  margin-left: 4px; /* Add space for decade separation */
+  border-left: 4px solid rgba(128, 128, 128, 0.7);
+  margin-left: 8px; /* Increased space for decade separation */
 }
 
 /* We also need a special rule for decade + month start */
 .chronos-grid-cell.decade-start.month-start {
-  border-top: 2px solid rgba(128, 128, 128, 0.3);
-  border-left: 3px solid rgba(128, 128, 128, 0.5);
+  border-top: 3px solid rgba(128, 128, 128, 0.5);
+  border-left: 4px solid rgba(128, 128, 128, 0.7);
+}
+
+/* Future event highlight */
+.chronos-grid-cell.future-event-highlight {
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.7);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 8px rgba(255, 215, 0, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 12px rgba(255, 215, 0, 0.9);
+  }
+  100% {
+    box-shadow: 0 0 8px rgba(255, 215, 0, 0.7);
+  }
 }
 
 /* Legend */
