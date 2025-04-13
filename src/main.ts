@@ -26,6 +26,7 @@ interface ChronosSettings {
   pinkEvents: string[];
   purpleEvents: string[];
   quote: string;
+  notesFolder: string; // New setting for notes folder
 }
 
 // Set default settings
@@ -41,15 +42,16 @@ const DEFAULT_SETTINGS: ChronosSettings = {
   pinkEvents: [],
   purpleEvents: [],
   quote: "the only true luxury is time.",
+  notesFolder: "", // Default to root folder
 };
 
 // ChronOS Timeline icon
 const chronosIcon = `<svg viewBox="0 0 100 100" width="100" height="100" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" stroke-width="4"/>
-      <line x1="50" y1="15" x2="50" y2="50" stroke="currentColor" stroke-width="4"/>
-      <line x1="50" y1="50" x2="75" y2="60" stroke="currentColor" stroke-width="4"/>
-      <circle cx="50" cy="50" r="5" fill="currentColor"/>
-    </svg>`;
+        <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" stroke-width="4"/>
+        <line x1="50" y1="15" x2="50" y2="50" stroke="currentColor" stroke-width="4"/>
+        <line x1="50" y1="50" x2="75" y2="60" stroke="currentColor" stroke-width="4"/>
+        <circle cx="50" cy="50" r="5" fill="currentColor"/>
+      </svg>`;
 
 export default class ChronosTimelinePlugin extends Plugin {
   settings: ChronosSettings = DEFAULT_SETTINGS;
@@ -127,23 +129,55 @@ export default class ChronosTimelinePlugin extends Plugin {
     workspace.revealLeaf(leaf);
   }
 
+  // Helper method to get the full file path with folder
+  getFullPath(fileName: string): string {
+    if (this.settings.notesFolder && this.settings.notesFolder.trim() !== "") {
+      // Ensure the folder path has a trailing slash
+      let folderPath = this.settings.notesFolder;
+      if (!folderPath.endsWith("/")) {
+        folderPath += "/";
+      }
+      return `${folderPath}${fileName}`;
+    }
+    return fileName;
+  }
+
   async createOrOpenWeekNote() {
     try {
       const date = new Date();
       const year = date.getFullYear();
       const weekNum = this.getISOWeekNumber(date);
       const fileName = `${year}-W${weekNum.toString().padStart(2, "0")}.md`;
+      const fullPath = this.getFullPath(fileName);
 
       // Check if file exists
-      const existingFile = this.app.vault.getAbstractFileByPath(fileName);
+      const existingFile = this.app.vault.getAbstractFileByPath(fullPath);
 
       if (existingFile instanceof TFile) {
         // Open existing file
         await this.app.workspace.getLeaf().openFile(existingFile);
       } else {
+        // Create folder if it doesn't exist
+        if (
+          this.settings.notesFolder &&
+          this.settings.notesFolder.trim() !== ""
+        ) {
+          try {
+            // Check if folder exists, create if not
+            const folderExists = this.app.vault.getAbstractFileByPath(
+              this.settings.notesFolder
+            );
+            if (!folderExists) {
+              await this.app.vault.createFolder(this.settings.notesFolder);
+            }
+          } catch (err) {
+            console.log("Error checking/creating folder:", err);
+          }
+        }
+
         // Create new file with template
         const content = `# Week ${weekNum}, ${year}\n\n## Reflections\n\n## Tasks\n\n## Notes\n`;
-        const newFile = await this.app.vault.create(fileName, content);
+        const newFile = await this.app.vault.create(fullPath, content);
         await this.app.workspace.getLeaf().openFile(newFile);
       }
     } catch (error) {
@@ -161,6 +195,16 @@ export default class ChronosTimelinePlugin extends Plugin {
     // Calculate full weeks between year start and current date
     return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
   }
+
+  // Helper to check if a week is the first of the month
+  isFirstWeekOfMonth(date: Date): boolean {
+    // Make a copy of the date
+    const checkDate = new Date(date);
+    // Get the date at the beginning of the week
+    checkDate.setDate(checkDate.getDate() - (checkDate.getDay() || 7) + 1);
+    // Check if it's the first 7 days of the month
+    return checkDate.getDate() <= 7;
+  }
 }
 
 // Event Modal for adding events
@@ -169,6 +213,7 @@ class ChronosEventModal extends Modal {
   selectedDate: string | null;
   selectedColor: "green" | "blue" | "pink" | "purple" = "green";
   eventDescription: string = "";
+  dateInput!: HTMLInputElement; // Using definite assignment assertion
 
   constructor(
     app: App,
@@ -188,16 +233,32 @@ class ChronosEventModal extends Modal {
 
     // Date selector (if not already provided)
     if (!this.selectedDate) {
-      new Setting(contentEl)
+      const dateContainer = contentEl.createDiv({
+        cls: "chronos-date-picker-container",
+      });
+      dateContainer.createEl("h3", { text: "Select Date" });
+
+      // Add date picker for better date selection
+      const dateSettingContainer = new Setting(contentEl)
         .setName("Date")
-        .setDesc(
-          "Enter the date in YYYY-WW format (e.g., 2020-W30 for week 30 of 2020)"
-        )
-        .addText((text) =>
-          text.setPlaceholder("YYYY-WW").onChange((value) => {
-            this.selectedDate = value;
-          })
-        );
+        .setDesc("Enter the date or select from calendar");
+
+      this.dateInput = dateSettingContainer.controlEl.createEl("input", {
+        type: "text",
+        placeholder: "YYYY-WW (e.g., 2025-W15)",
+        value: this.selectedDate || "",
+      });
+
+      // Add date change handler
+      this.dateInput.addEventListener("change", (e) => {
+        this.selectedDate = this.dateInput?.value || "";
+      });
+
+      // Add a small helper note
+      contentEl.createEl("small", {
+        text: "Tip: You can enter dates in the future to plan ahead",
+        cls: "chronos-helper-text",
+      });
     } else {
       contentEl.createEl("p", { text: `Date: ${this.selectedDate}` });
     }
@@ -331,13 +392,31 @@ class ChronosEventModal extends Modal {
 
       // Create a note for this event if it doesn't exist
       const fileName = `${this.selectedDate.replace("W", "-W")}.md`;
+      const fullPath = this.plugin.getFullPath(fileName);
       const fileExists =
-        this.app.vault.getAbstractFileByPath(fileName) instanceof TFile;
+        this.app.vault.getAbstractFileByPath(fullPath) instanceof TFile;
 
       if (!fileExists) {
+        // Create folder if needed
+        if (
+          this.plugin.settings.notesFolder &&
+          this.plugin.settings.notesFolder.trim() !== ""
+        ) {
+          try {
+            const folderExists = this.app.vault.getAbstractFileByPath(
+              this.plugin.settings.notesFolder
+            );
+            if (!folderExists) {
+              this.app.vault.createFolder(this.plugin.settings.notesFolder);
+            }
+          } catch (err) {
+            console.log("Error checking/creating folder:", err);
+          }
+        }
+
         // Create the file with event description
         const content = `# Event: ${this.eventDescription}\n\nDate: ${this.selectedDate}\nType: ${this.selectedColor}\n\n## Notes\n\n`;
-        this.app.vault.create(fileName, content);
+        this.app.vault.create(fullPath, content);
       }
 
       this.close();
@@ -417,6 +496,15 @@ class ChronosTimelineView extends ItemView {
       if (todayCell) {
         todayCell.scrollIntoView({ behavior: "smooth", block: "center" });
       }
+    });
+
+    // Add Future Event button
+    const futureEventBtn = controlsEl.createEl("button", {
+      text: "Plan Future Event",
+    });
+    futureEventBtn.addEventListener("click", () => {
+      // Open the event modal without a pre-selected date
+      this.showAddEventModal();
     });
 
     // Add a button to show settings
@@ -515,7 +603,7 @@ class ChronosTimelineView extends ItemView {
       });
       // Position label properly (every 10 years)
       yearLabel.style.position = "absolute";
-      yearLabel.style.left = `${i * 16 + 40}px`; // 16px per year + offset
+      yearLabel.style.left = `${i * (16 + 4) + 40}px`; // 16px per year + 4px for decade spacing + offset
     }
 
     // Create grid for the weeks
@@ -545,9 +633,26 @@ class ChronosTimelineView extends ItemView {
 
     // For each year, create a column of weeks
     for (let year = 0; year < lifespan; year++) {
+      // Add a decade marker class if this is the start of a decade
+      const isDecadeStart = year % 10 === 0;
+
       for (let week = 0; week < 52; week++) {
         const weekIndex = year * 52 + week;
         const cell = gridEl.createEl("div", { cls: "chronos-grid-cell week" });
+
+        // Add special classes for visual separation
+        if (isDecadeStart) {
+          cell.addClass("decade-start");
+        }
+
+        // Calculate the date for the current week
+        const weekDate = new Date(birthdayDate);
+        weekDate.setDate(weekDate.getDate() + weekIndex * 7);
+
+        // Add class for first week of month
+        if (this.plugin.isFirstWeekOfMonth(weekDate)) {
+          cell.addClass("month-start");
+        }
 
         // Position the cell in the grid (weeks as rows, years as columns)
         cell.style.gridRow = `${week + 1}`;
@@ -566,8 +671,6 @@ class ChronosTimelineView extends ItemView {
         }
 
         // Format date for this week - calculate actual date
-        const weekDate = new Date(birthdayDate);
-        weekDate.setDate(weekDate.getDate() + weekIndex * 7);
         const weekYear = weekDate.getFullYear();
         const weekNum = this.plugin.getISOWeekNumber(weekDate);
         const weekKey = `${weekYear}-W${weekNum.toString().padStart(2, "0")}`;
@@ -636,15 +739,35 @@ class ChronosTimelineView extends ItemView {
 
           // Otherwise open/create the weekly note
           const fileName = `${weekKey.replace("W", "-W")}.md`;
-          const existingFile = this.app.vault.getAbstractFileByPath(fileName);
+          const fullPath = this.plugin.getFullPath(fileName);
+          const existingFile = this.app.vault.getAbstractFileByPath(fullPath);
 
           if (existingFile instanceof TFile) {
             // Open existing file
             await this.app.workspace.getLeaf().openFile(existingFile);
           } else {
+            // Create folder if needed
+            if (
+              this.plugin.settings.notesFolder &&
+              this.plugin.settings.notesFolder.trim() !== ""
+            ) {
+              try {
+                const folderExists = this.app.vault.getAbstractFileByPath(
+                  this.plugin.settings.notesFolder
+                );
+                if (!folderExists) {
+                  await this.app.vault.createFolder(
+                    this.plugin.settings.notesFolder
+                  );
+                }
+              } catch (err) {
+                console.log("Error checking/creating folder:", err);
+              }
+            }
+
             // Create new file with template
             const content = `# Week ${weekNum}, ${weekYear}\n\n## Reflections\n\n## Tasks\n\n## Notes\n`;
-            const newFile = await this.app.vault.create(fileName, content);
+            const newFile = await this.app.vault.create(fullPath, content);
             await this.app.workspace.getLeaf().openFile(newFile);
           }
         });
@@ -699,6 +822,20 @@ class ChronosSettingTab extends PluginSettingTab {
             this.plugin.settings.lifespan = value;
             await this.plugin.saveSettings();
             this.refreshAllViews();
+          })
+      );
+
+    // Notes folder setting
+    new Setting(containerEl)
+      .setName("Notes Folder")
+      .setDesc("Where to store week notes (leave empty for vault root)")
+      .addText((text) =>
+        text
+          .setPlaceholder("ChronOS Notes")
+          .setValue(this.plugin.settings.notesFolder)
+          .onChange(async (value) => {
+            this.plugin.settings.notesFolder = value;
+            await this.plugin.saveSettings();
           })
       );
 
@@ -827,6 +964,9 @@ class ChronosSettingTab extends PluginSettingTab {
     });
     containerEl.createEl("p", {
       text: "• Use the 'Add Event' button to mark significant life events",
+    });
+    containerEl.createEl("p", {
+      text: "• Use the 'Plan Future Event' button to add events in the future",
     });
   }
 

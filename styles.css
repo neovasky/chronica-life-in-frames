@@ -26,6 +26,7 @@
   justify-content: center;
   margin-bottom: 20px;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 .chronos-controls button {
@@ -88,6 +89,7 @@
   grid-template-rows: repeat(52, 16px); /* 52 weeks per year */
   grid-gap: 2px;
   position: relative;
+  column-gap: 2px; /* Default gap */
 }
 
 /* Grid cells */
@@ -112,6 +114,22 @@
 
 .chronos-grid-cell.event {
   border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+/* Visual separations */
+.chronos-grid-cell.month-start {
+  border-top: 2px solid rgba(128, 128, 128, 0.3);
+}
+
+.chronos-grid-cell.decade-start {
+  border-left: 3px solid rgba(128, 128, 128, 0.5);
+  margin-left: 4px; /* Add space for decade separation */
+}
+
+/* We also need a special rule for decade + month start */
+.chronos-grid-cell.decade-start.month-start {
+  border-top: 2px solid rgba(128, 128, 128, 0.3);
+  border-left: 3px solid rgba(128, 128, 128, 0.5);
 }
 
 /* Legend */
@@ -153,6 +171,19 @@
   padding-top: 18px;
 }
 
+/* Date picker container enhancements */
+.chronos-date-picker-container {
+  margin-bottom: 20px;
+}
+
+.chronos-helper-text {
+  display: block;
+  margin-top: 5px;
+  margin-bottom: 15px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .chronos-grid {
@@ -163,5 +194,14 @@
   .chronos-grid-cell {
     width: 14px;
     height: 14px;
+  }
+
+  .chronos-controls {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .chronos-controls button {
+    width: 80%;
   }
 }
