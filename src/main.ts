@@ -135,6 +135,12 @@ export default class ChronosTimelinePlugin extends Plugin {
     workspace.revealLeaf(leaf);
   }
 
+  getFullWeekAge(birthday: Date, today: Date): number {
+    const diffMs = today.getTime() - birthday.getTime();
+    const msPerWeek = 1000 * 60 * 60 * 24 * 7;
+    return Math.floor(diffMs / msPerWeek);
+  }
+
   getFullPath(fileName: string): string {
     if (this.settings.notesFolder && this.settings.notesFolder.trim() !== "") {
       let folderPath = this.settings.notesFolder;
@@ -539,43 +545,55 @@ class ChronosTimelineView extends ItemView {
   }
 
   async onOpen() {
-    const contentEl = this.containerEl.children[1];
+    // Cast the container to HTMLElement so we can use .empty()
+    const contentEl = this.containerEl.children[1] as HTMLElement;
     contentEl.empty();
     contentEl.addClass("chronos-timeline-container");
     this.renderView();
   }
 
   async onClose() {
-    const contentEl = this.containerEl.children[1];
+    const contentEl = this.containerEl.children[1] as HTMLElement;
     contentEl.empty();
   }
 
   renderView() {
-    const contentEl = this.containerEl.children[1];
+    const contentEl = this.containerEl.children[1] as HTMLElement;
     contentEl.empty();
 
-    // Title
-    contentEl.createEl("div", { cls: "chronos-title", text: "life in weeks" });
+    // Render year labels at the top.
+    this.renderYearLabels(contentEl);
 
-    // Controls Bar
+    // Build controls bar.
     const controlsEl = contentEl.createEl("div", { cls: "chronos-controls" });
     const addEventBtn = controlsEl.createEl("button", { text: "Add Event" });
-    addEventBtn.addEventListener("click", () => {
-      this.showAddEventModal();
-    });
+    addEventBtn.addEventListener("click", () => this.showAddEventModal());
     const todayBtn = controlsEl.createEl("button", { text: "Today" });
     todayBtn.addEventListener("click", () => {
-      const todayCell = contentEl.querySelector(".chronos-grid-cell.present");
+      const todayCell = contentEl.querySelector(
+        ".chronos-grid-cell.present"
+      ) as HTMLElement;
       if (todayCell) {
         todayCell.scrollIntoView({ behavior: "smooth", block: "center" });
       }
     });
+    const weekLabels = contentEl.createEl("div", {
+      cls: "chronos-week-labels",
+    });
+    for (let i = 0; i < 52; i++) {
+      const rowOffset = Math.floor(i / 10);
+      const label = weekLabels.createEl("div", { cls: "chronos-week-label" });
+      label.style.position = "absolute";
+      label.style.top = `${(i + rowOffset) * 18}px`; // 16px cell + 2px gap
+      label.style.left = "0px";
+      label.style.width = "30px";
+      label.style.textAlign = "right";
+      label.innerText = `${i + 1}`;
+    }
     const futureEventBtn = controlsEl.createEl("button", {
       text: "Plan Future Event",
     });
-    futureEventBtn.addEventListener("click", () => {
-      this.showAddEventModal();
-    });
+    futureEventBtn.addEventListener("click", () => this.showAddEventModal());
     const manageTypesBtn = controlsEl.createEl("button", {
       text: "Manage Event Types",
     });
@@ -584,15 +602,15 @@ class ChronosTimelineView extends ItemView {
       modal.open();
     });
     const settingsBtn = controlsEl.createEl("button", { text: "Settings" });
-    settingsBtn.addEventListener("click", () => {
-      new ChronosSettingTab(this.app, this.plugin).display();
-    });
+    settingsBtn.addEventListener("click", () =>
+      new ChronosSettingTab(this.app, this.plugin).display()
+    );
 
-    // Grid View Container
-    const viewEl = contentEl.createEl("div", { cls: "chronos-view" });
-    this.renderWeeksGrid(viewEl);
+    // Render the grid container.
+    const gridContainer = contentEl.createEl("div", { cls: "chronos-view" });
+    this.renderWeeksGrid(gridContainer);
 
-    // Legend
+    // Render Legend.
     const legendEl = contentEl.createEl("div", { cls: "chronos-legend" });
     const legendItems = [
       { text: "Major Life Events", color: "#4CAF50" },
@@ -604,14 +622,14 @@ class ChronosTimelineView extends ItemView {
         color: this.plugin.settings.futureCellColor,
       },
     ];
-    for (const item of legendItems) {
+    legendItems.forEach((item) => {
       const itemEl = legendEl.createEl("div", { cls: "chronos-legend-item" });
       const colorEl = itemEl.createEl("div", { cls: "chronos-legend-color" });
       colorEl.style.backgroundColor = item.color;
       itemEl.createEl("span", { text: item.text });
-    }
-    // Custom event type legends
-    for (const customType of this.plugin.settings.customEventTypes) {
+    });
+    // Render custom event type legends.
+    this.plugin.settings.customEventTypes.forEach((customType) => {
       const customLegendEl = legendEl.createEl("div", {
         cls: "chronos-legend-item",
       });
@@ -620,37 +638,61 @@ class ChronosTimelineView extends ItemView {
       });
       customColorEl.style.backgroundColor = customType.color;
       customLegendEl.createEl("span", { text: customType.name });
-    }
+    });
     contentEl.createEl("div", {
       cls: "chronos-footer",
       text: this.plugin.settings.quote,
     });
   }
 
-  showAddEventModal() {
-    const modal = new ChronosEventModal(this.app, this.plugin);
-    modal.open();
-  }
+  renderYearLabels(parent: HTMLElement) {
+    // Create or clear the container for the year labels.
+    let yearLabelsContainer = parent.querySelector(
+      ".chronos-year-labels"
+    ) as HTMLElement;
+    if (!yearLabelsContainer) {
+      yearLabelsContainer = parent.createEl("div", {
+        cls: "chronos-year-labels",
+      });
+    } else {
+      yearLabelsContainer.empty();
+    }
 
-  showManageEventTypesModal() {
-    const modal = new ManageEventTypesModal(this.app, this.plugin);
-    modal.open();
+    const cellSize = 16; // cell width in pixels
+    const totalYears = this.plugin.settings.lifespan;
+
+    // Compute the left offset uniformly for each year so that:
+    // Computed offset = (i * cellSize) + (cellSize/2) + 32.
+    // (That +32 cancels out the container’s negative margin, so the visual position is ideal.)
+    for (let i = 0; i < totalYears; i++) {
+      const colGap = Math.floor(i / 10); // same logic as grid
+      const leftOffset = (i + colGap) * cellSize + cellSize / 2 + 32;
+      const label = document.createElement("div");
+      label.classList.add("chronos-year-label");
+      label.innerText = i.toString();
+      label.style.left = `${leftOffset}px`;
+      yearLabelsContainer.appendChild(label);
+    }
   }
 
   renderWeeksGrid(container: HTMLElement) {
     container.empty();
-
     const now = new Date();
     const birthdayDate = new Date(this.plugin.settings.birthday);
     const lifespan = this.plugin.settings.lifespan;
-    const ageInYears =
-      (now.getTime() - birthdayDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
-    const ageInWeeks = ageInYears * 52;
+
+    function getFullWeekAge(birthday: Date, today: Date): number {
+      const diffMs = today.getTime() - birthday.getTime();
+      const msPerWeek = 1000 * 60 * 60 * 24 * 7;
+      return Math.floor(diffMs / msPerWeek);
+    }
+
+    const ageInWeeks = this.plugin.getFullWeekAge(birthdayDate, now);
 
     const cellSize = 16;
     const weeksCount = 52;
     const totalYears = lifespan;
-    const extraCols = Math.floor((totalYears - 1) / 10);
+    const extraCols = Math.floor(totalYears - 1 / 10);
     const totalCols = totalYears + extraCols;
     const extraRows = Math.floor((weeksCount - 1) / 10);
     const totalRows = weeksCount + extraRows;
@@ -665,13 +707,11 @@ class ChronosTimelineView extends ItemView {
       .join(" ");
 
     for (let year = 0; year < totalYears; year++) {
-      const colGapCount = Math.floor(year / 10);
-      const gridColumn = year + colGapCount + 1;
-
+      const colGap = Math.floor(year / 10);
+      const gridColumn = year + colGap + 1;
       for (let week = 0; week < weeksCount; week++) {
-        const rowGapCount = Math.floor(week / 10);
-        const gridRow = week + rowGapCount + 1;
-
+        const rowGap = Math.floor(week / 10);
+        const gridRow = week + rowGap + 1;
         const cell = container.createEl("div", { cls: "chronos-grid-cell" });
         cell.style.gridColumn = gridColumn.toString();
         cell.style.gridRow = gridRow.toString();
@@ -696,14 +736,12 @@ class ChronosTimelineView extends ItemView {
           const monthIndex = Math.floor((week / weeksCount) * 12) % 12;
           cell.setAttribute("data-month", monthNames[monthIndex]);
         }
-
         const weekIndex = year * 52 + week;
         const cellDate = new Date(birthdayDate);
         cellDate.setDate(cellDate.getDate() + weekIndex * 7);
         const cellYear = cellDate.getFullYear();
         const cellWeek = this.plugin.getISOWeekNumber(cellDate);
         const weekKey = `${cellYear}-W${cellWeek.toString().padStart(2, "0")}`;
-
         if (weekIndex < ageInWeeks) {
           cell.addClass("past");
           cell.style.backgroundColor = this.plugin.settings.pastCellColor;
@@ -714,16 +752,10 @@ class ChronosTimelineView extends ItemView {
           cell.addClass("future");
           cell.style.backgroundColor = this.plugin.settings.futureCellColor;
         }
-
         this.applyEventStyling(cell, weekKey);
-
         if (this.plugin.shouldHaveRowGap(week)) {
           cell.style.marginTop = "8px";
         }
-        if (year % 10 === 0) {
-          cell.style.marginLeft = "18px";
-        }
-
         cell.addEventListener("click", async (event) => {
           if (event.shiftKey) {
             const modal = new ChronosEventModal(this.app, this.plugin, weekKey);
@@ -764,7 +796,7 @@ class ChronosTimelineView extends ItemView {
   }
 
   applyEventStyling(cell: HTMLElement, weekKey: string) {
-    // For preset event types
+    // Apply preset event styles.
     const applyPreset = (
       arr: string[],
       defaultColor: string,
@@ -793,7 +825,7 @@ class ChronosTimelineView extends ItemView {
       "Education/Career"
     );
 
-    // For custom events
+    // For custom events, loop through each event type.
     for (const [typeName, events] of Object.entries(
       this.plugin.settings.customEvents
     )) {
@@ -813,7 +845,7 @@ class ChronosTimelineView extends ItemView {
       }
     }
 
-    // Highlight future events if within ~6 months
+    // Highlight future events.
     const now = new Date();
     const cellDate = new Date();
     const [cellYearStr, weekNumStr] = weekKey.split("-W");
@@ -826,6 +858,16 @@ class ChronosTimelineView extends ItemView {
     ) {
       cell.addClass("future-event-highlight");
     }
+  }
+
+  showAddEventModal() {
+    const modal = new ChronosEventModal(this.app, this.plugin);
+    modal.open();
+  }
+
+  showManageEventTypesModal() {
+    const modal = new ManageEventTypesModal(this.app, this.plugin);
+    modal.open();
   }
 }
 

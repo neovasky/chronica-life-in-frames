@@ -60,14 +60,14 @@
   position: relative;
   height: 20px;
   margin-bottom: 5px;
-  margin-left: 40px; /* Align with grid */
+  margin-left: -32px; /* Adjust to align with the grid */
 }
 
 .chronos-year-label {
   font-size: 12px;
   color: var(--text-muted);
   position: absolute;
-  transform: translateX(-50%);
+  transform: translateX(-10%);
 }
 
 /* Month labels */
@@ -84,13 +84,24 @@
   position: absolute;
   left: 0;
   top: 0;
-  width: 40px;
-  height: 100%;
+  width: 30px;
 }
 
 .chronos-week-label {
-  font-size: 12px;
+  font-size: 10px;
   color: var(--text-muted);
+}
+
+.chronos-year-label:nth-child(11),
+.chronos-year-label:nth-child(21),
+.chronos-year-label:nth-child(31),
+.chronos-year-label:nth-child(41),
+.chronos-year-label:nth-child(51),
+.chronos-year-label:nth-child(61),
+.chronos-year-label:nth-child(71),
+.chronos-year-label:nth-child(81),
+.chronos-year-label:nth-child(91) {
+  transform: translateX(16px);
 }
 
 /* Timeline grid */
@@ -132,7 +143,6 @@
 
 .chronos-grid-cell.decade-start {
   border-left: 4px solid rgba(128, 128, 128, 0.7);
-  margin-left: 16px; /* Approximately one cell width gap */
 }
 
 .chronos-grid-cell.decade-start.month-start {
