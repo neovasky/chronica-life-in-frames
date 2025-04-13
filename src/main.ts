@@ -11,9 +11,10 @@ import {
   Notice,
 } from "obsidian";
 
+// Unique view type identifier
 const TIMELINE_VIEW_TYPE = "chronos-timeline-view";
 
-// Define the interface for plugin settings
+// Extend settings interface to support custom events.
 interface ChronosSettings {
   birthday: string;
   lifespan: number;
@@ -25,11 +26,12 @@ interface ChronosSettings {
   blueEvents: string[];
   pinkEvents: string[];
   purpleEvents: string[];
+  customEvents: string[]; // New: stores events created via custom event type. Format: "weekKey:description|color|label"
   quote: string;
-  notesFolder: string; // New setting for notes folder
+  notesFolder: string;
 }
 
-// Set default settings
+// Update default settings
 const DEFAULT_SETTINGS: ChronosSettings = {
   birthday: "1990-01-01",
   lifespan: 90,
@@ -41,11 +43,12 @@ const DEFAULT_SETTINGS: ChronosSettings = {
   blueEvents: [],
   pinkEvents: [],
   purpleEvents: [],
+  customEvents: [],
   quote: "the only true luxury is time.",
-  notesFolder: "", // Default to root folder
+  notesFolder: "",
 };
 
-// ChronOS Timeline icon
+// ChronOS Timeline icon – unchanged.
 const chronosIcon = `<svg viewBox="0 0 100 100" width="100" height="100" xmlns="http://www.w3.org/2000/svg">
         <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" stroke-width="4"/>
         <line x1="50" y1="15" x2="50" y2="50" stroke="currentColor" stroke-width="4"/>
@@ -59,24 +62,19 @@ export default class ChronosTimelinePlugin extends Plugin {
   async onload() {
     console.log("Loading ChronOS Timeline Plugin");
 
-    // Add chronos icon to Obsidian
     addIcon("chronos-icon", chronosIcon);
-
-    // Load settings
     await this.loadSettings();
 
-    // Register timeline view
+    // Register the timeline view
     this.registerView(
       TIMELINE_VIEW_TYPE,
       (leaf) => new ChronosTimelineView(leaf, this)
     );
 
-    // Add ribbon icon to open timeline
     this.addRibbonIcon("chronos-icon", "Open ChronOS Timeline", () => {
       this.activateView();
     });
 
-    // Add command to open timeline
     this.addCommand({
       id: "open-chronos-timeline",
       name: "Open ChronOS Timeline",
@@ -85,7 +83,6 @@ export default class ChronosTimelinePlugin extends Plugin {
       },
     });
 
-    // Command to create weekly note
     this.addCommand({
       id: "create-weekly-note",
       name: "Create/Open Current Week Note",
@@ -94,7 +91,6 @@ export default class ChronosTimelinePlugin extends Plugin {
       },
     });
 
-    // Add settings tab
     this.addSettingTab(new ChronosSettingTab(this.app, this));
   }
 
@@ -112,31 +108,21 @@ export default class ChronosTimelinePlugin extends Plugin {
 
   async activateView() {
     const { workspace } = this.app;
-
-    // Check if view is already open
     let leaf = workspace.getLeavesOfType(TIMELINE_VIEW_TYPE)[0];
-
     if (!leaf) {
-      // Create a new leaf in the right sidebar
       leaf = workspace.getLeaf("split", "vertical");
       await leaf.setViewState({
         type: TIMELINE_VIEW_TYPE,
         active: true,
       });
     }
-
-    // Reveal the leaf
     workspace.revealLeaf(leaf);
   }
 
-  // Helper method to get the full file path with folder
   getFullPath(fileName: string): string {
     if (this.settings.notesFolder && this.settings.notesFolder.trim() !== "") {
-      // Ensure the folder path has a trailing slash
       let folderPath = this.settings.notesFolder;
-      if (!folderPath.endsWith("/")) {
-        folderPath += "/";
-      }
+      if (!folderPath.endsWith("/")) folderPath += "/";
       return `${folderPath}${fileName}`;
     }
     return fileName;
@@ -150,20 +136,15 @@ export default class ChronosTimelinePlugin extends Plugin {
       const fileName = `${year}-W${weekNum.toString().padStart(2, "0")}.md`;
       const fullPath = this.getFullPath(fileName);
 
-      // Check if file exists
       const existingFile = this.app.vault.getAbstractFileByPath(fullPath);
-
       if (existingFile instanceof TFile) {
-        // Open existing file
         await this.app.workspace.getLeaf().openFile(existingFile);
       } else {
-        // Create folder if it doesn't exist
         if (
           this.settings.notesFolder &&
           this.settings.notesFolder.trim() !== ""
         ) {
           try {
-            // Check if folder exists, create if not
             const folderExists = this.app.vault.getAbstractFileByPath(
               this.settings.notesFolder
             );
@@ -174,8 +155,6 @@ export default class ChronosTimelinePlugin extends Plugin {
             console.log("Error checking/creating folder:", err);
           }
         }
-
-        // Create new file with template
         const content = `# Week ${weekNum}, ${year}\n\n## Reflections\n\n## Tasks\n\n## Notes\n`;
         const newFile = await this.app.vault.create(fullPath, content);
         await this.app.workspace.getLeaf().openFile(newFile);
@@ -188,35 +167,33 @@ export default class ChronosTimelinePlugin extends Plugin {
   getISOWeekNumber(date: Date): number {
     const d = new Date(date);
     d.setHours(0, 0, 0, 0);
-    // Set to nearest Thursday (to match ISO 8601 week start)
     d.setDate(d.getDate() + 4 - (d.getDay() || 7));
-    // Get first day of the year
     const yearStart = new Date(d.getFullYear(), 0, 1);
-    // Calculate full weeks between year start and current date
     return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
   }
 
-  // Helper to check if a week is the first of the month
   isFirstWeekOfMonth(date: Date): boolean {
-    // Make a copy of the date
     const checkDate = new Date(date);
-    // Get the date at the beginning of the week
-    checkDate.setDate(checkDate.getDate() - (checkDate.getDay() || 7) + 1);
-    // Check if it's the first 7 days of the month
-    return checkDate.getDate() <= 7;
+    const currentMonth = checkDate.getMonth();
+    checkDate.setDate(checkDate.getDate() - 7);
+    return checkDate.getMonth() !== currentMonth;
   }
 }
 
-// Event Modal for adding events
-// Enhanced Event Modal for adding events - particularly future events
+// ─────────────────────────────────────────────────────────────────────────────
+// ChronosEventModal: Updated to use an HTML date input and to allow creation of custom events
+// ─────────────────────────────────────────────────────────────────────────────
 class ChronosEventModal extends Modal {
   plugin: ChronosTimelinePlugin;
+  // Instead of a week key string, we now store a full date (YYYY-MM-DD)
   selectedDate: string | null;
-  selectedColor: "green" | "blue" | "pink" | "purple" = "green";
+  // For preset event types: "green", "blue", "pink", "purple", or "custom"
+  selectedColor: "green" | "blue" | "pink" | "purple" | "custom" = "green";
+  // For custom events:
+  customEventLabel: string = "";
+  customEventColor: string = "#33aaff";
   eventDescription: string = "";
   dateInput!: HTMLInputElement;
-  futureEventContainer: HTMLDivElement | null = null;
-  isFuture: boolean = false;
 
   constructor(
     app: App,
@@ -226,121 +203,67 @@ class ChronosEventModal extends Modal {
     super(app);
     this.plugin = plugin;
     this.selectedDate = selectedDate;
-
-    // Determine if this is a future date
-    if (selectedDate) {
-      const now = new Date();
-      const currentYear = now.getFullYear();
-      const currentWeek = this.plugin.getISOWeekNumber(now);
-
-      // Parse selected date (format: YYYY-WXX)
-      const selectedYear = parseInt(selectedDate.substring(0, 4), 10);
-      const selectedWeek = parseInt(selectedDate.substring(6, 8), 10);
-
-      this.isFuture =
-        selectedYear > currentYear ||
-        (selectedYear === currentYear && selectedWeek > currentWeek);
-    }
   }
 
   onOpen() {
     const { contentEl } = this;
     contentEl.empty();
 
-    const titleText = this.isFuture ? "Plan Future Event" : "Add Life Event";
+    // Use a descriptive title based on whether the event is in the future
+    const now = new Date();
+    let titleText = "Add Life Event";
+    if (this.selectedDate) {
+      const selDate = new Date(this.selectedDate);
+      if (selDate > now) titleText = "Plan Future Event";
+    }
     contentEl.createEl("h2", { text: titleText });
 
-    // Date selector (if not already provided)
+    // ── DATE PICKER ──
+    // If a date hasn’t been pre-selected, prompt the user using a date picker
     if (!this.selectedDate) {
       const dateContainer = contentEl.createDiv({
         cls: "chronos-date-picker-container",
       });
       dateContainer.createEl("h3", { text: "Select Date" });
-
-      // Add date picker for better date selection
-      const dateSettingContainer = new Setting(contentEl)
+      const dateSetting = new Setting(contentEl)
         .setName("Date")
-        .setDesc("Enter the date in format YYYY-WXX (e.g., 2025-W15)");
-
-      this.dateInput = dateSettingContainer.controlEl.createEl("input", {
-        type: "text",
-        placeholder: "YYYY-WW (e.g., 2025-W15)",
-        value: this.selectedDate || "",
+        .setDesc("Select the event date");
+      // Use input type="date" for specific date selection
+      this.dateInput = dateSetting.controlEl.createEl("input", {
+        type: "date",
+        placeholder: "YYYY-MM-DD",
       });
-
-      // Add a button to select current week
-      const currentWeekButton = dateSettingContainer.controlEl.createEl(
-        "button",
-        {
-          text: "Current Week",
-        }
-      );
-      currentWeekButton.style.marginLeft = "10px";
-      currentWeekButton.addEventListener("click", () => {
-        const now = new Date();
-        const year = now.getFullYear();
-        const week = this.plugin.getISOWeekNumber(now);
-        this.dateInput.value = `${year}-W${week.toString().padStart(2, "0")}`;
-        this.selectedDate = this.dateInput.value;
-
-        // Update UI for future/past
-        this.isFuture = false;
-        this.updateFutureUI();
+      // Button for today’s date
+      const todayBtn = dateSetting.controlEl.createEl("button", {
+        text: "Today",
       });
-
-      // Add a button to select next month
-      const nextMonthButton = dateSettingContainer.controlEl.createEl(
-        "button",
-        {
-          text: "Next Month",
-        }
-      );
-      nextMonthButton.style.marginLeft = "10px";
-      nextMonthButton.addEventListener("click", () => {
+      todayBtn.style.marginLeft = "10px";
+      todayBtn.addEventListener("click", () => {
+        const today = new Date().toISOString().slice(0, 10);
+        this.dateInput.value = today;
+        this.selectedDate = today;
+      });
+      // Button for next month
+      const nextMonthBtn = dateSetting.controlEl.createEl("button", {
+        text: "Next Month",
+      });
+      nextMonthBtn.style.marginLeft = "10px";
+      nextMonthBtn.addEventListener("click", () => {
         const now = new Date();
         now.setMonth(now.getMonth() + 1);
-        const year = now.getFullYear();
-        const week = this.plugin.getISOWeekNumber(now);
-        this.dateInput.value = `${year}-W${week.toString().padStart(2, "0")}`;
-        this.selectedDate = this.dateInput.value;
-
-        // Update UI for future/past
-        this.isFuture = true;
-        this.updateFutureUI();
+        const nextMonthDate = now.toISOString().slice(0, 10);
+        this.dateInput.value = nextMonthDate;
+        this.selectedDate = nextMonthDate;
       });
-
-      // Add date change handler
-      this.dateInput.addEventListener("change", (e) => {
-        this.selectedDate = this.dateInput?.value || "";
-
-        // Check if date is in the future
-        if (this.selectedDate) {
-          const now = new Date();
-          const currentYear = now.getFullYear();
-          const currentWeek = this.plugin.getISOWeekNumber(now);
-
-          // Parse selected date (format: YYYY-WXX)
-          const selectedYear = parseInt(this.selectedDate.substring(0, 4), 10);
-          const selectedWeek = parseInt(this.selectedDate.substring(6, 8), 10);
-
-          this.isFuture =
-            selectedYear > currentYear ||
-            (selectedYear === currentYear && selectedWeek > currentWeek);
-
-          this.updateFutureUI();
-        }
-      });
-
-      // Add a small helper note
       contentEl.createEl("small", {
-        text: "Tip: You can enter dates in the future to plan ahead",
+        text: "Tip: Use the date picker to select an exact date",
         cls: "chronos-helper-text",
       });
     } else {
       contentEl.createEl("p", { text: `Date: ${this.selectedDate}` });
     }
 
-    // Event description
+    // ── EVENT DESCRIPTION ──
     new Setting(contentEl)
       .setName("Description")
       .setDesc("Brief description of this event")
@@ -350,42 +273,36 @@ class ChronosEventModal extends Modal {
         })
       );
 
-    // Color selector
-    const colorSetting = new Setting(contentEl)
+    // ── EVENT TYPE SELECTION ──
+    // Provide preset event type buttons and an option for a custom type.
+    const typeSetting = new Setting(contentEl)
       .setName("Event Type")
-      .setDesc("Select the type of event");
+      .setDesc("Choose a preset type or select 'Custom' to define your own");
 
-    // Green - Major Life Events
     const greenBtn = contentEl.createEl("button", { text: "Major Life" });
     greenBtn.style.backgroundColor = "#4CAF50";
     greenBtn.style.color = "white";
     greenBtn.style.margin = "5px";
     greenBtn.addEventListener("click", () => {
       this.selectedColor = "green";
-      this.updateSelectedButton(colorSetting, greenBtn);
+      this.updateSelectedButton(typeSetting, greenBtn);
     });
-
-    // Blue - Travel
     const blueBtn = contentEl.createEl("button", { text: "Travel" });
     blueBtn.style.backgroundColor = "#2196F3";
     blueBtn.style.color = "white";
     blueBtn.style.margin = "5px";
     blueBtn.addEventListener("click", () => {
       this.selectedColor = "blue";
-      this.updateSelectedButton(colorSetting, blueBtn);
+      this.updateSelectedButton(typeSetting, blueBtn);
     });
-
-    // Pink - Relationships
     const pinkBtn = contentEl.createEl("button", { text: "Relationship" });
     pinkBtn.style.backgroundColor = "#E91E63";
     pinkBtn.style.color = "white";
     pinkBtn.style.margin = "5px";
     pinkBtn.addEventListener("click", () => {
       this.selectedColor = "pink";
-      this.updateSelectedButton(colorSetting, pinkBtn);
+      this.updateSelectedButton(typeSetting, pinkBtn);
     });
-
-    // Purple - Education/Career
     const purpleBtn = contentEl.createEl("button", {
       text: "Education/Career",
     });
@@ -394,143 +311,128 @@ class ChronosEventModal extends Modal {
     purpleBtn.style.margin = "5px";
     purpleBtn.addEventListener("click", () => {
       this.selectedColor = "purple";
-      this.updateSelectedButton(colorSetting, purpleBtn);
+      this.updateSelectedButton(typeSetting, purpleBtn);
     });
-
-    colorSetting.settingEl.appendChild(greenBtn);
-    colorSetting.settingEl.appendChild(blueBtn);
-    colorSetting.settingEl.appendChild(pinkBtn);
-    colorSetting.settingEl.appendChild(purpleBtn);
-
+    // Custom button
+    const customBtn = contentEl.createEl("button", { text: "Custom" });
+    customBtn.style.margin = "5px";
+    customBtn.addEventListener("click", () => {
+      this.selectedColor = "custom";
+      this.updateSelectedButton(typeSetting, customBtn);
+    });
+    typeSetting.settingEl.appendChild(greenBtn);
+    typeSetting.settingEl.appendChild(blueBtn);
+    typeSetting.settingEl.appendChild(pinkBtn);
+    typeSetting.settingEl.appendChild(purpleBtn);
+    typeSetting.settingEl.appendChild(customBtn);
     // Default selection
-    this.updateSelectedButton(colorSetting, greenBtn);
+    this.updateSelectedButton(typeSetting, greenBtn);
 
-    // Add special container for future events
-    this.futureEventContainer = contentEl.createDiv({
-      cls: "chronos-future-event-container",
+    // If "Custom" is selected, show additional inputs for custom label and color.
+    const customContainer = contentEl.createDiv({
+      cls: "chronos-custom-event-container",
+    });
+    customContainer.createEl("label", { text: "Custom Event Label:" });
+    const customLabelInput = customContainer.createEl("input", {
+      type: "text",
+      placeholder: "Enter label",
+    });
+    customContainer.createEl("label", { text: "Custom Color:" });
+    const customColorInput = customContainer.createEl("input", {
+      type: "color",
+      value: "#33aaff",
+    });
+    // Save changes to our modal properties when custom inputs change.
+    customLabelInput.addEventListener("change", (e) => {
+      this.customEventLabel = (e.target as HTMLInputElement).value;
+    });
+    customColorInput.addEventListener("change", (e) => {
+      this.customEventColor = (e.target as HTMLInputElement).value;
     });
 
-    // Initial update for future UI elements
-    this.updateFutureUI();
-
-    // Save button
+    // ── SAVE BUTTON ──
     new Setting(contentEl).addButton((btn) =>
       btn
-        .setButtonText(this.isFuture ? "Save Future Event" : "Save Event")
+        .setButtonText(
+          titleText.includes("Plan") ? "Save Future Event" : "Save Event"
+        )
         .setCta()
         .onClick(() => {
-          this.saveEvent();
+          this.saveEvent(customLabelInput.value, customColorInput.value);
         })
     );
   }
 
-  // Update UI elements for future events
-  updateFutureUI() {
-    if (!this.futureEventContainer) return;
-
-    this.futureEventContainer.empty();
-
-    if (this.isFuture) {
-      this.futureEventContainer.createEl("h3", {
-        text: "Planning Future Event",
-        cls: "chronos-future-heading",
-      });
-
-      // Add helpful explanation
-      const helpText = this.futureEventContainer.createEl("p", {
-        text: "You're adding an event in the future. This will be highlighted in your timeline to help you plan ahead.",
-      });
-      helpText.style.backgroundColor = "rgba(255, 215, 0, 0.2)";
-      helpText.style.padding = "10px";
-      helpText.style.borderRadius = "5px";
-
-      // Add countdown if date is selected
-      if (this.selectedDate) {
-        const now = new Date();
-        const selectedYear = parseInt(this.selectedDate.substring(0, 4), 10);
-        const selectedWeek = parseInt(this.selectedDate.substring(6, 8), 10);
-
-        // Approximate date from year and week
-        const selectedDate = new Date(selectedYear, 0, 1);
-        selectedDate.setDate(selectedDate.getDate() + (selectedWeek - 1) * 7);
-
-        // Calculate days until event
-        const daysUntil = Math.ceil(
-          (selectedDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-        );
-        const weeksUntil = Math.ceil(daysUntil / 7);
-
-        this.futureEventContainer.createEl("p", {
-          text: `Approximately ${daysUntil} days (${weeksUntil} weeks) until this event`,
-          cls: "chronos-countdown",
-        });
-      }
-    }
-  }
-
   updateSelectedButton(setting: Setting, selectedBtn: HTMLElement) {
-    // Remove border from all buttons
     if (setting.settingEl) {
       setting.settingEl.querySelectorAll("button").forEach((btn) => {
-        btn.style.border = "none";
+        (btn as HTMLElement).style.border = "none";
       });
-
-      // Add border to selected button
       selectedBtn.style.border = "2px solid white";
     }
   }
 
-  saveEvent() {
-    if (!this.selectedDate) {
+  saveEvent(customLabel: string, customColor: string) {
+    if (!this.selectedDate && this.dateInput) {
       new Notice("Please select a date");
       return;
     }
-
     if (!this.eventDescription) {
       new Notice("Please add a description");
       return;
     }
+    // Use the selected (or entered) date
+    const eventDateStr = this.selectedDate || this.dateInput.value;
+    const eventDate = new Date(eventDateStr);
+    // Compute the ISO week key in the same format as the timeline grid.
+    const eventYear = eventDate.getFullYear();
+    const eventWeek = this.plugin.getISOWeekNumber(eventDate);
+    const weekKey = `${eventYear}-W${eventWeek.toString().padStart(2, "0")}`;
 
-    // Update settings based on color
+    // Save event based on selected type:
     switch (this.selectedColor) {
       case "green":
         this.plugin.settings.greenEvents.push(
-          `${this.selectedDate}:${this.eventDescription}`
+          `${weekKey}:${this.eventDescription}`
         );
         break;
       case "blue":
         this.plugin.settings.blueEvents.push(
-          `${this.selectedDate}:${this.eventDescription}`
+          `${weekKey}:${this.eventDescription}`
         );
         break;
       case "pink":
         this.plugin.settings.pinkEvents.push(
-          `${this.selectedDate}:${this.eventDescription}`
+          `${weekKey}:${this.eventDescription}`
         );
         break;
       case "purple":
         this.plugin.settings.purpleEvents.push(
-          `${this.selectedDate}:${this.eventDescription}`
+          `${weekKey}:${this.eventDescription}`
+        );
+        break;
+      case "custom":
+        // Use the custom label and color provided by the user.
+        this.plugin.settings.customEvents.push(
+          `${weekKey}:${this.eventDescription}|${customColor}|${customLabel}`
         );
         break;
     }
 
-    // Save settings and close
+    // Save settings and notify
     this.plugin.saveSettings().then(() => {
-      const noticeText = this.isFuture
-        ? `Future event planned: ${this.eventDescription}`
-        : `Event added: ${this.eventDescription}`;
-
+      const noticeText =
+        this.selectedColor === "custom"
+          ? `Custom event added: ${this.eventDescription}`
+          : `Event added: ${this.eventDescription}`;
       new Notice(noticeText);
 
-      // Create a note for this event if it doesn't exist
-      const fileName = `${this.selectedDate.replace("W", "-W")}.md`;
+      // Create a note for this event (file name based on weekKey)
+      const fileName = `${weekKey.replace("W", "-W")}.md`;
       const fullPath = this.plugin.getFullPath(fileName);
       const fileExists =
         this.app.vault.getAbstractFileByPath(fullPath) instanceof TFile;
-
       if (!fileExists) {
-        // Create folder if needed
         if (
           this.plugin.settings.notesFolder &&
           this.plugin.settings.notesFolder.trim() !== ""
@@ -546,21 +448,17 @@ class ChronosEventModal extends Modal {
             console.log("Error checking/creating folder:", err);
           }
         }
-
-        // Create the file with event description, customized for future events
         let content = "";
-        if (this.isFuture) {
-          content = `# Future Event: ${this.eventDescription}\n\nPlanned Date: ${this.selectedDate}\nType: ${this.selectedColor}\n\n## Planning Notes\n\n## Preparation Checklist\n- [ ] Item 1\n- [ ] Item 2\n\n## Additional Notes\n\n`;
+        if (eventDate > new Date()) {
+          content = `# Future Event: ${this.eventDescription}\n\nPlanned Date: ${eventDateStr}\nType: ${this.selectedColor}\n\n## Planning Notes\n\n`;
         } else {
-          content = `# Event: ${this.eventDescription}\n\nDate: ${this.selectedDate}\nType: ${this.selectedColor}\n\n## Notes\n\n`;
+          content = `# Event: ${this.eventDescription}\n\nDate: ${eventDateStr}\nType: ${this.selectedColor}\n\n## Notes\n\n`;
         }
-
         this.app.vault.create(fullPath, content);
       }
 
       this.close();
-
-      // Refresh the view
+      // Refresh the timeline view
       this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE).forEach((leaf) => {
         const view = leaf.view as ChronosTimelineView;
         view.renderView();
@@ -569,11 +467,13 @@ class ChronosEventModal extends Modal {
   }
 
   onClose() {
-    const { contentEl } = this;
-    contentEl.empty();
+    this.contentEl.empty();
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ChronosTimelineView: Updated grid rendering for proper alignment and gaps
+// ─────────────────────────────────────────────────────────────────────────────
 class ChronosTimelineView extends ItemView {
   plugin: ChronosTimelinePlugin;
 
@@ -598,7 +498,6 @@ class ChronosTimelineView extends ItemView {
     const contentEl = this.containerEl.children[1];
     contentEl.empty();
     contentEl.addClass("chronos-timeline-container");
-
     this.renderView();
   }
 
@@ -607,69 +506,48 @@ class ChronosTimelineView extends ItemView {
     contentEl.empty();
   }
 
-  // Enhanced renderView method with improved controls
   renderView() {
-    // Clear content
     const contentEl = this.containerEl.children[1];
     contentEl.empty();
 
-    // Create title in cursive style
-    contentEl.createEl("div", {
-      cls: "chronos-title",
-      text: "life in weeks",
-    });
+    // Title at top
+    contentEl.createEl("div", { cls: "chronos-title", text: "life in weeks" });
 
-    // Create controls
+    // Controls bar
     const controlsEl = contentEl.createEl("div", { cls: "chronos-controls" });
-
-    // Add button to add event
     const addEventBtn = controlsEl.createEl("button", { text: "Add Event" });
     addEventBtn.addEventListener("click", () => {
       this.showAddEventModal();
     });
-
-    // Today button
     const todayBtn = controlsEl.createEl("button", { text: "Today" });
     todayBtn.addEventListener("click", () => {
-      // Scroll to today's cell
       const todayCell = contentEl.querySelector(".chronos-grid-cell.present");
       if (todayCell) {
         todayCell.scrollIntoView({ behavior: "smooth", block: "center" });
       }
     });
-
-    // Enhanced Future Event button
     const futureEventBtn = controlsEl.createEl("button", {
       text: "Plan Future Event",
     });
-    futureEventBtn.style.backgroundColor = "#FFC107"; // Make it stand out
+    futureEventBtn.style.backgroundColor = "#FFC107";
     futureEventBtn.addEventListener("click", () => {
-      // Open the event modal without a pre-selected date, but with future UI
       const modal = new ChronosEventModal(this.app, this.plugin);
-      // Set future mode
-      modal.isFuture = true;
       modal.open();
     });
-
-    // Go to next planned event button
     const nextEventBtn = controlsEl.createEl("button", {
       text: "Next Planned Event",
     });
     nextEventBtn.addEventListener("click", () => {
-      // Find the next highlighted future event cell
       const futureEventCell = contentEl.querySelector(
         ".chronos-grid-cell.future-event-highlight"
       );
       if (futureEventCell) {
         futureEventCell.scrollIntoView({ behavior: "smooth", block: "center" });
-
-        // Fix for TypeScript errors - cast Element to HTMLElement
-        const cellElement = futureEventCell as HTMLElement;
-        cellElement.style.transition = "transform 0.3s";
-        cellElement.style.transform = "scale(1.3)";
-
+        const cellEl = futureEventCell as HTMLElement;
+        cellEl.style.transition = "transform 0.3s";
+        cellEl.style.transform = "scale(1.3)";
         setTimeout(() => {
-          cellElement.style.transform = "";
+          cellEl.style.transform = "";
         }, 500);
       } else {
         new Notice(
@@ -677,87 +555,42 @@ class ChronosTimelineView extends ItemView {
         );
       }
     });
-
-    // Add a button to show settings
     const settingsBtn = controlsEl.createEl("button", { text: "Settings" });
     settingsBtn.addEventListener("click", () => {
-      // Open settings directly without using the setting property
       new ChronosSettingTab(this.app, this.plugin).display();
     });
 
-    // Create the view container
+    // Grid view container
     const viewEl = contentEl.createEl("div", { cls: "chronos-view" });
-
-    // We now always use weeks view which is what the poster shows
     this.renderWeeksGrid(viewEl);
 
-    // Create legend
+    // Legend section
     const legendEl = contentEl.createEl("div", { cls: "chronos-legend" });
+    const legendItems = [
+      { text: "Major Life Events", color: "#4CAF50" },
+      { text: "Travel", color: "#2196F3" },
+      { text: "Relationships", color: "#E91E63" },
+      { text: "Education/Career", color: "#9C27B0" },
+      {
+        text: "Upcoming Planned Event",
+        color: this.plugin.settings.futureCellColor,
+      },
+    ];
+    legendItems.forEach((item) => {
+      const itemEl = legendEl.createEl("div", { cls: "chronos-legend-item" });
+      const colorEl = itemEl.createEl("div", { cls: "chronos-legend-color" });
+      colorEl.style.backgroundColor = item.color;
+      itemEl.createEl("span", { text: item.text });
+    });
 
-    // Green events
-    const greenLegendEl = legendEl.createEl("div", {
-      cls: "chronos-legend-item",
-    });
-    const greenColorEl = greenLegendEl.createEl("div", {
-      cls: "chronos-legend-color",
-    });
-    greenColorEl.style.backgroundColor = "#4CAF50";
-    greenLegendEl.createEl("span", { text: "Major Life Events" });
-
-    // Blue events
-    const blueLegendEl = legendEl.createEl("div", {
-      cls: "chronos-legend-item",
-    });
-    const blueColorEl = blueLegendEl.createEl("div", {
-      cls: "chronos-legend-color",
-    });
-    blueColorEl.style.backgroundColor = "#2196F3";
-    blueLegendEl.createEl("span", { text: "Travel" });
-
-    // Pink events
-    const pinkLegendEl = legendEl.createEl("div", {
-      cls: "chronos-legend-item",
-    });
-    const pinkColorEl = pinkLegendEl.createEl("div", {
-      cls: "chronos-legend-color",
-    });
-    pinkColorEl.style.backgroundColor = "#E91E63";
-    pinkLegendEl.createEl("span", { text: "Relationships" });
-
-    // Purple events
-    const purpleLegendEl = legendEl.createEl("div", {
-      cls: "chronos-legend-item",
-    });
-    const purpleColorEl = purpleLegendEl.createEl("div", {
-      cls: "chronos-legend-color",
-    });
-    purpleColorEl.style.backgroundColor = "#9C27B0";
-    purpleLegendEl.createEl("span", { text: "Education/Career" });
-
-    // Add future event highlight to legend
-    const futureHighlightEl = legendEl.createEl("div", {
-      cls: "chronos-legend-item",
-    });
-    const futureColorEl = futureHighlightEl.createEl("div", {
-      cls: "chronos-legend-color future-event-highlight",
-    });
-    futureColorEl.style.backgroundColor = this.plugin.settings.futureCellColor;
-    futureHighlightEl.createEl("span", { text: "Upcoming Planned Event" });
-
-    // Add user tips
-    const tipsEl = contentEl.createEl("div", {
-      cls: "chronos-tips",
-    });
+    const tipsEl = contentEl.createEl("div", { cls: "chronos-tips" });
     tipsEl.style.fontSize = "12px";
     tipsEl.style.color = "var(--text-muted)";
     tipsEl.style.textAlign = "center";
     tipsEl.style.margin = "10px 0";
-
     tipsEl.createEl("p", {
-      text: "Tip: Click any week to create a note. Right-click to quickly add an event. Shift-click for the event modal.",
+      text: "Tip: Click any week to create or open a note. Shift+Click to add an event.",
     });
-
-    // Add quote at the bottom
     contentEl.createEl("div", {
       cls: "chronos-footer",
       text: this.plugin.settings.quote,
@@ -769,112 +602,89 @@ class ChronosTimelineView extends ItemView {
     modal.open();
   }
 
-  // Updated renderWeeksGrid function to fix year labels alignment and add month indicators
+  // ── Updated renderWeeksGrid with dynamic grid templates, extra gaps, and proper cell positioning ──
   renderWeeksGrid(container: HTMLElement) {
     container.empty();
 
     const now = new Date();
     const birthdayDate = new Date(this.plugin.settings.birthday);
     const lifespan = this.plugin.settings.lifespan;
-
-    // Calculate age in years
+    // Calculate age in weeks
     const ageInYears =
       (now.getTime() - birthdayDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
     const ageInWeeks = ageInYears * 52;
 
-    // Create year labels at the top
-    const yearLabelsEl = container.createEl("div", {
-      cls: "chronos-year-labels",
-    });
+    // Define grid parameters
+    const cellSize = 16;
+    const weeksCount = 52;
+    const totalYears = lifespan;
+    const extraCols = Math.floor((totalYears - 1) / 10);
+    const totalCols = totalYears + extraCols;
+    const extraRows = Math.floor((weeksCount - 1) / 10);
+    const totalRows = weeksCount + extraRows;
 
-    // Create max columns for years based on lifespan
-    const maxYears = lifespan;
+    // Set grid template using CSS grid properties
+    container.style.display = "grid";
+    container.style.gridGap = "2px";
+    container.style.gridTemplateColumns = new Array(totalCols)
+      .fill(`${cellSize}px`)
+      .join(" ");
+    container.style.gridTemplateRows = new Array(totalRows)
+      .fill(`${cellSize}px`)
+      .join(" ");
 
-    // Calculate column width (cell width + gap)
-    const cellWidth = 16;
-    const decadeGap = 8; // The decade gap we set in CSS
+    // Create the grid cells
+    for (let year = 0; year < totalYears; year++) {
+      // Determine extra gap count for columns
+      const colGapCount = Math.floor(year / 10);
+      const gridColumn = year + colGapCount + 1;
 
-    // Add year labels with proper alignment
-    for (let i = 0; i <= maxYears; i += 5) {
-      // Changed from 10 to 5 years for more granularity
-      const yearLabel = yearLabelsEl.createEl("div", {
-        cls: "chronos-year-label",
-        text: i.toString(),
-      });
+      for (let week = 0; week < weeksCount; week++) {
+        const rowGapCount = Math.floor(week / 10);
+        const gridRow = week + rowGapCount + 1;
 
-      // Position label properly - accounting for decade gaps
-      const decades = Math.floor(i / 10);
-      const position = i * cellWidth + decades * decadeGap;
-      yearLabel.style.left = `${position}px`;
+        const cell = container.createEl("div", { cls: "chronos-grid-cell" });
+        cell.style.gridColumn = gridColumn.toString();
+        cell.style.gridRow = gridRow.toString();
 
-      // Add month labels for the current year (just January for simplicity)
-      if (i < maxYears) {
-        const monthLabel = yearLabelsEl.createEl("div", {
-          cls: "chronos-month-label",
-          text: "Jan",
-        });
-        monthLabel.style.left = `${position}px`;
-      }
-    }
-
-    // Create grid for the weeks
-    const gridEl = container.createEl("div", { cls: "chronos-grid" });
-
-    // Add week numbers on the left
-    const weekLabelsEl = gridEl.createEl("div", { cls: "chronos-week-labels" });
-    for (let week = 0; week < 52; week += 10) {
-      if (week === 0) continue; // Skip first to align better
-      const weekLabel = weekLabelsEl.createEl("div", {
-        cls: "chronos-week-label",
-        text: week.toString(),
-      });
-      // Position at the correct week
-      weekLabel.style.position = "absolute";
-      weekLabel.style.top = `${((week * 18) / 52) * 52}px`; // Position proportionally
-    }
-
-    // Get event data from settings
-    const greenEvents: string[] = this.plugin.settings.greenEvents;
-    const blueEvents: string[] = this.plugin.settings.blueEvents;
-    const pinkEvents: string[] = this.plugin.settings.pinkEvents;
-    const purpleEvents: string[] = this.plugin.settings.purpleEvents;
-
-    // For each year, create a column of weeks
-    for (let year = 0; year < lifespan; year++) {
-      // Add a decade marker class if this is the start of a decade
-      const isDecadeStart = year % 10 === 0;
-
-      for (let week = 0; week < 52; week++) {
-        const weekIndex = year * 52 + week;
-        const cell = gridEl.createEl("div", { cls: "chronos-grid-cell week" });
-
-        // Add special classes for visual separation
-        if (isDecadeStart) {
+        // Mark decade-start cells (for additional gap styling)
+        if (year % 10 === 0) {
           cell.addClass("decade-start");
         }
-
-        // Calculate the date for the current week
-        const weekDate = new Date(birthdayDate);
-        weekDate.setDate(weekDate.getDate() + weekIndex * 7);
-
-        // Add class for first week of month - enhanced detection
-        if (this.isFirstWeekOfMonth(weekDate)) {
+        // Mark month-start cells (rough approximation: every 4 weeks)
+        if (week % 4 === 0) {
           cell.addClass("month-start");
+          const monthNames = [
+            "Jan",
+            "Feb",
+            "Mar",
+            "Apr",
+            "May",
+            "Jun",
+            "Jul",
+            "Aug",
+            "Sep",
+            "Oct",
+            "Nov",
+            "Dec",
+          ];
+          const monthIndex = Math.floor((week / weeksCount) * 12) % 12;
+          cell.setAttribute("data-month", monthNames[monthIndex]);
         }
 
-        // Position the cell in the grid (weeks as rows, years as columns)
-        // Adjust column position to account for decade gaps
-        const decades = Math.floor(year / 10);
-        const colPosition = year + 1 + decades;
+        // Calculate the week date for this cell
+        const weekIndex = year * 52 + week;
+        const cellDate = new Date(birthdayDate);
+        cellDate.setDate(cellDate.getDate() + weekIndex * 7);
+        const cellYear = cellDate.getFullYear();
+        const cellWeek = this.plugin.getISOWeekNumber(cellDate);
+        const weekKey = `${cellYear}-W${cellWeek.toString().padStart(2, "0")}`;
 
-        cell.style.gridRow = `${week + 1}`;
-        cell.style.gridColumn = `${colPosition}`;
-
-        // Determine if this week is past, present, or future
+        // Set cell background color based on past, present, or future
         if (weekIndex < ageInWeeks) {
           cell.addClass("past");
           cell.style.backgroundColor = this.plugin.settings.pastCellColor;
-        } else if (weekIndex < ageInWeeks + 1) {
+        } else if (Math.floor(weekIndex) === Math.floor(ageInWeeks)) {
           cell.addClass("present");
           cell.style.backgroundColor = this.plugin.settings.presentCellColor;
         } else {
@@ -882,114 +692,102 @@ class ChronosTimelineView extends ItemView {
           cell.style.backgroundColor = this.plugin.settings.futureCellColor;
         }
 
-        // Format date for this week - calculate actual date
-        const weekYear = weekDate.getFullYear();
-        const weekNum = this.plugin.getISOWeekNumber(weekDate);
-        const weekKey = `${weekYear}-W${weekNum.toString().padStart(2, "0")}`;
+        // Apply event styling for preset event types and custom events
+        this.applyEventStyling(cell, weekKey);
 
-        // Check if this week has any events and apply appropriate styling
-        this.applyEventStyling(
-          cell,
-          weekKey,
-          greenEvents,
-          blueEvents,
-          pinkEvents,
-          purpleEvents
-        );
+        // Setup cell click handlers (left-click to open note, shift/right-click to add event)
+        this.setupCellClickHandler(cell, weekKey, cellYear, cellWeek);
 
-        // Add click event to create/open the corresponding weekly note
-        this.setupCellClickHandler(cell, weekKey, weekYear, weekNum);
+        container.appendChild(cell);
+      }
+    }
+
+    // ── Generate Year Labels ──
+    const yearLabelsEl = container.parentElement?.querySelector(
+      ".chronos-year-labels"
+    );
+    if (yearLabelsEl) {
+      yearLabelsEl.empty();
+      for (let i = 0; i < totalYears; i++) {
+        const colGap = Math.floor(i / 10);
+        const leftOffset = (i + colGap) * cellSize + cellSize / 2;
+        const label = yearLabelsEl.createEl("div", {
+          cls: "chronos-year-label",
+          text: i.toString(),
+        });
+        label.style.left = `${leftOffset}px`;
+        // For demonstration, add a simple month label under each year label
+        if (i < totalYears - 1) {
+          const monthLabel = yearLabelsEl.createEl("div", {
+            cls: "chronos-month-label",
+            text: "Jan",
+          });
+          monthLabel.style.left = `${leftOffset}px`;
+        }
       }
     }
   }
 
-  // New helper method to apply event styling
-  applyEventStyling(
-    cell: HTMLElement,
-    weekKey: string,
-    greenEvents: string[],
-    blueEvents: string[],
-    pinkEvents: string[],
-    purpleEvents: string[]
-  ) {
-    // For green events
-    if (greenEvents.some((event) => event.startsWith(weekKey))) {
-      cell.style.backgroundColor = "#4CAF50";
-      cell.addClass("event");
+  applyEventStyling(cell: HTMLElement, weekKey: string) {
+    // Check preset events for green, blue, pink, and purple
+    const applyPreset = (
+      arr: string[],
+      defaultColor: string,
+      defaultDesc: string
+    ) => {
+      if (arr.some((event) => event.startsWith(weekKey))) {
+        cell.style.backgroundColor = defaultColor;
+        cell.addClass("event");
+        const event = arr.find((e) => e.startsWith(weekKey));
+        if (event) {
+          const description = event.split(":")[1] || defaultDesc;
+          cell.setAttribute("title", description);
+        }
+      }
+    };
+    applyPreset(
+      this.plugin.settings.greenEvents,
+      "#4CAF50",
+      "Major Life Event"
+    );
+    applyPreset(this.plugin.settings.blueEvents, "#2196F3", "Travel");
+    applyPreset(this.plugin.settings.pinkEvents, "#E91E63", "Relationship");
+    applyPreset(
+      this.plugin.settings.purpleEvents,
+      "#9C27B0",
+      "Education/Career"
+    );
 
-      // Add tooltip with event description
-      const event = greenEvents.find((e) => e.startsWith(weekKey));
-      if (event) {
-        const description = event.split(":")[1] || "Major Life Event";
+    // Check custom events. Format: weekKey:description|color|label
+    if (this.plugin.settings.customEvents.some((e) => e.startsWith(weekKey))) {
+      const eventData = this.plugin.settings.customEvents.find((e) =>
+        e.startsWith(weekKey)
+      );
+      if (eventData) {
+        const parts = eventData.split(":")[1].split("|");
+        const description = parts[0] || "Custom Event";
+        const color = parts[1] || "#33aaff";
+        cell.style.backgroundColor = color;
+        cell.addClass("event");
         cell.setAttribute("title", description);
       }
     }
 
-    // For blue events
-    if (blueEvents.some((event) => event.startsWith(weekKey))) {
-      cell.style.backgroundColor = "#2196F3";
-      cell.addClass("event");
-
-      // Add tooltip with event description
-      const event = blueEvents.find((e) => e.startsWith(weekKey));
-      if (event) {
-        const description = event.split(":")[1] || "Travel";
-        cell.setAttribute("title", description);
-      }
-    }
-
-    // For pink events
-    if (pinkEvents.some((event) => event.startsWith(weekKey))) {
-      cell.style.backgroundColor = "#E91E63";
-      cell.addClass("event");
-
-      // Add tooltip with event description
-      const event = pinkEvents.find((e) => e.startsWith(weekKey));
-      if (event) {
-        const description = event.split(":")[1] || "Relationship";
-        cell.setAttribute("title", description);
-      }
-    }
-
-    // For purple events
-    if (purpleEvents.some((event) => event.startsWith(weekKey))) {
-      cell.style.backgroundColor = "#9C27B0";
-      cell.addClass("event");
-
-      // Add tooltip with event description
-      const event = purpleEvents.find((e) => e.startsWith(weekKey));
-      if (event) {
-        const description = event.split(":")[1] || "Education/Career";
-        cell.setAttribute("title", description);
-      }
-    }
-
-    // Add special highlight for future events
+    // Highlight future events (if within next ~6 months and marked)
     const now = new Date();
-    const weekDate = new Date();
-    weekDate.setFullYear(
-      parseInt(weekKey.substring(0, 4)),
-      0, // January
-      1 // First day of month
-    );
-    weekDate.setDate(
-      weekDate.getDate() + (parseInt(weekKey.substring(6, 8)) - 1) * 7
-    );
-
-    // If this is a future event (within next 6 months), add highlight
+    const cellDate = new Date();
+    const [cellYearStr, weekNumStr] = weekKey.split("-W");
+    cellDate.setFullYear(parseInt(cellYearStr));
+    cellDate.setDate(1 + (parseInt(weekNumStr) - 1) * 7);
     if (
-      weekDate > now &&
-      weekDate < new Date(now.getTime() + 6 * 30 * 24 * 60 * 60 * 1000) &&
-      (greenEvents.some((e) => e.startsWith(weekKey)) ||
-        blueEvents.some((e) => e.startsWith(weekKey)) ||
-        pinkEvents.some((e) => e.startsWith(weekKey)) ||
-        purpleEvents.some((e) => e.startsWith(weekKey)))
+      cellDate > now &&
+      cellDate < new Date(now.getTime() + 6 * 30 * 24 * 60 * 60 * 1000) &&
+      cell.classList.contains("event")
     ) {
       cell.addClass("future-event-highlight");
     }
   }
 
-  // New helper method for cell click handling
   setupCellClickHandler(
     cell: HTMLElement,
     weekKey: string,
@@ -997,23 +795,18 @@ class ChronosTimelineView extends ItemView {
     weekNum: number
   ) {
     cell.addEventListener("click", async (event) => {
-      // If shift key is pressed, add an event
       if (event.shiftKey) {
-        const modal = new ChronosEventModal(this.app, this.plugin, weekKey);
+        const modal = new ChronosEventModal(this.app, this.plugin, "");
+        modal.selectedDate = ""; // Let user choose date
         modal.open();
         return;
       }
-
-      // Otherwise open/create the weekly note
       const fileName = `${weekKey.replace("W", "-W")}.md`;
       const fullPath = this.plugin.getFullPath(fileName);
       const existingFile = this.app.vault.getAbstractFileByPath(fullPath);
-
       if (existingFile instanceof TFile) {
-        // Open existing file
         await this.app.workspace.getLeaf().openFile(existingFile);
       } else {
-        // Create folder if needed
         if (
           this.plugin.settings.notesFolder &&
           this.plugin.settings.notesFolder.trim() !== ""
@@ -1031,39 +824,22 @@ class ChronosTimelineView extends ItemView {
             console.log("Error checking/creating folder:", err);
           }
         }
-
-        // Create new file with template
         const content = `# Week ${weekNum}, ${weekYear}\n\n## Reflections\n\n## Tasks\n\n## Notes\n`;
         const newFile = await this.app.vault.create(fullPath, content);
         await this.app.workspace.getLeaf().openFile(newFile);
       }
     });
-
-    // Add right-click handler for quickly accessing future planning
     cell.addEventListener("contextmenu", (event) => {
       event.preventDefault();
       const modal = new ChronosEventModal(this.app, this.plugin, weekKey);
       modal.open();
     });
   }
-
-  // Improved method to check for first week of month
-  isFirstWeekOfMonth(date: Date): boolean {
-    // Make a copy of the date to avoid modifying the original
-    const checkDate = new Date(date);
-
-    // Get current month
-    const currentMonth = checkDate.getMonth();
-
-    // Go back 7 days
-    checkDate.setDate(checkDate.getDate() - 7);
-
-    // If previous week was in a different month, this is the first week
-    return checkDate.getMonth() !== currentMonth;
-  }
 }
 
-// Settings tab
+// ─────────────────────────────────────────────────────────────────────────────
+// Settings Tab (with slight adjustments to include our updates)
+// ─────────────────────────────────────────────────────────────────────────────
 class ChronosSettingTab extends PluginSettingTab {
   plugin: ChronosTimelinePlugin;
 
@@ -1081,7 +857,6 @@ class ChronosSettingTab extends PluginSettingTab {
       text: "Customize your life timeline visualization.",
     });
 
-    // Birthday setting
     new Setting(containerEl)
       .setName("Birthday")
       .setDesc("Your date of birth (YYYY-MM-DD)")
@@ -1096,7 +871,6 @@ class ChronosSettingTab extends PluginSettingTab {
           })
       );
 
-    // Lifespan setting
     new Setting(containerEl)
       .setName("Lifespan")
       .setDesc("Maximum age in years to display")
@@ -1112,7 +886,6 @@ class ChronosSettingTab extends PluginSettingTab {
           })
       );
 
-    // Notes folder setting
     new Setting(containerEl)
       .setName("Notes Folder")
       .setDesc("Where to store week notes (leave empty for vault root)")
@@ -1126,7 +899,6 @@ class ChronosSettingTab extends PluginSettingTab {
           })
       );
 
-    // Quote setting
     new Setting(containerEl)
       .setName("Footer Quote")
       .setDesc("Inspirational quote to display at the bottom")
@@ -1141,10 +913,7 @@ class ChronosSettingTab extends PluginSettingTab {
           })
       );
 
-    // Color settings
     containerEl.createEl("h3", { text: "Colors" });
-
-    // Past cells color
     new Setting(containerEl)
       .setName("Past Weeks Color")
       .setDesc("Color for weeks that have passed")
@@ -1157,8 +926,6 @@ class ChronosSettingTab extends PluginSettingTab {
             this.refreshAllViews();
           })
       );
-
-    // Present cell color
     new Setting(containerEl)
       .setName("Current Week Color")
       .setDesc("Color for the current week")
@@ -1171,8 +938,6 @@ class ChronosSettingTab extends PluginSettingTab {
             this.refreshAllViews();
           })
       );
-
-    // Future cells color
     new Setting(containerEl)
       .setName("Future Weeks Color")
       .setDesc("Color for weeks in the future")
@@ -1186,62 +951,64 @@ class ChronosSettingTab extends PluginSettingTab {
           })
       );
 
-    // Events management
     containerEl.createEl("h3", { text: "Events" });
-
-    // Green events (Major Life Events)
     new Setting(containerEl)
       .setName("Major Life Events")
       .setDesc("Weeks marked as Major Life Events")
-      .addButton((button) => {
+      .addButton((button) =>
         button.setButtonText("Clear All").onClick(async () => {
           this.plugin.settings.greenEvents = [];
           await this.plugin.saveSettings();
           this.refreshAllViews();
           new Notice("Cleared all Major Life Events");
-        });
-      });
-
-    // Blue events (Travel)
+        })
+      );
     new Setting(containerEl)
       .setName("Travel Events")
       .setDesc("Weeks marked as Travel")
-      .addButton((button) => {
+      .addButton((button) =>
         button.setButtonText("Clear All").onClick(async () => {
           this.plugin.settings.blueEvents = [];
           await this.plugin.saveSettings();
           this.refreshAllViews();
           new Notice("Cleared all Travel Events");
-        });
-      });
-
-    // Pink events (Relationships)
+        })
+      );
     new Setting(containerEl)
       .setName("Relationship Events")
       .setDesc("Weeks marked as Relationships")
-      .addButton((button) => {
+      .addButton((button) =>
         button.setButtonText("Clear All").onClick(async () => {
           this.plugin.settings.pinkEvents = [];
           await this.plugin.saveSettings();
           this.refreshAllViews();
           new Notice("Cleared all Relationship Events");
-        });
-      });
-
-    // Purple events (Education/Career)
+        })
+      );
     new Setting(containerEl)
       .setName("Education/Career Events")
       .setDesc("Weeks marked as Education/Career")
-      .addButton((button) => {
+      .addButton((button) =>
         button.setButtonText("Clear All").onClick(async () => {
           this.plugin.settings.purpleEvents = [];
           await this.plugin.saveSettings();
           this.refreshAllViews();
           new Notice("Cleared all Education/Career Events");
-        });
-      });
+        })
+      );
+    // Optionally, add a control to clear custom events as well.
+    new Setting(containerEl)
+      .setName("Custom Events")
+      .setDesc("Weeks marked as custom events")
+      .addButton((button) =>
+        button.setButtonText("Clear All").onClick(async () => {
+          this.plugin.settings.customEvents = [];
+          await this.plugin.saveSettings();
+          this.refreshAllViews();
+          new Notice("Cleared all Custom Events");
+        })
+      );
 
-    // Help text
     containerEl.createEl("h3", { text: "Tips" });
     containerEl.createEl("p", {
       text: "• Click on any week to create or open a note for that week",

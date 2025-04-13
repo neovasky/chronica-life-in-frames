@@ -94,13 +94,14 @@
 }
 
 /* Timeline grid */
+/* 
+   Note: grid-template-columns and grid-template-rows are now set dynamically by main.ts,
+   so here we only set the gap and the display type.
+*/
 .chronos-grid {
   display: grid;
-  grid-template-columns: repeat(90, 16px); /* Default for 90 years */
-  grid-template-rows: repeat(52, 16px); /* 52 weeks per year */
   grid-gap: 2px;
   position: relative;
-  column-gap: 2px; /* Default gap */
 }
 
 /* Grid cells */
@@ -127,18 +128,21 @@
   border: 1px solid rgba(255, 255, 255, 0.4);
 }
 
-/* Visual separations - Enhanced */
+/* Visual separations */
+/* Month-start cells get a thicker top border for visual separation */
 .chronos-grid-cell.month-start {
   border-top: 3px solid rgba(128, 128, 128, 0.5);
-  margin-top: 2px; /* Add space for month separation */
 }
 
+/* Decade-start cells: Increased left margin to approximately one cell width (16px) 
+   to create a clear gap between decade columns.
+*/
 .chronos-grid-cell.decade-start {
   border-left: 4px solid rgba(128, 128, 128, 0.7);
-  margin-left: 8px; /* Increased space for decade separation */
+  margin-left: 16px;
 }
 
-/* We also need a special rule for decade + month start */
+/* Combined rule for cells that start both a decade and a new month */
 .chronos-grid-cell.decade-start.month-start {
   border-top: 3px solid rgba(128, 128, 128, 0.5);
   border-left: 4px solid rgba(128, 128, 128, 0.7);
@@ -217,6 +221,7 @@
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .chronos-grid {
+    /* If needed, adjust grid-template columns/rows via JS; fallback values provided */
     grid-template-columns: repeat(90, 14px);
     grid-template-rows: repeat(52, 14px);
   }
