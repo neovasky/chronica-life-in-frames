@@ -1,0 +1,11 @@
+{
+  "id": "chronos-timeline",
+  "name": "ChronOS Timeline",
+  "version": "1.0.0",
+  "minAppVersion": "0.15.0",
+  "description": "Visualize, navigate, and reflect on your life across multiple time scales, inspired by the 'Life in Weeks' concept.",
+  "author": "Your Name",
+  "authorUrl": "https://github.com/yourusername",
+  "isDesktopOnly": false,
+  "main": "main.js"
+}
