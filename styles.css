@@ -62,7 +62,7 @@
   height: 20px;
   margin-bottom: 5px;
   /* Match increased left padding */
-  margin-left: 80px;
+  margin-left: -32px; /* Adjusted to match left padding */
   margin-right: 20px; /* Match right padding */
 }
 

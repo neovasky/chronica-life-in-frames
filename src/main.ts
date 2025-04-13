@@ -661,15 +661,18 @@ class ChronosTimelineView extends ItemView {
 
     // Create year labels with proper positioning
     for (let year = 0; year < totalYears; year++) {
-      const colGap = Math.floor(year / 10);
-      const xPosition = (year + colGap) * (cellSize + 2) + cellSize / 2;
-      const yearLabel = yearLabelsContainer.createEl("div", {
-        cls: "chronos-year-label" + (year % 10 === 0 ? " decade-marker" : ""),
-      });
-      yearLabel.style.left = `${xPosition}px`;
-      yearLabel.textContent = `${year}`;
+      // Only create labels for decade markers (0, 10, 20, etc.)
+      if (year % 10 === 0) {
+        const xPosition = (year / 10) * 180; // This gives exactly 180px spacing
+        const yearLabel = yearLabelsContainer.createEl("div", {
+          cls: "chronos-year-label decade-marker",
+        });
+        yearLabel.style.left = `${xPosition}px`;
+        yearLabel.textContent = `${year}`;
+      }
     }
   }
+
   renderWeeksGrid(container: HTMLElement) {
     container.empty();
 
