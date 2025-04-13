@@ -53,7 +53,6 @@
   background-color: var(--background-primary);
   border-radius: 6px;
   /* Greatly increased left padding for more label separation */
-  /* Previous: 45px, Now trying 80px */
   padding: 30px 20px 20px 30px;
 }
 
@@ -114,7 +113,7 @@
   opacity: 0.8;
   position: absolute;
   /* Position labels within the .chronos-week-labels container */
-  left: 10px; /* Offset from the absolute left edge */
+  left: -55px; /* Align with the left padding */
   width: 50px; /* Allow space for text, adjust as needed */
   text-align: right; /* Align text near the grid start */
   /* CSS transform for centering. TS calculation is primary. */
