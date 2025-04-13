@@ -60,7 +60,7 @@
   position: relative;
   height: 20px;
   margin-bottom: 5px;
-  margin-left: -32px; /* Adjust to align with the grid */
+  /* Adjust to align with the grid */
 }
 
 .chronos-year-label {
@@ -85,20 +85,24 @@
   color: var(--text-muted);
   transform: translateX(-50%);
   position: absolute;
+  z-index: 5;
 }
 
 /* Week labels on the left */
-.chronos-week-labels {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 30px;
-}
-
 .chronos-week-label {
   font-size: 10px;
   color: var(--text-normal);
   opacity: 0.8;
+  position: absolute;
+  right: 10px;
+  transform: translateY(-50%);
+  text-align: right;
+}
+
+.chronos-grid-gap-row {
+  height: 8px;
+  grid-column: 1 / -1;
+  background-color: transparent;
 }
 
 .chronos-week-label.decade-week {
@@ -124,6 +128,7 @@
   display: grid;
   grid-gap: 2px;
   position: relative;
+  margin-left: 40px; /* Make space for week labels */
 }
 
 /* Grid cells */

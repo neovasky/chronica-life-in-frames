@@ -202,15 +202,15 @@ export default class ChronosTimelinePlugin extends Plugin {
   }
 
   isFirstWeekOfMonth(date: Date): boolean {
-    const checkDate = new Date(date);
-    const currentMonth = checkDate.getMonth();
-    checkDate.setDate(checkDate.getDate() - 7);
-    return checkDate.getMonth() !== currentMonth;
-  }
+    const firstDayOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+    const firstWeekday = firstDayOfMonth.getDay();
+    const dayOfMonth = date.getDate();
 
-  // Determine if a row should have a gap (every 10th week)
-  shouldHaveRowGap(weekIndex: number): boolean {
-    return weekIndex % 10 === 0 && weekIndex > 0;
+    // If the first day of month is later in the week, adjust calculation
+    const adjustedDay = dayOfMonth + firstWeekday - 1;
+
+    // Return true if this date is in the first week of the month
+    return dayOfMonth <= 7 && adjustedDay < 7;
   }
 
   getMonthName(date: Date): string {
@@ -660,37 +660,26 @@ class ChronosTimelineView extends ItemView {
     const totalYears = this.plugin.settings.lifespan;
 
     // Create year labels with proper positioning
-    const weekLabels = parent.createEl("div", {});
-
-    for (let i = 0; i < 52; i++) {
-      // Use the same row calculation as the grid
-      const rowGap = Math.floor(i / 10);
-      const gridRowPosition = i + rowGap;
-
-      const label = weekLabels.createEl("div", { cls: "chronos-week-label" });
-      label.style.position = "absolute";
-
-      // Position based on cell height (16px) + gap (2px), matching the grid layout
-      label.style.top = `${gridRowPosition * 18 + 8}px`; // +8px for vertical centering
-      label.style.left = "8px"; // Add a bit more padding for better visibility
-      label.style.width = "20px";
-      label.style.textAlign = "right";
-      label.innerText = `${i + 1}`;
-
-      // Highlight every 10th week
-      if ((i + 1) % 10 === 0) {
-        label.classList.add("decade-week");
-      }
-
-      yearLabelsContainer.appendChild(label);
+    for (let year = 0; year < totalYears; year++) {
+      const colGap = Math.floor(year / 10);
+      const xPosition = (year + colGap) * (cellSize + 2) + cellSize / 2;
+      const yearLabel = yearLabelsContainer.createEl("div", {
+        cls: "chronos-year-label" + (year % 10 === 0 ? " decade-marker" : ""),
+      });
+      yearLabel.style.left = `${xPosition}px`;
+      yearLabel.textContent = `${year}`;
     }
   }
-
   renderWeeksGrid(container: HTMLElement) {
     container.empty();
 
     // Create a proper chronos-grid container
     const gridContainer = container.createEl("div", { cls: "chronos-grid" });
+
+    // Create a separate container for week labels that sits outside the grid
+    const weekLabelsContainer = container.createEl("div", {
+      cls: "chronos-week-labels",
+    });
 
     const now = new Date();
     const birthdayDate = new Date(this.plugin.settings.birthday);
@@ -704,8 +693,6 @@ class ChronosTimelineView extends ItemView {
     const totalYears = lifespan;
     const extraCols = Math.floor(totalYears / 10);
     const totalCols = totalYears + extraCols;
-    const extraRows = Math.floor(weeksCount / 10);
-    const totalRows = weeksCount + extraRows;
 
     // Apply grid to the grid container, not the view container
     gridContainer.style.display = "grid";
@@ -713,47 +700,87 @@ class ChronosTimelineView extends ItemView {
     gridContainer.style.gridTemplateColumns = new Array(totalCols)
       .fill(`${cellSize}px`)
       .join(" ");
-    gridContainer.style.gridTemplateRows = new Array(totalRows)
-      .fill(`${cellSize}px`)
-      .join(" ");
 
-    for (let year = 0; year < totalYears; year++) {
-      const colGap = Math.floor(year / 10);
-      const gridColumn = year + colGap + 1;
-      for (let week = 0; week < weeksCount; week++) {
-        const rowGap = Math.floor(week / 10);
-        const gridRow = week + rowGap + 1;
-        const cell = container.createEl("div", { cls: "chronos-grid-cell" });
+    // Modify the grid template rows to add larger gaps every 10 weeks
+    let rowTemplate = [];
+    for (let i = 0; i < weeksCount; i++) {
+      rowTemplate.push(`${cellSize}px`);
+      // Add a larger gap after every 10th week
+      if ((i + 1) % 10 === 0 && i < weeksCount - 1) {
+        rowTemplate.push("8px"); // This creates the gap row
+      }
+    }
+    gridContainer.style.gridTemplateRows = rowTemplate.join(" ");
+
+    // Render week labels outside the grid
+    for (let week = 0; week < weeksCount; week++) {
+      // Calculate the vertical position accounting for the gaps
+      const rowGap = Math.floor(week / 10);
+      const verticalPosition = week * (cellSize + 2) + rowGap * 8;
+
+      const weekLabel = weekLabelsContainer.createEl("div", {
+        cls:
+          "chronos-week-label" + ((week + 1) % 10 === 0 ? " decade-week" : ""),
+      });
+      weekLabel.style.top = `${verticalPosition + cellSize / 2}px`;
+      weekLabel.textContent = `${week + 1}`;
+    }
+
+    // Track grid positions for cells
+    let gridRow = 1;
+
+    for (let week = 0; week < weeksCount; week++) {
+      // Update grid row accounting for the gap rows
+      if (week > 0 && week % 10 === 0) {
+        gridRow += 2; // Skip the gap row
+      } else if (week > 0) {
+        gridRow += 1;
+      }
+
+      for (let year = 0; year < totalYears; year++) {
+        const colGap = Math.floor(year / 10);
+        const gridColumn = year + colGap + 1;
+
+        const cell = gridContainer.createEl("div", {
+          cls: "chronos-grid-cell",
+        });
         cell.style.gridColumn = gridColumn.toString();
         cell.style.gridRow = gridRow.toString();
 
         if (year % 10 === 0) cell.addClass("decade-start");
-        if (week % 4 === 0) {
-          cell.addClass("month-start");
-          const monthNames = [
-            "Jan",
-            "Feb",
-            "Mar",
-            "Apr",
-            "May",
-            "Jun",
-            "Jul",
-            "Aug",
-            "Sep",
-            "Oct",
-            "Nov",
-            "Dec",
-          ];
-          const monthIndex = Math.floor((week / weeksCount) * 12) % 12;
-          const monthName = monthNames[monthIndex];
-          cell.setAttribute("data-month", monthName);
-        }
+
+        // Calculate the actual date for this cell to determine month starts accurately
         const weekIndex = year * 52 + week;
         const cellDate = new Date(birthdayDate);
         cellDate.setDate(cellDate.getDate() + weekIndex * 7);
+
+        // Check if this is the first week of a month
+        const isFirstWeekOfMonth = this.plugin.isFirstWeekOfMonth(cellDate);
+        if (isFirstWeekOfMonth) {
+          cell.addClass("month-start");
+          const monthName = this.plugin.getMonthName(cellDate);
+          cell.setAttribute("data-month", monthName);
+
+          // Add visible month indicator
+          if (year < 3) {
+            // Only show month labels in the first few years to avoid cluttering
+            const monthLabel = container.createEl("div", {
+              cls: "chronos-month-label",
+              text: monthName,
+            });
+
+            const labelLeft = (gridColumn - 1) * (cellSize + 2) + cellSize / 2;
+            const labelTop = (gridRow - 1) * (cellSize + 2) - 14; // Position above the cell
+
+            monthLabel.style.left = `${labelLeft}px`;
+            monthLabel.style.top = `${labelTop}px`;
+          }
+        }
+
         const cellYear = cellDate.getFullYear();
         const cellWeek = this.plugin.getISOWeekNumber(cellDate);
         const weekKey = `${cellYear}-W${cellWeek.toString().padStart(2, "0")}`;
+
         if (weekIndex < ageInWeeks) {
           cell.addClass("past");
           cell.style.backgroundColor = this.plugin.settings.pastCellColor;
@@ -764,10 +791,9 @@ class ChronosTimelineView extends ItemView {
           cell.addClass("future");
           cell.style.backgroundColor = this.plugin.settings.futureCellColor;
         }
+
         this.applyEventStyling(cell, weekKey);
-        if (this.plugin.shouldHaveRowGap(week)) {
-          cell.style.marginTop = "8px";
-        }
+
         cell.addEventListener("click", async (event) => {
           if (event.shiftKey) {
             const modal = new ChronosEventModal(this.app, this.plugin, weekKey);
@@ -802,7 +828,6 @@ class ChronosTimelineView extends ItemView {
             await this.app.workspace.getLeaf().openFile(newFile);
           }
         });
-        container.appendChild(cell);
       }
     }
   }
