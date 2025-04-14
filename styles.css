@@ -1,4 +1,10 @@
-/* styles.css (Further Modified) */
+/* Define custom properties for consistency */
+:root {
+  --cell-size: 16px;
+  --cell-gap: 2px;
+  --total-years: 90; /* This should match your lifespan setting */
+  --left-offset: 30px; /* Left padding for the timeline container */
+}
 
 /* Main container */
 .chronos-timeline-container {
@@ -52,27 +58,29 @@
   margin-bottom: 15px;
   background-color: var(--background-primary);
   border-radius: 6px;
-  /* Greatly increased left padding for more label separation */
-  padding: 30px 20px 20px 30px;
+  padding: 30px 20px 20px var(--left-offset);
 }
 
-/* Year labels at the top */
+/* Year labels container using CSS grid (aligned with timeline grid) */
 .chronos-year-labels {
   position: relative;
-  height: 20px;
+  display: grid;
+  grid-template-columns: repeat(var(--total-years), var(--cell-size));
+  column-gap: var(--cell-gap);
+  /* Align the container with the timeline grid by matching left offset */
+  margin-left: var(--left-offset);
   margin-bottom: 5px;
-  /* Match increased left padding */
-  margin-left: -32px; /* Adjusted to match left padding */
-  margin-right: 20px; /* Match right padding */
+  height: var(--cell-size);
 }
 
+/* Year label styling */
 .chronos-year-label {
+  display: flex;
+  justify-content: center;
+  align-items: center;
   font-size: 12px;
   color: var(--text-normal);
   opacity: 0.7;
-  position: absolute;
-  transform: translateX(-50%);
-  font-weight: normal;
 }
 
 .chronos-year-label.decade-marker {
@@ -82,41 +90,34 @@
   opacity: 1;
 }
 
-/* Month labels (Ensure alignment considers padding) */
+/* Month labels – these are positioned absolutely relative to the grid */
 .chronos-month-label {
   font-size: 10px;
   color: var(--text-muted);
   transform: translateX(-50%);
   position: absolute;
   z-index: 5;
-  /* NOTE: Accurate horizontal positioning likely requires calculation */
-  /* relative to the grid start inside main.ts */
 }
 
-/* Container for the week labels (Position it absolutely in the left padding area) */
+/* Week labels container positioned absolutely relative to timeline grid */
 .chronos-week-labels {
   position: absolute;
-  left: 0;
-  /* Attempt vertical shift UP by reducing top offset */
-  /* Previous: 30px, Now trying 12px */
+  left: calc(var(--left-offset) - 30px);
   top: -10px;
   height: 100%;
-  /* Use the new padding space */
-  width: 30px; /* Occupy most of the left padding (80px) */
+  width: 30px;
   pointer-events: none;
 }
 
-/* Week labels on the left */
+/* Week label styling */
 .chronos-week-label {
   font-size: 10px;
   color: var(--text-normal);
   opacity: 0.8;
   position: absolute;
-  /* Position labels within the .chronos-week-labels container */
-  left: -55px; /* Align with the left padding */
-  width: 50px; /* Allow space for text, adjust as needed */
-  text-align: right; /* Align text near the grid start */
-  /* CSS transform for centering. TS calculation is primary. */
+  left: -55px;
+  width: 50px;
+  text-align: right;
   transform: translateY(-50%);
 }
 
@@ -125,28 +126,32 @@
   font-weight: bold;
 }
 
-.chronos-grid-gap-row {
-  height: 8px;
-  grid-column: 1 / -1;
-  background-color: transparent;
-}
-
-/* Timeline grid */
+/* Timeline grid container */
 .chronos-grid {
   display: grid;
-  grid-gap: 2px;
+  grid-gap: var(--cell-gap);
   position: relative;
-  /* Grid starts after the padding, no margin needed */
   margin-left: 0;
 }
 
 /* Grid cells */
 .chronos-grid-cell {
-  width: 16px;
-  height: 16px;
+  width: var(--cell-size);
+  height: var(--cell-size);
   border-radius: 2px;
   cursor: pointer;
-  transition: transform 0.1s, box-shadow 0.1s;
+  transition: none;
+  position: relative;
+}
+
+.chronos-grid-cell .year-marker {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  font-size: 10px;
+  color: var(--text-accent);
+  font-weight: bold;
+  pointer-events: none; /* Ensure clicks pass through to the cell if needed */
 }
 
 .chronos-grid-cell:hover {
@@ -164,7 +169,7 @@
   border: 1px solid rgba(255, 255, 255, 0.4);
 }
 
-/* Visual separations */
+/* Visual indicators for month and decade starts */
 .chronos-grid-cell.month-start {
   border-top: 3px solid rgba(128, 128, 128, 0.7);
 }
@@ -196,7 +201,7 @@
   }
 }
 
-/* Legend */
+/* Legend styling */
 .chronos-legend {
   display: flex;
   justify-content: center;
@@ -219,7 +224,7 @@
   margin-right: 5px;
 }
 
-/* Footer with quote */
+/* Footer styling */
 .chronos-footer {
   text-align: center;
   font-style: italic;
@@ -235,7 +240,7 @@
   padding-top: 18px;
 }
 
-/* Date picker container enhancements */
+/* Date picker enhancements */
 .chronos-date-picker-container {
   margin-bottom: 20px;
 }
@@ -251,35 +256,28 @@
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .chronos-view {
-    /* Adjust padding for smaller screens */
-    padding: 25px 10px 15px 50px; /* Adjust left padding */
+    padding: 25px 10px 15px 30px;
   }
-
   .chronos-year-labels {
-    margin-left: 50px; /* Match left padding */
-    margin-right: 10px; /* Match right padding */
+    margin-left: 30px;
+    margin-right: 20px;
   }
-
   .chronos-week-labels {
-    width: 45px; /* Adjust width */
-    /* Adjust top if needed for smaller screens */
+    width: 45px;
     top: 10px;
   }
   .chronos-week-label {
     font-size: 9px;
     left: 2px;
-    width: 35px; /* Adjust width */
+    width: 35px;
   }
-
   .chronos-grid {
     margin-left: 0;
   }
-
   .chronos-controls {
     flex-direction: column;
     align-items: center;
   }
-
   .chronos-controls button {
     width: 80%;
   }
