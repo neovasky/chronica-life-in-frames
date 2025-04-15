@@ -724,27 +724,6 @@ class ChronosTimelineView extends ItemView {
         const cellDate = new Date(birthdayDate);
         cellDate.setDate(cellDate.getDate() + weekIndex * 7);
 
-        // Check if this is the first week of a month
-        const isFirstWeekOfMonth = this.plugin.isFirstWeekOfMonth(cellDate);
-        if (isFirstWeekOfMonth) {
-          cell.addClass("month-start");
-          const monthName = this.plugin.getMonthName(cellDate);
-          cell.setAttribute("data-month", monthName);
-
-          // Add visible month indicator (for the first 5 years only)
-          if (year < 5) {
-            const monthLabel = container.createEl("div", {
-              cls: "chronos-month-label",
-              text: monthName,
-            });
-            const labelLeft = year * (cellSize + 2) + cellSize / 2;
-            const rowOffset = Math.floor(week / 10);
-            const labelTop = (week + rowOffset) * (cellSize + 2) - 14;
-            monthLabel.style.left = `${labelLeft + 40}px`;
-            monthLabel.style.top = `${labelTop}px`;
-          }
-        }
-
         const cellYear = cellDate.getFullYear();
         const cellWeek = this.plugin.getISOWeekNumber(cellDate);
         const weekKey = `${cellYear}-W${cellWeek.toString().padStart(2, "0")}`;

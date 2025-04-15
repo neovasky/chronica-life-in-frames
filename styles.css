@@ -61,15 +61,6 @@
   padding: 30px 20px 20px var(--left-offset);
 }
 
-/* Month labels – these are positioned absolutely relative to the grid */
-.chronos-month-label {
-  font-size: 10px;
-  color: var(--text-muted);
-  transform: translateX(-50%);
-  position: absolute;
-  z-index: 5;
-}
-
 /* Week labels container positioned absolutely relative to timeline grid */
 .chronos-week-labels {
   position: absolute;
@@ -123,11 +114,6 @@
 
 .chronos-grid-cell.event {
   border: 1px solid rgba(255, 255, 255, 0.4);
-}
-
-/* Visual indicators for month and decade starts */
-.chronos-grid-cell.month-start {
-  border-top: 3px solid rgba(128, 128, 128, 0.7);
 }
 
 /* Future event highlight */
