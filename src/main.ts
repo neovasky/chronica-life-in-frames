@@ -642,54 +642,27 @@ class ChronosTimelineView extends ItemView {
     const weeksCount = 52;
     const totalYears = lifespan;
 
-    // Apply grid to the grid container
+    // Use a simpler grid layout without gaps
     gridContainer.style.display = "grid";
-    gridContainer.style.gridGap = "2px";
-
-    // Create column template with gap columns after each decade
-    let colTemplate = [];
-    const gapSize = 2;
-    for (let i = 0; i < totalYears; i++) {
-      colTemplate.push(`${cellSize}px`);
-    }
     gridContainer.style.gridTemplateColumns = `repeat(${totalYears}, ${cellSize}px)`;
-    gridContainer.style.columnGap = `${gapSize}px`;
+    gridContainer.style.gridTemplateRows = `repeat(${weeksCount}, ${cellSize}px)`;
+    gridContainer.style.gap = "2px";
 
-    // To this (uniform columns, no special decade handling):
-    gridContainer.style.gridTemplateColumns = `repeat(${totalYears}, ${cellSize}px)`;
-    gridContainer.style.columnGap = "2px";
+    // Prevent any automatic content generation
+    gridContainer.style.counterReset = "none";
 
-    // Create row template with gap rows after every 10 weeks
-    let rowTemplate = [];
-    for (let i = 0; i < weeksCount; i++) {
-      rowTemplate.push(`${cellSize}px`);
-      if ((i + 1) % 10 === 0 && i < weeksCount - 1) {
-        rowTemplate.push("8px"); // Add a gap row after every 10 weeks
-      }
-    }
-    gridContainer.style.gridTemplateRows = rowTemplate.join(" ");
-
-    // Track grid positions for cells
-    let gridRow = 1;
-
+    // Flat grid without special spacing for decades or groups of weeks
     for (let week = 0; week < weeksCount; week++) {
-      // Update grid row as before
-      if (week > 0 && week % 10 === 0) {
-        gridRow += 2;
-      } else if (week > 0) {
-        gridRow += 1;
-      }
-
       for (let year = 0; year < totalYears; year++) {
-        // Each year is assigned to a column (index starting from 1)
-        const gridCol = year + 1;
         const cell = gridContainer.createEl("div", {
           cls: "chronos-grid-cell",
         });
-        cell.style.gridColumn = gridCol.toString();
-        cell.style.gridRow = gridRow.toString();
 
-        // Continue with cell date calculation and styling…
+        // Position in a simple grid
+        cell.style.gridColumn = (year + 1).toString();
+        cell.style.gridRow = (week + 1).toString();
+
+        // Calculate the cell date
         const weekIndex = year * 52 + week;
         const cellDate = new Date(birthdayDate);
         cellDate.setDate(cellDate.getDate() + weekIndex * 7);
@@ -698,6 +671,10 @@ class ChronosTimelineView extends ItemView {
         const cellWeek = this.plugin.getISOWeekNumber(cellDate);
         const weekKey = `${cellYear}-W${cellWeek.toString().padStart(2, "0")}`;
 
+        // Store data in attributes instead of text content
+        cell.dataset.weekKey = weekKey;
+
+        // Color coding
         if (weekIndex < ageInWeeks) {
           cell.addClass("past");
           cell.style.backgroundColor = this.plugin.settings.pastCellColor;

@@ -67,19 +67,20 @@
   grid-gap: var(--cell-gap);
   position: relative;
   margin-left: 0;
+  grid-auto-flow: dense;
+  counter-reset: year week;
 }
 
 .chronos-grid::before,
-.chronos-grid::after {
+.chronos-grid::after,
+.chronos-grid > *::before,
+.chronos-grid > *::after {
   display: none !important;
   content: none !important;
 }
 
-/* Hide all generated content on grid cells */
-.chronos-grid-cell::before,
-.chronos-grid-cell::after {
+.chronos-grid > div:empty {
   display: none !important;
-  content: none !important;
 }
 
 /* Grid cells */
