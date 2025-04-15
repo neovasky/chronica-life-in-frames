@@ -692,9 +692,9 @@ class ChronosTimelineView extends ItemView {
       const verticalPosition = week * (cellSize + 2) + rowGaps * 8;
 
       const weekLabel = weekLabelsContainer.createEl("div", {
-        cls:
-          "chronos-week-label" + ((week + 1) % 10 === 0 ? " decade-week" : ""),
+        cls: "chronos-week-label",
       });
+
       weekLabel.style.top = `${verticalPosition + cellSize / 2}px`;
       weekLabel.textContent = `${week + 1}`;
     }
@@ -718,19 +718,6 @@ class ChronosTimelineView extends ItemView {
         });
         cell.style.gridColumn = gridCol.toString();
         cell.style.gridRow = gridRow.toString();
-        if (year % 10 === 0) cell.addClass("decade-start");
-
-        // **** NEW: Embed year marker into the cell if this is the first week and a decade marker ****
-        if (week === 0 && year % 10 === 0) {
-          const birthdayYear = new Date(
-            this.plugin.settings.birthday
-          ).getFullYear();
-          const markerYear = birthdayYear + year;
-          const markerEl = cell.createEl("span", {
-            cls: "year-marker",
-            text: `${markerYear}`,
-          });
-        }
 
         // Continue with cell date calculation and styling…
         const weekIndex = year * 52 + week;

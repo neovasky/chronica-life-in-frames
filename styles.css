@@ -61,35 +61,6 @@
   padding: 30px 20px 20px var(--left-offset);
 }
 
-/* Year labels container using CSS grid (aligned with timeline grid) */
-.chronos-year-labels {
-  position: relative;
-  display: grid;
-  grid-template-columns: repeat(var(--total-years), var(--cell-size));
-  column-gap: var(--cell-gap);
-  /* Align the container with the timeline grid by matching left offset */
-  margin-left: var(--left-offset);
-  margin-bottom: 5px;
-  height: var(--cell-size);
-}
-
-/* Year label styling */
-.chronos-year-label {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 12px;
-  color: var(--text-normal);
-  opacity: 0.7;
-}
-
-.chronos-year-label.decade-marker {
-  color: var(--text-accent);
-  font-weight: bold;
-  font-size: 14px;
-  opacity: 1;
-}
-
 /* Month labels – these are positioned absolutely relative to the grid */
 .chronos-month-label {
   font-size: 10px;
@@ -121,11 +92,6 @@
   transform: translateY(-50%);
 }
 
-.chronos-week-label.decade-week {
-  color: var(--text-accent);
-  font-weight: bold;
-}
-
 /* Timeline grid container */
 .chronos-grid {
   display: grid;
@@ -142,16 +108,6 @@
   cursor: pointer;
   transition: none;
   position: relative;
-}
-
-.chronos-grid-cell .year-marker {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  font-size: 10px;
-  color: var(--text-accent);
-  font-weight: bold;
-  pointer-events: none; /* Ensure clicks pass through to the cell if needed */
 }
 
 .chronos-grid-cell:hover {
@@ -172,15 +128,6 @@
 /* Visual indicators for month and decade starts */
 .chronos-grid-cell.month-start {
   border-top: 3px solid rgba(128, 128, 128, 0.7);
-}
-
-.chronos-grid-cell.decade-start {
-  border-left: 4px solid rgba(128, 128, 128, 0.7);
-}
-
-.chronos-grid-cell.decade-start.month-start {
-  border-top: 3px solid rgba(128, 128, 128, 0.7);
-  border-left: 4px solid rgba(128, 128, 128, 0.7);
 }
 
 /* Future event highlight */
@@ -258,10 +205,7 @@
   .chronos-view {
     padding: 25px 10px 15px 30px;
   }
-  .chronos-year-labels {
-    margin-left: 30px;
-    margin-right: 20px;
-  }
+
   .chronos-week-labels {
     width: 45px;
     top: 10px;
