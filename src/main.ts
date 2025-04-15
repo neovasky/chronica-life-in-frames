@@ -574,6 +574,19 @@ class ChronosTimelineView extends ItemView {
         todayCell.scrollIntoView({ behavior: "smooth", block: "center" });
       }
     });
+    const weekLabels = contentEl.createEl("div", {
+      cls: "chronos-week-labels",
+    });
+    for (let i = 0; i < 52; i++) {
+      const rowOffset = Math.floor(i / 10);
+      const label = weekLabels.createEl("div", { cls: "chronos-week-label" });
+      label.style.position = "absolute";
+      label.style.top = `${(i + rowOffset) * 18}px`; // 16px cell + 2px gap
+      label.style.left = "0px";
+      label.style.width = "30px";
+      label.style.textAlign = "right";
+      label.innerText = `${i + 1}`;
+    }
     const futureEventBtn = controlsEl.createEl("button", {
       text: "Plan Future Event",
     });
@@ -633,6 +646,11 @@ class ChronosTimelineView extends ItemView {
     // Create a proper chronos-grid container
     const gridContainer = container.createEl("div", { cls: "chronos-grid" });
 
+    // Create a separate container for week labels that sits outside the grid (if you still need week numbers)
+    const weekLabelsContainer = container.createEl("div", {
+      cls: "chronos-week-labels",
+    });
+
     const now = new Date();
     const birthdayDate = new Date(this.plugin.settings.birthday);
     const lifespan = this.plugin.settings.lifespan;
@@ -641,6 +659,8 @@ class ChronosTimelineView extends ItemView {
     const cellSize = 16;
     const weeksCount = 52;
     const totalYears = lifespan;
+    const extraCols = Math.floor(totalYears / 10);
+    const totalCols = totalYears + extraCols;
 
     // Use a simpler grid layout without gaps
     gridContainer.style.display = "grid";
@@ -648,10 +668,24 @@ class ChronosTimelineView extends ItemView {
     gridContainer.style.gridTemplateRows = `repeat(${weeksCount}, ${cellSize}px)`;
     gridContainer.style.gap = "2px";
 
+<<<<<<< HEAD
     // Prevent any automatic content generation
     gridContainer.style.counterReset = "none";
 
     // Flat grid without special spacing for decades or groups of weeks
+=======
+    // Create row template with gap rows after every 10 weeks
+    let rowTemplate = [];
+    for (let i = 0; i < weeksCount; i++) {
+      rowTemplate.push(`${cellSize}px`);
+      if ((i + 1) % 10 === 0 && i < weeksCount - 1) {
+        rowTemplate.push("8px"); // Add a gap row after every 10 weeks
+      }
+    }
+    gridContainer.style.gridTemplateRows = rowTemplate.join(" ");
+
+    // Render week labels outside the grid
+>>>>>>> parent of fb48c39 (failed removal of residual texts)
     for (let week = 0; week < weeksCount; week++) {
       for (let year = 0; year < totalYears; year++) {
         const cell = gridContainer.createEl("div", {

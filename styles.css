@@ -72,15 +72,16 @@
 }
 
 .chronos-grid::before,
-.chronos-grid::after,
-.chronos-grid > *::before,
-.chronos-grid > *::after {
+.chronos-grid::after {
   display: none !important;
   content: none !important;
 }
 
-.chronos-grid > div:empty {
+/* Hide all generated content on grid cells */
+.chronos-grid-cell::before,
+.chronos-grid-cell::after {
   display: none !important;
+  content: none !important;
 }
 
 /* Grid cells */
