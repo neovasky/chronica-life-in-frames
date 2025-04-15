@@ -574,19 +574,6 @@ class ChronosTimelineView extends ItemView {
         todayCell.scrollIntoView({ behavior: "smooth", block: "center" });
       }
     });
-    const weekLabels = contentEl.createEl("div", {
-      cls: "chronos-week-labels",
-    });
-    for (let i = 0; i < 52; i++) {
-      const rowOffset = Math.floor(i / 10);
-      const label = weekLabels.createEl("div", { cls: "chronos-week-label" });
-      label.style.position = "absolute";
-      label.style.top = `${(i + rowOffset) * 18}px`; // 16px cell + 2px gap
-      label.style.left = "0px";
-      label.style.width = "30px";
-      label.style.textAlign = "right";
-      label.innerText = `${i + 1}`;
-    }
     const futureEventBtn = controlsEl.createEl("button", {
       text: "Plan Future Event",
     });
@@ -646,11 +633,6 @@ class ChronosTimelineView extends ItemView {
     // Create a proper chronos-grid container
     const gridContainer = container.createEl("div", { cls: "chronos-grid" });
 
-    // Create a separate container for week labels that sits outside the grid (if you still need week numbers)
-    const weekLabelsContainer = container.createEl("div", {
-      cls: "chronos-week-labels",
-    });
-
     const now = new Date();
     const birthdayDate = new Date(this.plugin.settings.birthday);
     const lifespan = this.plugin.settings.lifespan;
@@ -659,8 +641,6 @@ class ChronosTimelineView extends ItemView {
     const cellSize = 16;
     const weeksCount = 52;
     const totalYears = lifespan;
-    const extraCols = Math.floor(totalYears / 10);
-    const totalCols = totalYears + extraCols;
 
     // Apply grid to the grid container
     gridContainer.style.display = "grid";
@@ -675,6 +655,10 @@ class ChronosTimelineView extends ItemView {
     gridContainer.style.gridTemplateColumns = `repeat(${totalYears}, ${cellSize}px)`;
     gridContainer.style.columnGap = `${gapSize}px`;
 
+    // To this (uniform columns, no special decade handling):
+    gridContainer.style.gridTemplateColumns = `repeat(${totalYears}, ${cellSize}px)`;
+    gridContainer.style.columnGap = "2px";
+
     // Create row template with gap rows after every 10 weeks
     let rowTemplate = [];
     for (let i = 0; i < weeksCount; i++) {
@@ -686,6 +670,11 @@ class ChronosTimelineView extends ItemView {
     gridContainer.style.gridTemplateRows = rowTemplate.join(" ");
 
     // Render week labels outside the grid
+    const weekLabelsContainer = container.createEl("div", {
+      cls: "chronos-week-labels",
+    });
+
+    // Render week labels inside the container
     for (let week = 0; week < weeksCount; week++) {
       // Calculate the vertical position accounting for the gaps
       const rowGaps = Math.floor(week / 10);

@@ -91,6 +91,19 @@
   margin-left: 0;
 }
 
+.chronos-grid::before,
+.chronos-grid::after {
+  display: none !important;
+  content: none !important;
+}
+
+/* Hide all generated content on grid cells */
+.chronos-grid-cell::before,
+.chronos-grid-cell::after {
+  display: none !important;
+  content: none !important;
+}
+
 /* Grid cells */
 .chronos-grid-cell {
   width: var(--cell-size);
