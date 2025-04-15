@@ -61,28 +61,6 @@
   padding: 30px 20px 20px var(--left-offset);
 }
 
-/* Week labels container positioned absolutely relative to timeline grid */
-.chronos-week-labels {
-  position: absolute;
-  left: calc(var(--left-offset) - 30px);
-  top: -10px;
-  height: 100%;
-  width: 30px;
-  pointer-events: none;
-}
-
-/* Week label styling */
-.chronos-week-label {
-  font-size: 10px;
-  color: var(--text-normal);
-  opacity: 0.8;
-  position: absolute;
-  left: -55px;
-  width: 50px;
-  text-align: right;
-  transform: translateY(-50%);
-}
-
 /* Timeline grid container */
 .chronos-grid {
   display: grid;
@@ -205,15 +183,6 @@
     padding: 25px 10px 15px 30px;
   }
 
-  .chronos-week-labels {
-    width: 45px;
-    top: 10px;
-  }
-  .chronos-week-label {
-    font-size: 9px;
-    left: 2px;
-    width: 35px;
-  }
   .chronos-grid {
     margin-left: 0;
   }

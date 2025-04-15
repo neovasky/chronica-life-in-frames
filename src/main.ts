@@ -669,25 +669,6 @@ class ChronosTimelineView extends ItemView {
     }
     gridContainer.style.gridTemplateRows = rowTemplate.join(" ");
 
-    // Render week labels outside the grid
-    const weekLabelsContainer = container.createEl("div", {
-      cls: "chronos-week-labels",
-    });
-
-    // Render week labels inside the container
-    for (let week = 0; week < weeksCount; week++) {
-      // Calculate the vertical position accounting for the gaps
-      const rowGaps = Math.floor(week / 10);
-      const verticalPosition = week * (cellSize + 2) + rowGaps * 8;
-
-      const weekLabel = weekLabelsContainer.createEl("div", {
-        cls: "chronos-week-label",
-      });
-
-      weekLabel.style.top = `${verticalPosition + cellSize / 2}px`;
-      weekLabel.textContent = `${week + 1}`;
-    }
-
     // Track grid positions for cells
     let gridRow = 1;
 
