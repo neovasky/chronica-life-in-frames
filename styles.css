@@ -9,15 +9,15 @@
   --cell-size: 16px;
   --cell-gap: 2px;
   --decade-gap: 8px; /* Larger gap between decades */
-  --week-gap: 8px; /* Larger gap after every 10 weeks */
+  --week-gap: 0px; /* Removed gap after every 10 weeks */
   --total-years: 90; /* This should match your lifespan setting */
   --left-offset: 50px; /* Space for week markers */
   --top-offset: 50px; /* Space for decade markers */
 }
 
 /* -----------------------------------------------------------------------------
-       LAYOUT CONTAINERS
-       ----------------------------------------------------------------------------- */
+         LAYOUT CONTAINERS
+         ----------------------------------------------------------------------------- */
 /* Main container */
 .chronos-timeline-container {
   font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
@@ -52,8 +52,8 @@
 }
 
 /* -----------------------------------------------------------------------------
-       CONTROL ELEMENTS
-       ----------------------------------------------------------------------------- */
+         CONTROL ELEMENTS
+         ----------------------------------------------------------------------------- */
 /* Controls bar */
 .chronos-controls {
   display: flex;
@@ -79,8 +79,8 @@
 }
 
 /* -----------------------------------------------------------------------------
-       MARKERS & GRID LAYOUT
-       ----------------------------------------------------------------------------- */
+         MARKERS & GRID LAYOUT
+         ----------------------------------------------------------------------------- */
 /* Decade markers (horizontal, top) */
 .chronos-decade-markers {
   position: absolute;
@@ -157,9 +157,9 @@
   margin-right: var(--decade-gap);
 }
 
-/* Special cells - week boundaries */
+/* Remove margin for week boundaries */
 .chronos-grid-cell.week-boundary {
-  margin-bottom: var(--week-gap);
+  margin-bottom: 0; /* Removed the week gap */
 }
 
 /* Remove default content generation */
@@ -172,8 +172,8 @@
 }
 
 /* -----------------------------------------------------------------------------
-       GRID CELLS
-       ----------------------------------------------------------------------------- */
+         GRID CELLS
+         ----------------------------------------------------------------------------- */
 /* Individual cells */
 .chronos-grid-cell {
   width: var(--cell-size);
@@ -219,8 +219,8 @@
 }
 
 /* -----------------------------------------------------------------------------
-       LEGEND
-       ----------------------------------------------------------------------------- */
+         LEGEND
+         ----------------------------------------------------------------------------- */
 .chronos-legend {
   display: flex;
   justify-content: center;
@@ -244,8 +244,8 @@
 }
 
 /* -----------------------------------------------------------------------------
-       FOOTER
-       ----------------------------------------------------------------------------- */
+         FOOTER
+         ----------------------------------------------------------------------------- */
 .chronos-footer {
   text-align: center;
   font-style: italic;
@@ -256,8 +256,8 @@
 }
 
 /* -----------------------------------------------------------------------------
-       MODAL WINDOWS & FORMS
-       ----------------------------------------------------------------------------- */
+         MODAL WINDOWS & FORMS
+         ----------------------------------------------------------------------------- */
 /* General modal styling */
 .modal .setting-item {
   border-top: 1px solid var(--background-modifier-border);
@@ -377,8 +377,8 @@
 }
 
 /* -----------------------------------------------------------------------------
-       RESPONSIVE DESIGN
-       ----------------------------------------------------------------------------- */
+         RESPONSIVE DESIGN
+         ----------------------------------------------------------------------------- */
 @media (max-width: 768px) {
   /* Adjust container padding */
   .chronos-view {

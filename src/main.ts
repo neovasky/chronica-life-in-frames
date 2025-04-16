@@ -625,7 +625,7 @@ class ChronosTimelineView extends ItemView {
     });
   }
 
-  // Updated renderWeeksGrid method for ChronosTimelineView class
+  // Updated renderWeeksGrid method to fix alignment and remove week gaps
   renderWeeksGrid(container: HTMLElement) {
     container.empty();
 
@@ -639,9 +639,6 @@ class ChronosTimelineView extends ItemView {
     );
     const decadeGap = parseInt(
       getComputedStyle(root).getPropertyValue("--decade-gap") || "8"
-    );
-    const weekGap = parseInt(
-      getComputedStyle(root).getPropertyValue("--week-gap") || "8"
     );
     const leftOffset = parseInt(
       getComputedStyle(root).getPropertyValue("--left-offset")
@@ -698,9 +695,7 @@ class ChronosTimelineView extends ItemView {
         separator.style.position = "absolute";
         separator.style.top = `${topOffset}px`;
         separator.style.left = `${decadePosition - decadeGap / 2}px`;
-        separator.style.height = `calc(52 * (${cellSize}px + ${cellGap}px) + ${
-          weekGap * 5
-        }px)`;
+        separator.style.height = `calc(52 * (${cellSize}px + ${cellGap}px))`;
       }
     }
 
@@ -725,15 +720,8 @@ class ChronosTimelineView extends ItemView {
         text: week.toString(),
       });
 
-      // Calculate position accounting for week gaps
-      let weekPosition = 0;
-      for (let w = 0; w < week; w++) {
-        weekPosition += cellSize + cellGap;
-        // Add extra gap after each decade of weeks
-        if (w > 0 && w % 10 === 9) {
-          weekPosition += weekGap;
-        }
-      }
+      // Calculate position accounting for cell size and gap only (no week gaps)
+      const weekPosition = week * (cellSize + cellGap);
 
       // Position each week marker
       marker.style.position = "absolute";
@@ -748,7 +736,7 @@ class ChronosTimelineView extends ItemView {
           cls: "week-separator",
         });
         separator.style.position = "absolute";
-        separator.style.top = `${weekPosition - weekGap / 2}px`;
+        separator.style.top = `${weekPosition}px`;
         separator.style.left = `${leftOffset}px`;
         separator.style.width = `calc(${
           this.plugin.settings.lifespan
@@ -766,32 +754,31 @@ class ChronosTimelineView extends ItemView {
     const birthdayDate = new Date(this.plugin.settings.birthday);
     const ageInWeeks = this.plugin.getFullWeekAge(birthdayDate, now);
 
-    let totalYPos = topOffset;
-
     for (let week = 0; week < 52; week++) {
-      let totalXPos = leftOffset;
-      const isWeekBoundary = week > 0 && week % 10 === 0;
-
-      if (isWeekBoundary && week > 0) {
-        totalYPos += weekGap;
-      }
+      // Calculate Y position based only on week, cell size, and gap
+      const yPos = topOffset + week * (cellSize + cellGap);
 
       for (let year = 0; year < this.plugin.settings.lifespan; year++) {
-        const isDecadeBoundary = year > 0 && year % 10 === 0;
-        const weekIndex = year * 52 + week;
-
-        if (isDecadeBoundary) {
-          totalXPos += decadeGap;
+        // Calculate X position with decade gaps
+        let xPos = leftOffset;
+        for (let y = 0; y < year; y++) {
+          xPos += cellSize + cellGap;
+          if (y > 0 && y % 10 === 9) {
+            xPos += decadeGap;
+          }
         }
 
+        const weekIndex = year * 52 + week;
         const cell = gridContainer.createEl("div", {
           cls: "chronos-grid-cell",
         });
 
-        // Position the cell absolutely instead of using grid layout
+        // Position the cell absolutely
         cell.style.position = "absolute";
-        cell.style.left = `${totalXPos}px`;
-        cell.style.top = `${totalYPos}px`;
+        cell.style.left = `${xPos}px`;
+        cell.style.top = `${yPos}px`;
+        cell.style.width = `${cellSize}px`;
+        cell.style.height = `${cellSize}px`;
 
         // Calculate cell date
         const cellDate = new Date(birthdayDate);
@@ -813,13 +800,9 @@ class ChronosTimelineView extends ItemView {
           cell.style.backgroundColor = this.plugin.settings.futureCellColor;
         }
 
-        // Add boundary classes
+        // Add decade boundary class if applicable
         if (year > 0 && year % 10 === 9) {
           cell.addClass("decade-boundary");
-        }
-
-        if (week > 0 && week % 10 === 9) {
-          cell.addClass("week-boundary");
         }
 
         // Apply any event styling
@@ -859,11 +842,7 @@ class ChronosTimelineView extends ItemView {
             await this.app.workspace.getLeaf().openFile(newFile);
           }
         });
-
-        totalXPos += cellSize + cellGap;
       }
-
-      totalYPos += cellSize + cellGap;
     }
 
     // Add footer with quote
