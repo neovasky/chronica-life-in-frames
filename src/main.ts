@@ -574,19 +574,6 @@ class ChronosTimelineView extends ItemView {
         todayCell.scrollIntoView({ behavior: "smooth", block: "center" });
       }
     });
-    const weekLabels = contentEl.createEl("div", {
-      cls: "chronos-week-labels",
-    });
-    for (let i = 0; i < 52; i++) {
-      const rowOffset = Math.floor(i / 10);
-      const label = weekLabels.createEl("div", { cls: "chronos-week-label" });
-      label.style.position = "absolute";
-      label.style.top = `${(i + rowOffset) * 18}px`; // 16px cell + 2px gap
-      label.style.left = "0px";
-      label.style.width = "30px";
-      label.style.textAlign = "right";
-      label.innerText = `${i + 1}`;
-    }
     const futureEventBtn = controlsEl.createEl("button", {
       text: "Plan Future Event",
     });
@@ -627,88 +614,105 @@ class ChronosTimelineView extends ItemView {
     });
     // Render custom event type legends.
     this.plugin.settings.customEventTypes.forEach((customType) => {
-      legendItems.push({
-        text: customType.name,
-        color: customType.color,
+      const customLegendEl = legendEl.createEl("div", {
+        cls: "chronos-legend-item",
       });
-    });
-    const customLegendEl = legendEl.createEl("div", {
-      cls: "chronos-legend-item",
-    });
-    const customColorEl = customLegendEl.createEl("div", {
-      cls: "chronos-legend-color",
+      const customColorEl = customLegendEl.createEl("div", {
+        cls: "chronos-legend-color",
+      });
+      customColorEl.style.backgroundColor = customType.color;
+      customLegendEl.createEl("span", { text: customType.name });
     });
   }
 
   renderWeeksGrid(container: HTMLElement) {
     container.empty();
 
-    // Create a proper chronos-grid container
-    const gridContainer = container.createEl("div", { cls: "chronos-grid" });
+    // Create a wrapper for the grid and marker areas.
+    const wrapper = container.createEl("div", { cls: "chronos-grid-wrapper" });
+    // The wrapper gets the full available width/height.
+    wrapper.style.position = "relative";
 
-    // Create a separate container for week labels that sits outside the grid (if you still need week numbers)
-    const weekLabelsContainer = container.createEl("div", {
-      cls: "chronos-week-labels",
+    // --- Top-Left: Empty cell
+    wrapper.createEl("div", { cls: "chronos-empty-cell" });
+
+    // --- Top-Right: Decade markers container (row for numbers)
+    const decadeMarkersContainer = wrapper.createEl("div", {
+      cls: "chronos-decade-markers",
     });
+    // Calculate cell width based on CSS variables
+    const cellSize = parseInt(
+      getComputedStyle(document.documentElement).getPropertyValue("--cell-size")
+    );
+    const cellGap = parseInt(
+      getComputedStyle(document.documentElement).getPropertyValue("--cell-gap")
+    );
+    // For each decade (0, 10, 20, …, lifespan)
+    for (
+      let decade = 0;
+      decade <= this.plugin.settings.lifespan;
+      decade += 10
+    ) {
+      const marker = decadeMarkersContainer.createEl("div", {
+        cls: "chronos-decade-marker",
+      });
+      marker.setText(decade.toString());
+      // Place marker by calculating its horizontal center:
+      marker.style.left = `${
+        decade * (cellSize + cellGap) + (cellSize + cellGap) / 2
+      }px`;
+      marker.style.top = "50%";
+    }
 
+    // --- Bottom-Left: Week markers container (column for numbers)
+    const weekMarkersContainer = wrapper.createEl("div", {
+      cls: "chronos-week-markers",
+    });
+    // For each week (1 to 52)
+    for (let week = 1; week <= 52; week++) {
+      const marker = weekMarkersContainer.createEl("div", {
+        cls: "chronos-week-marker",
+      });
+      // Display only on weeks 10, 20, 30, 40, 50
+      if ([10, 20, 30, 40, 50].includes(week)) {
+        marker.setText(week.toString());
+      } else {
+        marker.setText("");
+      }
+      // Vertical position: center is at (week - 0.5) times the full cell height.
+      marker.style.top = `${(week - 0.5) * (cellSize + cellGap)}px`;
+      marker.style.right = "5px"; // Align to the right within marker container.
+    }
+
+    // --- Bottom-Right: The interactive grid container
+    const gridContainer = wrapper.createEl("div", { cls: "chronos-grid" });
+    gridContainer.style.display = "grid";
+    gridContainer.style.gridGap = "var(--cell-gap)";
+    gridContainer.style.gridTemplateColumns = `repeat(${this.plugin.settings.lifespan}, var(--cell-size))`;
+    gridContainer.style.gridTemplateRows = `repeat(52, var(--cell-size))`;
+    // Nothing more is required for positioning here; the wrapper takes care of the layout.
+
+    // --- Now add grid cells as before.
     const now = new Date();
     const birthdayDate = new Date(this.plugin.settings.birthday);
-    const lifespan = this.plugin.settings.lifespan;
     const ageInWeeks = this.plugin.getFullWeekAge(birthdayDate, now);
 
-    const cellSize = 16;
-    const weeksCount = 52;
-    const totalYears = lifespan;
-    const extraCols = Math.floor(totalYears / 10);
-    const totalCols = totalYears + extraCols;
-
-    // Use a simpler grid layout without gaps
-    gridContainer.style.display = "grid";
-    gridContainer.style.gridTemplateColumns = `repeat(${totalYears}, ${cellSize}px)`;
-    gridContainer.style.gridTemplateRows = `repeat(${weeksCount}, ${cellSize}px)`;
-    gridContainer.style.gap = "2px";
-
-<<<<<<< HEAD
-    // Prevent any automatic content generation
-    gridContainer.style.counterReset = "none";
-
-    // Flat grid without special spacing for decades or groups of weeks
-=======
-    // Create row template with gap rows after every 10 weeks
-    let rowTemplate = [];
-    for (let i = 0; i < weeksCount; i++) {
-      rowTemplate.push(`${cellSize}px`);
-      if ((i + 1) % 10 === 0 && i < weeksCount - 1) {
-        rowTemplate.push("8px"); // Add a gap row after every 10 weeks
-      }
-    }
-    gridContainer.style.gridTemplateRows = rowTemplate.join(" ");
-
-    // Render week labels outside the grid
->>>>>>> parent of fb48c39 (failed removal of residual texts)
-    for (let week = 0; week < weeksCount; week++) {
-      for (let year = 0; year < totalYears; year++) {
+    for (let week = 0; week < 52; week++) {
+      for (let year = 0; year < this.plugin.settings.lifespan; year++) {
+        const weekIndex = year * 52 + week;
         const cell = gridContainer.createEl("div", {
           cls: "chronos-grid-cell",
         });
 
-        // Position in a simple grid
-        cell.style.gridColumn = (year + 1).toString();
-        cell.style.gridRow = (week + 1).toString();
-
-        // Calculate the cell date
-        const weekIndex = year * 52 + week;
+        // Calculate cell date like before...
         const cellDate = new Date(birthdayDate);
         cellDate.setDate(cellDate.getDate() + weekIndex * 7);
-
         const cellYear = cellDate.getFullYear();
         const cellWeek = this.plugin.getISOWeekNumber(cellDate);
         const weekKey = `${cellYear}-W${cellWeek.toString().padStart(2, "0")}`;
-
-        // Store data in attributes instead of text content
         cell.dataset.weekKey = weekKey;
 
-        // Color coding
+        // Color coding (past, present, future)
         if (weekIndex < ageInWeeks) {
           cell.addClass("past");
           cell.style.backgroundColor = this.plugin.settings.pastCellColor;
@@ -720,6 +724,7 @@ class ChronosTimelineView extends ItemView {
           cell.style.backgroundColor = this.plugin.settings.futureCellColor;
         }
 
+        // Apply any event styling (your original call)
         this.applyEventStyling(cell, weekKey);
 
         cell.addEventListener("click", async (event) => {
