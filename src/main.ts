@@ -628,26 +628,35 @@ class ChronosTimelineView extends ItemView {
   renderWeeksGrid(container: HTMLElement) {
     container.empty();
 
-    // Create a wrapper for the grid and marker areas.
-    const wrapper = container.createEl("div", { cls: "chronos-grid-wrapper" });
-    // The wrapper gets the full available width/height.
-    wrapper.style.position = "relative";
-
-    // --- Top-Left: Empty cell
-    wrapper.createEl("div", { cls: "chronos-empty-cell" });
-
-    // --- Top-Right: Decade markers container (row for numbers)
-    const decadeMarkersContainer = wrapper.createEl("div", {
-      cls: "chronos-decade-markers",
-    });
-    // Calculate cell width based on CSS variables
+    // Get the CSS variables for positioning and styling
+    const root = document.documentElement;
     const cellSize = parseInt(
-      getComputedStyle(document.documentElement).getPropertyValue("--cell-size")
+      getComputedStyle(root).getPropertyValue("--cell-size")
     );
     const cellGap = parseInt(
-      getComputedStyle(document.documentElement).getPropertyValue("--cell-gap")
+      getComputedStyle(root).getPropertyValue("--cell-gap")
     );
-    // For each decade (0, 10, 20, …, lifespan)
+    const leftOffset = parseInt(
+      getComputedStyle(root).getPropertyValue("--left-offset")
+    );
+    const topOffset = parseInt(
+      getComputedStyle(root).getPropertyValue("--top-offset")
+    );
+
+    // Create decade markers container (horizontal markers above the grid)
+    const decadeMarkersContainer = container.createEl("div", {
+      cls: "chronos-decade-markers",
+    });
+
+    // Position the decade markers container
+    decadeMarkersContainer.style.position = "absolute";
+    decadeMarkersContainer.style.top = "0";
+    decadeMarkersContainer.style.left = `${leftOffset}px`;
+    decadeMarkersContainer.style.width = "calc(100% - var(--left-offset))";
+    decadeMarkersContainer.style.height = `${topOffset}px`;
+    decadeMarkersContainer.style.pointerEvents = "none";
+
+    // Add decade markers (0, 10, 20, etc.)
     for (
       let decade = 0;
       decade <= this.plugin.settings.lifespan;
@@ -655,44 +664,57 @@ class ChronosTimelineView extends ItemView {
     ) {
       const marker = decadeMarkersContainer.createEl("div", {
         cls: "chronos-decade-marker",
+        text: decade.toString(),
       });
-      marker.setText(decade.toString());
-      // Place marker by calculating its horizontal center:
-      marker.style.left = `${
-        decade * (cellSize + cellGap) + (cellSize + cellGap) / 2
-      }px`;
-      marker.style.top = "50%";
+
+      // Position each decade marker
+      // We need to account for the cell size, gap, and left offset
+      marker.style.position = "absolute";
+      marker.style.left = `${decade * (cellSize + cellGap) + cellSize / 2}px`;
+      marker.style.top = `${topOffset / 2}px`;
+      marker.style.transform = "translate(-50%, -50%)";
     }
 
-    // --- Bottom-Left: Week markers container (column for numbers)
-    const weekMarkersContainer = wrapper.createEl("div", {
+    // Create week markers container (vertical markers to the left of the grid)
+    const weekMarkersContainer = container.createEl("div", {
       cls: "chronos-week-markers",
     });
-    // For each week (1 to 52)
-    for (let week = 1; week <= 52; week++) {
+
+    // Position the week markers container
+    weekMarkersContainer.style.position = "absolute";
+    weekMarkersContainer.style.top = `${topOffset}px`;
+    weekMarkersContainer.style.left = "0";
+    weekMarkersContainer.style.width = `${leftOffset}px`;
+    weekMarkersContainer.style.height = "calc(100% - var(--top-offset))";
+    weekMarkersContainer.style.pointerEvents = "none";
+
+    // Add week markers (10, 20, 30, etc.)
+    for (let week = 0; week <= 50; week += 10) {
+      if (week === 0) continue; // Skip 0 to start with 10
       const marker = weekMarkersContainer.createEl("div", {
         cls: "chronos-week-marker",
+        text: week.toString(),
       });
-      // Display only on weeks 10, 20, 30, 40, 50
-      if ([10, 20, 30, 40, 50].includes(week)) {
-        marker.setText(week.toString());
-      } else {
-        marker.setText("");
-      }
-      // Vertical position: center is at (week - 0.5) times the full cell height.
-      marker.style.top = `${(week - 0.5) * (cellSize + cellGap)}px`;
-      marker.style.right = "5px"; // Align to the right within marker container.
+
+      // Position each week marker
+      marker.style.position = "absolute";
+      marker.style.right = "10px";
+      marker.style.top = `${week * (cellSize + cellGap) + cellSize / 2}px`;
+      marker.style.transform = "translateY(-50%)";
+      marker.style.textAlign = "right";
     }
 
-    // --- Bottom-Right: The interactive grid container
-    const gridContainer = wrapper.createEl("div", { cls: "chronos-grid" });
+    // Create the grid container
+    const gridContainer = container.createEl("div", { cls: "chronos-grid" });
     gridContainer.style.display = "grid";
     gridContainer.style.gridGap = "var(--cell-gap)";
     gridContainer.style.gridTemplateColumns = `repeat(${this.plugin.settings.lifespan}, var(--cell-size))`;
     gridContainer.style.gridTemplateRows = `repeat(52, var(--cell-size))`;
-    // Nothing more is required for positioning here; the wrapper takes care of the layout.
+    gridContainer.style.position = "absolute";
+    gridContainer.style.top = `${topOffset}px`;
+    gridContainer.style.left = `${leftOffset}px`;
 
-    // --- Now add grid cells as before.
+    // Now add grid cells
     const now = new Date();
     const birthdayDate = new Date(this.plugin.settings.birthday);
     const ageInWeeks = this.plugin.getFullWeekAge(birthdayDate, now);
@@ -704,7 +726,7 @@ class ChronosTimelineView extends ItemView {
           cls: "chronos-grid-cell",
         });
 
-        // Calculate cell date like before...
+        // Calculate cell date
         const cellDate = new Date(birthdayDate);
         cellDate.setDate(cellDate.getDate() + weekIndex * 7);
         const cellYear = cellDate.getFullYear();
@@ -724,7 +746,7 @@ class ChronosTimelineView extends ItemView {
           cell.style.backgroundColor = this.plugin.settings.futureCellColor;
         }
 
-        // Apply any event styling (your original call)
+        // Apply any event styling
         this.applyEventStyling(cell, weekKey);
 
         cell.addEventListener("click", async (event) => {
