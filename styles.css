@@ -8,16 +8,14 @@
 :root {
   --cell-size: 16px;
   --cell-gap: 2px;
-  --decade-gap: 8px; /* Larger gap between decades */
-  --week-gap: 0px; /* Removed gap after every 10 weeks */
   --total-years: 90; /* This should match your lifespan setting */
   --left-offset: 50px; /* Space for week markers */
   --top-offset: 50px; /* Space for decade markers */
 }
 
 /* -----------------------------------------------------------------------------
-         LAYOUT CONTAINERS
-         ----------------------------------------------------------------------------- */
+       LAYOUT CONTAINERS
+       ----------------------------------------------------------------------------- */
 /* Main container */
 .chronos-timeline-container {
   font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
@@ -52,8 +50,8 @@
 }
 
 /* -----------------------------------------------------------------------------
-         CONTROL ELEMENTS
-         ----------------------------------------------------------------------------- */
+       CONTROL ELEMENTS
+       ----------------------------------------------------------------------------- */
 /* Controls bar */
 .chronos-controls {
   display: flex;
@@ -79,8 +77,8 @@
 }
 
 /* -----------------------------------------------------------------------------
-         MARKERS & GRID LAYOUT
-         ----------------------------------------------------------------------------- */
+       MARKERS & GRID LAYOUT
+       ----------------------------------------------------------------------------- */
 /* Decade markers (horizontal, top) */
 .chronos-decade-markers {
   position: absolute;
@@ -125,41 +123,13 @@
 /* Timeline grid container */
 .chronos-grid {
   display: grid;
-  grid-template-columns: repeat(90, var(--cell-size));
-  grid-template-rows: repeat(52, var(--cell-size));
   grid-gap: var(--cell-gap);
   position: absolute;
   top: var(--top-offset);
   left: var(--left-offset);
   margin: 0;
-}
-
-/* Decade separator lines */
-.decade-separator {
-  position: absolute;
-  width: 1px;
-  height: calc(52 * (var(--cell-size) + var(--cell-gap)));
-  background-color: rgba(var(--text-muted-rgb), 0.3);
-  z-index: 1;
-}
-
-/* Week separator lines */
-.week-separator {
-  position: absolute;
-  height: 1px;
-  width: calc(90 * (var(--cell-size) + var(--cell-gap)));
-  background-color: rgba(var(--text-muted-rgb), 0.3);
-  z-index: 1;
-}
-
-/* Special cells - decade boundaries */
-.chronos-grid-cell.decade-boundary {
-  margin-right: var(--decade-gap);
-}
-
-/* Remove margin for week boundaries */
-.chronos-grid-cell.week-boundary {
-  margin-bottom: 0; /* Removed the week gap */
+  grid-auto-flow: dense;
+  counter-reset: none;
 }
 
 /* Remove default content generation */
@@ -172,8 +142,8 @@
 }
 
 /* -----------------------------------------------------------------------------
-         GRID CELLS
-         ----------------------------------------------------------------------------- */
+       GRID CELLS
+       ----------------------------------------------------------------------------- */
 /* Individual cells */
 .chronos-grid-cell {
   width: var(--cell-size);
@@ -219,8 +189,8 @@
 }
 
 /* -----------------------------------------------------------------------------
-         LEGEND
-         ----------------------------------------------------------------------------- */
+       LEGEND
+       ----------------------------------------------------------------------------- */
 .chronos-legend {
   display: flex;
   justify-content: center;
@@ -244,8 +214,8 @@
 }
 
 /* -----------------------------------------------------------------------------
-         FOOTER
-         ----------------------------------------------------------------------------- */
+       FOOTER
+       ----------------------------------------------------------------------------- */
 .chronos-footer {
   text-align: center;
   font-style: italic;
@@ -256,8 +226,8 @@
 }
 
 /* -----------------------------------------------------------------------------
-         MODAL WINDOWS & FORMS
-         ----------------------------------------------------------------------------- */
+       MODAL WINDOWS & FORMS
+       ----------------------------------------------------------------------------- */
 /* General modal styling */
 .modal .setting-item {
   border-top: 1px solid var(--background-modifier-border);
@@ -377,8 +347,8 @@
 }
 
 /* -----------------------------------------------------------------------------
-         RESPONSIVE DESIGN
-         ----------------------------------------------------------------------------- */
+       RESPONSIVE DESIGN
+       ----------------------------------------------------------------------------- */
 @media (max-width: 768px) {
   /* Adjust container padding */
   .chronos-view {
