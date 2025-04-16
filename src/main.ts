@@ -625,6 +625,7 @@ class ChronosTimelineView extends ItemView {
     });
   }
 
+  // Updated renderWeeksGrid method for ChronosTimelineView class
   renderWeeksGrid(container: HTMLElement) {
     container.empty();
 
@@ -635,6 +636,12 @@ class ChronosTimelineView extends ItemView {
     );
     const cellGap = parseInt(
       getComputedStyle(root).getPropertyValue("--cell-gap")
+    );
+    const decadeGap = parseInt(
+      getComputedStyle(root).getPropertyValue("--decade-gap") || "8"
+    );
+    const weekGap = parseInt(
+      getComputedStyle(root).getPropertyValue("--week-gap") || "8"
     );
     const leftOffset = parseInt(
       getComputedStyle(root).getPropertyValue("--left-offset")
@@ -667,12 +674,34 @@ class ChronosTimelineView extends ItemView {
         text: decade.toString(),
       });
 
+      // Calculate position accounting for decade gaps
+      let decadePosition = 0;
+      for (let d = 0; d < decade; d++) {
+        decadePosition += cellSize + cellGap;
+        // Add extra gap after each decade
+        if (d > 0 && d % 10 === 9) {
+          decadePosition += decadeGap;
+        }
+      }
+
       // Position each decade marker
-      // We need to account for the cell size, gap, and left offset
       marker.style.position = "absolute";
-      marker.style.left = `${decade * (cellSize + cellGap) + cellSize / 2}px`;
+      marker.style.left = `${decadePosition}px`;
       marker.style.top = `${topOffset / 2}px`;
       marker.style.transform = "translate(-50%, -50%)";
+
+      // Add decade separator lines
+      if (decade > 0 && decade < this.plugin.settings.lifespan) {
+        const separator = container.createEl("div", {
+          cls: "decade-separator",
+        });
+        separator.style.position = "absolute";
+        separator.style.top = `${topOffset}px`;
+        separator.style.left = `${decadePosition - decadeGap / 2}px`;
+        separator.style.height = `calc(52 * (${cellSize}px + ${cellGap}px) + ${
+          weekGap * 5
+        }px)`;
+      }
     }
 
     // Create week markers container (vertical markers to the left of the grid)
@@ -696,35 +725,73 @@ class ChronosTimelineView extends ItemView {
         text: week.toString(),
       });
 
+      // Calculate position accounting for week gaps
+      let weekPosition = 0;
+      for (let w = 0; w < week; w++) {
+        weekPosition += cellSize + cellGap;
+        // Add extra gap after each decade of weeks
+        if (w > 0 && w % 10 === 9) {
+          weekPosition += weekGap;
+        }
+      }
+
       // Position each week marker
       marker.style.position = "absolute";
       marker.style.right = "10px";
-      marker.style.top = `${week * (cellSize + cellGap) + cellSize / 2}px`;
+      marker.style.top = `${weekPosition}px`;
       marker.style.transform = "translateY(-50%)";
       marker.style.textAlign = "right";
+
+      // Add week separator lines
+      if (week > 0 && week < 50) {
+        const separator = container.createEl("div", {
+          cls: "week-separator",
+        });
+        separator.style.position = "absolute";
+        separator.style.top = `${weekPosition - weekGap / 2}px`;
+        separator.style.left = `${leftOffset}px`;
+        separator.style.width = `calc(${
+          this.plugin.settings.lifespan
+        } * (${cellSize}px + ${cellGap}px) + ${
+          decadeGap * Math.floor(this.plugin.settings.lifespan / 10)
+        }px)`;
+      }
     }
 
     // Create the grid container
     const gridContainer = container.createEl("div", { cls: "chronos-grid" });
-    gridContainer.style.display = "grid";
-    gridContainer.style.gridGap = "var(--cell-gap)";
-    gridContainer.style.gridTemplateColumns = `repeat(${this.plugin.settings.lifespan}, var(--cell-size))`;
-    gridContainer.style.gridTemplateRows = `repeat(52, var(--cell-size))`;
-    gridContainer.style.position = "absolute";
-    gridContainer.style.top = `${topOffset}px`;
-    gridContainer.style.left = `${leftOffset}px`;
 
     // Now add grid cells
     const now = new Date();
     const birthdayDate = new Date(this.plugin.settings.birthday);
     const ageInWeeks = this.plugin.getFullWeekAge(birthdayDate, now);
 
+    let totalYPos = topOffset;
+
     for (let week = 0; week < 52; week++) {
+      let totalXPos = leftOffset;
+      const isWeekBoundary = week > 0 && week % 10 === 0;
+
+      if (isWeekBoundary && week > 0) {
+        totalYPos += weekGap;
+      }
+
       for (let year = 0; year < this.plugin.settings.lifespan; year++) {
+        const isDecadeBoundary = year > 0 && year % 10 === 0;
         const weekIndex = year * 52 + week;
+
+        if (isDecadeBoundary) {
+          totalXPos += decadeGap;
+        }
+
         const cell = gridContainer.createEl("div", {
           cls: "chronos-grid-cell",
         });
+
+        // Position the cell absolutely instead of using grid layout
+        cell.style.position = "absolute";
+        cell.style.left = `${totalXPos}px`;
+        cell.style.top = `${totalYPos}px`;
 
         // Calculate cell date
         const cellDate = new Date(birthdayDate);
@@ -744,6 +811,15 @@ class ChronosTimelineView extends ItemView {
         } else {
           cell.addClass("future");
           cell.style.backgroundColor = this.plugin.settings.futureCellColor;
+        }
+
+        // Add boundary classes
+        if (year > 0 && year % 10 === 9) {
+          cell.addClass("decade-boundary");
+        }
+
+        if (week > 0 && week % 10 === 9) {
+          cell.addClass("week-boundary");
         }
 
         // Apply any event styling
@@ -783,7 +859,19 @@ class ChronosTimelineView extends ItemView {
             await this.app.workspace.getLeaf().openFile(newFile);
           }
         });
+
+        totalXPos += cellSize + cellGap;
       }
+
+      totalYPos += cellSize + cellGap;
+    }
+
+    // Add footer with quote
+    if (this.plugin.settings.quote) {
+      const footerEl = container.createEl("div", {
+        cls: "chronos-footer",
+        text: this.plugin.settings.quote,
+      });
     }
   }
 
