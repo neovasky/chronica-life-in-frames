@@ -1,23 +1,12 @@
-/* ============================================================================
-   CHRONOS TIMELINE PLUGIN - STYLES
-   ============================================================================ */
-
-/* -----------------------------------------------------------------------------
-   CSS VARIABLES
-   ----------------------------------------------------------------------------- */
+/* Define custom properties for consistency */
 :root {
   --cell-size: 16px;
   --cell-gap: 2px;
-  --decade-gap: 8px; /* Larger gap between decades */
-  --week-gap: 8px; /* Larger gap after every 10 weeks */
   --total-years: 90; /* This should match your lifespan setting */
-  --left-offset: 50px; /* Space for week markers */
-  --top-offset: 50px; /* Space for decade markers */
+  --left-offset: 50px; /* Increased left padding for the timeline container */
+  --top-offset: 50px; /* Added top padding for decade markers */
 }
 
-/* -----------------------------------------------------------------------------
-       LAYOUT CONTAINERS
-       ----------------------------------------------------------------------------- */
 /* Main container */
 .chronos-timeline-container {
   font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
@@ -38,22 +27,6 @@
   color: var(--text-normal);
 }
 
-/* Main view container */
-.chronos-view {
-  position: relative;
-  overflow: auto;
-  flex-grow: 1;
-  margin-bottom: 15px;
-  background-color: var(--background-primary);
-  border-radius: 6px;
-  padding: var(--top-offset) 20px 20px var(--left-offset);
-  min-height: 400px;
-  min-width: 600px;
-}
-
-/* -----------------------------------------------------------------------------
-       CONTROL ELEMENTS
-       ----------------------------------------------------------------------------- */
 /* Controls bar */
 .chronos-controls {
   display: flex;
@@ -78,18 +51,24 @@
   background-color: var(--interactive-accent-hover);
 }
 
-/* -----------------------------------------------------------------------------
-       MARKERS & GRID LAYOUT
-       ----------------------------------------------------------------------------- */
-/* Decade markers (horizontal, top) */
+/* Main view container */
+.chronos-view {
+  position: relative;
+  overflow: auto;
+  flex-grow: 1;
+  margin-bottom: 15px;
+  background-color: var(--background-primary);
+  border-radius: 6px;
+  padding: var(--top-offset) 20px 20px var(--left-offset); /* Updated padding */
+}
+
+/* Decade markers styling */
 .chronos-decade-markers {
   position: absolute;
-  top: 0;
-  left: var(--left-offset);
-  width: calc(100% - var(--left-offset));
-  height: var(--top-offset);
-  pointer-events: none;
-  z-index: 10;
+  top: 15px;
+  left: var(--left-offset); /* Match left padding of the container */
+  width: calc(100% - 70px);
+  height: 30px;
 }
 
 .chronos-decade-marker {
@@ -98,18 +77,16 @@
   color: var(--text-muted);
   font-weight: 500;
   text-align: center;
-  transform: translateX(-50%);
+  transform: translateX(-50%); /* Center the marker on its position */
 }
 
-/* Week markers (vertical, left) */
+/* Week markers styling */
 .chronos-week-markers {
   position: absolute;
-  top: var(--top-offset);
-  left: 0;
-  width: var(--left-offset);
-  height: calc(100% - var(--top-offset));
-  pointer-events: none;
-  z-index: 10;
+  top: var(--top-offset); /* Match top padding of the container */
+  left: 15px;
+  width: 30px;
+  height: calc(100% - 70px);
 }
 
 .chronos-week-marker {
@@ -118,63 +95,33 @@
   color: var(--text-muted);
   font-weight: 500;
   text-align: right;
-  right: 10px;
-  transform: translateY(-50%);
+  transform: translateY(-50%); /* Center the marker on its position */
 }
 
 /* Timeline grid container */
 .chronos-grid {
   display: grid;
-  grid-template-columns: repeat(90, var(--cell-size));
-  grid-template-rows: repeat(52, var(--cell-size));
   grid-gap: var(--cell-gap);
-  position: absolute;
-  top: var(--top-offset);
-  left: var(--left-offset);
+  position: relative;
   margin: 0;
+  grid-auto-flow: dense;
+  counter-reset: none;
 }
 
-/* Decade separator lines */
-.decade-separator {
-  position: absolute;
-  width: 1px;
-  height: calc(52 * (var(--cell-size) + var(--cell-gap)));
-  background-color: rgba(var(--text-muted-rgb), 0.3);
-  z-index: 1;
-}
-
-/* Week separator lines */
-.week-separator {
-  position: absolute;
-  height: 1px;
-  width: calc(90 * (var(--cell-size) + var(--cell-gap)));
-  background-color: rgba(var(--text-muted-rgb), 0.3);
-  z-index: 1;
-}
-
-/* Special cells - decade boundaries */
-.chronos-grid-cell.decade-boundary {
-  margin-right: var(--decade-gap);
-}
-
-/* Special cells - week boundaries */
-.chronos-grid-cell.week-boundary {
-  margin-bottom: var(--week-gap);
-}
-
-/* Remove default content generation */
 .chronos-grid::before,
-.chronos-grid::after,
+.chronos-grid::after {
+  display: none !important;
+  content: none !important;
+}
+
+/* Hide all generated content on grid cells */
 .chronos-grid-cell::before,
 .chronos-grid-cell::after {
   display: none !important;
   content: none !important;
 }
 
-/* -----------------------------------------------------------------------------
-       GRID CELLS
-       ----------------------------------------------------------------------------- */
-/* Individual cells */
+/* Grid cells */
 .chronos-grid-cell {
   width: var(--cell-size);
   height: var(--cell-size);
@@ -190,7 +137,6 @@
   z-index: 10;
 }
 
-/* Special cell states */
 .chronos-grid-cell.present {
   box-shadow: 0 0 8px var(--text-accent);
   z-index: 5;
@@ -200,7 +146,7 @@
   border: 1px solid rgba(255, 255, 255, 0.4);
 }
 
-/* Future event highlight with animation */
+/* Future event highlight */
 .chronos-grid-cell.future-event-highlight {
   box-shadow: 0 0 8px rgba(255, 215, 0, 0.7);
   animation: pulse 2s infinite;
@@ -218,9 +164,7 @@
   }
 }
 
-/* -----------------------------------------------------------------------------
-       LEGEND
-       ----------------------------------------------------------------------------- */
+/* Legend styling */
 .chronos-legend {
   display: flex;
   justify-content: center;
@@ -243,9 +187,7 @@
   margin-right: 5px;
 }
 
-/* -----------------------------------------------------------------------------
-       FOOTER
-       ----------------------------------------------------------------------------- */
+/* Footer styling */
 .chronos-footer {
   text-align: center;
   font-style: italic;
@@ -255,10 +197,7 @@
   padding: 10px;
 }
 
-/* -----------------------------------------------------------------------------
-       MODAL WINDOWS & FORMS
-       ----------------------------------------------------------------------------- */
-/* General modal styling */
+/* Modal styling */
 .modal .setting-item {
   border-top: 1px solid var(--background-modifier-border);
   padding-top: 18px;
@@ -313,7 +252,6 @@
   flex-grow: 1;
 }
 
-/* Buttons */
 .edit-type-button,
 .delete-type-button,
 .add-type-button,
@@ -338,7 +276,6 @@
   background-color: var(--text-muted);
 }
 
-/* Radio button controls */
 .chronos-radio-container {
   display: flex;
   flex-wrap: wrap;
@@ -363,7 +300,6 @@
   display: inline-block;
 }
 
-/* Form inputs */
 .edit-name-container,
 .edit-color-container {
   margin-bottom: 15px;
@@ -376,16 +312,12 @@
   font-weight: 500;
 }
 
-/* -----------------------------------------------------------------------------
-       RESPONSIVE DESIGN
-       ----------------------------------------------------------------------------- */
+/* Responsive adjustments */
 @media (max-width: 768px) {
-  /* Adjust container padding */
   .chronos-view {
-    padding: 45px 15px 15px 45px;
+    padding: 45px 15px 15px 45px; /* Slightly reduced padding for smaller screens */
   }
 
-  /* Stack controls vertically */
   .chronos-controls {
     flex-direction: column;
     align-items: center;
@@ -395,9 +327,61 @@
     width: 80%;
   }
 
-  /* Adjust markers */
+  .chronos-decade-markers {
+    left: 45px;
+  }
+
+  .chronos-week-markers {
+    top: 45px;
+  }
+
   .chronos-decade-marker,
   .chronos-week-marker {
     font-size: 10px;
+  }
+
+  /* Ensure the grid container is relatively positioned so markers can be absolute within it */
+  .chronos-view {
+    position: relative;
+  }
+
+  /* Decade markers container (for numbers along the top, outside the grid cells) */
+  .chronos-decade-markers {
+    position: absolute;
+    top: 0;
+    left: var(--left-offset); /* Matches your grid’s left margin */
+    width: calc(100% - var(--left-offset));
+    height: var(--top-offset);
+    pointer-events: none; /* Non-interactive */
+  }
+
+  /* Each decade marker */
+  .chronos-decade-marker {
+    position: absolute;
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 500;
+    text-align: center;
+    transform: translateX(-50%);
+  }
+
+  /* Week markers container (for numbers along the left, outside the grid cells) */
+  .chronos-week-markers {
+    position: absolute;
+    top: var(--top-offset); /* Matches your grid’s top margin */
+    left: 0;
+    width: var(--left-offset);
+    height: calc(100% - var(--top-offset));
+    pointer-events: none; /* Non-interactive */
+  }
+
+  /* Each week marker */
+  .chronos-week-marker {
+    position: absolute;
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 500;
+    text-align: right;
+    transform: translateY(-50%);
   }
 }
