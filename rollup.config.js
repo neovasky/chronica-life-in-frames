@@ -14,7 +14,7 @@ export default {
   input: "src/main.ts",
   output: {
     dir: ".",
-    sourcemap: "inline",
+    sourcemap: "flase",
     sourcemapExcludeSources: isProd,
     format: "cjs",
     exports: "default",
