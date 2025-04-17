@@ -312,6 +312,55 @@ export default class ChronosTimelinePlugin extends Plugin {
     const weekNum = this.getISOWeekNumber(date);
     return `${year}-W${weekNum.toString().padStart(2, "0")}`;
   }
+  
+  /**
+   * Get all week keys between two dates
+   * @param startDate - Start date
+   * @param endDate - End date
+   * @returns Array of week keys in YYYY-WXX format
+   */
+  getWeekKeysBetweenDates(startDate: Date, endDate: Date): string[] {
+    const weekKeys: string[] = [];
+    const currentDate = new Date(startDate);
+    
+    // Ensure dates are in order
+    if (startDate > endDate) {
+      const temp = startDate;
+      startDate = endDate;
+      endDate = temp;
+    }
+    
+    // Get week key for starting date
+    let currentWeekKey = this.getWeekKeyFromDate(currentDate);
+    weekKeys.push(currentWeekKey);
+    
+    // Advance by one week until we reach or pass the end date
+    while (currentDate < endDate) {
+      // Move to next week
+      currentDate.setDate(currentDate.getDate() + 7);
+      
+      // Check if we've gone past the end date
+      if (currentDate > endDate) {
+        break;
+      }
+      
+      // Get week key and add to array
+      currentWeekKey = this.getWeekKeyFromDate(currentDate);
+      
+      // Only add if not already in the array (avoid duplicates)
+      if (!weekKeys.includes(currentWeekKey)) {
+        weekKeys.push(currentWeekKey);
+      }
+    }
+    
+    // Ensure the end date's week is included
+    const endWeekKey = this.getWeekKeyFromDate(endDate);
+    if (!weekKeys.includes(endWeekKey)) {
+      weekKeys.push(endWeekKey);
+    }
+    
+    return weekKeys;
+  }
 }
 
 // -----------------------------------------------------------------------
@@ -328,14 +377,23 @@ class ChronosEventModal extends Modal {
   /** Selected date/week (YYYY-WXX format) */
   selectedDate: string = "";
   
+  /** Selected end date for range (YYYY-WXX format) */
+  selectedEndDate: string = "";
+  
+  /** Flag to indicate if using a date range */
+  isDateRange: boolean = false;
+  
   /** Selected color for the event */
   selectedColor: string = "#4CAF50";
   
   /** Description of the event */
   eventDescription: string = "";
   
-  /** Date input field reference */
-  dateInput!: HTMLInputElement;
+  /** Start date input field reference */
+  startDateInput!: HTMLInputElement;
+  
+  /** End date input field reference */
+  endDateInput!: HTMLInputElement;
   
   /** Currently selected event type */
   selectedEventType: string = "Major Life";
@@ -412,33 +470,125 @@ class ChronosEventModal extends Modal {
     
     dateContainer.createEl("h3", { text: "Select Date" });
     
-    const dateSetting = new Setting(contentEl)
+    // Add an option to toggle between single date and date range
+    const dateTypeContainer = dateContainer.createDiv({ cls: "date-type-selector" });
+    
+    const singleDateOption = dateTypeContainer.createEl("label", { cls: "date-option" });
+    const singleDateRadio = singleDateOption.createEl("input", {
+      type: "radio",
+      attr: { name: "date-type", value: "single" }
+    });
+
+    singleDateRadio.checked = true;
+    singleDateOption.createEl("span", { text: "Single Date" });
+    
+    const rangeDateOption = dateTypeContainer.createEl("label", { cls: "date-option" });
+const rangeDateRadio = rangeDateOption.createEl("input", {
+  type: "radio",
+  attr: { name: "date-type", value: "range" }
+});
+    rangeDateOption.createEl("span", { text: "Date Range" });
+    
+    // Container for single date input
+    const singleDateContainer = contentEl.createDiv({ cls: "single-date-container" });
+    
+    const singleDateSetting = new Setting(singleDateContainer)
       .setName("Date")
       .setDesc("Enter the exact date of the event");
       
-    this.dateInput = dateSetting.controlEl.createEl("input", {
+    this.startDateInput = singleDateSetting.controlEl.createEl("input", {
       type: "date",
       value: this.selectedDate
         ? this.convertWeekToDate(this.selectedDate)
         : new Date().toISOString().split("T")[0]
     });
     
-    this.dateInput.addEventListener("change", () => {
-      const specificDate = this.dateInput.value;
+    this.startDateInput.addEventListener("change", () => {
+      const specificDate = this.startDateInput.value;
+      if (specificDate) {
+        const date = new Date(specificDate);
+        this.selectedDate = this.plugin.getWeekKeyFromDate(date);
+        
+        // If using date range, initialize end date to same as start if not set
+        if (this.isDateRange && !this.endDateInput.value) {
+          this.endDateInput.value = specificDate;
+          this.selectedEndDate = this.selectedDate;
+        }
+      }
+    });
+    
+    // Container for date range inputs
+    const rangeDateContainer = contentEl.createDiv({ cls: "range-date-container" });
+    rangeDateContainer.style.display = "none";
+    
+    const startDateSetting = new Setting(rangeDateContainer)
+      .setName("Start Date")
+      .setDesc("Enter the first date of the event range");
+      
+    this.startDateInput = startDateSetting.controlEl.createEl("input", {
+      type: "date",
+      value: this.selectedDate
+        ? this.convertWeekToDate(this.selectedDate)
+        : new Date().toISOString().split("T")[0]
+    });
+    
+    this.startDateInput.addEventListener("change", () => {
+      const specificDate = this.startDateInput.value;
       if (specificDate) {
         const date = new Date(specificDate);
         this.selectedDate = this.plugin.getWeekKeyFromDate(date);
       }
     });
     
+    const endDateSetting = new Setting(rangeDateContainer)
+      .setName("End Date")
+      .setDesc("Enter the last date of the event range");
+      
+    this.endDateInput = endDateSetting.controlEl.createEl("input", {
+      type: "date",
+      value: this.selectedEndDate
+        ? this.convertWeekToDate(this.selectedEndDate)
+        : this.startDateInput.value
+    });
+    
+    this.endDateInput.addEventListener("change", () => {
+      const specificDate = this.endDateInput.value;
+      if (specificDate) {
+        const date = new Date(specificDate);
+        this.selectedEndDate = this.plugin.getWeekKeyFromDate(date);
+      }
+    });
+    
+    // Add listeners to toggle between single date and range inputs
+    singleDateRadio.addEventListener("change", () => {
+      if (singleDateRadio.checked) {
+        this.isDateRange = false;
+        singleDateContainer.style.display = "block";
+        rangeDateContainer.style.display = "none";
+      }
+    });
+    
+    rangeDateRadio.addEventListener("change", () => {
+      if (rangeDateRadio.checked) {
+        this.isDateRange = true;
+        singleDateContainer.style.display = "none";
+        rangeDateContainer.style.display = "block";
+      }
+    });
+    
+    contentEl.appendChild(singleDateContainer);
+    contentEl.appendChild(rangeDateContainer);
+    
     contentEl.createEl("small", {
-      text: "Select the exact date of your event. The system determines its week automatically.",
+      text: "Select the date(s) of your event. The system determines the week(s) automatically.",
       cls: "chronos-helper-text"
     });
     
     if (this.selectedDate) {
       contentEl.createEl("p", {
-        text: `This date falls in week: ${this.selectedDate}`
+        text: this.isDateRange 
+          ? `This event spans from week ${this.selectedDate} to ${this.selectedEndDate || this.selectedDate}`
+          : `This date falls in week: ${this.selectedDate}`
       });
     }
 
@@ -581,7 +731,7 @@ class ChronosEventModal extends Modal {
    */
   saveEvent(): void {
     // Validate inputs
-    if (!this.selectedDate && this.dateInput) {
+    if (!this.selectedDate && this.startDateInput) {
       new Notice("Please select a date");
       return;
     }
@@ -591,13 +741,13 @@ class ChronosEventModal extends Modal {
       return;
     }
     
-    const eventDateStr = this.selectedDate || this.dateInput.value;
-    const eventDate = new Date(eventDateStr);
-    const eventYear = eventDate.getFullYear();
-    const eventWeek = this.plugin.getISOWeekNumber(eventDate);
-    const weekKey = `${eventYear}-W${eventWeek.toString().padStart(2, "0")}`;
-
-    // Add custom event type if needed
+    // For date range, validate end date
+    if (this.isDateRange && (!this.selectedEndDate || !this.endDateInput?.value)) {
+      new Notice("Please select an end date for the range");
+      return;
+    }
+    
+    // Handle adding custom event type if needed
     if (this.isCustomType && this.customEventName) {
       const existingIndex = this.plugin.settings.customEventTypes.findIndex(
         (type) => type.name === this.customEventName
@@ -613,11 +763,66 @@ class ChronosEventModal extends Modal {
       
       this.selectedEventType = this.customEventName;
     }
-
-    // Format event data string
-    const eventData = `${this.selectedDate}:${this.eventDescription}`;
-
-    // Add event to appropriate collection
+    
+    // If using date range, create events for all weeks in the range
+    if (this.isDateRange && this.selectedEndDate) {
+      // Get start and end dates
+      const startDate = new Date(this.startDateInput.value);
+      const endDate = new Date(this.endDateInput.value);
+      
+      // Get all week keys in the range
+      const weekKeys = this.plugin.getWeekKeysBetweenDates(startDate, endDate);
+      
+      // Create filename for the note (use the whole range)
+      const startWeekKey = this.plugin.getWeekKeyFromDate(startDate);
+      const endWeekKey = this.plugin.getWeekKeyFromDate(endDate);
+      const fileName = `${startWeekKey.replace("W", "-W")}_to_${endWeekKey.replace("W", "-W")}.md`;
+      
+      // Format date range event data with range markers
+      const eventData = `${startWeekKey}:${endWeekKey}:${this.eventDescription}`;
+      
+      // Add event to appropriate collection
+      this.addEventToCollection(eventData);
+      
+      // Create a note for the event (for the range)
+      this.createEventNote(fileName, startDate, endDate);
+      
+      // Save settings
+      this.plugin.saveSettings().then(() => {
+        new Notice(`Event added: ${this.eventDescription} (${weekKeys.length} weeks)`);
+        this.close();
+        this.refreshViews();
+      });
+    } else {
+      // Handle single date event (original functionality)
+      const eventDateStr = this.selectedDate || this.startDateInput.value;
+      const eventDate = new Date(eventDateStr);
+      const weekKey = this.plugin.getWeekKeyFromDate(eventDate);
+      
+      // Format event data string
+      const eventData = `${weekKey}:${this.eventDescription}`;
+      
+      // Add event to appropriate collection
+      this.addEventToCollection(eventData);
+      
+      // Create note file
+      const fileName = `${weekKey.replace("W", "-W")}.md`;
+      this.createEventNote(fileName, eventDate);
+      
+      // Save settings
+      this.plugin.saveSettings().then(() => {
+        new Notice(`Event added: ${this.eventDescription}`);
+        this.close();
+        this.refreshViews();
+      });
+    }
+  }
+  
+  /**
+   * Add event to the appropriate collection based on event type
+   * @param eventData - Event data string
+   */
+  addEventToCollection(eventData: string): void {
     switch (this.selectedEventType) {
       case "Major Life":
         this.plugin.settings.greenEvents.push(eventData);
@@ -638,43 +843,57 @@ class ChronosEventModal extends Modal {
         }
         this.plugin.settings.customEvents[this.selectedEventType].push(eventData);
     }
-
-    // Save settings and create note file
-    this.plugin.saveSettings().then(() => {
-      new Notice(`Event added: ${this.eventDescription}`);
-      
-      const fileName = `${weekKey.replace("W", "-W")}.md`;
-      const fullPath = this.plugin.getFullPath(fileName);
-      const fileExists = this.app.vault.getAbstractFileByPath(fullPath) instanceof TFile;
-      
-      if (!fileExists) {
-        // Create folder if needed
-        if (this.plugin.settings.notesFolder &&
-            this.plugin.settings.notesFolder.trim() !== "") {
-          try {
-            const folderExists = this.app.vault.getAbstractFileByPath(
-              this.plugin.settings.notesFolder
-            );
-            if (!folderExists) {
-              this.app.vault.createFolder(this.plugin.settings.notesFolder);
-            }
-          } catch (err) {
-            console.log("Error checking/creating folder:", err);
+  }
+  
+  /**
+   * Create a note file for the event
+   * @param fileName - Name of the file
+   * @param startDate - Start date of the event
+   * @param endDate - Optional end date for range events
+   */
+  async createEventNote(fileName: string, startDate: Date, endDate?: Date): Promise<void> {
+    const fullPath = this.plugin.getFullPath(fileName);
+    const fileExists = this.plugin.app.vault.getAbstractFileByPath(fullPath) instanceof TFile;
+    
+    if (!fileExists) {
+      // Create folder if needed
+      if (this.plugin.settings.notesFolder && this.plugin.settings.notesFolder.trim() !== "") {
+        try {
+          const folderExists = this.app.vault.getAbstractFileByPath(
+            this.plugin.settings.notesFolder
+          );
+          if (!folderExists) {
+            await this.app.vault.createFolder(this.plugin.settings.notesFolder);
           }
+        } catch (err) {
+          console.log("Error checking/creating folder:", err);
         }
-        
-        // Create event note file
-        const content = `# Event: ${this.eventDescription}\n\nDate: ${this.selectedDate}\nType: ${this.selectedEventType}\n\n## Notes\n\n`;
-        this.app.vault.create(fullPath, content);
       }
       
-      this.close();
+      // Create event note file with appropriate content
+      let content = '';
+      if (endDate) {
+        // Range event
+        const startDateStr = startDate.toISOString().split('T')[0];
+        const endDateStr = endDate.toISOString().split('T')[0];
+        content = `# Event: ${this.eventDescription}\n\nStart Date: ${startDateStr}\nEnd Date: ${endDateStr}\nType: ${this.selectedEventType}\n\n## Notes\n\n`;
+      } else {
+        // Single date event
+        const dateStr = startDate.toISOString().split('T')[0];
+        content = `# Event: ${this.eventDescription}\n\nDate: ${dateStr}\nType: ${this.selectedEventType}\n\n## Notes\n\n`;
+      }
       
-      // Refresh all timeline views
-      this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE).forEach((leaf) => {
-        const view = leaf.view as ChronosTimelineView;
-        view.renderView();
-      });
+      await this.app.vault.create(fullPath, content);
+    }
+  }
+  
+  /**
+   * Refresh all timeline views
+   */
+  refreshViews(): void {
+    this.plugin.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE).forEach((leaf) => {
+      const view = leaf.view as ChronosTimelineView;
+      view.renderView();
     });
   }
 
@@ -763,27 +982,11 @@ class ChronosTimelineView extends ItemView {
     // Create controls
     const controlsEl = contentEl.createEl("div", { cls: "chronos-controls" });
     
-    // Add button to add event
-    const addEventBtn = controlsEl.createEl("button", { text: "Add Event" });
-    addEventBtn.addEventListener("click", () => {
-      this.showAddEventModal();
+    // Plan future event button (keep this one as it's the main interaction point)
+    const planEventBtn = controlsEl.createEl("button", {
+      text: "Plan Event"
     });
-    
-    // Today button
-    const todayBtn = controlsEl.createEl("button", { text: "Today" });
-    todayBtn.addEventListener("click", () => {
-      // Scroll to today's cell
-      const todayCell = contentEl.querySelector(".chronos-grid-cell.present");
-      if (todayCell) {
-        todayCell.scrollIntoView({ behavior: "smooth", block: "center" });
-      }
-    });
-    
-    // Plan future event button
-    const futureEventBtn = controlsEl.createEl("button", {
-      text: "Plan Future Event"
-    });
-    futureEventBtn.addEventListener("click", () => {
+    planEventBtn.addEventListener("click", () => {
       this.showAddEventModal();
     });
     
@@ -794,13 +997,6 @@ class ChronosTimelineView extends ItemView {
     manageTypesBtn.addEventListener("click", () => {
       const modal = new ManageEventTypesModal(this.app, this.plugin);
       modal.open();
-    });
-    
-    // Add a button to show settings
-    const settingsBtn = controlsEl.createEl("button", { text: "Settings" });
-    settingsBtn.addEventListener("click", () => {
-      // Open settings directly
-      new ChronosSettingTab(this.app, this.plugin).display();
     });
     
     // Create the view container
@@ -1019,45 +1215,82 @@ class ChronosTimelineView extends ItemView {
    * @param weekKey - Week key to check for events (YYYY-WXX)
    */
   applyEventStyling(cell: HTMLElement, weekKey: string): void {
-    // Helper to apply preset event styling
-    const applyPreset = (
-      arr: string[],
+    // Helper to check for range events and apply styling
+    const applyEventStyle = (
+      events: string[],
       defaultColor: string,
       defaultDesc: string
     ) => {
-      if (arr.some((event) => event.startsWith(weekKey))) {
+      // Check for exact match (single date events)
+      const singleEvent = events.find(e => e.startsWith(`${weekKey}:`) && !e.includes(':', 10));
+      
+      if (singleEvent) {
         cell.style.backgroundColor = defaultColor;
         cell.addClass("event");
-        const event = arr.find((e) => e.startsWith(weekKey));
-        if (event) {
-          const description = event.split(":")[1] || defaultDesc;
-          cell.setAttribute("title", description);
+        const description = singleEvent.split(":")[1] || defaultDesc;
+        cell.setAttribute("title", description);
+        return true;
+      }
+      
+      // Check for range events (format: startWeek:endWeek:description)
+      const rangeEvents = events.filter(e => {
+        const parts = e.split(":");
+        return parts.length >= 3 && parts[0].includes("W") && parts[1].includes("W");
+      });
+      
+      for (const rangeEvent of rangeEvents) {
+        const [startWeekKey, endWeekKey, description] = rangeEvent.split(":");
+        
+        // Skip if the format is invalid
+        if (!startWeekKey || !endWeekKey) continue;
+        
+        // Parse the week numbers
+        const startYear = parseInt(startWeekKey.split("-W")[0]);
+        const startWeek = parseInt(startWeekKey.split("-W")[1]);
+        const endYear = parseInt(endWeekKey.split("-W")[0]);
+        const endWeek = parseInt(endWeekKey.split("-W")[1]);
+        
+        // Parse current cell week
+        const cellYear = parseInt(weekKey.split("-W")[0]);
+        const cellWeek = parseInt(weekKey.split("-W")[1]);
+        
+        // Check if current week falls within the range
+        const isInRange = (
+          (cellYear > startYear || (cellYear === startYear && cellWeek >= startWeek)) &&
+          (cellYear < endYear || (cellYear === endYear && cellWeek <= endWeek))
+        );
+        
+        if (isInRange) {
+          cell.style.backgroundColor = defaultColor;
+          cell.addClass("event");
+          const eventDesc = description || defaultDesc;
+          cell.setAttribute("title", `${eventDesc} (${startWeekKey} to ${endWeekKey})`);
+          return true;
         }
       }
+      
+      return false;
     };
 
-    // Apply preset event types
-    applyPreset(this.plugin.settings.greenEvents, "#4CAF50", "Major Life Event");
-    applyPreset(this.plugin.settings.blueEvents, "#2196F3", "Travel");
-    applyPreset(this.plugin.settings.pinkEvents, "#E91E63", "Relationship");
-    applyPreset(this.plugin.settings.purpleEvents, "#9C27B0", "Education/Career");
-
-    // For custom events, loop through each event type
-    if (this.plugin.settings.customEvents) {
-      for (const [typeName, events] of Object.entries(this.plugin.settings.customEvents)) {
-        if (events.some((event) => event.startsWith(weekKey))) {
-          const customType = this.plugin.settings.customEventTypes.find(
-            (type) => type.name === typeName
-          );
+    // Apply event styling for each event type
+    const hasGreenEvent = applyEventStyle(this.plugin.settings.greenEvents, "#4CAF50", "Major Life Event");
+    if (!hasGreenEvent) {
+      const hasBlueEvent = applyEventStyle(this.plugin.settings.blueEvents, "#2196F3", "Travel");
+      if (!hasBlueEvent) {
+        const hasPinkEvent = applyEventStyle(this.plugin.settings.pinkEvents, "#E91E63", "Relationship");
+        if (!hasPinkEvent) {
+          const hasPurpleEvent = applyEventStyle(this.plugin.settings.purpleEvents, "#9C27B0", "Education/Career");
           
-          if (customType) {
-            cell.style.backgroundColor = customType.color;
-            cell.addClass("event");
-            const event = events.find((e) => e.startsWith(weekKey));
-            
-            if (event) {
-              const description = event.split(":")[1] || typeName;
-              cell.setAttribute("title", `${description} (${typeName})`);
+          // Only check custom events if no built-in event was found
+          if (!hasPurpleEvent && this.plugin.settings.customEvents) {
+            for (const [typeName, events] of Object.entries(this.plugin.settings.customEvents)) {
+              const customType = this.plugin.settings.customEventTypes.find(
+                (type) => type.name === typeName
+              );
+              
+              if (customType && events.length > 0) {
+                applyEventStyle(events, customType.color, typeName);
+              }
             }
           }
         }
@@ -1607,10 +1840,7 @@ class ChronosSettingTab extends PluginSettingTab {
       text: "• Shift+Click on a week to add an event"
     });
     containerEl.createEl("p", {
-      text: "• Use the 'Add Event' button to mark significant life events"
-    });
-    containerEl.createEl("p", {
-      text: "• Use the 'Plan Future Event' button to add events in the future"
+      text: "• Use the 'Plan Event' button to mark significant life events (including date ranges)"
     });
     containerEl.createEl("p", {
       text: "• Create custom event types to personalize your timeline"
