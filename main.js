@@ -294,33 +294,29 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
      */
     calculateMonthPositions(birthdayDate, totalYears) {
         const monthPositions = [];
-        const birthMonth = birthdayDate.getMonth();
-        const birthDay = birthdayDate.getDate();
         // Get month names
         const monthNames = [
             "Jan", "Feb", "Mar", "Apr", "May", "Jun",
             "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
         ];
-        // Calculate positions for each month in the timeline
-        for (let year = 0; year < totalYears; year++) {
-            for (let month = 0; month < 12; month++) {
-                // Skip the first partial month if birth date is not the 1st of the month
-                if (year === 0 && month < birthMonth)
-                    continue;
-                if (year === 0 && month === birthMonth && birthDay > 1)
-                    continue;
-                // Create a date object for the first day of this month
-                const monthDate = new Date(birthdayDate.getFullYear() + year, month + birthMonth, 1);
-                if (month + birthMonth >= 12) {
-                    monthDate.setFullYear(birthdayDate.getFullYear() + year + 1);
-                    monthDate.setMonth((month + birthMonth) % 12);
-                }
-                // Calculate weeks since birth
-                const weeksSinceBirth = this.getFullWeekAge(birthdayDate, monthDate);
-                // Add to positions array
+        // Create a copy of the birthday date to avoid modifying the original
+        const startDate = new Date(birthdayDate);
+        // Calculate total weeks in the timeline
+        const totalWeeks = totalYears * 52;
+        // Start from first day of month following birth
+        startDate.setDate(1);
+        if (birthdayDate.getDate() > 1) {
+            startDate.setMonth(startDate.getMonth() + 1);
+        }
+        // Go through each month for the entire timeline
+        for (let week = 0; week < totalWeeks; week += 4) { // Sample every ~4 weeks
+            const currentDate = new Date(birthdayDate);
+            currentDate.setDate(currentDate.getDate() + (week * 7)); // Add weeks
+            // Only add if it's the first week of a month
+            if (currentDate.getDate() <= 7) {
                 monthPositions.push({
-                    week: weeksSinceBirth,
-                    label: monthNames[monthDate.getMonth()]
+                    week: week,
+                    label: monthNames[currentDate.getMonth()]
                 });
             }
         }
@@ -975,12 +971,26 @@ class ChronosTimelineView extends obsidian.ItemView {
             const monthMarkersContainer = markersContainer.createEl("div", {
                 cls: "chronos-month-markers"
             });
-            // Add month markers
+            // Track which weeks already have markers to avoid overcrowding
+            const markedWeeks = new Set();
+            // Add week markers (10, 20, 30, etc.) to the set to avoid overlap
+            if (this.plugin.settings.showWeekMarkers) {
+                for (let w = 10; w <= 50; w += 10) {
+                    markedWeeks.add(w);
+                    markedWeeks.add(w - 1);
+                    markedWeeks.add(w + 1);
+                }
+            }
+            // Filter and add month markers
             for (const monthPosition of monthPositions) {
-                // Skip positions that would overlap with weeks that are multiples of 10
-                const weekMod10 = monthPosition.week % 10;
-                if (weekMod10 === 0 || weekMod10 === 9 || weekMod10 === 1)
+                // Skip if already have a marker nearby or out of bounds
+                if (markedWeeks.has(monthPosition.week) ||
+                    monthPosition.week < 0 ||
+                    monthPosition.week >= this.plugin.settings.lifespan * 52) {
                     continue;
+                }
+                // Add this week to marked set
+                markedWeeks.add(monthPosition.week);
                 const marker = monthMarkersContainer.createEl("div", {
                     cls: "chronos-month-marker",
                     text: monthPosition.label
