@@ -34,7 +34,10 @@ const DEFAULT_SETTINGS = {
     customEventTypes: [],
     customEvents: {},
     quote: "the only true luxury is time.",
-    notesFolder: ""
+    notesFolder: "",
+    showDecadeMarkers: true,
+    showWeekMarkers: true,
+    showMonthMarkers: true
 };
 /** SVG icon for the ChronOS Timeline */
 const CHRONOS_ICON = `<svg viewBox="0 0 100 100" width="100" height="100" xmlns="http://www.w3.org/2000/svg">
@@ -105,6 +108,16 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
         }
         if (!this.settings.customEvents) {
             this.settings.customEvents = {};
+        }
+        // Initialize new marker settings if they don't exist
+        if (this.settings.showDecadeMarkers === undefined) {
+            this.settings.showDecadeMarkers = DEFAULT_SETTINGS.showDecadeMarkers;
+        }
+        if (this.settings.showWeekMarkers === undefined) {
+            this.settings.showWeekMarkers = DEFAULT_SETTINGS.showWeekMarkers;
+        }
+        if (this.settings.showMonthMarkers === undefined) {
+            this.settings.showMonthMarkers = DEFAULT_SETTINGS.showMonthMarkers;
         }
     }
     /**
@@ -272,6 +285,46 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
         const decades = Math.floor(year / 10);
         const extraGap = DECADE_GAP - cellGap; // Additional space for each decade
         return year * (cellSize + cellGap) + (decades * extraGap);
+    }
+    /**
+     * Calculate month positions for vertical markers based on birth date
+     * @param birthdayDate - User's birth date
+     * @param totalYears - Total years to display on timeline
+     * @returns Array of objects with month data for positioning
+     */
+    calculateMonthPositions(birthdayDate, totalYears) {
+        const monthPositions = [];
+        const birthMonth = birthdayDate.getMonth();
+        const birthDay = birthdayDate.getDate();
+        // Get month names
+        const monthNames = [
+            "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+        ];
+        // Calculate positions for each month in the timeline
+        for (let year = 0; year < totalYears; year++) {
+            for (let month = 0; month < 12; month++) {
+                // Skip the first partial month if birth date is not the 1st of the month
+                if (year === 0 && month < birthMonth)
+                    continue;
+                if (year === 0 && month === birthMonth && birthDay > 1)
+                    continue;
+                // Create a date object for the first day of this month
+                const monthDate = new Date(birthdayDate.getFullYear() + year, month + birthMonth, 1);
+                if (month + birthMonth >= 12) {
+                    monthDate.setFullYear(birthdayDate.getFullYear() + year + 1);
+                    monthDate.setMonth((month + birthMonth) % 12);
+                }
+                // Calculate weeks since birth
+                const weeksSinceBirth = this.getFullWeekAge(birthdayDate, monthDate);
+                // Add to positions array
+                monthPositions.push({
+                    week: weeksSinceBirth,
+                    label: monthNames[monthDate.getMonth()]
+                });
+            }
+        }
+        return monthPositions;
     }
 }
 // -----------------------------------------------------------------------
@@ -799,6 +852,14 @@ class ChronosTimelineView extends obsidian.ItemView {
             const modal = new ManageEventTypesModal(this.app, this.plugin);
             modal.open();
         });
+        // Add marker settings toggle button
+        const markerSettingsBtn = controlsEl.createEl("button", {
+            text: "Marker Settings"
+        });
+        markerSettingsBtn.addEventListener("click", () => {
+            const modal = new MarkerSettingsModal(this.app, this.plugin, () => this.renderView());
+            modal.open();
+        });
         // Create the view container
         const viewEl = contentEl.createEl("div", { cls: "chronos-view" });
         // Render the weeks grid
@@ -863,42 +924,75 @@ class ChronosTimelineView extends obsidian.ItemView {
         const topOffset = parseInt(getComputedStyle(root).getPropertyValue("--top-offset")) || 50;
         const regularGap = cellGap; // Store the regular gap size
         // Create decade markers container (horizontal markers above the grid)
-        const decadeMarkersContainer = container.createEl("div", {
-            cls: "chronos-decade-markers"
-        });
-        // Add decade markers (0, 10, 20, etc.)
-        for (let decade = 0; decade <= this.plugin.settings.lifespan; decade += 10) {
-            const marker = decadeMarkersContainer.createEl("div", {
-                cls: "chronos-decade-marker",
-                text: decade.toString()
+        if (this.plugin.settings.showDecadeMarkers) {
+            const decadeMarkersContainer = container.createEl("div", {
+                cls: "chronos-decade-markers"
             });
-            // Position each decade marker using the calculateYearPosition method
-            marker.style.position = "absolute";
-            // Calculate position with the decade spacing
-            const leftPosition = this.plugin.calculateYearPosition(decade, cellSize, regularGap) + cellSize / 2;
-            marker.style.left = `${leftPosition}px`;
-            marker.style.top = `${topOffset / 2}px`;
-            marker.style.transform = "translate(-50%, -50%)";
+            // Add decade markers (0, 10, 20, etc.)
+            for (let decade = 0; decade <= this.plugin.settings.lifespan; decade += 10) {
+                const marker = decadeMarkersContainer.createEl("div", {
+                    cls: "chronos-decade-marker",
+                    text: decade.toString()
+                });
+                // Position each decade marker using the calculateYearPosition method
+                marker.style.position = "absolute";
+                // Calculate position with the decade spacing
+                const leftPosition = this.plugin.calculateYearPosition(decade, cellSize, regularGap) + cellSize / 2;
+                marker.style.left = `${leftPosition}px`;
+                marker.style.top = `${topOffset / 2}px`;
+                marker.style.transform = "translate(-50%, -50%)";
+            }
         }
         // Create week markers container (vertical markers to the left of the grid)
-        const weekMarkersContainer = container.createEl("div", {
-            cls: "chronos-week-markers"
+        const markersContainer = container.createEl("div", {
+            cls: "chronos-vertical-markers"
         });
-        // Add week markers (10, 20, 30, 40, 50)
-        for (let week = 0; week <= 50; week += 10) {
-            if (week === 0)
-                continue; // Skip 0 to start with 10
-            const marker = weekMarkersContainer.createEl("div", {
-                cls: "chronos-week-marker",
-                text: week.toString()
+        // Add week markers (10, 20, 30, 40, 50) if enabled
+        if (this.plugin.settings.showWeekMarkers) {
+            const weekMarkersContainer = markersContainer.createEl("div", {
+                cls: "chronos-week-markers"
             });
-            // Position each week marker
-            marker.style.position = "absolute";
-            marker.style.right = "10px";
-            // Move up by 1 block by subtracting (cellSize + cellGap)
-            marker.style.top = `${week * (cellSize + cellGap) + cellSize / 2 - (cellSize + cellGap)}px`;
-            marker.style.transform = "translateY(-50%)";
-            marker.style.textAlign = "right";
+            for (let week = 0; week <= 50; week += 10) {
+                if (week === 0)
+                    continue; // Skip 0 to start with 10
+                const marker = weekMarkersContainer.createEl("div", {
+                    cls: "chronos-week-marker",
+                    text: week.toString()
+                });
+                // Position each week marker
+                marker.style.position = "absolute";
+                marker.style.right = "10px";
+                // Move up by 1 block by subtracting (cellSize + cellGap)
+                marker.style.top = `${week * (cellSize + cellGap) + cellSize / 2 - (cellSize + cellGap)}px`;
+                marker.style.transform = "translateY(-50%)";
+                marker.style.textAlign = "right";
+            }
+        }
+        // Add month markers if enabled
+        if (this.plugin.settings.showMonthMarkers) {
+            const birthdayDate = new Date(this.plugin.settings.birthday);
+            const monthPositions = this.plugin.calculateMonthPositions(birthdayDate, this.plugin.settings.lifespan);
+            const monthMarkersContainer = markersContainer.createEl("div", {
+                cls: "chronos-month-markers"
+            });
+            // Add month markers
+            for (const monthPosition of monthPositions) {
+                // Skip positions that would overlap with weeks that are multiples of 10
+                const weekMod10 = monthPosition.week % 10;
+                if (weekMod10 === 0 || weekMod10 === 9 || weekMod10 === 1)
+                    continue;
+                const marker = monthMarkersContainer.createEl("div", {
+                    cls: "chronos-month-marker",
+                    text: monthPosition.label
+                });
+                // Position each month marker
+                marker.style.position = "absolute";
+                marker.style.right = "10px";
+                // Calculate vertical position
+                marker.style.top = `${monthPosition.week * (cellSize + cellGap) + cellSize / 2}px`;
+                marker.style.transform = "translateY(-50%)";
+                marker.style.textAlign = "right";
+            }
         }
         // Create the grid container
         const gridEl = container.createEl("div", { cls: "chronos-grid" });
@@ -1065,6 +1159,93 @@ class ChronosTimelineView extends obsidian.ItemView {
             cell.classList.contains("event")) {
             cell.addClass("future-event-highlight");
         }
+    }
+}
+// -----------------------------------------------------------------------
+// MARKER SETTINGS MODAL
+// -----------------------------------------------------------------------
+/**
+ * Modal for configuring which timeline markers are visible
+ */
+class MarkerSettingsModal extends obsidian.Modal {
+    /** Reference to the main plugin */
+    plugin;
+    /** Callback to refresh views when settings change */
+    refreshCallback;
+    /**
+     * Create a new marker settings modal
+     * @param app - Obsidian App instance
+     * @param plugin - ChronosTimelinePlugin instance
+     * @param refreshCallback - Callback to refresh views
+     */
+    constructor(app, plugin, refreshCallback) {
+        super(app);
+        this.plugin = plugin;
+        this.refreshCallback = refreshCallback;
+    }
+    /**
+     * Build the modal UI when opened
+     */
+    onOpen() {
+        const { contentEl } = this;
+        contentEl.empty();
+        contentEl.createEl("h2", { text: "Timeline Marker Settings" });
+        contentEl.createEl("p", {
+            text: "Choose which timeline markers are visible"
+        });
+        // Decade markers setting
+        new obsidian.Setting(contentEl)
+            .setName("Decade Markers")
+            .setDesc("Show decade markers along the top (0, 10, 20, ...)")
+            .addToggle((toggle) => {
+            toggle
+                .setValue(this.plugin.settings.showDecadeMarkers)
+                .onChange(async (value) => {
+                this.plugin.settings.showDecadeMarkers = value;
+                await this.plugin.saveSettings();
+                this.refreshCallback();
+            });
+        });
+        // Week markers setting
+        new obsidian.Setting(contentEl)
+            .setName("Week Markers")
+            .setDesc("Show week markers along the left (10, 20, 30, ...)")
+            .addToggle((toggle) => {
+            toggle
+                .setValue(this.plugin.settings.showWeekMarkers)
+                .onChange(async (value) => {
+                this.plugin.settings.showWeekMarkers = value;
+                await this.plugin.saveSettings();
+                this.refreshCallback();
+            });
+        });
+        // Month markers setting
+        new obsidian.Setting(contentEl)
+            .setName("Month Markers")
+            .setDesc("Show month markers along the left side (Jan, Feb, Mar, ...)")
+            .addToggle((toggle) => {
+            toggle
+                .setValue(this.plugin.settings.showMonthMarkers)
+                .onChange(async (value) => {
+                this.plugin.settings.showMonthMarkers = value;
+                await this.plugin.saveSettings();
+                this.refreshCallback();
+            });
+        });
+        // Close button
+        new obsidian.Setting(contentEl)
+            .addButton((btn) => btn
+            .setButtonText("Close")
+            .setCta()
+            .onClick(() => {
+            this.close();
+        }));
+    }
+    /**
+     * Clean up on modal close
+     */
+    onClose() {
+        this.contentEl.empty();
     }
 }
 // -----------------------------------------------------------------------
@@ -1378,6 +1559,41 @@ class ChronosSettingTab extends obsidian.PluginSettingTab {
             await this.plugin.saveSettings();
             this.refreshAllViews();
         }));
+        // Marker visibility section
+        containerEl.createEl("h3", { text: "Marker Visibility" });
+        // Decade markers setting
+        new obsidian.Setting(containerEl)
+            .setName("Decade Markers")
+            .setDesc("Show decade markers along the top (0, 10, 20, ...)")
+            .addToggle((toggle) => toggle
+            .setValue(this.plugin.settings.showDecadeMarkers)
+            .onChange(async (value) => {
+            this.plugin.settings.showDecadeMarkers = value;
+            await this.plugin.saveSettings();
+            this.refreshAllViews();
+        }));
+        // Week markers setting
+        new obsidian.Setting(containerEl)
+            .setName("Week Markers")
+            .setDesc("Show week markers along the left (10, 20, 30, ...)")
+            .addToggle((toggle) => toggle
+            .setValue(this.plugin.settings.showWeekMarkers)
+            .onChange(async (value) => {
+            this.plugin.settings.showWeekMarkers = value;
+            await this.plugin.saveSettings();
+            this.refreshAllViews();
+        }));
+        // Month markers setting
+        new obsidian.Setting(containerEl)
+            .setName("Month Markers")
+            .setDesc("Show month markers along the left side (Jan, Feb, Mar, ...)")
+            .addToggle((toggle) => toggle
+            .setValue(this.plugin.settings.showMonthMarkers)
+            .onChange(async (value) => {
+            this.plugin.settings.showMonthMarkers = value;
+            await this.plugin.saveSettings();
+            this.refreshAllViews();
+        }));
         // Color settings section
         containerEl.createEl("h3", { text: "Colors" });
         // Past cells color
@@ -1505,6 +1721,9 @@ class ChronosSettingTab extends obsidian.PluginSettingTab {
         });
         containerEl.createEl("p", {
             text: "• Create custom event types to personalize your timeline"
+        });
+        containerEl.createEl("p", {
+            text: "• Use the 'Marker Settings' button to customize which timeline markers are visible"
         });
     }
     /**

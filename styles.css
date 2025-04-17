@@ -49,6 +49,15 @@
     min-width: 600px;
   }
   
+  .chronos-vertical-markers {
+    position: absolute;
+    top: var(--top-offset);
+    left: 0;
+    width: var(--left-offset);
+    height: calc(100% - var(--top-offset));
+    pointer-events: none;
+    z-index: 10;
+  }
   /* -----------------------------------------------------------------------------
          CONTROL ELEMENTS
          ----------------------------------------------------------------------------- */
@@ -102,12 +111,9 @@
   /* Week markers (vertical, left) */
   .chronos-week-markers {
     position: absolute;
-    top: var(--top-offset);
-    left: 0;
-    width: var(--left-offset);
-    height: calc(100% - var(--top-offset));
+    width: 100%;
+    height: 100%;
     pointer-events: none;
-    z-index: 10;
   }
   
   .chronos-week-marker {
@@ -117,6 +123,27 @@
     font-weight: 500;
     text-align: right;
     right: 10px;
+    transform: translateY(-50%);
+  }
+
+  /* Month markers */
+
+  .chronos-month-markers {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+  
+  .chronos-month-marker {
+    position: absolute;
+    font-size: 10px;
+    color: var(--text-muted);
+    font-weight: 400;
+    font-style: italic;
+    text-align: right;
+    right: 10px;
+    opacity: 0.7;
     transform: translateY(-50%);
   }
   
