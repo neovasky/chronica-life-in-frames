@@ -106,6 +106,9 @@ const CHRONOS_ICON = `<svg viewBox="0 0 100 100" width="100" height="100" xmlns=
   <circle cx="50" cy="50" r="5" fill="currentColor"/>
 </svg>`;
 
+// Gap between decades (larger than regular gap)
+const DECADE_GAP = 6; // px
+
 // -----------------------------------------------------------------------
 // MAIN PLUGIN CLASS
 // -----------------------------------------------------------------------
@@ -361,6 +364,21 @@ export default class ChronosTimelinePlugin extends Plugin {
     
     return weekKeys;
   }
+  
+  /**
+   * Calculate the horizontal position for a given year, accounting for decade gaps
+   * @param year - Year to calculate position for (0-based index from birth)
+   * @param cellSize - Size of each cell in pixels
+   * @param cellGap - Standard gap between cells in pixels
+   * @returns Position in pixels
+   */
+  calculateYearPosition(year: number, cellSize: number, cellGap: number): number {
+    // Add extra space for each completed decade
+    const decades = Math.floor(year / 10);
+    const extraGap = DECADE_GAP - cellGap; // Additional space for each decade
+    
+    return year * (cellSize + cellGap) + (decades * extraGap);
+  }
 }
 
 // -----------------------------------------------------------------------
@@ -483,10 +501,10 @@ class ChronosEventModal extends Modal {
     singleDateOption.createEl("span", { text: "Single Date" });
     
     const rangeDateOption = dateTypeContainer.createEl("label", { cls: "date-option" });
-const rangeDateRadio = rangeDateOption.createEl("input", {
-  type: "radio",
-  attr: { name: "date-type", value: "range" }
-});
+    const rangeDateRadio = rangeDateOption.createEl("input", {
+      type: "radio",
+      attr: { name: "date-type", value: "range" }
+    });
     rangeDateOption.createEl("span", { text: "Date Range" });
     
     // Container for single date input
@@ -1070,6 +1088,8 @@ class ChronosTimelineView extends ItemView {
     const cellGap = parseInt(getComputedStyle(root).getPropertyValue("--cell-gap")) || 2;
     const leftOffset = parseInt(getComputedStyle(root).getPropertyValue("--left-offset")) || 50;
     const topOffset = parseInt(getComputedStyle(root).getPropertyValue("--top-offset")) || 50;
+    const regularGap = cellGap; // Store the regular gap size
+    const decadeGap = DECADE_GAP; // Use the larger gap for decades
 
     // Create decade markers container (horizontal markers above the grid)
     const decadeMarkersContainer = container.createEl("div", {
@@ -1083,16 +1103,12 @@ class ChronosTimelineView extends ItemView {
         text: decade.toString()
       });
 
-      // Position each decade marker
+      // Position each decade marker using the calculateYearPosition method
       marker.style.position = "absolute";
-
-      // Special adjustment for the last marker (90 years)
-      let leftPosition = decade * (cellSize + cellGap) + cellSize / 2;
-      if (decade === 90) {
-        // Adjust the 90-year marker position
-        leftPosition -= 18; 
-      }
-
+      
+      // Calculate position with the decade spacing
+      const leftPosition = this.plugin.calculateYearPosition(decade, cellSize, regularGap) + cellSize / 2;
+      
       marker.style.left = `${leftPosition}px`;
       marker.style.top = `${topOffset / 2}px`;
       marker.style.transform = "translate(-50%, -50%)";
@@ -1124,12 +1140,10 @@ class ChronosTimelineView extends ItemView {
       marker.style.textAlign = "right";
     }
 
-    // Create the grid with absolute positioning
+    // Create the grid container
     const gridEl = container.createEl("div", { cls: "chronos-grid" });
-    gridEl.style.display = "grid";
-    gridEl.style.gridGap = "var(--cell-gap)";
-    gridEl.style.gridTemplateColumns = `repeat(${this.plugin.settings.lifespan}, var(--cell-size))`;
-    gridEl.style.gridTemplateRows = `repeat(52, var(--cell-size))`;
+    // Use display block instead of grid, as we'll manually position each cell
+    gridEl.style.display = "block";
     gridEl.style.position = "absolute";
     gridEl.style.top = `${topOffset}px`;
     gridEl.style.left = `${leftOffset}px`;
@@ -1151,6 +1165,22 @@ class ChronosTimelineView extends ItemView {
         const cellWeek = this.plugin.getISOWeekNumber(cellDate);
         const weekKey = `${cellYear}-W${cellWeek.toString().padStart(2, "0")}`;
         cell.dataset.weekKey = weekKey;
+
+        // Position the cell with absolute positioning
+        cell.style.position = "absolute";
+        
+        // Calculate left position with decade spacing
+        const leftPos = this.plugin.calculateYearPosition(year, cellSize, regularGap);
+        
+        // Calculate top position (unchanged)
+        const topPos = week * (cellSize + regularGap);
+        
+        cell.style.left = `${leftPos}px`;
+        cell.style.top = `${topPos}px`;
+        
+        // Explicitly set width and height (previously handled by grid)
+        cell.style.width = `${cellSize}px`;
+        cell.style.height = `${cellSize}px`;
 
         // Color coding (past, present, future)
         if (weekIndex < ageInWeeks) {
