@@ -5,369 +5,370 @@
 /* -----------------------------------------------------------------------------
    CSS VARIABLES
    ----------------------------------------------------------------------------- */
-:root {
-  --cell-size: 16px;
-  --cell-gap: 2px;
-  --total-years: 90; /* This should match your lifespan setting */
-  --left-offset: 50px; /* Space for week markers */
-  --top-offset: 50px; /* Space for decade markers */
-}
-
-/* -----------------------------------------------------------------------------
-       LAYOUT CONTAINERS
-       ----------------------------------------------------------------------------- */
-/* Main container */
-.chronos-timeline-container {
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
-  padding: 10px;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  overflow: hidden;
-}
-
-/* Title styling */
-.chronos-title {
-  font-size: 28px;
-  font-weight: 300;
-  font-style: italic;
-  text-align: center;
-  margin-bottom: 20px;
-  color: var(--text-normal);
-}
-
-/* Main view container */
-.chronos-view {
-  position: relative;
-  overflow: auto;
-  flex-grow: 1;
-  margin-bottom: 15px;
-  background-color: var(--background-primary);
-  border-radius: 6px;
-  padding: var(--top-offset) 20px 20px var(--left-offset);
-  min-height: 400px;
-  min-width: 600px;
-}
-
-/* -----------------------------------------------------------------------------
-       CONTROL ELEMENTS
-       ----------------------------------------------------------------------------- */
-/* Controls bar */
-.chronos-controls {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 20px;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.chronos-controls button {
-  background-color: var(--interactive-accent);
-  color: var(--text-on-accent);
-  border: none;
-  border-radius: 4px;
-  padding: 6px 12px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: background-color 0.2s;
-}
-
-.chronos-controls button:hover {
-  background-color: var(--interactive-accent-hover);
-}
-
-/* -----------------------------------------------------------------------------
-       MARKERS & GRID LAYOUT
-       ----------------------------------------------------------------------------- */
-/* Decade markers (horizontal, top) */
-.chronos-decade-markers {
-  position: absolute;
-  top: 0;
-  left: var(--left-offset);
-  width: calc(100% - var(--left-offset));
-  height: var(--top-offset);
-  pointer-events: none;
-  z-index: 10;
-}
-
-.chronos-decade-marker {
-  position: absolute;
-  font-size: 12px;
-  color: var(--text-muted);
-  font-weight: 500;
-  text-align: center;
-  transform: translateX(-50%);
-}
-
-/* Week markers (vertical, left) */
-.chronos-week-markers {
-  position: absolute;
-  top: var(--top-offset);
-  left: 0;
-  width: var(--left-offset);
-  height: calc(100% - var(--top-offset));
-  pointer-events: none;
-  z-index: 10;
-}
-
-.chronos-week-marker {
-  position: absolute;
-  font-size: 12px;
-  color: var(--text-muted);
-  font-weight: 500;
-  text-align: right;
-  right: 10px;
-  transform: translateY(-50%);
-}
-
-/* Timeline grid container */
-.chronos-grid {
-  display: grid;
-  grid-gap: var(--cell-gap);
-  position: absolute;
-  top: var(--top-offset);
-  left: var(--left-offset);
-  margin: 0;
-  grid-auto-flow: dense;
-  counter-reset: none;
-}
-
-/* Remove default content generation */
-.chronos-grid::before,
-.chronos-grid::after,
-.chronos-grid-cell::before,
-.chronos-grid-cell::after {
-  display: none !important;
-  content: none !important;
-}
-
-/* -----------------------------------------------------------------------------
-       GRID CELLS
-       ----------------------------------------------------------------------------- */
-/* Individual cells */
-.chronos-grid-cell {
-  width: var(--cell-size);
-  height: var(--cell-size);
-  border-radius: 2px;
-  cursor: pointer;
-  transition: none;
-  position: relative;
-}
-
-.chronos-grid-cell:hover {
-  transform: scale(1.2);
-  box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
-  z-index: 10;
-}
-
-/* Special cell states */
-.chronos-grid-cell.present {
-  box-shadow: 0 0 8px var(--text-accent);
-  z-index: 5;
-}
-
-.chronos-grid-cell.event {
-  border: 1px solid rgba(255, 255, 255, 0.4);
-}
-
-/* Future event highlight with animation */
-.chronos-grid-cell.future-event-highlight {
-  box-shadow: 0 0 8px rgba(255, 215, 0, 0.7);
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0% {
-    box-shadow: 0 0 8px rgba(255, 215, 0, 0.7);
+   :root {
+    --cell-size: 16px;
+    --cell-gap: 2px;
+    --total-years: 90; /* This should match your lifespan setting */
+    --left-offset: 50px; /* Space for week markers */
+    --top-offset: 50px; /* Space for decade markers */
   }
-  50% {
-    box-shadow: 0 0 12px rgba(255, 215, 0, 0.9);
-  }
-  100% {
-    box-shadow: 0 0 8px rgba(255, 215, 0, 0.7);
-  }
-}
-
-/* -----------------------------------------------------------------------------
-       LEGEND
-       ----------------------------------------------------------------------------- */
-.chronos-legend {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 15px;
-  flex-wrap: wrap;
-  gap: 15px;
-}
-
-.chronos-legend-item {
-  display: flex;
-  align-items: center;
-  font-size: 14px;
-  color: var(--text-normal);
-}
-
-.chronos-legend-color {
-  width: 16px;
-  height: 16px;
-  border-radius: 2px;
-  margin-right: 5px;
-}
-
-/* -----------------------------------------------------------------------------
-       FOOTER
-       ----------------------------------------------------------------------------- */
-.chronos-footer {
-  text-align: center;
-  font-style: italic;
-  font-size: 14px;
-  color: var(--text-muted);
-  margin-top: 10px;
-  padding: 10px;
-}
-
-/* -----------------------------------------------------------------------------
-       MODAL WINDOWS & FORMS
-       ----------------------------------------------------------------------------- */
-/* General modal styling */
-.modal .setting-item {
-  border-top: 1px solid var(--background-modifier-border);
-  padding-top: 18px;
-}
-
-/* Date picker enhancements */
-.chronos-date-picker-container {
-  margin-bottom: 20px;
-}
-
-.chronos-helper-text {
-  display: block;
-  margin-top: 5px;
-  margin-bottom: 15px;
-  color: var(--text-muted);
-  font-style: italic;
-}
-
-/* Event type management UI */
-.event-type-add-section,
-.event-type-existing-section {
-  margin-bottom: 20px;
-  padding: 10px;
-  border-radius: 5px;
-  background-color: var(--background-secondary);
-}
-
-.event-type-item {
-  display: flex;
-  align-items: center;
-  margin: 8px 0;
-  padding: 5px;
-  border-radius: 4px;
-}
-
-.event-type-item.built-in {
-  background-color: var(--background-secondary-alt);
-}
-
-.event-type-item.custom {
-  background-color: var(--background-primary);
-}
-
-.event-type-color {
-  width: 16px;
-  height: 16px;
-  border-radius: 3px;
-  margin-right: 10px;
-}
-
-.event-type-name {
-  flex-grow: 1;
-}
-
-/* Buttons */
-.edit-type-button,
-.delete-type-button,
-.add-type-button,
-.close-button,
-.save-edit-button,
-.cancel-edit-button {
-  padding: 4px 8px;
-  margin-left: 5px;
-  border-radius: 4px;
-  border: none;
-  cursor: pointer;
-  font-size: 12px;
-  background-color: var(--interactive-accent);
-  color: var(--text-on-accent);
-}
-
-.delete-type-button {
-  background-color: var(--text-error-hover);
-}
-
-.cancel-edit-button {
-  background-color: var(--text-muted);
-}
-
-/* Radio button controls */
-.chronos-radio-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 5px;
-}
-
-.chronos-radio-label {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  padding: 5px;
-  border-radius: 4px;
-  background-color: var(--background-secondary);
-}
-
-.chronos-color-box {
-  width: 12px;
-  height: 12px;
-  margin: 0 5px;
-  border-radius: 2px;
-  display: inline-block;
-}
-
-/* Form inputs */
-.edit-name-container,
-.edit-color-container {
-  margin-bottom: 15px;
-}
-
-.edit-name-container label,
-.edit-color-container label {
-  display: block;
-  margin-bottom: 5px;
-  font-weight: 500;
-}
-
-/* -----------------------------------------------------------------------------
-       RESPONSIVE DESIGN
-       ----------------------------------------------------------------------------- */
-@media (max-width: 768px) {
-  /* Adjust container padding */
-  .chronos-view {
-    padding: 45px 15px 15px 45px;
-  }
-
-  /* Stack controls vertically */
-  .chronos-controls {
+  
+  /* -----------------------------------------------------------------------------
+         LAYOUT CONTAINERS
+         ----------------------------------------------------------------------------- */
+  /* Main container */
+  .chronos-timeline-container {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    padding: 10px;
+    display: flex;
     flex-direction: column;
-    align-items: center;
+    height: 100%;
+    overflow: hidden;
   }
-
+  
+  /* Title styling */
+  .chronos-title {
+    font-size: 28px;
+    font-weight: 300;
+    font-style: italic;
+    text-align: center;
+    margin-bottom: 20px;
+    color: var(--text-normal);
+  }
+  
+  /* Main view container */
+  .chronos-view {
+    position: relative;
+    overflow: auto;
+    flex-grow: 1;
+    margin-bottom: 15px;
+    background-color: var(--background-primary);
+    border-radius: 6px;
+    padding: var(--top-offset) 20px 20px var(--left-offset);
+    min-height: 400px;
+    min-width: 600px;
+  }
+  
+  /* -----------------------------------------------------------------------------
+         CONTROL ELEMENTS
+         ----------------------------------------------------------------------------- */
+  /* Controls bar */
+  .chronos-controls {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  
   .chronos-controls button {
-    width: 80%;
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border: none;
+    border-radius: 4px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s;
   }
-
-  /* Adjust markers */
-  .chronos-decade-marker,
+  
+  .chronos-controls button:hover {
+    background-color: var(--interactive-accent-hover);
+  }
+  
+  /* -----------------------------------------------------------------------------
+         MARKERS & GRID LAYOUT
+         ----------------------------------------------------------------------------- */
+  /* Decade markers (horizontal, top) */
+  .chronos-decade-markers {
+    position: absolute;
+    top: 0;
+    left: var(--left-offset);
+    width: calc(100% - var(--left-offset));
+    height: var(--top-offset);
+    pointer-events: none;
+    z-index: 10;
+  }
+  
+  .chronos-decade-marker {
+    position: absolute;
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 500;
+    text-align: center;
+    transform: translateX(-50%);
+  }
+  
+  /* Week markers (vertical, left) */
+  .chronos-week-markers {
+    position: absolute;
+    top: var(--top-offset);
+    left: 0;
+    width: var(--left-offset);
+    height: calc(100% - var(--top-offset));
+    pointer-events: none;
+    z-index: 10;
+  }
+  
   .chronos-week-marker {
-    font-size: 10px;
+    position: absolute;
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 500;
+    text-align: right;
+    right: 10px;
+    transform: translateY(-50%);
   }
-}
+  
+  /* Timeline grid container */
+  .chronos-grid {
+    display: grid;
+    grid-gap: var(--cell-gap);
+    position: absolute;
+    top: var(--top-offset);
+    left: var(--left-offset);
+    margin: 0;
+    grid-auto-flow: dense;
+    counter-reset: none;
+  }
+  
+  /* Remove default content generation */
+  .chronos-grid::before,
+  .chronos-grid::after,
+  .chronos-grid-cell::before,
+  .chronos-grid-cell::after {
+    display: none !important;
+    content: none !important;
+  }
+  
+  /* -----------------------------------------------------------------------------
+         GRID CELLS
+         ----------------------------------------------------------------------------- */
+  /* Individual cells */
+  .chronos-grid-cell {
+    width: var(--cell-size);
+    height: var(--cell-size);
+    border-radius: 2px;
+    cursor: pointer;
+    transition: none;
+    position: relative;
+  }
+  
+  .chronos-grid-cell:hover {
+    transform: scale(1.2);
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+    z-index: 10;
+  }
+  
+  /* Special cell states */
+  .chronos-grid-cell.present {
+    box-shadow: 0 0 8px var(--text-accent);
+    z-index: 5;
+  }
+  
+  .chronos-grid-cell.event {
+    border: 1px solid rgba(255, 255, 255, 0.4);
+  }
+  
+  /* Future event highlight with animation */
+  .chronos-grid-cell.future-event-highlight {
+    box-shadow: 0 0 8px rgba(255, 215, 0, 0.7);
+    animation: pulse 2s infinite;
+  }
+  
+  @keyframes pulse {
+    0% {
+      box-shadow: 0 0 8px rgba(255, 215, 0, 0.7);
+    }
+    50% {
+      box-shadow: 0 0 12px rgba(255, 215, 0, 0.9);
+    }
+    100% {
+      box-shadow: 0 0 8px rgba(255, 215, 0, 0.7);
+    }
+  }
+  
+  /* -----------------------------------------------------------------------------
+         LEGEND
+         ----------------------------------------------------------------------------- */
+  .chronos-legend {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+    gap: 15px;
+  }
+  
+  .chronos-legend-item {
+    display: flex;
+    align-items: center;
+    font-size: 14px;
+    color: var(--text-normal);
+  }
+  
+  .chronos-legend-color {
+    width: 16px;
+    height: 16px;
+    border-radius: 2px;
+    margin-right: 5px;
+  }
+  
+  /* -----------------------------------------------------------------------------
+         FOOTER
+         ----------------------------------------------------------------------------- */
+  .chronos-footer {
+    text-align: center;
+    font-style: italic;
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-top: 10px;
+    padding: 10px;
+  }
+  
+  /* -----------------------------------------------------------------------------
+         MODAL WINDOWS & FORMS
+         ----------------------------------------------------------------------------- */
+  /* General modal styling */
+  .modal .setting-item {
+    border-top: 1px solid var(--background-modifier-border);
+    padding-top: 18px;
+  }
+  
+  /* Date picker enhancements */
+  .chronos-date-picker-container {
+    margin-bottom: 20px;
+  }
+  
+  .chronos-helper-text {
+    display: block;
+    margin-top: 5px;
+    margin-bottom: 15px;
+    color: var(--text-muted);
+    font-style: italic;
+  }
+  
+  /* Event type management UI */
+  .event-type-add-section,
+  .event-type-existing-section {
+    margin-bottom: 20px;
+    padding: 10px;
+    border-radius: 5px;
+    background-color: var(--background-secondary);
+  }
+  
+  .event-type-item {
+    display: flex;
+    align-items: center;
+    margin: 8px 0;
+    padding: 5px;
+    border-radius: 4px;
+  }
+  
+  .event-type-item.built-in {
+    background-color: var(--background-secondary-alt);
+  }
+  
+  .event-type-item.custom {
+    background-color: var(--background-primary);
+  }
+  
+  .event-type-color {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    margin-right: 10px;
+  }
+  
+  .event-type-name {
+    flex-grow: 1;
+  }
+  
+  /* Buttons */
+  .edit-type-button,
+  .delete-type-button,
+  .add-type-button,
+  .close-button,
+  .save-edit-button,
+  .cancel-edit-button {
+    padding: 4px 8px;
+    margin-left: 5px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+  }
+  
+  .delete-type-button {
+    background-color: var(--text-error-hover);
+  }
+  
+  .cancel-edit-button {
+    background-color: var(--text-muted);
+  }
+  
+  /* Radio button controls */
+  .chronos-radio-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 5px;
+  }
+  
+  .chronos-radio-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 4px;
+    background-color: var(--background-secondary);
+  }
+  
+  .chronos-color-box {
+    width: 12px;
+    height: 12px;
+    margin: 0 5px;
+    border-radius: 2px;
+    display: inline-block;
+  }
+  
+  /* Form inputs */
+  .edit-name-container,
+  .edit-color-container {
+    margin-bottom: 15px;
+  }
+  
+  .edit-name-container label,
+  .edit-color-container label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+  }
+  
+  /* -----------------------------------------------------------------------------
+         RESPONSIVE DESIGN
+         ----------------------------------------------------------------------------- */
+  @media (max-width: 768px) {
+    /* Adjust container padding */
+    .chronos-view {
+      padding: 45px 15px 15px 45px;
+    }
+  
+    /* Stack controls vertically */
+    .chronos-controls {
+      flex-direction: column;
+      align-items: center;
+    }
+  
+    .chronos-controls button {
+      width: 80%;
+    }
+  
+    /* Adjust markers */
+    .chronos-decade-marker,
+    .chronos-week-marker {
+      font-size: 10px;
+    }
+  }
+  
