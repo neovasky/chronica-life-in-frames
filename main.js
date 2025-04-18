@@ -37,7 +37,8 @@ const DEFAULT_SETTINGS = {
     notesFolder: "",
     showDecadeMarkers: true,
     showWeekMarkers: true,
-    showMonthMarkers: true
+    showMonthMarkers: true,
+    monthMarkerFrequency: 'all'
 };
 /** SVG icon for the ChronOS Timeline */
 const CHRONOS_ICON = `<svg viewBox="0 0 100 100" width="100" height="100" xmlns="http://www.w3.org/2000/svg">
@@ -48,6 +49,8 @@ const CHRONOS_ICON = `<svg viewBox="0 0 100 100" width="100" height="100" xmlns=
 </svg>`;
 // Gap between decades (larger than regular gap)
 const DECADE_GAP = 6; // px
+// Month names for display
+const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 // -----------------------------------------------------------------------
 // MAIN PLUGIN CLASS
 // -----------------------------------------------------------------------
@@ -118,6 +121,9 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
         }
         if (this.settings.showMonthMarkers === undefined) {
             this.settings.showMonthMarkers = DEFAULT_SETTINGS.showMonthMarkers;
+        }
+        if (this.settings.monthMarkerFrequency === undefined) {
+            this.settings.monthMarkerFrequency = DEFAULT_SETTINGS.monthMarkerFrequency;
         }
     }
     /**
@@ -290,37 +296,67 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
      * Calculate month positions for vertical markers based on birth date
      * @param birthdayDate - User's birth date
      * @param totalYears - Total years to display on timeline
-     * @returns Array of objects with month data for positioning
+     * @param frequency - How often to show month markers ('all', 'quarter', 'half-year', 'year')
+     * @returns Array of objects with month marker data
      */
-    calculateMonthPositions(birthdayDate, totalYears) {
-        const monthPositions = [];
-        // Get month names
-        const monthNames = [
-            "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-        ];
-        // Create a copy of the birthday date to avoid modifying the original
+    calculateMonthMarkers(birthdayDate, totalYears, frequency = 'all') {
+        const monthMarkers = [];
+        // Clone the birthday date to avoid modifying the original
         const startDate = new Date(birthdayDate);
-        // Calculate total weeks in the timeline
-        const totalWeeks = totalYears * 52;
-        // Start from first day of month following birth
-        startDate.setDate(1);
-        if (birthdayDate.getDate() > 1) {
-            startDate.setMonth(startDate.getMonth() + 1);
-        }
-        // Go through each month for the entire timeline
-        for (let week = 0; week < totalWeeks; week += 4) { // Sample every ~4 weeks
-            const currentDate = new Date(birthdayDate);
-            currentDate.setDate(currentDate.getDate() + (week * 7)); // Add weeks
-            // Only add if it's the first week of a month
-            if (currentDate.getDate() <= 7) {
-                monthPositions.push({
-                    week: week,
-                    label: monthNames[currentDate.getMonth()]
-                });
+        // Calculate the end date (birthday + total years)
+        const endDate = new Date(birthdayDate);
+        endDate.setFullYear(endDate.getFullYear() + totalYears);
+        // Create a date iterator starting from the birthday
+        const currentDate = new Date(startDate);
+        // Track the last shown month to avoid duplicates
+        let lastShownMonth = -1;
+        let lastShownYear = -1;
+        // Helper to determine if a month should be shown based on frequency
+        const shouldShowMonth = (monthNum, year) => {
+            // Always show January as the first month of the year
+            if (monthNum === 0)
+                return true;
+            switch (frequency) {
+                case 'all':
+                    return true;
+                case 'quarter':
+                    // Show first month of each quarter (Jan, Apr, Jul, Oct)
+                    return monthNum % 3 === 0;
+                case 'half-year':
+                    // Show first month of each half year (Jan, Jul)
+                    return monthNum % 6 === 0;
+                case 'year':
+                    // Only show January
+                    return monthNum === 0;
+                default:
+                    return true;
             }
+        };
+        // Iterate through each day until we reach the end date
+        while (currentDate < endDate) {
+            const currentMonth = currentDate.getMonth();
+            const currentYear = currentDate.getFullYear();
+            // Check if this is a new month and should be shown
+            if ((currentMonth !== lastShownMonth || currentYear !== lastShownYear) &&
+                shouldShowMonth(currentMonth)) {
+                // Calculate the exact week index based on days since birth
+                const daysSinceBirth = Math.floor((currentDate.getTime() - birthdayDate.getTime()) / (1000 * 60 * 60 * 24));
+                const exactWeekIndex = Math.floor(daysSinceBirth / 7);
+                // Add marker for this month
+                monthMarkers.push({
+                    weekIndex: exactWeekIndex,
+                    label: MONTH_NAMES[currentMonth],
+                    isFirstOfYear: currentMonth === 0,
+                    fullLabel: `${MONTH_NAMES[currentMonth]} ${currentYear}`
+                });
+                // Update last shown month/year
+                lastShownMonth = currentMonth;
+                lastShownYear = currentYear;
+            }
+            // Move to the next day
+            currentDate.setDate(currentDate.getDate() + 1);
         }
-        return monthPositions;
+        return monthMarkers;
     }
 }
 // -----------------------------------------------------------------------
@@ -939,7 +975,7 @@ class ChronosTimelineView extends obsidian.ItemView {
                 marker.style.transform = "translate(-50%, -50%)";
             }
         }
-        // Create week markers container (vertical markers to the left of the grid)
+        // Create vertical markers container (for both week and month markers)
         const markersContainer = container.createEl("div", {
             cls: "chronos-vertical-markers"
         });
@@ -967,39 +1003,45 @@ class ChronosTimelineView extends obsidian.ItemView {
         // Add month markers if enabled
         if (this.plugin.settings.showMonthMarkers) {
             const birthdayDate = new Date(this.plugin.settings.birthday);
-            const monthPositions = this.plugin.calculateMonthPositions(birthdayDate, this.plugin.settings.lifespan);
+            const monthMarkers = this.plugin.calculateMonthMarkers(birthdayDate, this.plugin.settings.lifespan, this.plugin.settings.monthMarkerFrequency);
             const monthMarkersContainer = markersContainer.createEl("div", {
                 cls: "chronos-month-markers"
             });
-            // Track which weeks already have markers to avoid overcrowding
-            const markedWeeks = new Set();
-            // Add week markers (10, 20, 30, etc.) to the set to avoid overlap
+            // Track which weeks are taken by week markers
+            const weekMarkerPositions = new Set();
             if (this.plugin.settings.showWeekMarkers) {
                 for (let w = 10; w <= 50; w += 10) {
-                    markedWeeks.add(w);
-                    markedWeeks.add(w - 1);
-                    markedWeeks.add(w + 1);
+                    // Add the week itself plus safety buffer of -1/+1
+                    weekMarkerPositions.add(w - 1);
+                    weekMarkerPositions.add(w);
+                    weekMarkerPositions.add(w + 1);
                 }
             }
-            // Filter and add month markers
-            for (const monthPosition of monthPositions) {
-                // Skip if already have a marker nearby or out of bounds
-                if (markedWeeks.has(monthPosition.week) ||
-                    monthPosition.week < 0 ||
-                    monthPosition.week >= this.plugin.settings.lifespan * 52) {
+            // Add each month marker
+            for (const monthMarker of monthMarkers) {
+                // Skip if this position collides with a week marker or is out of bounds
+                if (weekMarkerPositions.has(monthMarker.weekIndex) ||
+                    monthMarker.weekIndex < 0 ||
+                    monthMarker.weekIndex >= this.plugin.settings.lifespan * 52) {
                     continue;
                 }
-                // Add this week to marked set
-                markedWeeks.add(monthPosition.week);
+                // Create the marker element
                 const marker = monthMarkersContainer.createEl("div", {
-                    cls: "chronos-month-marker",
-                    text: monthPosition.label
+                    cls: `chronos-month-marker ${monthMarker.isFirstOfYear ? 'first-of-year' : ''}`,
+                    text: monthMarker.label
                 });
-                // Position each month marker
+                // Show full month and year in tooltip
+                marker.setAttribute("title", monthMarker.fullLabel);
+                // Style the marker with position and appearance
                 marker.style.position = "absolute";
                 marker.style.right = "10px";
-                // Calculate vertical position
-                marker.style.top = `${monthPosition.week * (cellSize + cellGap) + cellSize / 2}px`;
+                // January gets special styling
+                if (monthMarker.isFirstOfYear) {
+                    marker.style.fontWeight = "bold";
+                    marker.style.opacity = "1.0";
+                }
+                // Position the marker at the exact grid position
+                marker.style.top = `${monthMarker.weekIndex * (cellSize + cellGap) + cellSize / 2}px`;
                 marker.style.transform = "translateY(-50%)";
                 marker.style.textAlign = "right";
             }
@@ -1242,6 +1284,28 @@ class MarkerSettingsModal extends obsidian.Modal {
                 this.refreshCallback();
             });
         });
+        // Month marker frequency dropdown
+        const monthMarkerSetting = new obsidian.Setting(contentEl)
+            .setName("Month Marker Frequency")
+            .setDesc("Choose how often month markers appear")
+            .addDropdown(dropdown => {
+            dropdown
+                .addOption('all', 'Every Month')
+                .addOption('quarter', 'Every Quarter (Jan, Apr, Jul, Oct)')
+                .addOption('half-year', 'Every Half Year (Jan, Jul)')
+                .addOption('year', 'Every Year (Jan only)')
+                .setValue(this.plugin.settings.monthMarkerFrequency)
+                .onChange(async (value) => {
+                this.plugin.settings.monthMarkerFrequency = value;
+                await this.plugin.saveSettings();
+                this.refreshCallback();
+            });
+        });
+        // Show or hide frequency dropdown based on month markers toggle
+        monthMarkerSetting.setClass("month-marker-frequency");
+        if (!this.plugin.settings.showMonthMarkers) {
+            monthMarkerSetting.settingEl.style.display = "none";
+        }
         // Close button
         new obsidian.Setting(contentEl)
             .addButton((btn) => btn
@@ -1603,7 +1667,34 @@ class ChronosSettingTab extends obsidian.PluginSettingTab {
             this.plugin.settings.showMonthMarkers = value;
             await this.plugin.saveSettings();
             this.refreshAllViews();
+            // Show/hide month marker frequency setting based on toggle state
+            const freqSetting = containerEl.querySelector(".month-marker-frequency");
+            if (freqSetting) {
+                freqSetting.style.display = value ? "flex" : "none";
+            }
         }));
+        // Month marker frequency setting
+        const freqSetting = new obsidian.Setting(containerEl)
+            .setName("Month Marker Frequency")
+            .setDesc("Choose how often month markers appear")
+            .setClass("month-marker-frequency")
+            .addDropdown(dropdown => {
+            dropdown
+                .addOption('all', 'Every Month')
+                .addOption('quarter', 'Every Quarter (Jan, Apr, Jul, Oct)')
+                .addOption('half-year', 'Every Half Year (Jan, Jul)')
+                .addOption('year', 'Every Year (Jan only)')
+                .setValue(this.plugin.settings.monthMarkerFrequency)
+                .onChange(async (value) => {
+                this.plugin.settings.monthMarkerFrequency = value;
+                await this.plugin.saveSettings();
+                this.refreshAllViews();
+            });
+        });
+        // Hide frequency setting if month markers are disabled
+        if (!this.plugin.settings.showMonthMarkers) {
+            freqSetting.settingEl.style.display = "none";
+        }
         // Color settings section
         containerEl.createEl("h3", { text: "Colors" });
         // Past cells color
