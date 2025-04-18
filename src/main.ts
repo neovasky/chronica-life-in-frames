@@ -561,6 +561,38 @@ export default class ChronosTimelinePlugin extends Plugin {
 
     return monthMarkers;
   }
+
+    /**
+   * Calculate date range for a given week key
+   * @param weekKey - Week key in YYYY-WXX format
+   * @returns String with formatted date range
+   */
+  getWeekDateRange(weekKey: string): string {
+    const parts = weekKey.split("-W");
+    if (parts.length !== 2) return "";
+
+    const year = parseInt(parts[0]);
+    const week = parseInt(parts[1]);
+    
+    // Calculate the first day of the week (Monday of that week)
+    const firstDayOfWeek = new Date(year, 0, 1);
+    const dayOffset = firstDayOfWeek.getDay() || 7; // getDay returns 0 for Sunday
+    const dayToAdd = 1 + (week - 1) * 7 - (dayOffset - 1);
+    
+    firstDayOfWeek.setDate(dayToAdd);
+    
+    // Calculate the last day of the week (Sunday)
+    const lastDayOfWeek = new Date(firstDayOfWeek);
+    lastDayOfWeek.setDate(firstDayOfWeek.getDate() + 6);
+    
+    // Format the dates
+    const formatDate = (date: Date): string => {
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      return `${months[date.getMonth()]} ${date.getDate()}`;
+    };
+    
+    return `${formatDate(firstDayOfWeek)} - ${formatDate(lastDayOfWeek)}`;
+  }
 }
 
 // -----------------------------------------------------------------------
@@ -1242,6 +1274,8 @@ class ChronosTimelineView extends ItemView {
     // Create legend
     const legendEl = contentEl.createEl("div", { cls: "chronos-legend" });
 
+    
+
     // Standard event types for legend
     const legendItems = [
       { text: "Major Life Events", color: "#4CAF50" },
@@ -1510,6 +1544,10 @@ renderWeeksGrid(container: HTMLElement): void {
       const weekKey = `${cellYear}-W${cellWeek.toString().padStart(2, "0")}`;
       cell.dataset.weekKey = weekKey;
 
+      // Set the title attribute to show the date range on hover
+      const dateRange = this.plugin.getWeekDateRange(weekKey);
+      cell.setAttribute("title", `Week ${cellWeek}, ${cellYear}\n${dateRange}`);
+
       // Position the cell with absolute positioning
       cell.style.position = "absolute";
 
@@ -1584,7 +1622,12 @@ renderWeeksGrid(container: HTMLElement): void {
 
           const content = `# Week ${cellWeek}, ${cellYear}\n\n## Reflections\n\n## Tasks\n\n## Notes\n`;
           const newFile = await this.app.vault.create(fullPath, content);
+          const weekKey = `${cellYear}-W${cellWeek.toString().padStart(2, "0")}`;
+            cell.dataset.weekKey = weekKey;
+          const dateRange = this.plugin.getWeekDateRange(weekKey);
+            cell.setAttribute("title", `Week ${cellWeek}, ${cellYear}\n${dateRange}`);
           await this.app.workspace.getLeaf().openFile(newFile);
+          
         }
       });
     }
@@ -1612,7 +1655,8 @@ renderWeeksGrid(container: HTMLElement): void {
         cell.style.backgroundColor = defaultColor;
         cell.addClass("event");
         const description = singleEvent.split(":")[1] || defaultDesc;
-        cell.setAttribute("title", description);
+        const currentTitle = cell.getAttribute("title") || "";
+        cell.setAttribute("title", `${description}\n${currentTitle}`);
         return true;
       }
 
@@ -1650,10 +1694,8 @@ renderWeeksGrid(container: HTMLElement): void {
           cell.style.backgroundColor = defaultColor;
           cell.addClass("event");
           const eventDesc = description || defaultDesc;
-          cell.setAttribute(
-            "title",
-            `${eventDesc} (${startWeekKey} to ${endWeekKey})`
-          );
+          const currentTitle = cell.getAttribute("title") || "";
+          cell.setAttribute("title", `${eventDesc} (${startWeekKey} to ${endWeekKey})\n${currentTitle}`);
           return true;
         }
       }
