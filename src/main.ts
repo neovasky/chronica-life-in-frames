@@ -1292,213 +1292,209 @@ class ChronosTimelineView extends ItemView {
     modal.open();
   }
 
-  /**
-   * Render the main weeks grid visualization
-   * @param container - Container to render grid in
-   */
-  renderWeeksGrid(container: HTMLElement): void {
-    container.empty();
+/**
+ * Render the main weeks grid visualization
+ * @param container - Container to render grid in
+ */
+renderWeeksGrid(container: HTMLElement): void {
+  container.empty();
 
-    // Get the CSS variables for positioning and styling
-    const root = document.documentElement;
-    const cellSize =
-      parseInt(getComputedStyle(root).getPropertyValue("--cell-size")) || 16;
-    const cellGap =
-      parseInt(getComputedStyle(root).getPropertyValue("--cell-gap")) || 2;
-    const leftOffset =
-      parseInt(getComputedStyle(root).getPropertyValue("--left-offset")) || 50;
-    const topOffset =
-      parseInt(getComputedStyle(root).getPropertyValue("--top-offset")) || 50;
-    const regularGap = cellGap; // Store the regular gap size
+  // Get the CSS variables for positioning and styling
+  const root = document.documentElement;
+  const cellSize = parseInt(getComputedStyle(root).getPropertyValue("--cell-size")) || 16;
+  const cellGap = parseInt(getComputedStyle(root).getPropertyValue("--cell-gap")) || 2;
+  const leftOffset = parseInt(getComputedStyle(root).getPropertyValue("--left-offset")) || 50;
+  const topOffset = parseInt(getComputedStyle(root).getPropertyValue("--top-offset")) || 50;
+  const regularGap = cellGap; // Store the regular gap size
 
-    // Create decade markers container (horizontal markers above the grid)
-    if (this.plugin.settings.showDecadeMarkers) {
-      const decadeMarkersContainer = container.createEl("div", {
-        cls: "chronos-decade-markers",
-      });
-
-      // Add decade markers (0, 10, 20, etc.)
-      for (
-        let decade = 0;
-        decade <= this.plugin.settings.lifespan;
-        decade += 10
-      ) {
-        const marker = decadeMarkersContainer.createEl("div", {
-          cls: "chronos-decade-marker",
-          text: decade.toString(),
-        });
-
-        // Position each decade marker using the calculateYearPosition method
-        marker.style.position = "absolute";
-
-        // Calculate position with the decade spacing
-        const leftPosition =
-          this.plugin.calculateYearPosition(decade, cellSize, regularGap) +
-          cellSize / 2;
-
-        marker.style.left = `${leftPosition}px`;
-        marker.style.top = `${topOffset / 2}px`;
-        marker.style.transform = "translate(-50%, -50%)";
-      }
-    }
-
-    // Create vertical markers container (for both week and month markers)
-    const markersContainer = container.createEl("div", {
-      cls: "chronos-vertical-markers",
+  // Create decade markers container (horizontal markers above the grid)
+  if (this.plugin.settings.showDecadeMarkers) {
+    const decadeMarkersContainer = container.createEl("div", {
+      cls: "chronos-decade-markers",
     });
 
-    // Add week markers (10, 20, 30, 40, 50) if enabled
-    if (this.plugin.settings.showWeekMarkers) {
-      const weekMarkersContainer = markersContainer.createEl("div", {
-        cls: "chronos-week-markers",
+    // Add decade markers (0, 10, 20, etc.)
+    for (let decade = 0; decade <= this.plugin.settings.lifespan; decade += 10) {
+      const marker = decadeMarkersContainer.createEl("div", {
+        cls: "chronos-decade-marker",
+        text: decade.toString(),
       });
 
-      for (let week = 0; week <= 50; week += 10) {
-        if (week === 0) continue; // Skip 0 to start with 10
+      // Position each decade marker using the calculateYearPosition method
+      marker.style.position = "absolute";
 
-        const marker = weekMarkersContainer.createEl("div", {
-          cls: "chronos-week-marker",
-          text: week.toString(),
+      // Calculate position with the decade spacing
+      const leftPosition = this.plugin.calculateYearPosition(decade, cellSize, regularGap) + cellSize / 2;
+
+      marker.style.left = `${leftPosition}px`;
+      marker.style.top = `${topOffset / 2}px`;
+      marker.style.transform = "translate(-50%, -50%)";
+    }
+  }
+
+  // Create vertical markers container (for both week and month markers)
+  const markersContainer = container.createEl("div", {
+    cls: "chronos-vertical-markers",
+  });
+
+  // Create a single shared Set to track which week positions are occupied by markers
+  // This ensures consistent detection of overlaps
+  const markerPositions = new Map<number, string>();
+
+  // Add week markers (10, 20, 30, 40, 50) if enabled
+  if (this.plugin.settings.showWeekMarkers) {
+    const weekMarkersContainer = markersContainer.createEl("div", {
+      cls: "chronos-week-markers",
+    });
+
+    for (let week = 0; week <= 50; week += 10) {
+      if (week === 0) continue; // Skip 0 to start with 10
+
+      const marker = weekMarkersContainer.createEl("div", {
+        cls: "chronos-week-marker",
+        text: week.toString(),
+      });
+
+      // Position each week marker
+      marker.style.position = "absolute";
+      marker.style.right = "10px";
+
+      // Calculate the exact position
+      const topPosition = week * (cellSize + cellGap) + cellSize / 2 - (cellSize + cellGap);
+      
+      // Move up by 1 block by subtracting (cellSize + cellGap)
+      marker.style.top = `${topPosition}px`;
+      marker.style.transform = "translateY(-50%)";
+      marker.style.textAlign = "right";
+
+      // Mark this position and surrounding positions as occupied
+      // Store the type of marker for better visualization decisions
+      const rowPosition = week - 1;
+      markerPositions.set(rowPosition - 1, "week-nearby");
+      markerPositions.set(rowPosition, "week-nearby");
+      markerPositions.set(rowPosition + 1, "week-nearby");
+      markerPositions.set(week, "week");
+      markerPositions.set(week + 1, "week-nearby");
+    }
+  }
+
+  // Add month markers if enabled
+  if (this.plugin.settings.showMonthMarkers) {
+    const birthdayDate = new Date(this.plugin.settings.birthday);
+    const monthMarkers = this.plugin.calculateMonthMarkers(
+      birthdayDate,
+      this.plugin.settings.lifespan,
+      this.plugin.settings.monthMarkerFrequency
+    );
+
+    const monthMarkersContainer = markersContainer.createEl("div", {
+      cls: "chronos-month-markers",
+    });
+
+    // Cake SVG for birth month
+    const cakeSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8"/><path d="M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4 2 2-1 2-1"/><path d="M2 21h20"/><path d="M7 8v2"/><path d="M12 8v2"/><path d="M17 8v2"/><path d="M7 4h.01"/><path d="M12 4h.01"/><path d="M17 4h.01"/></svg>`;
+
+    // Extract birth month data
+    const birthMonth = birthdayDate.getMonth();
+    const birthMonthName = MONTH_NAMES[birthMonth];
+
+    // First, place the cake icon at the first row
+    const cakeEl = monthMarkersContainer.createEl("div", {
+      cls: "chronos-month-marker birth-month",
+    });
+    cakeEl.innerHTML = cakeSvg;
+    cakeEl.setAttribute("title", `${birthMonthName} (Your Birthday)`);
+    cakeEl.style.position = "absolute";
+    cakeEl.style.right = "10px";
+    cakeEl.style.top = "0px"; // Position at first row
+    cakeEl.style.transform = "translateY(8px)"; // Center in first cell
+    cakeEl.style.textAlign = "right";
+
+    // Mark the birth month position as occupied
+    markerPositions.set(0, "birth-month");
+
+    // Prepare the month markers for a complete yearly cycle
+    // This ensures we show all months, including birth month
+    const completeMonthCycle = new Map<number, MonthMarker>();
+
+    // Track used row positions
+    const usedRowPositions = new Set<number>();
+    usedRowPositions.add(0); // Reserve the first row for the cake icon
+
+    // Process markers and ensure we get exactly one marker per month
+    for (const marker of monthMarkers) {
+      const monthIndex = MONTH_NAMES.indexOf(marker.label);
+      if (monthIndex === -1) continue; // Skip if not a valid month
+
+      // Calculate row position (0-51)
+      const rowPosition = marker.weekIndex % 52;
+
+      // Skip positions that would conflict with existing markers
+      if (usedRowPositions.has(rowPosition)) continue;
+
+      // Only add this month if we haven't seen it yet
+      if (!completeMonthCycle.has(monthIndex)) {
+        completeMonthCycle.set(monthIndex, {
+          ...marker,
+          weekIndex: rowPosition,
         });
-
-        // Position each week marker
-        marker.style.position = "absolute";
-        marker.style.right = "10px";
-
-        // Move up by 1 block by subtracting (cellSize + cellGap)
-        marker.style.top = `${
-          week * (cellSize + cellGap) + cellSize / 2 - (cellSize + cellGap)
-        }px`;
-        marker.style.transform = "translateY(-50%)";
-        marker.style.textAlign = "right";
+        usedRowPositions.add(rowPosition);
       }
     }
 
-    // Track which weeks are taken by week markers
-    const weekMarkerPositions = new Set<number>();
-    if (this.plugin.settings.showWeekMarkers) {
-      for (let w = 10; w <= 50; w += 10) {
-        // Add the week itself plus safety buffer of -1/+1
-        weekMarkerPositions.add(w - 1);
-        weekMarkerPositions.add(w);
-        weekMarkerPositions.add(w + 1);
-      }
-    }
+    // Render all month markers
+    for (const [monthIndex, marker] of completeMonthCycle) {
+      // Skip rendering a marker at the first row (cake icon is already there)
+      if (marker.weekIndex === 0) continue;
 
-    // Add month markers if enabled
-    if (this.plugin.settings.showMonthMarkers) {
-      const birthdayDate = new Date(this.plugin.settings.birthday);
-      const monthMarkers = this.plugin.calculateMonthMarkers(
-        birthdayDate,
-        this.plugin.settings.lifespan,
-        this.plugin.settings.monthMarkerFrequency
-      );
-
-      const monthMarkersContainer = markersContainer.createEl("div", {
-        cls: "chronos-month-markers",
+      // Create the marker element
+      const markerEl = monthMarkersContainer.createEl("div", {
+        cls: `chronos-month-marker ${marker.isFirstOfYear ? "first-of-year" : ""}`,
       });
 
-      // Track which weeks are taken by week markers
-      const weekMarkerPositions = new Set<number>();
-      if (this.plugin.settings.showWeekMarkers) {
-        for (let w = 10; w <= 50; w += 10) {
-          // Add the week itself plus safety buffer of -1/+1
-          weekMarkerPositions.add(w - 1);
-          weekMarkerPositions.add(w);
-          weekMarkerPositions.add(w + 1);
-        }
+      // Show month name
+      markerEl.textContent = marker.label;
+
+      // Show full month and year in tooltip
+      markerEl.setAttribute("title", marker.fullLabel);
+
+      // Style the marker with position and appearance
+      markerEl.style.position = "absolute";
+
+      // Determine the right position based on marker conflicts
+      // Use a consistent offset strategy
+      const position = marker.weekIndex;
+      const markerType = markerPositions.get(position);
+      
+      // Consistent offsetting strategy:
+      // - If directly on a week marker or very close, use a larger offset
+      // - If near a week marker, use a medium offset
+      // - Otherwise, use the standard position
+      let rightPosition: string;
+      
+      if (markerType === "week") {
+        rightPosition = "35px"; // Maximum offset for direct week marker conflict
+      } else if (markerType === "week-nearby") {
+        rightPosition = "25px"; // Medium offset for nearby week markers
+      } else {
+        rightPosition = "10px"; // Standard position
+      }
+      
+      markerEl.style.right = rightPosition;
+
+      // January gets special styling
+      if (marker.isFirstOfYear) {
+        markerEl.style.fontWeight = "bold";
+        markerEl.style.opacity = "1.0";
       }
 
-      // Cake SVG for birth month
-      const cakeSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8"/><path d="M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4 2 2-1 2-1"/><path d="M2 21h20"/><path d="M7 8v2"/><path d="M12 8v2"/><path d="M17 8v2"/><path d="M7 4h.01"/><path d="M12 4h.01"/><path d="M17 4h.01"/></svg>`;
-
-      // Extract birth month data
-      const birthMonth = birthdayDate.getMonth();
-      const birthMonthName = MONTH_NAMES[birthMonth];
-
-      // First, place the cake icon at the first row
-      const cakeEl = monthMarkersContainer.createEl("div", {
-        cls: "chronos-month-marker birth-month",
-      });
-      cakeEl.innerHTML = cakeSvg;
-      cakeEl.setAttribute("title", `${birthMonthName} (Your Birthday)`);
-      cakeEl.style.position = "absolute";
-      cakeEl.style.right = "10px";
-      cakeEl.style.top = "0px"; // Position at first row
-      cakeEl.style.transform = "translateY(8px)"; // Center in first cell
-      cakeEl.style.textAlign = "right";
-
-      // Prepare the month markers for a complete yearly cycle
-      // This ensures we show all months, including birth month
-      const completeMonthCycle = new Map<number, MonthMarker>();
-
-      // Track used row positions
-      const usedRowPositions = new Set<number>();
-      usedRowPositions.add(0); // Reserve the first row for the cake icon
-
-      // Process markers and ensure we get exactly one marker per month
-      for (const marker of monthMarkers) {
-        const monthIndex = MONTH_NAMES.indexOf(marker.label);
-        if (monthIndex === -1) continue; // Skip if not a valid month
-
-        // Calculate row position (0-51)
-        const rowPosition = marker.weekIndex % 52;
-
-        // Skip positions that would conflict with existing markers
-        if (usedRowPositions.has(rowPosition)) continue;
-
-        // Only add this month if we haven't seen it yet
-        if (!completeMonthCycle.has(monthIndex)) {
-          completeMonthCycle.set(monthIndex, {
-            ...marker,
-            weekIndex: rowPosition,
-          });
-          usedRowPositions.add(rowPosition);
-        }
-      }
-
-      // Render all month markers
-      for (const [monthIndex, marker] of completeMonthCycle) {
-        // Skip rendering a marker at the first row (cake icon is already there)
-        if (marker.weekIndex === 0) continue;
-
-        // Create the marker element
-        const markerEl = monthMarkersContainer.createEl("div", {
-          cls: `chronos-month-marker ${
-            marker.isFirstOfYear ? "first-of-year" : ""
-          }`,
-        });
-
-        // Show month name
-        markerEl.textContent = marker.label;
-
-        // Show full month and year in tooltip
-        markerEl.setAttribute("title", marker.fullLabel);
-
-        // Style the marker with position and appearance
-        markerEl.style.position = "absolute";
-
-        // Check if this marker would overlap with a week marker
-        const hasWeekMarkerOverlap = weekMarkerPositions.has(marker.weekIndex);
-
-        // If there's an overlap, position to the left of the week marker
-        markerEl.style.right = hasWeekMarkerOverlap ? "30px" : "10px";
-
-        // January gets special styling
-        if (marker.isFirstOfYear) {
-          markerEl.style.fontWeight = "bold";
-          markerEl.style.opacity = "1.0";
-        }
-
-        // Position the marker at the exact grid position
-        markerEl.style.top = `${
-          marker.weekIndex * (cellSize + cellGap) + cellSize / 2
-        }px`;
-
-        markerEl.style.transform = "translateY(-50%)";
-        markerEl.style.textAlign = "right";
-      }
+      // Position the marker at the exact grid position
+      markerEl.style.top = `${marker.weekIndex * (cellSize + cellGap) + cellSize / 2}px`;
+      markerEl.style.transform = "translateY(-50%)";
+      markerEl.style.textAlign = "right";
     }
+  }
+
 
     // Create the grid container
     const gridEl = container.createEl("div", { cls: "chronos-grid" });
