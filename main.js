@@ -922,14 +922,6 @@ class ChronosTimelineView extends obsidian.ItemView {
             const modal = new ManageEventTypesModal(this.app, this.plugin);
             modal.open();
         });
-        // Add marker settings toggle button
-        const markerSettingsBtn = controlsEl.createEl("button", {
-            text: "Marker Settings",
-        });
-        markerSettingsBtn.addEventListener("click", () => {
-            const modal = new MarkerSettingsModal(this.app, this.plugin, () => this.renderView());
-            modal.open();
-        });
         // Create the view container
         const viewEl = contentEl.createEl("div", { cls: "chronos-view" });
         // Render the weeks grid
@@ -1046,14 +1038,6 @@ class ChronosTimelineView extends obsidian.ItemView {
             const birthDay = birthdayDate.getDate();
             const birthYear = birthdayDate.getFullYear();
             const birthMonthName = MONTH_NAMES[birthMonth];
-            // Create cake icon for exact birthday position (at exact birth day position, week 0)
-            const cakeSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8"/><path d="M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4 2 2-1 2-1"/><path d="M2 21h20"/><path d="M7 8v2"/><path d="M12 8v2"/><path d="M17 8v2"/><path d="M7 4h.01"/><path d="M12 4h.01"/><path d="M17 4h.01"/></svg>`;
-            const cakeEl = monthMarkersContainer.createEl("div", {
-                cls: "chronos-month-marker birth-month",
-            });
-            cakeEl.innerHTML = cakeSvg;
-            cakeEl.setAttribute("title", `${birthMonthName} ${birthDay}, ${birthYear} (Your Birthday)`);
-            cakeEl.style.top = "8px"; // Position at first row (week 0)
             // Calculate which week of the month the birthday falls in
             // First, get first day of birth month
             const firstDayOfBirthMonth = new Date(birthYear, birthMonth, 1);
@@ -1061,6 +1045,21 @@ class ChronosTimelineView extends obsidian.ItemView {
             const daysBetween = (birthdayDate.getTime() - firstDayOfBirthMonth.getTime()) / (1000 * 60 * 60 * 24);
             // Calculate which week of the month (0-indexed) the birthday falls in
             const birthWeekOfMonth = Math.floor(daysBetween / 7);
+            const birthdayMarkerContainer = container.createEl("div", {
+                cls: "chronos-birthday-marker-container",
+            });
+            // Position the container near the grid
+            birthdayMarkerContainer.style.position = "absolute";
+            birthdayMarkerContainer.style.top = `${topOffset}px`; // Align with the top of the grid
+            birthdayMarkerContainer.style.left = `${leftOffset - 20}px`; // Position closer to the grid
+            birthdayMarkerContainer.style.zIndex = "15"; // Ensure visibility above other elements
+            // Create cake icon for birthday
+            const cakeSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8"/><path d="M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4 2 2-1 2-1"/><path d="M2 21h20"/><path d="M7 8v2"/><path d="M12 8v2"/><path d="M17 8v2"/><path d="M7 4h.01"/><path d="M12 4h.01"/><path d="M17 4h.01"/></svg>`;
+            const cakeEl = birthdayMarkerContainer.createEl("div", {
+                cls: "birthday-cake-marker",
+            });
+            cakeEl.innerHTML = cakeSvg;
+            cakeEl.setAttribute("title", `${birthMonthName} ${birthDay}, ${birthYear} (Your Birthday)`);
             // Now calculate the position for the birth month marker
             // If birthday is in week 3 of the month (0-indexed), place month marker at week 51 (second-to-last row)
             // If birthday is in week 2 of the month, place month marker at week 0 (last row)
@@ -1282,114 +1281,6 @@ class ChronosTimelineView extends obsidian.ItemView {
             cell.classList.contains("event")) {
             cell.addClass("future-event-highlight");
         }
-    }
-}
-// -----------------------------------------------------------------------
-// MARKER SETTINGS MODAL
-// -----------------------------------------------------------------------
-/**
- * Modal for configuring which timeline markers are visible
- */
-class MarkerSettingsModal extends obsidian.Modal {
-    /** Reference to the main plugin */
-    plugin;
-    /** Callback to refresh views when settings change */
-    refreshCallback;
-    /**
-     * Create a new marker settings modal
-     * @param app - Obsidian App instance
-     * @param plugin - ChronosTimelinePlugin instance
-     * @param refreshCallback - Callback to refresh views
-     */
-    constructor(app, plugin, refreshCallback) {
-        super(app);
-        this.plugin = plugin;
-        this.refreshCallback = refreshCallback;
-    }
-    /**
-     * Build the modal UI when opened
-     */
-    onOpen() {
-        const { contentEl } = this;
-        contentEl.empty();
-        contentEl.createEl("h2", { text: "Timeline Marker Settings" });
-        contentEl.createEl("p", {
-            text: "Choose which timeline markers are visible",
-        });
-        // Decade markers setting
-        new obsidian.Setting(contentEl)
-            .setName("Decade Markers")
-            .setDesc("Show decade markers along the top (0, 10, 20, ...)")
-            .addToggle((toggle) => {
-            toggle
-                .setValue(this.plugin.settings.showDecadeMarkers)
-                .onChange(async (value) => {
-                this.plugin.settings.showDecadeMarkers = value;
-                await this.plugin.saveSettings();
-                this.refreshCallback();
-            });
-        });
-        // Week markers setting
-        new obsidian.Setting(contentEl)
-            .setName("Week Markers")
-            .setDesc("Show week markers along the left (10, 20, 30, ...)")
-            .addToggle((toggle) => {
-            toggle
-                .setValue(this.plugin.settings.showWeekMarkers)
-                .onChange(async (value) => {
-                this.plugin.settings.showWeekMarkers = value;
-                await this.plugin.saveSettings();
-                this.refreshCallback();
-            });
-        });
-        // Month markers setting
-        new obsidian.Setting(contentEl)
-            .setName("Month Markers")
-            .setDesc("Show month markers along the left side (Jan, Feb, Mar, ...)")
-            .addToggle((toggle) => {
-            toggle
-                .setValue(this.plugin.settings.showMonthMarkers)
-                .onChange(async (value) => {
-                this.plugin.settings.showMonthMarkers = value;
-                await this.plugin.saveSettings();
-                this.refreshCallback();
-            });
-        });
-        // Month marker frequency dropdown
-        const monthMarkerSetting = new obsidian.Setting(contentEl)
-            .setName("Month Marker Frequency")
-            .setDesc("Choose how often month markers appear")
-            .addDropdown((dropdown) => {
-            dropdown
-                .addOption("all", "Every Month")
-                .addOption("quarter", "Every Quarter (Jan, Apr, Jul, Oct)")
-                .addOption("half-year", "Every Half Year (Jan, Jul)")
-                .addOption("year", "Every Year (Jan only)")
-                .setValue(this.plugin.settings.monthMarkerFrequency)
-                .onChange(async (value) => {
-                this.plugin.settings.monthMarkerFrequency = value;
-                await this.plugin.saveSettings();
-                this.refreshCallback();
-            });
-        });
-        // Show or hide frequency dropdown based on month markers toggle
-        monthMarkerSetting.setClass("month-marker-frequency");
-        if (!this.plugin.settings.showMonthMarkers) {
-            monthMarkerSetting.settingEl.style.display = "none";
-        }
-        // Close button
-        new obsidian.Setting(contentEl).addButton((btn) => btn
-            .setButtonText("Close")
-            .setCta()
-            .onClick(() => {
-            this.close();
-        }));
-    }
-    /**
-     * Clean up on modal close
-     */
-    onClose() {
-        this.contentEl.empty();
     }
 }
 // -----------------------------------------------------------------------

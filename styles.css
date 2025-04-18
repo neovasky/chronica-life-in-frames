@@ -438,4 +438,26 @@
       color: #e91e63; /* Pink color to match cake icon */
       font-weight: 500;
     }
+
+    /* Birthday cake marker */
+.chronos-birthday-marker-container {
+  pointer-events: none;
+}
+
+.birthday-cake-marker {
+  color: #e91e63;
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  padding: 3px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s;
+}
+
+.birthday-cake-marker:hover {
+  transform: scale(1.2);
+}
   }
