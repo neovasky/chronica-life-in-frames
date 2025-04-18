@@ -38,7 +38,7 @@ const DEFAULT_SETTINGS = {
     showDecadeMarkers: true,
     showWeekMarkers: true,
     showMonthMarkers: true,
-    monthMarkerFrequency: 'all'
+    monthMarkerFrequency: "all",
 };
 /** SVG icon for the ChronOS Timeline */
 const CHRONOS_ICON = `<svg viewBox="0 0 100 100" width="100" height="100" xmlns="http://www.w3.org/2000/svg">
@@ -47,14 +47,23 @@ const CHRONOS_ICON = `<svg viewBox="0 0 100 100" width="100" height="100" xmlns=
   <line x1="50" y1="50" x2="75" y2="60" stroke="currentColor" stroke-width="4"/>
   <circle cx="50" cy="50" r="5" fill="currentColor"/>
 </svg>`;
-/** SVG icon for birthday cake */
-const CAKE_ICON = `<svg viewBox="0 0 24 24" width="16" height="16" xmlns="http://www.w3.org/2000/svg">
-  <path fill="currentColor" d="M12,6C13.11,6 14,5.1 14,4C14,3.62 13.9,3.27 13.71,2.97L12,0L10.29,2.97C10.1,3.27 10,3.62 10,4A2,2 0 0,0 12,6M16.6,16L15.53,14.92L14.45,16C13.15,17.29 10.87,17.3 9.56,16L8.5,14.92L7.4,16C6.75,16.64 5.88,17 4.96,17C4.23,17 3.56,16.77 3,16.39V21A1,1 0 0,0 4,22H20A1,1 0 0,0 21,21V16.39C20.44,16.77 19.77,17 19.04,17C18.12,17 17.25,16.64 16.6,16M18,9H13V7H11V9H6A3,3 0 0,0 3,12V13.54C3,14.62 3.88,15.5 4.96,15.5C5.5,15.5 6,15.3 6.34,14.93L8.5,12.8L10.61,14.93C11.35,15.67 12.64,15.67 13.38,14.93L15.5,12.8L17.65,14.93C18,15.3 18.5,15.5 19.03,15.5C20.12,15.5 21,14.62 21,13.54V12A3,3 0 0,0 18,9Z" />
-</svg>`;
 // Gap between decades (larger than regular gap)
 const DECADE_GAP = 6; // px
 // Month names for display
-const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTH_NAMES = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+];
 // -----------------------------------------------------------------------
 // MAIN PLUGIN CLASS
 // -----------------------------------------------------------------------
@@ -127,7 +136,8 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
             this.settings.showMonthMarkers = DEFAULT_SETTINGS.showMonthMarkers;
         }
         if (this.settings.monthMarkerFrequency === undefined) {
-            this.settings.monthMarkerFrequency = DEFAULT_SETTINGS.monthMarkerFrequency;
+            this.settings.monthMarkerFrequency =
+                DEFAULT_SETTINGS.monthMarkerFrequency;
         }
     }
     /**
@@ -197,7 +207,8 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
             }
             else {
                 // Create folder if needed
-                if (this.settings.notesFolder && this.settings.notesFolder.trim() !== "") {
+                if (this.settings.notesFolder &&
+                    this.settings.notesFolder.trim() !== "") {
                     try {
                         const folderExists = this.app.vault.getAbstractFileByPath(this.settings.notesFolder);
                         if (!folderExists) {
@@ -294,7 +305,7 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
         // Add extra space for each completed decade
         const decades = Math.floor(year / 10);
         const extraGap = DECADE_GAP - cellGap; // Additional space for each decade
-        return year * (cellSize + cellGap) + (decades * extraGap);
+        return year * (cellSize + cellGap) + decades * extraGap;
     }
     /**
      * Calculate month positions for vertical markers based on birth date
@@ -303,17 +314,18 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
      * @param frequency - How often to show month markers ('all', 'quarter', 'half-year', 'year')
      * @returns Array of objects with month marker data
      */
-    calculateMonthMarkers(birthdayDate, totalYears, frequency = 'all') {
+    calculateMonthMarkers(birthdayDate, totalYears, frequency = "all") {
         const monthMarkers = [];
         // Clone the birthday date to avoid modifying the original
         const startDate = new Date(birthdayDate);
-        const birthMonth = startDate.getMonth();
-        const birthYear = startDate.getFullYear();
         // Calculate the end date (birthday + total years)
         const endDate = new Date(birthdayDate);
         endDate.setFullYear(endDate.getFullYear() + totalYears);
         // Create a date iterator starting from the birthday
         const currentDate = new Date(startDate);
+        // Store birth month and year for special handling
+        const birthMonth = startDate.getMonth();
+        const birthYear = startDate.getFullYear();
         // Track the last shown month to avoid duplicates
         let lastShownMonth = -1;
         let lastShownYear = -1;
@@ -323,15 +335,15 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
             if (monthNum === 0)
                 return true;
             switch (frequency) {
-                case 'all':
+                case "all":
                     return true;
-                case 'quarter':
+                case "quarter":
                     // Show first month of each quarter (Jan, Apr, Jul, Oct)
                     return monthNum % 3 === 0;
-                case 'half-year':
+                case "half-year":
                     // Show first month of each half year (Jan, Jul)
                     return monthNum % 6 === 0;
-                case 'year':
+                case "year":
                     // Only show January
                     return monthNum === 0;
                 default:
@@ -346,17 +358,18 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
             if ((currentMonth !== lastShownMonth || currentYear !== lastShownYear) &&
                 shouldShowMonth(currentMonth)) {
                 // Calculate the exact week index based on days since birth
-                const daysSinceBirth = Math.floor((currentDate.getTime() - birthdayDate.getTime()) / (1000 * 60 * 60 * 24));
+                const daysSinceBirth = Math.floor((currentDate.getTime() - birthdayDate.getTime()) /
+                    (1000 * 60 * 60 * 24));
                 const exactWeekIndex = Math.floor(daysSinceBirth / 7);
-                // Determine if this is the birth month (same month and year as birthday)
-                const isBirthMonth = (currentMonth === birthMonth && currentYear === birthYear);
+                // Check if this is the birth month
+                const isBirthMonth = currentMonth === birthMonth && currentYear === birthYear;
                 // Add marker for this month
                 monthMarkers.push({
                     weekIndex: exactWeekIndex,
                     label: MONTH_NAMES[currentMonth],
                     isFirstOfYear: currentMonth === 0,
                     isBirthMonth: isBirthMonth,
-                    fullLabel: `${MONTH_NAMES[currentMonth]} ${currentYear}`
+                    fullLabel: `${MONTH_NAMES[currentMonth]} ${currentYear}`,
                 });
                 // Update last shown month/year
                 lastShownMonth = currentMonth;
@@ -365,6 +378,8 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
             // Move to the next day
             currentDate.setDate(currentDate.getDate() + 1);
         }
+        // Sort markers by week index to ensure proper rendering order
+        monthMarkers.sort((a, b) => a.weekIndex - b.weekIndex);
         return monthMarkers;
     }
 }
@@ -450,26 +465,34 @@ class ChronosEventModal extends obsidian.Modal {
         contentEl.createEl("h2", { text: "Add Life Event" });
         // Date picker section
         const dateContainer = contentEl.createDiv({
-            cls: "chronos-date-picker-container"
+            cls: "chronos-date-picker-container",
         });
         dateContainer.createEl("h3", { text: "Select Date" });
         // Add an option to toggle between single date and date range
-        const dateTypeContainer = dateContainer.createDiv({ cls: "date-type-selector" });
-        const singleDateOption = dateTypeContainer.createEl("label", { cls: "date-option" });
+        const dateTypeContainer = dateContainer.createDiv({
+            cls: "date-type-selector",
+        });
+        const singleDateOption = dateTypeContainer.createEl("label", {
+            cls: "date-option",
+        });
         const singleDateRadio = singleDateOption.createEl("input", {
             type: "radio",
-            attr: { name: "date-type", value: "single" }
+            attr: { name: "date-type", value: "single" },
         });
         singleDateRadio.checked = true;
         singleDateOption.createEl("span", { text: "Single Date" });
-        const rangeDateOption = dateTypeContainer.createEl("label", { cls: "date-option" });
+        const rangeDateOption = dateTypeContainer.createEl("label", {
+            cls: "date-option",
+        });
         const rangeDateRadio = rangeDateOption.createEl("input", {
             type: "radio",
-            attr: { name: "date-type", value: "range" }
+            attr: { name: "date-type", value: "range" },
         });
         rangeDateOption.createEl("span", { text: "Date Range" });
         // Container for single date input
-        const singleDateContainer = contentEl.createDiv({ cls: "single-date-container" });
+        const singleDateContainer = contentEl.createDiv({
+            cls: "single-date-container",
+        });
         const singleDateSetting = new obsidian.Setting(singleDateContainer)
             .setName("Date")
             .setDesc("Enter the exact date of the event");
@@ -477,7 +500,7 @@ class ChronosEventModal extends obsidian.Modal {
             type: "date",
             value: this.selectedDate
                 ? this.convertWeekToDate(this.selectedDate)
-                : new Date().toISOString().split("T")[0]
+                : new Date().toISOString().split("T")[0],
         });
         this.startDateInput.addEventListener("change", () => {
             const specificDate = this.startDateInput.value;
@@ -492,7 +515,9 @@ class ChronosEventModal extends obsidian.Modal {
             }
         });
         // Container for date range inputs
-        const rangeDateContainer = contentEl.createDiv({ cls: "range-date-container" });
+        const rangeDateContainer = contentEl.createDiv({
+            cls: "range-date-container",
+        });
         rangeDateContainer.style.display = "none";
         const startDateSetting = new obsidian.Setting(rangeDateContainer)
             .setName("Start Date")
@@ -501,7 +526,7 @@ class ChronosEventModal extends obsidian.Modal {
             type: "date",
             value: this.selectedDate
                 ? this.convertWeekToDate(this.selectedDate)
-                : new Date().toISOString().split("T")[0]
+                : new Date().toISOString().split("T")[0],
         });
         this.startDateInput.addEventListener("change", () => {
             const specificDate = this.startDateInput.value;
@@ -517,7 +542,7 @@ class ChronosEventModal extends obsidian.Modal {
             type: "date",
             value: this.selectedEndDate
                 ? this.convertWeekToDate(this.selectedEndDate)
-                : this.startDateInput.value
+                : this.startDateInput.value,
         });
         this.endDateInput.addEventListener("change", () => {
             const specificDate = this.endDateInput.value;
@@ -545,13 +570,13 @@ class ChronosEventModal extends obsidian.Modal {
         contentEl.appendChild(rangeDateContainer);
         contentEl.createEl("small", {
             text: "Select the date(s) of your event. The system determines the week(s) automatically.",
-            cls: "chronos-helper-text"
+            cls: "chronos-helper-text",
         });
         if (this.selectedDate) {
             contentEl.createEl("p", {
                 text: this.isDateRange
                     ? `This event spans from week ${this.selectedDate} to ${this.selectedEndDate || this.selectedDate}`
-                    : `This date falls in week: ${this.selectedDate}`
+                    : `This date falls in week: ${this.selectedDate}`,
             });
         }
         // Event description field
@@ -568,18 +593,18 @@ class ChronosEventModal extends obsidian.Modal {
             { name: "Major Life", color: "#4CAF50" },
             { name: "Travel", color: "#2196F3" },
             { name: "Relationship", color: "#E91E63" },
-            { name: "Education/Career", color: "#9C27B0" }
+            { name: "Education/Career", color: "#9C27B0" },
         ];
         const typeSettingContainer = new obsidian.Setting(contentEl)
             .setName("Select Event Type")
             .setDesc("Choose a preset type or create your own");
         const radioContainer = typeSettingContainer.controlEl.createDiv({
-            cls: "chronos-radio-container"
+            cls: "chronos-radio-container",
         });
         // Create radio buttons for preset event types
         for (const type of presetTypes) {
             const radioLabel = radioContainer.createEl("label", {
-                cls: "chronos-radio-label"
+                cls: "chronos-radio-label",
             });
             const radioBtn = radioLabel.createEl("input");
             radioBtn.type = "radio";
@@ -589,7 +614,7 @@ class ChronosEventModal extends obsidian.Modal {
                 radioBtn.checked = true;
             }
             const colorBox = radioLabel.createEl("span", {
-                cls: "chronos-color-box"
+                cls: "chronos-color-box",
             });
             colorBox.style.backgroundColor = type.color;
             radioLabel.createEl("span", { text: type.name });
@@ -604,7 +629,7 @@ class ChronosEventModal extends obsidian.Modal {
         }
         // Custom event type option
         const customLabel = radioContainer.createEl("label", {
-            cls: "chronos-radio-label"
+            cls: "chronos-radio-label",
         });
         const customRadio = customLabel.createEl("input");
         customRadio.type = "radio";
@@ -619,7 +644,7 @@ class ChronosEventModal extends obsidian.Modal {
         });
         // Custom type settings (initially hidden)
         const customTypeSettings = contentEl.createDiv({
-            cls: "chronos-custom-type-settings"
+            cls: "chronos-custom-type-settings",
         });
         customTypeSettings.style.display = "none";
         new obsidian.Setting(customTypeSettings)
@@ -672,7 +697,8 @@ class ChronosEventModal extends obsidian.Modal {
             return;
         }
         // For date range, validate end date
-        if (this.isDateRange && (!this.selectedEndDate || !this.endDateInput?.value)) {
+        if (this.isDateRange &&
+            (!this.selectedEndDate || !this.endDateInput?.value)) {
             new obsidian.Notice("Please select an end date for the range");
             return;
         }
@@ -682,7 +708,7 @@ class ChronosEventModal extends obsidian.Modal {
             if (existingIndex === -1) {
                 this.plugin.settings.customEventTypes.push({
                     name: this.customEventName,
-                    color: this.selectedColor
+                    color: this.selectedColor,
                 });
                 this.plugin.settings.customEvents[this.customEventName] = [];
             }
@@ -769,7 +795,8 @@ class ChronosEventModal extends obsidian.Modal {
         const fileExists = this.plugin.app.vault.getAbstractFileByPath(fullPath) instanceof obsidian.TFile;
         if (!fileExists) {
             // Create folder if needed
-            if (this.plugin.settings.notesFolder && this.plugin.settings.notesFolder.trim() !== "") {
+            if (this.plugin.settings.notesFolder &&
+                this.plugin.settings.notesFolder.trim() !== "") {
                 try {
                     const folderExists = this.app.vault.getAbstractFileByPath(this.plugin.settings.notesFolder);
                     if (!folderExists) {
@@ -781,16 +808,16 @@ class ChronosEventModal extends obsidian.Modal {
                 }
             }
             // Create event note file with appropriate content
-            let content = '';
+            let content = "";
             if (endDate) {
                 // Range event
-                const startDateStr = startDate.toISOString().split('T')[0];
-                const endDateStr = endDate.toISOString().split('T')[0];
+                const startDateStr = startDate.toISOString().split("T")[0];
+                const endDateStr = endDate.toISOString().split("T")[0];
                 content = `# Event: ${this.eventDescription}\n\nStart Date: ${startDateStr}\nEnd Date: ${endDateStr}\nType: ${this.selectedEventType}\n\n## Notes\n\n`;
             }
             else {
                 // Single date event
-                const dateStr = startDate.toISOString().split('T')[0];
+                const dateStr = startDate.toISOString().split("T")[0];
                 content = `# Event: ${this.eventDescription}\n\nDate: ${dateStr}\nType: ${this.selectedEventType}\n\n## Notes\n\n`;
             }
             await this.app.vault.create(fullPath, content);
@@ -800,7 +827,9 @@ class ChronosEventModal extends obsidian.Modal {
      * Refresh all timeline views
      */
     refreshViews() {
-        this.plugin.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE).forEach((leaf) => {
+        this.plugin.app.workspace
+            .getLeavesOfType(TIMELINE_VIEW_TYPE)
+            .forEach((leaf) => {
             const view = leaf.view;
             view.renderView();
         });
@@ -874,20 +903,20 @@ class ChronosTimelineView extends obsidian.ItemView {
         // Create title in cursive style
         contentEl.createEl("div", {
             cls: "chronos-title",
-            text: "life in weeks"
+            text: "life in weeks",
         });
         // Create controls
         const controlsEl = contentEl.createEl("div", { cls: "chronos-controls" });
         // Plan future event button (keep this one as it's the main interaction point)
         const planEventBtn = controlsEl.createEl("button", {
-            text: "Plan Event"
+            text: "Plan Event",
         });
         planEventBtn.addEventListener("click", () => {
             this.showAddEventModal();
         });
         // Manage event types button
         const manageTypesBtn = controlsEl.createEl("button", {
-            text: "Manage Event Types"
+            text: "Manage Event Types",
         });
         manageTypesBtn.addEventListener("click", () => {
             const modal = new ManageEventTypesModal(this.app, this.plugin);
@@ -895,7 +924,7 @@ class ChronosTimelineView extends obsidian.ItemView {
         });
         // Add marker settings toggle button
         const markerSettingsBtn = controlsEl.createEl("button", {
-            text: "Marker Settings"
+            text: "Marker Settings",
         });
         markerSettingsBtn.addEventListener("click", () => {
             const modal = new MarkerSettingsModal(this.app, this.plugin, () => this.renderView());
@@ -915,8 +944,8 @@ class ChronosTimelineView extends obsidian.ItemView {
             { text: "Education/Career", color: "#9C27B0" },
             {
                 text: "Upcoming Planned Event",
-                color: this.plugin.settings.futureCellColor
-            }
+                color: this.plugin.settings.futureCellColor,
+            },
         ];
         // Add standard legend items
         legendItems.forEach((item) => {
@@ -929,10 +958,10 @@ class ChronosTimelineView extends obsidian.ItemView {
         if (this.plugin.settings.customEventTypes) {
             this.plugin.settings.customEventTypes.forEach((customType) => {
                 const customLegendEl = legendEl.createEl("div", {
-                    cls: "chronos-legend-item"
+                    cls: "chronos-legend-item",
                 });
                 const customColorEl = customLegendEl.createEl("div", {
-                    cls: "chronos-legend-color"
+                    cls: "chronos-legend-color",
                 });
                 customColorEl.style.backgroundColor = customType.color;
                 customLegendEl.createEl("span", { text: customType.name });
@@ -941,7 +970,7 @@ class ChronosTimelineView extends obsidian.ItemView {
         // Add quote at the bottom
         contentEl.createEl("div", {
             cls: "chronos-footer",
-            text: this.plugin.settings.quote
+            text: this.plugin.settings.quote,
         });
     }
     /**
@@ -967,18 +996,19 @@ class ChronosTimelineView extends obsidian.ItemView {
         // Create decade markers container (horizontal markers above the grid)
         if (this.plugin.settings.showDecadeMarkers) {
             const decadeMarkersContainer = container.createEl("div", {
-                cls: "chronos-decade-markers"
+                cls: "chronos-decade-markers",
             });
             // Add decade markers (0, 10, 20, etc.)
             for (let decade = 0; decade <= this.plugin.settings.lifespan; decade += 10) {
                 const marker = decadeMarkersContainer.createEl("div", {
                     cls: "chronos-decade-marker",
-                    text: decade.toString()
+                    text: decade.toString(),
                 });
                 // Position each decade marker using the calculateYearPosition method
                 marker.style.position = "absolute";
                 // Calculate position with the decade spacing
-                const leftPosition = this.plugin.calculateYearPosition(decade, cellSize, regularGap) + cellSize / 2;
+                const leftPosition = this.plugin.calculateYearPosition(decade, cellSize, regularGap) +
+                    cellSize / 2;
                 marker.style.left = `${leftPosition}px`;
                 marker.style.top = `${topOffset / 2}px`;
                 marker.style.transform = "translate(-50%, -50%)";
@@ -986,19 +1016,19 @@ class ChronosTimelineView extends obsidian.ItemView {
         }
         // Create vertical markers container (for both week and month markers)
         const markersContainer = container.createEl("div", {
-            cls: "chronos-vertical-markers"
+            cls: "chronos-vertical-markers",
         });
         // Add week markers (10, 20, 30, 40, 50) if enabled
         if (this.plugin.settings.showWeekMarkers) {
             const weekMarkersContainer = markersContainer.createEl("div", {
-                cls: "chronos-week-markers"
+                cls: "chronos-week-markers",
             });
             for (let week = 0; week <= 50; week += 10) {
                 if (week === 0)
                     continue; // Skip 0 to start with 10
                 const marker = weekMarkersContainer.createEl("div", {
                     cls: "chronos-week-marker",
-                    text: week.toString()
+                    text: week.toString(),
                 });
                 // Position each week marker
                 marker.style.position = "absolute";
@@ -1024,48 +1054,87 @@ class ChronosTimelineView extends obsidian.ItemView {
             const birthdayDate = new Date(this.plugin.settings.birthday);
             const monthMarkers = this.plugin.calculateMonthMarkers(birthdayDate, this.plugin.settings.lifespan, this.plugin.settings.monthMarkerFrequency);
             const monthMarkersContainer = markersContainer.createEl("div", {
-                cls: "chronos-month-markers"
+                cls: "chronos-month-markers",
             });
-            // Add each month marker
-            for (const monthMarker of monthMarkers) {
-                // Skip if this marker is out of bounds
-                if (monthMarker.weekIndex < 0 ||
-                    monthMarker.weekIndex >= this.plugin.settings.lifespan * 52) {
+            // Track which weeks are taken by week markers
+            const weekMarkerPositions = new Set();
+            if (this.plugin.settings.showWeekMarkers) {
+                for (let w = 10; w <= 50; w += 10) {
+                    // Add the week itself plus safety buffer of -1/+1
+                    weekMarkerPositions.add(w - 1);
+                    weekMarkerPositions.add(w);
+                    weekMarkerPositions.add(w + 1);
+                }
+            }
+            // Cake SVG for birth month
+            const cakeSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8"/><path d="M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4 2 2-1 2-1"/><path d="M2 21h20"/><path d="M7 8v2"/><path d="M12 8v2"/><path d="M17 8v2"/><path d="M7 4h.01"/><path d="M12 4h.01"/><path d="M17 4h.01"/></svg>`;
+            // Extract birth month data
+            const birthMonth = birthdayDate.getMonth();
+            const birthMonthName = MONTH_NAMES[birthMonth];
+            // First, place the cake icon at the first row
+            const cakeEl = monthMarkersContainer.createEl("div", {
+                cls: "chronos-month-marker birth-month",
+            });
+            cakeEl.innerHTML = cakeSvg;
+            cakeEl.setAttribute("title", `${birthMonthName} (Your Birthday)`);
+            cakeEl.style.position = "absolute";
+            cakeEl.style.right = "10px";
+            cakeEl.style.top = "0px"; // Position at first row
+            cakeEl.style.transform = "translateY(8px)"; // Center in first cell
+            cakeEl.style.textAlign = "right";
+            // Prepare the month markers for a complete yearly cycle
+            // This ensures we show all months, including birth month
+            const completeMonthCycle = new Map();
+            // Track used row positions
+            const usedRowPositions = new Set();
+            usedRowPositions.add(0); // Reserve the first row for the cake icon
+            // Process markers and ensure we get exactly one marker per month
+            for (const marker of monthMarkers) {
+                const monthIndex = MONTH_NAMES.indexOf(marker.label);
+                if (monthIndex === -1)
+                    continue; // Skip if not a valid month
+                // Calculate row position (0-51)
+                const rowPosition = marker.weekIndex % 52;
+                // Skip positions that would conflict with existing markers
+                if (usedRowPositions.has(rowPosition))
                     continue;
+                // Only add this month if we haven't seen it yet
+                if (!completeMonthCycle.has(monthIndex)) {
+                    completeMonthCycle.set(monthIndex, {
+                        ...marker,
+                        weekIndex: rowPosition,
+                    });
+                    usedRowPositions.add(rowPosition);
                 }
+            }
+            // Render all month markers
+            for (const [monthIndex, marker] of completeMonthCycle) {
+                // Skip rendering a marker at the first row (cake icon is already there)
+                if (marker.weekIndex === 0)
+                    continue;
                 // Create the marker element
-                const marker = monthMarkersContainer.createEl("div", {
-                    cls: `chronos-month-marker ${monthMarker.isFirstOfYear ? 'first-of-year' : ''} ${monthMarker.isBirthMonth ? 'birth-month' : ''}`
+                const markerEl = monthMarkersContainer.createEl("div", {
+                    cls: `chronos-month-marker ${marker.isFirstOfYear ? "first-of-year" : ""}`,
                 });
+                // Show month name
+                markerEl.textContent = marker.label;
                 // Show full month and year in tooltip
-                marker.setAttribute("title", monthMarker.fullLabel);
+                markerEl.setAttribute("title", marker.fullLabel);
                 // Style the marker with position and appearance
-                marker.style.position = "absolute";
-                marker.style.right = "10px";
+                markerEl.style.position = "absolute";
+                // Check if this marker would overlap with a week marker
+                const hasWeekMarkerOverlap = weekMarkerPositions.has(marker.weekIndex);
+                // If there's an overlap, position to the left of the week marker
+                markerEl.style.right = hasWeekMarkerOverlap ? "30px" : "10px";
                 // January gets special styling
-                if (monthMarker.isFirstOfYear) {
-                    marker.style.fontWeight = "bold";
-                    marker.style.opacity = "1.0";
+                if (marker.isFirstOfYear) {
+                    markerEl.style.fontWeight = "bold";
+                    markerEl.style.opacity = "1.0";
                 }
-                // Birth month gets cake icon
-                if (monthMarker.isBirthMonth) {
-                    marker.innerHTML = CAKE_ICON;
-                    marker.classList.add("with-icon");
-                }
-                else {
-                    marker.textContent = monthMarker.label;
-                }
-                // Check for overlap with week markers and adjust position if needed
-                let offsetY = 0;
-                if (weekMarkerPositions.has(monthMarker.weekIndex)) {
-                    // If overlap exists, offset the month marker up slightly
-                    offsetY = -12;
-                    marker.classList.add("offset");
-                }
-                // Position the marker at the exact grid position with offset if needed
-                marker.style.top = `${monthMarker.weekIndex * (cellSize + cellGap) + cellSize / 2 + offsetY}px`;
-                marker.style.transform = "translateY(-50%)";
-                marker.style.textAlign = "right";
+                // Position the marker at the exact grid position
+                markerEl.style.top = `${marker.weekIndex * (cellSize + cellGap) + cellSize / 2}px`;
+                markerEl.style.transform = "translateY(-50%)";
+                markerEl.style.textAlign = "right";
             }
         }
         // Create the grid container
@@ -1163,7 +1232,7 @@ class ChronosTimelineView extends obsidian.ItemView {
         // Helper to check for range events and apply styling
         const applyEventStyle = (events, defaultColor, defaultDesc) => {
             // Check for exact match (single date events)
-            const singleEvent = events.find(e => e.startsWith(`${weekKey}:`) && !e.includes(':', 10));
+            const singleEvent = events.find((e) => e.startsWith(`${weekKey}:`) && !e.includes(":", 10));
             if (singleEvent) {
                 cell.style.backgroundColor = defaultColor;
                 cell.addClass("event");
@@ -1172,9 +1241,9 @@ class ChronosTimelineView extends obsidian.ItemView {
                 return true;
             }
             // Check for range events (format: startWeek:endWeek:description)
-            const rangeEvents = events.filter(e => {
+            const rangeEvents = events.filter((e) => {
                 const parts = e.split(":");
-                return parts.length >= 3 && parts[0].includes("W") && parts[1].includes("W");
+                return (parts.length >= 3 && parts[0].includes("W") && parts[1].includes("W"));
             });
             for (const rangeEvent of rangeEvents) {
                 const [startWeekKey, endWeekKey, description] = rangeEvent.split(":");
@@ -1190,8 +1259,9 @@ class ChronosTimelineView extends obsidian.ItemView {
                 const cellYear = parseInt(weekKey.split("-W")[0]);
                 const cellWeek = parseInt(weekKey.split("-W")[1]);
                 // Check if current week falls within the range
-                const isInRange = ((cellYear > startYear || (cellYear === startYear && cellWeek >= startWeek)) &&
-                    (cellYear < endYear || (cellYear === endYear && cellWeek <= endWeek)));
+                const isInRange = (cellYear > startYear ||
+                    (cellYear === startYear && cellWeek >= startWeek)) &&
+                    (cellYear < endYear || (cellYear === endYear && cellWeek <= endWeek));
                 if (isInRange) {
                     cell.style.backgroundColor = defaultColor;
                     cell.addClass("event");
@@ -1265,7 +1335,7 @@ class MarkerSettingsModal extends obsidian.Modal {
         contentEl.empty();
         contentEl.createEl("h2", { text: "Timeline Marker Settings" });
         contentEl.createEl("p", {
-            text: "Choose which timeline markers are visible"
+            text: "Choose which timeline markers are visible",
         });
         // Decade markers setting
         new obsidian.Setting(contentEl)
@@ -1310,12 +1380,12 @@ class MarkerSettingsModal extends obsidian.Modal {
         const monthMarkerSetting = new obsidian.Setting(contentEl)
             .setName("Month Marker Frequency")
             .setDesc("Choose how often month markers appear")
-            .addDropdown(dropdown => {
+            .addDropdown((dropdown) => {
             dropdown
-                .addOption('all', 'Every Month')
-                .addOption('quarter', 'Every Quarter (Jan, Apr, Jul, Oct)')
-                .addOption('half-year', 'Every Half Year (Jan, Jul)')
-                .addOption('year', 'Every Year (Jan only)')
+                .addOption("all", "Every Month")
+                .addOption("quarter", "Every Quarter (Jan, Apr, Jul, Oct)")
+                .addOption("half-year", "Every Half Year (Jan, Jul)")
+                .addOption("year", "Every Year (Jan only)")
                 .setValue(this.plugin.settings.monthMarkerFrequency)
                 .onChange(async (value) => {
                 this.plugin.settings.monthMarkerFrequency = value;
@@ -1329,8 +1399,7 @@ class MarkerSettingsModal extends obsidian.Modal {
             monthMarkerSetting.settingEl.style.display = "none";
         }
         // Close button
-        new obsidian.Setting(contentEl)
-            .addButton((btn) => btn
+        new obsidian.Setting(contentEl).addButton((btn) => btn
             .setButtonText("Close")
             .setCta()
             .onClick(() => {
@@ -1374,15 +1443,15 @@ class ManageEventTypesModal extends obsidian.Modal {
         addSection.createEl("h3", { text: "Add New Event Type" });
         const nameInput = addSection.createEl("input", {
             type: "text",
-            placeholder: "Event Type Name"
+            placeholder: "Event Type Name",
         });
         const colorInput = addSection.createEl("input", {
             type: "color",
-            value: "#FF9800"
+            value: "#FF9800",
         });
         const addButton = addSection.createEl("button", {
             text: "Add Type",
-            cls: "add-type-button"
+            cls: "add-type-button",
         });
         addButton.addEventListener("click", () => {
             const name = nameInput.value.trim();
@@ -1396,7 +1465,7 @@ class ManageEventTypesModal extends obsidian.Modal {
             }
             this.plugin.settings.customEventTypes.push({
                 name: name,
-                color: colorInput.value
+                color: colorInput.value,
             });
             this.plugin.settings.customEvents[name] = [];
             this.plugin.saveSettings().then(() => {
@@ -1407,14 +1476,14 @@ class ManageEventTypesModal extends obsidian.Modal {
         });
         // Section for listing existing custom types
         const existingSection = contentEl.createDiv({
-            cls: "event-type-existing-section"
+            cls: "event-type-existing-section",
         });
         existingSection.createEl("h3", { text: "Existing Event Types" });
         this.renderExistingTypes(existingSection);
         // Close button
         const closeButton = contentEl.createEl("button", {
             text: "Close",
-            cls: "close-button"
+            cls: "close-button",
         });
         closeButton.addEventListener("click", () => {
             this.close();
@@ -1437,17 +1506,17 @@ class ManageEventTypesModal extends obsidian.Modal {
         // Built-in types section
         newList.createEl("p", {
             text: "Built-in types (cannot be edited)",
-            cls: "built-in-note"
+            cls: "built-in-note",
         });
         const builtInTypes = [
             { name: "Major Life", color: "#4CAF50" },
             { name: "Travel", color: "#2196F3" },
             { name: "Relationship", color: "#E91E63" },
-            { name: "Education/Career", color: "#9C27B0" }
+            { name: "Education/Career", color: "#9C27B0" },
         ];
         for (const type of builtInTypes) {
             const typeItem = newList.createEl("div", {
-                cls: "event-type-item built-in"
+                cls: "event-type-item built-in",
             });
             const colorBox = typeItem.createEl("span", { cls: "event-type-color" });
             colorBox.style.backgroundColor = type.color;
@@ -1457,11 +1526,11 @@ class ManageEventTypesModal extends obsidian.Modal {
         if (this.plugin.settings.customEventTypes.length > 0) {
             newList.createEl("p", {
                 text: "Your custom types",
-                cls: "custom-types-note"
+                cls: "custom-types-note",
             });
             for (const type of this.plugin.settings.customEventTypes) {
                 const typeItem = newList.createEl("div", {
-                    cls: "event-type-item custom"
+                    cls: "event-type-item custom",
                 });
                 const colorBox = typeItem.createEl("span", { cls: "event-type-color" });
                 colorBox.style.backgroundColor = type.color;
@@ -1469,7 +1538,7 @@ class ManageEventTypesModal extends obsidian.Modal {
                 // Edit button
                 const editButton = typeItem.createEl("button", {
                     text: "Edit",
-                    cls: "edit-type-button"
+                    cls: "edit-type-button",
                 });
                 editButton.addEventListener("click", () => {
                     this.showEditTypeModal(type);
@@ -1477,7 +1546,7 @@ class ManageEventTypesModal extends obsidian.Modal {
                 // Delete button
                 const deleteButton = typeItem.createEl("button", {
                     text: "Delete",
-                    cls: "delete-type-button"
+                    cls: "delete-type-button",
                 });
                 deleteButton.addEventListener("click", () => {
                     if (confirm(`Are you sure you want to delete the event type "${type.name}"? All events of this type will also be deleted.`)) {
@@ -1495,7 +1564,7 @@ class ManageEventTypesModal extends obsidian.Modal {
         else {
             newList.createEl("p", {
                 text: "You haven't created any custom event types yet",
-                cls: "no-custom-types"
+                cls: "no-custom-types",
             });
         }
     }
@@ -1528,7 +1597,7 @@ class ManageEventTypesModal extends obsidian.Modal {
         // Save button
         const saveButton = contentEl.createEl("button", {
             text: "Save Changes",
-            cls: "save-edit-button"
+            cls: "save-edit-button",
         });
         saveButton.addEventListener("click", () => {
             const newName = nameInput.value.trim();
@@ -1552,7 +1621,7 @@ class ManageEventTypesModal extends obsidian.Modal {
             if (typeIndex !== -1) {
                 this.plugin.settings.customEventTypes[typeIndex] = {
                     name: newName,
-                    color: colorInput.value
+                    color: colorInput.value,
                 };
                 this.plugin.saveSettings().then(() => {
                     new obsidian.Notice(`Event type updated to "${newName}"`);
@@ -1564,7 +1633,7 @@ class ManageEventTypesModal extends obsidian.Modal {
         // Cancel button
         const cancelButton = contentEl.createEl("button", {
             text: "Cancel",
-            cls: "cancel-edit-button"
+            cls: "cancel-edit-button",
         });
         cancelButton.addEventListener("click", () => {
             modal.close();
@@ -1605,7 +1674,7 @@ class ChronosSettingTab extends obsidian.PluginSettingTab {
         containerEl.empty();
         containerEl.createEl("h1", { text: "ChronOS Timeline Settings" });
         containerEl.createEl("p", {
-            text: "Customize your life timeline visualization."
+            text: "Customize your life timeline visualization.",
         });
         // Birthday setting
         new obsidian.Setting(containerEl)
@@ -1692,7 +1761,9 @@ class ChronosSettingTab extends obsidian.PluginSettingTab {
             // Show/hide month marker frequency setting based on toggle state
             const freqSetting = containerEl.querySelector(".month-marker-frequency");
             if (freqSetting) {
-                freqSetting.style.display = value ? "flex" : "none";
+                freqSetting.style.display = value
+                    ? "flex"
+                    : "none";
             }
         }));
         // Month marker frequency setting
@@ -1700,12 +1771,12 @@ class ChronosSettingTab extends obsidian.PluginSettingTab {
             .setName("Month Marker Frequency")
             .setDesc("Choose how often month markers appear")
             .setClass("month-marker-frequency")
-            .addDropdown(dropdown => {
+            .addDropdown((dropdown) => {
             dropdown
-                .addOption('all', 'Every Month')
-                .addOption('quarter', 'Every Quarter (Jan, Apr, Jul, Oct)')
-                .addOption('half-year', 'Every Half Year (Jan, Jul)')
-                .addOption('year', 'Every Year (Jan only)')
+                .addOption("all", "Every Month")
+                .addOption("quarter", "Every Quarter (Jan, Apr, Jul, Oct)")
+                .addOption("half-year", "Every Half Year (Jan, Jul)")
+                .addOption("year", "Every Year (Jan only)")
                 .setValue(this.plugin.settings.monthMarkerFrequency)
                 .onChange(async (value) => {
                 this.plugin.settings.monthMarkerFrequency = value;
@@ -1834,19 +1905,19 @@ class ChronosSettingTab extends obsidian.PluginSettingTab {
         // Help tips section
         containerEl.createEl("h3", { text: "Tips" });
         containerEl.createEl("p", {
-            text: "• Click on any week to create or open a note for that week"
+            text: "• Click on any week to create or open a note for that week",
         });
         containerEl.createEl("p", {
-            text: "• Shift+Click on a week to add an event"
+            text: "• Shift+Click on a week to add an event",
         });
         containerEl.createEl("p", {
-            text: "• Use the 'Plan Event' button to mark significant life events (including date ranges)"
+            text: "• Use the 'Plan Event' button to mark significant life events (including date ranges)",
         });
         containerEl.createEl("p", {
-            text: "• Create custom event types to personalize your timeline"
+            text: "• Create custom event types to personalize your timeline",
         });
         containerEl.createEl("p", {
-            text: "• Use the 'Marker Settings' button to customize which timeline markers are visible"
+            text: "• Use the 'Marker Settings' button to customize which timeline markers are visible",
         });
     }
     /**
