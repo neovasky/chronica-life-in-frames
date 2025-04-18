@@ -439,18 +439,18 @@
       font-weight: 500;
     }
 
-    /* Birthday cake marker */
+/* Birthday cake marker */
 .chronos-birthday-marker-container {
   pointer-events: none;
 }
 
 .birthday-cake-marker {
-  color: #e91e63;
+  color: #f48fb1; /* Lighter pink color */
   background-color: rgba(255, 255, 255, 0.2);
   border-radius: 50%;
   padding: 3px;
-  width: 20px;
-  height: 20px;
+  width: 24px; /* Increased size */
+  height: 24px; /* Increased size */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -459,5 +459,10 @@
 
 .birthday-cake-marker:hover {
   transform: scale(1.2);
+}
+
+/* Make sure the SVG inside takes the color */
+.birthday-cake-marker svg {
+  color: #f48fb1; /* Ensure SVG takes the color */
 }
   }
