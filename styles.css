@@ -9,13 +9,15 @@
     --cell-size: 16px;
     --cell-gap: 2px;
     --total-years: 90; /* This should match your lifespan setting */
-    --left-offset: 50px; /* Space for week markers */
+    --left-offset: 70px; /* Increased space for markers (was 50px) */
     --top-offset: 50px; /* Space for decade markers */
+    --marker-week-column: 40px; /* Fixed position for week markers */
+    --marker-month-column: 10px; /* Fixed position for month markers */
   }
   
   /* -----------------------------------------------------------------------------
-           LAYOUT CONTAINERS
-           ----------------------------------------------------------------------------- */
+         LAYOUT CONTAINERS
+         ----------------------------------------------------------------------------- */
   /* Main container */
   .chronos-timeline-container {
     font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
@@ -49,6 +51,7 @@
     min-width: 600px;
   }
   
+  /* Markers container with proper structure */
   .chronos-vertical-markers {
     position: absolute;
     top: var(--top-offset);
@@ -57,10 +60,28 @@
     height: calc(100% - var(--top-offset));
     pointer-events: none;
     z-index: 10;
+    display: flex;
+    flex-direction: row-reverse; /* Reverse to have week closer to grid, month on left */
   }
+  
+  /* Week markers container */
+  .chronos-week-markers {
+    position: relative;
+    width: var(--marker-week-column);
+    height: 100%;
+  }
+  
+  /* Month markers container */
+  .chronos-month-markers {
+    position: relative;
+    width: var(--marker-month-column);
+    flex-grow: 1; /* Take remaining space */
+    height: 100%;
+  }
+  
   /* -----------------------------------------------------------------------------
-           CONTROL ELEMENTS
-           ----------------------------------------------------------------------------- */
+         CONTROL ELEMENTS
+         ----------------------------------------------------------------------------- */
   /* Controls bar */
   .chronos-controls {
     display: flex;
@@ -86,8 +107,8 @@
   }
   
   /* -----------------------------------------------------------------------------
-           MARKERS & GRID LAYOUT
-           ----------------------------------------------------------------------------- */
+         MARKERS & GRID LAYOUT
+         ----------------------------------------------------------------------------- */
   /* Decade markers (horizontal, top) */
   .chronos-decade-markers {
     position: absolute;
@@ -108,48 +129,36 @@
     transform: translateX(-50%);
   }
   
-  /* Week markers (vertical, left) */
-  .chronos-week-markers {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-  }
-  
+  /* Week markers (vertical) */
   .chronos-week-marker {
     position: absolute;
     font-size: 12px;
     color: var(--text-muted);
-    font-weight: 600; /* Increased weight for better hierarchy */
-    text-align: right;
-    right: 10px;
+    font-weight: 600;
+    right: 2px; /* Consistent alignment */
     transform: translateY(-50%);
     /* Add subtle background for better visibility */
     background-color: rgba(0, 0, 0, 0.1);
     padding: 2px 4px;
     border-radius: 3px;
     z-index: 15; /* Ensure week markers are on top */
+    text-align: right;
+    width: 30px; /* Fixed width for consistency */
   }
   
   /* Month markers */
-  .chronos-month-markers {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-  }
-  
   .chronos-month-marker {
     position: absolute;
     font-size: 10px;
     color: var(--text-muted);
     font-weight: 400;
     font-style: italic;
-    text-align: right;
-    right: 10px;
+    left: 5px; /* Consistent left alignment */
     opacity: 0.7;
     transform: translateY(-50%);
     transition: opacity 0.2s; /* Smooth transition for hover effects */
+    text-align: left;
+    width: 30px; /* Fixed width for consistency */
   }
   
   /* Highlight month markers on hover for better discoverability */
@@ -165,6 +174,11 @@
   }
   
   /* Special styling for birth month */
+  .chronos-month-marker.birth-month {
+    right: auto;
+    left: 5px;
+  }
+  
   .chronos-month-marker.birth-month svg {
     color: #e91e63; /* Pink color for cake icon */
   }
@@ -191,8 +205,8 @@
   }
   
   /* -----------------------------------------------------------------------------
-           GRID CELLS
-           ----------------------------------------------------------------------------- */
+         GRID CELLS
+         ----------------------------------------------------------------------------- */
   /* Individual cells */
   .chronos-grid-cell {
     width: var(--cell-size);
@@ -238,8 +252,8 @@
   }
   
   /* -----------------------------------------------------------------------------
-           LEGEND
-           ----------------------------------------------------------------------------- */
+         LEGEND
+         ----------------------------------------------------------------------------- */
   .chronos-legend {
     display: flex;
     justify-content: center;
@@ -263,8 +277,8 @@
   }
   
   /* -----------------------------------------------------------------------------
-           FOOTER
-           ----------------------------------------------------------------------------- */
+         FOOTER
+         ----------------------------------------------------------------------------- */
   .chronos-footer {
     text-align: center;
     font-style: italic;
@@ -275,8 +289,8 @@
   }
   
   /* -----------------------------------------------------------------------------
-           MODAL WINDOWS & FORMS
-           ----------------------------------------------------------------------------- */
+         MODAL WINDOWS & FORMS
+         ----------------------------------------------------------------------------- */
   /* General modal styling */
   .modal .setting-item {
     border-top: 1px solid var(--background-modifier-border);
@@ -396,8 +410,8 @@
   }
   
   /* -----------------------------------------------------------------------------
-           RESPONSIVE DESIGN
-           ----------------------------------------------------------------------------- */
+         RESPONSIVE DESIGN
+         ----------------------------------------------------------------------------- */
   @media (max-width: 768px) {
     /* Adjust container padding */
     .chronos-view {
@@ -420,7 +434,8 @@
       font-size: 10px;
     }
   
-    .chronos-month-marker.birth-month svg {
-      color: #e91e63; /* Pink color for cake icon */
+    .chronos-month-marker.birth-month:not(:has(svg)) {
+      color: #e91e63; /* Pink color to match cake icon */
+      font-weight: 500;
     }
   }

@@ -990,7 +990,7 @@ class ChronosTimelineView extends obsidian.ItemView {
         const root = document.documentElement;
         const cellSize = parseInt(getComputedStyle(root).getPropertyValue("--cell-size")) || 16;
         const cellGap = parseInt(getComputedStyle(root).getPropertyValue("--cell-gap")) || 2;
-        const leftOffset = parseInt(getComputedStyle(root).getPropertyValue("--left-offset")) || 50;
+        const leftOffset = parseInt(getComputedStyle(root).getPropertyValue("--left-offset")) || 70;
         const topOffset = parseInt(getComputedStyle(root).getPropertyValue("--top-offset")) || 50;
         const regularGap = cellGap; // Store the regular gap size
         // Create decade markers container (horizontal markers above the grid)
@@ -1013,18 +1013,19 @@ class ChronosTimelineView extends obsidian.ItemView {
                 marker.style.transform = "translate(-50%, -50%)";
             }
         }
-        // Create vertical markers container (for both week and month markers)
+        // Create vertical markers container with structured layout
         const markersContainer = container.createEl("div", {
             cls: "chronos-vertical-markers",
         });
-        // Create a single shared Set to track which week positions are occupied by markers
-        // This ensures consistent detection of overlaps
-        const markerPositions = new Map();
+        // First, create the separate containers for week and month markers
+        const weekMarkersContainer = markersContainer.createEl("div", {
+            cls: "chronos-week-markers",
+        });
+        const monthMarkersContainer = markersContainer.createEl("div", {
+            cls: "chronos-month-markers",
+        });
         // Add week markers (10, 20, 30, 40, 50) if enabled
         if (this.plugin.settings.showWeekMarkers) {
-            const weekMarkersContainer = markersContainer.createEl("div", {
-                cls: "chronos-week-markers",
-            });
             for (let week = 0; week <= 50; week += 10) {
                 if (week === 0)
                     continue; // Skip 0 to start with 10
@@ -1032,118 +1033,87 @@ class ChronosTimelineView extends obsidian.ItemView {
                     cls: "chronos-week-marker",
                     text: week.toString(),
                 });
-                // Position each week marker
-                marker.style.position = "absolute";
-                marker.style.right = "10px";
-                // Calculate the exact position
+                // Calculate the exact position - align to grid
                 const topPosition = week * (cellSize + cellGap) + cellSize / 2 - (cellSize + cellGap);
-                // Move up by 1 block by subtracting (cellSize + cellGap)
                 marker.style.top = `${topPosition}px`;
-                marker.style.transform = "translateY(-50%)";
-                marker.style.textAlign = "right";
-                // Mark this position and surrounding positions as occupied
-                // Store the type of marker for better visualization decisions
-                const rowPosition = week - 1;
-                markerPositions.set(rowPosition - 1, "week-nearby");
-                markerPositions.set(rowPosition, "week-nearby");
-                markerPositions.set(rowPosition + 1, "week-nearby");
-                markerPositions.set(week, "week");
-                markerPositions.set(week + 1, "week-nearby");
             }
         }
         // Add month markers if enabled
         if (this.plugin.settings.showMonthMarkers) {
             const birthdayDate = new Date(this.plugin.settings.birthday);
-            const monthMarkers = this.plugin.calculateMonthMarkers(birthdayDate, this.plugin.settings.lifespan, this.plugin.settings.monthMarkerFrequency);
-            const monthMarkersContainer = markersContainer.createEl("div", {
-                cls: "chronos-month-markers",
-            });
-            // Cake SVG for birth month
-            const cakeSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8"/><path d="M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4 2 2-1 2-1"/><path d="M2 21h20"/><path d="M7 8v2"/><path d="M12 8v2"/><path d="M17 8v2"/><path d="M7 4h.01"/><path d="M12 4h.01"/><path d="M17 4h.01"/></svg>`;
             // Extract birth month data
             const birthMonth = birthdayDate.getMonth();
+            const birthDay = birthdayDate.getDate();
+            const birthYear = birthdayDate.getFullYear();
             const birthMonthName = MONTH_NAMES[birthMonth];
-            // First, place the cake icon at the first row
+            // Create cake icon for exact birthday position (at exact birth day position, week 0)
+            const cakeSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8"/><path d="M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4 2 2-1 2-1"/><path d="M2 21h20"/><path d="M7 8v2"/><path d="M12 8v2"/><path d="M17 8v2"/><path d="M7 4h.01"/><path d="M12 4h.01"/><path d="M17 4h.01"/></svg>`;
             const cakeEl = monthMarkersContainer.createEl("div", {
                 cls: "chronos-month-marker birth-month",
             });
             cakeEl.innerHTML = cakeSvg;
-            cakeEl.setAttribute("title", `${birthMonthName} (Your Birthday)`);
-            cakeEl.style.position = "absolute";
-            cakeEl.style.right = "10px";
-            cakeEl.style.top = "0px"; // Position at first row
-            cakeEl.style.transform = "translateY(8px)"; // Center in first cell
-            cakeEl.style.textAlign = "right";
-            // Mark the birth month position as occupied
-            markerPositions.set(0, "birth-month");
-            // Prepare the month markers for a complete yearly cycle
-            // This ensures we show all months, including birth month
-            const completeMonthCycle = new Map();
-            // Track used row positions
-            const usedRowPositions = new Set();
-            usedRowPositions.add(0); // Reserve the first row for the cake icon
-            // Process markers and ensure we get exactly one marker per month
+            cakeEl.setAttribute("title", `${birthMonthName} ${birthDay}, ${birthYear} (Your Birthday)`);
+            cakeEl.style.top = "8px"; // Position at first row (week 0)
+            // Calculate which week of the month the birthday falls in
+            // First, get first day of birth month
+            const firstDayOfBirthMonth = new Date(birthYear, birthMonth, 1);
+            // Calculate days between first of month and birthday
+            const daysBetween = (birthdayDate.getTime() - firstDayOfBirthMonth.getTime()) / (1000 * 60 * 60 * 24);
+            // Calculate which week of the month (0-indexed) the birthday falls in
+            const birthWeekOfMonth = Math.floor(daysBetween / 7);
+            // Now calculate the position for the birth month marker
+            // If birthday is in week 3 of the month (0-indexed), place month marker at week 51 (second-to-last row)
+            // If birthday is in week 2 of the month, place month marker at week 0 (last row)
+            // If birthday is in week 1 of the month, place month marker at week 1 (first row)
+            const birthMonthMarkerWeek = (52 - birthWeekOfMonth) % 52;
+            // Calculate month markers from the plugin
+            const monthMarkers = this.plugin.calculateMonthMarkers(birthdayDate, this.plugin.settings.lifespan, this.plugin.settings.monthMarkerFrequency);
+            // Create a map to store one marker per month 
+            const monthMarkersMap = new Map();
+            // Process all markers to find the best one for each month
             for (const marker of monthMarkers) {
                 const monthIndex = MONTH_NAMES.indexOf(marker.label);
                 if (monthIndex === -1)
                     continue; // Skip if not a valid month
-                // Calculate row position (0-51)
-                const rowPosition = marker.weekIndex % 52;
-                // Skip positions that would conflict with existing markers
-                if (usedRowPositions.has(rowPosition))
+                // Skip if this is the birth month - we'll handle it separately
+                if (monthIndex === birthMonth)
                     continue;
+                // Calculate the actual week position within the grid (0-51)
+                const weekPosition = marker.weekIndex % 52;
                 // Only add this month if we haven't seen it yet
-                if (!completeMonthCycle.has(monthIndex)) {
-                    completeMonthCycle.set(monthIndex, {
-                        ...marker,
-                        weekIndex: rowPosition,
+                if (!monthMarkersMap.has(monthIndex)) {
+                    monthMarkersMap.set(monthIndex, {
+                        label: marker.label,
+                        weekIndex: weekPosition,
+                        isFirstOfYear: marker.isFirstOfYear,
+                        fullLabel: marker.fullLabel
                     });
-                    usedRowPositions.add(rowPosition);
                 }
             }
+            // Manually add the birth month marker at the calculated position
+            monthMarkersMap.set(birthMonth, {
+                label: birthMonthName,
+                weekIndex: birthMonthMarkerWeek,
+                isFirstOfYear: birthMonth === 0,
+                fullLabel: `${birthMonthName} ${birthYear} (Birth Month)`
+            });
             // Render all month markers
-            for (const [monthIndex, marker] of completeMonthCycle) {
-                // Skip rendering a marker at the first row (cake icon is already there)
-                if (marker.weekIndex === 0)
-                    continue;
-                // Create the marker element
+            for (const [monthIndex, marker] of monthMarkersMap.entries()) {
+                // Create marker element
                 const markerEl = monthMarkersContainer.createEl("div", {
-                    cls: `chronos-month-marker ${marker.isFirstOfYear ? "first-of-year" : ""}`,
+                    cls: `chronos-month-marker ${marker.isFirstOfYear ? "first-of-year" : ""} ${monthIndex === birthMonth ? "birth-month" : ""}`,
                 });
-                // Show month name
+                // Add month name
                 markerEl.textContent = marker.label;
-                // Show full month and year in tooltip
+                // Add tooltip
                 markerEl.setAttribute("title", marker.fullLabel);
-                // Style the marker with position and appearance
-                markerEl.style.position = "absolute";
-                // Determine the right position based on marker conflicts
-                // Use a consistent offset strategy
-                const position = marker.weekIndex;
-                const markerType = markerPositions.get(position);
-                // Consistent offsetting strategy:
-                // - If directly on a week marker or very close, use a larger offset
-                // - If near a week marker, use a medium offset
-                // - Otherwise, use the standard position
-                let rightPosition;
-                if (markerType === "week") {
-                    rightPosition = "35px"; // Maximum offset for direct week marker conflict
+                // Special styling for birth month
+                if (monthIndex === birthMonth && !markerEl.innerHTML.includes("svg")) {
+                    markerEl.style.color = "#e91e63"; // Pink color
+                    markerEl.style.fontWeight = "500";
                 }
-                else if (markerType === "week-nearby") {
-                    rightPosition = "25px"; // Medium offset for nearby week markers
-                }
-                else {
-                    rightPosition = "10px"; // Standard position
-                }
-                markerEl.style.right = rightPosition;
-                // January gets special styling
-                if (marker.isFirstOfYear) {
-                    markerEl.style.fontWeight = "bold";
-                    markerEl.style.opacity = "1.0";
-                }
-                // Position the marker at the exact grid position
+                // Position the marker
                 markerEl.style.top = `${marker.weekIndex * (cellSize + cellGap) + cellSize / 2}px`;
-                markerEl.style.transform = "translateY(-50%)";
-                markerEl.style.textAlign = "right";
             }
         }
         // Create the grid container
