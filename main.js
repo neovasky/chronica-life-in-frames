@@ -38,6 +38,7 @@ const DEFAULT_SETTINGS = {
     showDecadeMarkers: true,
     showWeekMarkers: true,
     showMonthMarkers: true,
+    showBirthdayMarker: true,
     monthMarkerFrequency: "all",
 };
 /** SVG icon for the ChronOS Timeline */
@@ -134,6 +135,9 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
         }
         if (this.settings.showMonthMarkers === undefined) {
             this.settings.showMonthMarkers = DEFAULT_SETTINGS.showMonthMarkers;
+        }
+        if (this.settings.showBirthdayMarker === undefined) {
+            this.settings.showBirthdayMarker = DEFAULT_SETTINGS.showBirthdayMarker;
         }
         if (this.settings.monthMarkerFrequency === undefined) {
             this.settings.monthMarkerFrequency =
@@ -1005,6 +1009,29 @@ class ChronosTimelineView extends obsidian.ItemView {
                 marker.style.transform = "translate(-50%, -50%)";
             }
         }
+        // Add birthday cake marker (independent of month markers)
+        if (this.plugin.settings.showBirthdayMarker) {
+            const birthdayDate = new Date(this.plugin.settings.birthday);
+            const birthMonth = birthdayDate.getMonth();
+            const birthDay = birthdayDate.getDate();
+            const birthYear = birthdayDate.getFullYear();
+            const birthMonthName = MONTH_NAMES[birthMonth];
+            const birthdayMarkerContainer = container.createEl("div", {
+                cls: "chronos-birthday-marker-container",
+            });
+            // Position the container near the grid
+            birthdayMarkerContainer.style.position = "absolute";
+            birthdayMarkerContainer.style.top = `${topOffset - 2}px`; // Align with the top of the grid
+            birthdayMarkerContainer.style.left = `${leftOffset - 22}px`; // Position closer to the grid
+            birthdayMarkerContainer.style.zIndex = "15"; // Ensure visibility above other elements
+            // Create cake icon for birthday
+            const cakeSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f48fb1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8"/><path d="M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4 2 2-1 2-1"/><path d="M2 21h20"/><path d="M7 8v2"/><path d="M12 8v2"/><path d="M17 8v2"/><path d="M7 4h.01"/><path d="M12 4h.01"/><path d="M17 4h.01"/></svg>`;
+            const cakeEl = birthdayMarkerContainer.createEl("div", {
+                cls: "birthday-cake-marker",
+            });
+            cakeEl.innerHTML = cakeSvg;
+            cakeEl.setAttribute("title", `${birthMonthName} ${birthDay}, ${birthYear} (Your Birthday)`);
+        }
         // Create vertical markers container with structured layout
         const markersContainer = container.createEl("div", {
             cls: "chronos-vertical-markers",
@@ -1034,7 +1061,7 @@ class ChronosTimelineView extends obsidian.ItemView {
         if (this.plugin.settings.showMonthMarkers) {
             const birthdayDate = new Date(this.plugin.settings.birthday);
             const birthMonth = birthdayDate.getMonth();
-            const birthDay = birthdayDate.getDate();
+            birthdayDate.getDate();
             const birthYear = birthdayDate.getFullYear();
             const birthMonthName = MONTH_NAMES[birthMonth];
             // Calculate which week of the month the birthday falls in
@@ -1044,21 +1071,6 @@ class ChronosTimelineView extends obsidian.ItemView {
             const daysBetween = (birthdayDate.getTime() - firstDayOfBirthMonth.getTime()) / (1000 * 60 * 60 * 24);
             // Calculate which week of the month (0-indexed) the birthday falls in
             const birthWeekOfMonth = Math.floor(daysBetween / 7);
-            const birthdayMarkerContainer = container.createEl("div", {
-                cls: "chronos-birthday-marker-container",
-            });
-            // Position the container near the grid
-            birthdayMarkerContainer.style.position = "absolute";
-            birthdayMarkerContainer.style.top = `${topOffset - 2}px`; // Align with the top of the grid
-            birthdayMarkerContainer.style.left = `${leftOffset - 22}px`; // Position closer to the grid
-            birthdayMarkerContainer.style.zIndex = "15"; // Ensure visibility above other elements
-            // Create cake icon for birthday
-            const cakeSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f48fb1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8"/><path d="M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4 2 2-1 2-1"/><path d="M2 21h20"/><path d="M7 8v2"/><path d="M12 8v2"/><path d="M17 8v2"/><path d="M7 4h.01"/><path d="M12 4h.01"/><path d="M17 4h.01"/></svg>`;
-            const cakeEl = birthdayMarkerContainer.createEl("div", {
-                cls: "birthday-cake-marker",
-            });
-            cakeEl.innerHTML = cakeSvg;
-            cakeEl.setAttribute("title", `${birthMonthName} ${birthDay}, ${birthYear} (Your Birthday)`);
             // Now calculate the position for the birth month marker
             // If birthday is in week 3 of the month (0-indexed), place month marker at week 51 (second-to-last row)
             // If birthday is in week 2 of the month, place month marker at week 0 (last row)
