@@ -46,7 +46,7 @@ const DEFAULT_SETTINGS = {
     filledWeeks: [],
     startWeekOnMonday: true,
     zoomLevel: 1.0,
-    isSidebarOpen: true, // Default to open sidebar
+    isSidebarOpen: false,
 };
 /** SVG icon for the ChronOS Timeline */
 const CHRONOS_ICON = `<svg viewBox="0 0 100 100" width="100" height="100" xmlns="http://www.w3.org/2000/svg">

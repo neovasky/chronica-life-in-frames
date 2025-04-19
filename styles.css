@@ -81,25 +81,25 @@
 .chronos-collapsed-toggle {
   position: absolute;
   left: 0;
-  top: 10px;
-  width: 24px;
-  height: 36px;
-  background-color: var(--background-secondary-alt);
+  top: 50px; /* Changed from 10px to move it down slightly */
+  width: 32px; /* Increased from 24px */
+  height: 48px; /* Increased from 36px */
+  background-color: var(--interactive-accent); /* Changed from var(--background-secondary-alt) to use accent color */
   border: none;
-  border-radius: 0 4px 4px 0;
+  border-radius: 0 6px 6px 0; /* Increased from 4px */
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 15;
   transition: background-color 0.2s ease;
-  color: var(--text-normal);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  color: var(--text-on-accent); /* Changed from var(--text-normal) to improve contrast */
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2); /* Enhanced shadow */
 }
 
 .chronos-collapsed-toggle:hover {
-  background-color: var(--interactive-accent);
-  color: var(--text-on-accent);
+  width: 36px; /* Grow slightly on hover */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
   
 /* Sidebar toggle button in header */
