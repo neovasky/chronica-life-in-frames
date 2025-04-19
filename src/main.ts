@@ -1400,32 +1400,45 @@ class ChronosTimelineView extends ItemView {
       text: this.plugin.settings.quote,
     });
 
-    // Add zoom controls
-    const zoomControlsDiv = controlsEl.createEl("div", { cls: "chronos-zoom-controls" });
-    const zoomOutBtn = zoomControlsDiv.createEl("button", {
-      text: "−",
-      cls: "chronos-zoom-button chronos-zoom-out",
-      attr: { title: "Zoom Out" },
-    });
-    zoomOutBtn.addEventListener("click", () => {
-      this.zoomOut();
-    });
+// Add zoom controls
+const zoomControlsDiv = controlsEl.createEl("div", { cls: "chronos-zoom-controls" });
 
-    // Add zoom level indicator
-    zoomControlsDiv.createEl("span", {
-      text: `${Math.round(this.plugin.settings.zoomLevel * 100)}%`,
-      cls: "chronos-zoom-level",
-    });
+// Zoom out button with SVG icon
+const zoomOutBtn = zoomControlsDiv.createEl("button", {
+  cls: "chronos-zoom-button chronos-zoom-out",
+  attr: { title: "Zoom Out" },
+});
+// Add zoom out SVG icon
+zoomOutBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="11" cy="11" r="8"></circle>
+  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+  <line x1="8" y1="11" x2="14" y2="11"></line>
+</svg>`;
+zoomOutBtn.addEventListener("click", () => {
+  this.zoomOut();
+});
 
-    // Add zoom in button
-    const zoomInBtn = zoomControlsDiv.createEl("button", {
-      text: "+",
-      cls: "chronos-zoom-button chronos-zoom-in",
-      attr: { title: "Zoom In" },
-    });
-    zoomInBtn.addEventListener("click", () => {
-      this.zoomIn();
-    });
+// Add zoom level indicator
+const zoomLabel = zoomControlsDiv.createEl("span", {
+  text: `${Math.round(this.plugin.settings.zoomLevel * 100)}%`,
+  cls: "chronos-zoom-level",
+});
+
+// Zoom in button with SVG icon
+const zoomInBtn = zoomControlsDiv.createEl("button", {
+  cls: "chronos-zoom-button chronos-zoom-in",
+  attr: { title: "Zoom In" },
+});
+// Add zoom in SVG icon
+zoomInBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="11" cy="11" r="8"></circle>
+  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+  <line x1="11" y1="8" x2="11" y2="14"></line>
+  <line x1="8" y1="11" x2="14" y2="11"></line>
+</svg>`;
+zoomInBtn.addEventListener("click", () => {
+  this.zoomIn();
+});
   }
 
   /**

@@ -112,25 +112,48 @@
     display: flex;
     align-items: center;
     gap: 5px;
-    margin-left: 10px;
+    position: absolute;
+    top: 10px;
+    right: 20px;
+    z-index: 20;
+    background-color: var(--background-secondary);
+    border-radius: 4px;
+    padding: 3px 6px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   }
   
+  
   .chronos-zoom-button {
+    background-color: transparent;
+    border: none;
     width: 28px;
     height: 28px;
-    padding: 0;
-    font-size: 18px;
-    font-weight: bold;
+    padding: 4px;
+    cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
+    border-radius: 4px;
+    color: var(--text-normal);
+  }
+
+  .chronos-zoom-button:hover {
+    background-color: var(--background-modifier-hover);
+  }
+
+  .chronos-zoom-button svg {
+    width: 24px;  /* Increased from 16px */
+    height: 24px; /* Increased from 16px */
   }
   
+  
   .chronos-zoom-level {
-    min-width: 50px;
+    min-width: 45px;
     text-align: center;
-    font-size: 14px;
+    font-size: 12px;
+    font-weight: 500;
     color: var(--text-normal);
+    user-select: none;
   }
   
   /* -----------------------------------------------------------------------------
