@@ -1271,17 +1271,13 @@ class ChronosTimelineView extends ItemView {
   plugin: ChronosTimelinePlugin;
 
     /** Track sidebar open/closed state */
-    isSidebarOpen: boolean = true; 
+    isSidebarOpen: boolean; 
 
-  /**
-   * Create a new timeline view
-   * @param leaf - Workspace leaf to attach to
-   * @param plugin - ChronosTimelinePlugin instance
-   */
-  constructor(leaf: WorkspaceLeaf, plugin: ChronosTimelinePlugin) {
-    super(leaf);
-    this.plugin = plugin;
-  }
+    constructor(leaf: WorkspaceLeaf, plugin: ChronosTimelinePlugin) {
+      super(leaf);
+      this.plugin = plugin;
+      this.isSidebarOpen = this.plugin.settings.isSidebarOpen;
+    }
 
   /**
    * Get the unique view type

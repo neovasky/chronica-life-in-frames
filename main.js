@@ -934,15 +934,11 @@ class ChronosTimelineView extends obsidian.ItemView {
     /** Reference to the main plugin */
     plugin;
     /** Track sidebar open/closed state */
-    isSidebarOpen = true;
-    /**
-     * Create a new timeline view
-     * @param leaf - Workspace leaf to attach to
-     * @param plugin - ChronosTimelinePlugin instance
-     */
+    isSidebarOpen;
     constructor(leaf, plugin) {
         super(leaf);
         this.plugin = plugin;
+        this.isSidebarOpen = this.plugin.settings.isSidebarOpen;
     }
     /**
      * Get the unique view type
