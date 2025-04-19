@@ -1004,13 +1004,21 @@ class ChronosTimelineView extends obsidian.ItemView {
             `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>`;
         sidebarToggle.addEventListener("click", () => {
             this.isSidebarOpen = !this.isSidebarOpen;
-            sidebarEl.classList.toggle("collapsed");
-            sidebarEl.classList.toggle("expanded");
+            // Save state to plugin settings
+            this.plugin.settings.isSidebarOpen = this.isSidebarOpen;
+            this.plugin.saveSettings();
+            // Update UI
+            sidebarEl.classList.toggle("collapsed", !this.isSidebarOpen);
+            sidebarEl.classList.toggle("expanded", this.isSidebarOpen);
             // Update toggle icon
             sidebarToggle.innerHTML = this.isSidebarOpen ?
                 `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>` :
                 `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>`;
             sidebarToggle.setAttribute("title", this.isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar");
+            // Toggle visibility of the collapsed toggle button
+            if (collapsedToggle) {
+                collapsedToggle.style.display = this.isSidebarOpen ? "none" : "block";
+            }
         });
         // Controls section
         const controlsSection = sidebarEl.createEl("div", { cls: "chronos-sidebar-section" });
@@ -1130,7 +1138,19 @@ class ChronosTimelineView extends obsidian.ItemView {
         collapsedToggle.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>`;
         collapsedToggle.addEventListener("click", () => {
             this.isSidebarOpen = true;
-            this.renderView();
+            // Save state to plugin settings
+            this.plugin.settings.isSidebarOpen = true;
+            this.plugin.saveSettings();
+            // Update the view without full re-render
+            sidebarEl.classList.remove("collapsed");
+            sidebarEl.classList.add("expanded");
+            collapsedToggle.style.display = "none";
+            // Update sidebar toggle icon
+            const sidebarToggle = sidebarEl.querySelector(".chronos-sidebar-toggle");
+            if (sidebarToggle) {
+                sidebarToggle.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>`;
+                sidebarToggle.setAttribute("title", "Collapse Sidebar");
+            }
         });
         // Show/hide the toggle button based on sidebar state
         collapsedToggle.style.display = this.isSidebarOpen ? "none" : "block";

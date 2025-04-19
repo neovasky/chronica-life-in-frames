@@ -50,22 +50,23 @@
   flex-direction: column;
   background-color: var(--background-primary-alt);
   border-right: 1px solid var(--background-modifier-border);
-  transition: width 0.3s ease, min-width 0.3s ease;
+  transition: width 0.3s ease, min-width 0.3s ease, transform 0.3s ease;
+  position: relative;
+  z-index: 20;
 }
 
 /* Expanded sidebar */
 .chronos-sidebar.expanded {
   width: var(--sidebar-width);
   min-width: var(--sidebar-width);
-  padding: 0;
 }
   
 /* Collapsed sidebar */
 .chronos-sidebar.collapsed {
-  width: var(--sidebar-collapsed-width);
-  min-width: var(--sidebar-collapsed-width);
-  padding: 0;
+  width: 0;
+  min-width: 0;
   overflow: hidden;
+  border-right: none;
 }
 
 /* Sidebar header */
@@ -91,15 +92,17 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 15;
-  transition: background-color 0.2s ease;
+  z-index: 25;
+  transition: width 0.2s ease, background-color 0.2s ease;
   color: var(--text-normal);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .chronos-collapsed-toggle:hover {
-  width: 32px; /* Expand slightly on hover */
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+  width: 30px;
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
   
 /* Sidebar toggle button in header */
@@ -116,16 +119,13 @@
   color: var(--text-muted);
   border-radius: 4px;
   transition: background-color 0.2s ease, color 0.2s ease;
+  z-index: 25;
 }
 
 .chronos-sidebar-toggle:hover {
   background-color: var(--background-modifier-hover);
   color: var(--text-normal);
 }
-
-  .chronos-sidebar-toggle.expanded {
-    left: var(--sidebar-width);
-  }
   
 /* Content area */
 .chronos-content-area {
