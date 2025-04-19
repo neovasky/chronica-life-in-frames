@@ -465,4 +465,22 @@
 .birthday-cake-marker svg {
   color: #f48fb1; /* Ensure SVG takes the color */
 }
+
+/* Filled week styling */
+.chronos-grid-cell.filled-week {
+  border: 2px solid #8bc34a;
+}
+
+.chronos-grid-cell.filled-week:not(.event) {
+  background-color: #8bc34a;
+}
+
+.chronos-grid-cell.filled-week.event {
+  border: 2px solid #8bc34a;
+}
+
+/* Styling for the auto-fill day selector */
+.auto-fill-day-selector select {
+  width: 120px;
+}
   }

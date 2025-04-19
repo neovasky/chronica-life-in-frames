@@ -84,6 +84,21 @@ interface ChronosSettings {
 
   /** Month marker frequency */
   monthMarkerFrequency: "all" | "quarter" | "half-year" | "year";
+
+  /** Enable manual fill mode */
+  enableManualFill: boolean;
+
+  /** Enable auto-fill mode */
+  enableAutoFill: boolean;
+
+  /** Day of week for auto-fill (0-6, where 0 is Sunday) */
+  autoFillDay: number;
+
+  /** Weeks that have been filled */
+  filledWeeks: string[];
+
+  /** Start week on Monday (vs Sunday) */
+  startWeekOnMonday: boolean;
 }
 
 /** Interface for custom event types */
@@ -129,6 +144,11 @@ const DEFAULT_SETTINGS: ChronosSettings = {
   showMonthMarkers: true,
   showBirthdayMarker: true,
   monthMarkerFrequency: "all",
+  enableManualFill: false,
+  enableAutoFill: true,
+  autoFillDay: 1, // Monday by default
+  filledWeeks: [],
+  startWeekOnMonday: true,
 };
 
 /** SVG icon for the ChronOS Timeline */
@@ -217,6 +237,14 @@ export default class ChronosTimelinePlugin extends Plugin {
 
     // Add settings tab
     this.addSettingTab(new ChronosSettingTab(this.app, this));
+
+    // Check for auto-fill on plugin load
+    this.checkAndAutoFill();
+
+    // Register interval to check for auto-fill (check every hour)
+    this.registerInterval(
+      window.setInterval(() => this.checkAndAutoFill(), 1000 * 60 * 60)
+    );
   }
 
   /**
@@ -261,7 +289,58 @@ export default class ChronosTimelinePlugin extends Plugin {
     if (this.settings.monthMarkerFrequency === undefined) {
       this.settings.monthMarkerFrequency =
         DEFAULT_SETTINGS.monthMarkerFrequency;
+
+    // Initialize new fill settings if they don't exist
+    if (this.settings.enableManualFill === undefined) {
+      this.settings.enableManualFill = DEFAULT_SETTINGS.enableManualFill;
     }
+    if (this.settings.enableAutoFill === undefined) {
+      this.settings.enableAutoFill = DEFAULT_SETTINGS.enableAutoFill;
+    }
+    if (this.settings.autoFillDay === undefined) {
+      this.settings.autoFillDay = DEFAULT_SETTINGS.autoFillDay;
+    }
+    if (this.settings.filledWeeks === undefined) {
+      this.settings.filledWeeks = DEFAULT_SETTINGS.filledWeeks;
+    }
+    if (this.settings.startWeekOnMonday === undefined) {
+      this.settings.startWeekOnMonday = DEFAULT_SETTINGS.startWeekOnMonday;
+    }
+    }
+  }
+
+
+    /**
+   * Check if the current week should be auto-filled
+   * @returns true if the current week was filled
+   */
+  checkAndAutoFill(): boolean {
+    if (!this.settings.enableAutoFill) {
+      return false;
+    }
+    
+    // Get current date and day of week
+    const now = new Date();
+    const currentDay = now.getDay(); // 0-6, 0 is Sunday
+    
+    // Only proceed if today is the configured auto-fill day
+    if (currentDay !== this.settings.autoFillDay) {
+      return false;
+    }
+    
+    // Get current week key
+    const currentWeekKey = this.getWeekKeyFromDate(now);
+    
+    // Check if this week is already filled
+    if (this.settings.filledWeeks.includes(currentWeekKey)) {
+      return false;
+    }
+    
+    // Add current week to filled weeks
+    this.settings.filledWeeks.push(currentWeekKey);
+    this.saveSettings();
+    
+    return true;
   }
 
   /**
@@ -1583,7 +1662,7 @@ renderWeeksGrid(container: HTMLElement): void {
       // Apply event styling
       this.applyEventStyling(cell, weekKey);
 
-      // Add click event to create/open the corresponding weekly note
+      // Add click and context menu events to the cell
       cell.addEventListener("click", async (event) => {
         // If shift key is pressed, add an event
         if (event.shiftKey) {
@@ -1622,14 +1701,37 @@ renderWeeksGrid(container: HTMLElement): void {
 
           const content = `# Week ${cellWeek}, ${cellYear}\n\n## Reflections\n\n## Tasks\n\n## Notes\n`;
           const newFile = await this.app.vault.create(fullPath, content);
-          const weekKey = `${cellYear}-W${cellWeek.toString().padStart(2, "0")}`;
-            cell.dataset.weekKey = weekKey;
-          const dateRange = this.plugin.getWeekDateRange(weekKey);
-            cell.setAttribute("title", `Week ${cellWeek}, ${cellYear}\n${dateRange}`);
           await this.app.workspace.getLeaf().openFile(newFile);
-          
         }
       });
+
+    // Add context menu (right-click) event for manual fill
+    cell.addEventListener("contextmenu", (event) => {
+      // Only allow manual fill if auto-fill is disabled and for future weeks
+      if (this.plugin.settings.enableAutoFill || weekIndex <= ageInWeeks) {
+        return;
+      }
+      
+      // Prevent default context menu
+      event.preventDefault();
+      
+      // Toggle filled status
+      const filledIndex = this.plugin.settings.filledWeeks.indexOf(weekKey);
+      
+      if (filledIndex >= 0) {
+        // Remove from filled weeks
+        this.plugin.settings.filledWeeks.splice(filledIndex, 1);
+        cell.removeClass("filled-week");
+      } else {
+        // Add to filled weeks
+        this.plugin.settings.filledWeeks.push(weekKey);
+        cell.addClass("filled-week");
+        cell.style.backgroundColor = "#8bc34a"; // Light green for filled weeks
+      }
+      
+      // Save settings
+      this.plugin.saveSettings();
+    });
     }
   }
 }
@@ -1759,6 +1861,15 @@ renderWeeksGrid(container: HTMLElement): void {
       cell.classList.contains("event")
     ) {
       cell.addClass("future-event-highlight");
+    }
+
+        // Apply filled week styling if applicable
+    if (this.plugin.settings.filledWeeks.includes(weekKey)) {
+      cell.addClass("filled-week");
+      // Only change color if no event is on this week
+      if (!cell.classList.contains("event")) {
+        cell.style.backgroundColor = "#8bc34a"; // Light green for filled weeks
+      }
     }
   }
 }
@@ -2423,6 +2534,86 @@ class ChronosSettingTab extends PluginSettingTab {
           })
       );
 
+    // Find the "Week Filling Options" section in your code
+    containerEl.createEl("h3", { text: "Week Filling Options" });
+
+    // Replace the existing toggles with this single toggle that handles both modes
+    new Setting(containerEl)
+      .setName("Enable Auto-Fill")
+      .setDesc("When enabled, automatically marks weeks as completed on a specific day. When disabled, you can manually mark weeks by right-clicking them.")
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.enableAutoFill)
+          .onChange(async (value) => {
+            this.plugin.settings.enableAutoFill = value;
+            // If auto-fill is enabled, manual fill should be disabled
+            this.plugin.settings.enableManualFill = !value;
+            await this.plugin.saveSettings();
+            
+            // Show/hide day selector based on toggle state
+            const daySelector = containerEl.querySelector(".auto-fill-day-selector");
+            if (daySelector) {
+              (daySelector as HTMLElement).style.display = value ? "flex" : "none";
+            }
+            
+            // Add status indicator text
+            const statusIndicator = containerEl.querySelector(".fill-mode-status");
+            if (statusIndicator) {
+              (statusIndicator as HTMLElement).textContent = value 
+                ? "Auto-fill is active. Weeks will be filled automatically." 
+                : "Manual fill is active. Right-click on future weeks to mark them as filled.";
+            } else {
+              const statusEl = containerEl.createEl("div", {
+                cls: "fill-mode-status",
+                text: value 
+                  ? "Auto-fill is active. Weeks will be filled automatically." 
+                  : "Manual fill is active. Right-click on future weeks to mark them as filled."
+              });
+              statusEl.style.fontStyle = "italic";
+              statusEl.style.marginTop = "5px";
+              statusEl.style.color = "var(--text-muted)";
+            }
+            
+            this.refreshAllViews();
+          })
+      );
+
+    // Auto-fill day selector (keep this)
+    const daySelector = new Setting(containerEl)
+      .setName("Auto-Fill Day")
+      .setDesc("Day of the week when auto-fill should occur")
+      .setClass("auto-fill-day-selector")
+      .addDropdown((dropdown) => {
+        const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+        days.forEach((day, index) => {
+          dropdown.addOption(index.toString(), day);
+        });
+        
+        dropdown
+          .setValue(this.plugin.settings.autoFillDay.toString())
+          .onChange(async (value) => {
+            this.plugin.settings.autoFillDay = parseInt(value);
+            await this.plugin.saveSettings();
+          });
+      });
+
+    // Hide day selector if auto-fill is disabled
+    if (!this.plugin.settings.enableAutoFill) {
+      daySelector.settingEl.style.display = "none";
+    }
+
+    // Add initial status indicator
+    const statusEl = containerEl.createEl("div", {
+      cls: "fill-mode-status",
+      text: this.plugin.settings.enableAutoFill 
+        ? "Auto-fill is active. Weeks will be filled automatically." 
+        : "Manual fill is active. Right-click on future weeks to mark them as filled."
+    });
+    statusEl.style.fontStyle = "italic";
+    statusEl.style.marginTop = "5px";
+    statusEl.style.color = "var(--text-muted)";
+    
+
     // Event types management section
     containerEl.createEl("h3", { text: "Event Types" });
     new Setting(containerEl)
@@ -2509,6 +2700,91 @@ class ChronosSettingTab extends PluginSettingTab {
             new Notice("Cleared all custom events");
           });
         });
+
+        // Manual fill toggle
+        new Setting(containerEl)
+        .setName("Enable Manual Fill")
+        .setDesc("Allow manually marking weeks as filled by right-clicking on them")
+        .addToggle((toggle) =>
+          toggle
+            .setValue(this.plugin.settings.enableManualFill)
+            .onChange(async (value) => {
+              this.plugin.settings.enableManualFill = value;
+              await this.plugin.saveSettings();
+              this.refreshAllViews();
+            })
+        );
+
+        // Auto-fill toggle
+        new Setting(containerEl)
+        .setName("Enable Auto-Fill")
+        .setDesc("Automatically mark the current week as filled on a specific day")
+        .addToggle((toggle) =>
+          toggle
+            .setValue(this.plugin.settings.enableAutoFill)
+            .onChange(async (value) => {
+              this.plugin.settings.enableAutoFill = value;
+              await this.plugin.saveSettings();
+              
+              // Show/hide day selector based on toggle state
+              const daySelector = containerEl.querySelector(".auto-fill-day-selector");
+              if (daySelector) {
+                (daySelector as HTMLElement).style.display = value ? "flex" : "none";
+              }
+            })
+        );
+
+        // Auto-fill day selector
+        const daySelector = new Setting(containerEl)
+        .setName("Auto-Fill Day")
+        .setDesc("Day of the week when auto-fill should occur")
+        .setClass("auto-fill-day-selector")
+        .addDropdown((dropdown) => {
+          const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+          days.forEach((day, index) => {
+            dropdown.addOption(index.toString(), day);
+          });
+          
+          dropdown
+            .setValue(this.plugin.settings.autoFillDay.toString())
+            .onChange(async (value) => {
+              this.plugin.settings.autoFillDay = parseInt(value);
+              await this.plugin.saveSettings();
+            });
+        });
+
+        // Hide day selector if auto-fill is disabled
+        if (!this.plugin.settings.enableAutoFill) {
+        daySelector.settingEl.style.display = "none";
+        }
+
+        // Week start day setting
+        new Setting(containerEl)
+        .setName("Start Week On Monday")
+        .setDesc("Use Monday as the first day of the week (instead of Sunday)")
+        .addToggle((toggle) =>
+          toggle
+            .setValue(this.plugin.settings.startWeekOnMonday)
+            .onChange(async (value) => {
+              this.plugin.settings.startWeekOnMonday = value;
+              await this.plugin.saveSettings();
+              this.refreshAllViews();
+            })
+        );
+
+        // Clear filled weeks button
+        new Setting(containerEl)
+        .setName("Clear Filled Weeks")
+        .setDesc("Remove all filled week markings")
+        .addButton((button) => {
+          button.setButtonText("Clear All").onClick(async () => {
+            this.plugin.settings.filledWeeks = [];
+            await this.plugin.saveSettings();
+            this.refreshAllViews();
+            new Notice("Cleared all filled weeks");
+          });
+        });
+
     }
 
     // Help tips section
