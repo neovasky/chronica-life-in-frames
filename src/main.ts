@@ -83,7 +83,7 @@ interface ChronosSettings {
   showMonthMarkers: boolean;
 
   /** Show birthday cake marker */
-  showBirthdayMarker: boolean;  
+  showBirthdayMarker: boolean;
 
   /** Month marker frequency */
   monthMarkerFrequency: "all" | "quarter" | "half-year" | "year";
@@ -104,7 +104,7 @@ interface ChronosSettings {
   startWeekOnMonday: boolean;
 
   // Add to the class properties at the top of ChronosTimelineView
-  isSidebarOpen: boolean; 
+  isSidebarOpen: boolean;
 }
 
 /** Interface for custom event types */
@@ -298,27 +298,26 @@ export default class ChronosTimelinePlugin extends Plugin {
       this.settings.monthMarkerFrequency =
         DEFAULT_SETTINGS.monthMarkerFrequency;
 
-    // Initialize new fill settings if they don't exist
-    if (this.settings.enableManualFill === undefined) {
-      this.settings.enableManualFill = DEFAULT_SETTINGS.enableManualFill;
-    }
-    if (this.settings.enableAutoFill === undefined) {
-      this.settings.enableAutoFill = DEFAULT_SETTINGS.enableAutoFill;
-    }
-    if (this.settings.autoFillDay === undefined) {
-      this.settings.autoFillDay = DEFAULT_SETTINGS.autoFillDay;
-    }
-    if (this.settings.filledWeeks === undefined) {
-      this.settings.filledWeeks = DEFAULT_SETTINGS.filledWeeks;
-    }
-    if (this.settings.startWeekOnMonday === undefined) {
-      this.settings.startWeekOnMonday = DEFAULT_SETTINGS.startWeekOnMonday;
-    }
+      // Initialize new fill settings if they don't exist
+      if (this.settings.enableManualFill === undefined) {
+        this.settings.enableManualFill = DEFAULT_SETTINGS.enableManualFill;
+      }
+      if (this.settings.enableAutoFill === undefined) {
+        this.settings.enableAutoFill = DEFAULT_SETTINGS.enableAutoFill;
+      }
+      if (this.settings.autoFillDay === undefined) {
+        this.settings.autoFillDay = DEFAULT_SETTINGS.autoFillDay;
+      }
+      if (this.settings.filledWeeks === undefined) {
+        this.settings.filledWeeks = DEFAULT_SETTINGS.filledWeeks;
+      }
+      if (this.settings.startWeekOnMonday === undefined) {
+        this.settings.startWeekOnMonday = DEFAULT_SETTINGS.startWeekOnMonday;
+      }
     }
   }
 
-
-    /**
+  /**
    * Check if the current week should be auto-filled
    * @returns true if the current week was filled
    */
@@ -326,28 +325,28 @@ export default class ChronosTimelinePlugin extends Plugin {
     if (!this.settings.enableAutoFill) {
       return false;
     }
-    
+
     // Get current date and day of week
     const now = new Date();
     const currentDay = now.getDay(); // 0-6, 0 is Sunday
-    
+
     // Only proceed if today is the configured auto-fill day
     if (currentDay !== this.settings.autoFillDay) {
       return false;
     }
-    
+
     // Get current week key
     const currentWeekKey = this.getWeekKeyFromDate(now);
-    
+
     // Check if this week is already filled
     if (this.settings.filledWeeks.includes(currentWeekKey)) {
       return false;
     }
-    
+
     // Add current week to filled weeks
     this.settings.filledWeeks.push(currentWeekKey);
     this.saveSettings();
-    
+
     return true;
   }
 
@@ -649,7 +648,7 @@ export default class ChronosTimelinePlugin extends Plugin {
     return monthMarkers;
   }
 
-    /**
+  /**
    * Calculate date range for a given week key
    * @param weekKey - Week key in YYYY-WXX format
    * @returns String with formatted date range
@@ -660,24 +659,37 @@ export default class ChronosTimelinePlugin extends Plugin {
 
     const year = parseInt(parts[0]);
     const week = parseInt(parts[1]);
-    
+
     // Calculate the first day of the week (Monday of that week)
     const firstDayOfWeek = new Date(year, 0, 1);
     const dayOffset = firstDayOfWeek.getDay() || 7; // getDay returns 0 for Sunday
     const dayToAdd = 1 + (week - 1) * 7 - (dayOffset - 1);
-    
+
     firstDayOfWeek.setDate(dayToAdd);
-    
+
     // Calculate the last day of the week (Sunday)
     const lastDayOfWeek = new Date(firstDayOfWeek);
     lastDayOfWeek.setDate(firstDayOfWeek.getDate() + 6);
-    
+
     // Format the dates
     const formatDate = (date: Date): string => {
-      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const months = [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+      ];
       return `${months[date.getMonth()]} ${date.getDate()}`;
     };
-    
+
     return `${formatDate(firstDayOfWeek)} - ${formatDate(lastDayOfWeek)}`;
   }
 }
@@ -1157,7 +1169,6 @@ class ChronosEventModal extends Modal {
     }
   }
 
-
   /**
    * Add event to the appropriate collection based on event type
    * @param eventData - Event data string
@@ -1186,8 +1197,6 @@ class ChronosEventModal extends Modal {
         );
     }
   }
-
-  
 
   /**
    * Create a note file for the event
@@ -1270,14 +1279,14 @@ class ChronosTimelineView extends ItemView {
   /** Reference to the main plugin */
   plugin: ChronosTimelinePlugin;
 
-    /** Track sidebar open/closed state */
-    isSidebarOpen: boolean; 
+  /** Track sidebar open/closed state */
+  isSidebarOpen: boolean;
 
-    constructor(leaf: WorkspaceLeaf, plugin: ChronosTimelinePlugin) {
-      super(leaf);
-      this.plugin = plugin;
-      this.isSidebarOpen = this.plugin.settings.isSidebarOpen;
-    }
+  constructor(leaf: WorkspaceLeaf, plugin: ChronosTimelinePlugin) {
+    super(leaf);
+    this.plugin = plugin;
+    this.isSidebarOpen = this.plugin.settings.isSidebarOpen;
+  }
 
   /**
    * Get the unique view type
@@ -1318,7 +1327,6 @@ class ChronosTimelineView extends ItemView {
     contentEl.empty();
   }
 
-
   /**
    * Render the timeline view with all components
    */
@@ -1326,63 +1334,76 @@ class ChronosTimelineView extends ItemView {
     // Clear content
     const contentEl = this.containerEl.children[1];
     contentEl.empty();
-    
+
     // Create main container with flexbox layout
-    const mainContainer = contentEl.createEl("div", { cls: "chronos-main-container" });
-    
-    // Create sidebar
-    const sidebarEl = mainContainer.createEl("div", { 
-      cls: `chronos-sidebar ${this.isSidebarOpen ? 'expanded' : 'collapsed'}`
+    const mainContainer = contentEl.createEl("div", {
+      cls: "chronos-main-container",
     });
-    
+
+    // Create sidebar
+    const sidebarEl = mainContainer.createEl("div", {
+      cls: `chronos-sidebar ${this.isSidebarOpen ? "expanded" : "collapsed"}`,
+    });
+
     // Add sidebar header with title and toggle
-    const sidebarHeader = sidebarEl.createEl("div", { cls: "chronos-sidebar-header" });
-    
+    const sidebarHeader = sidebarEl.createEl("div", {
+      cls: "chronos-sidebar-header",
+    });
+
     // Create title in sidebar header
     sidebarHeader.createEl("div", {
       cls: "chronos-title",
       text: "life in weeks",
     });
-    
+
     // Create sidebar toggle as part of the sidebar itself
     const sidebarToggle = sidebarHeader.createEl("button", {
       cls: "chronos-sidebar-toggle",
-      attr: { title: this.isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar" }
+      attr: {
+        title: this.isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar",
+      },
     });
-    
-    sidebarToggle.innerHTML = this.isSidebarOpen ? 
-      `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>` : 
-      `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>`;
-    
-      sidebarToggle.addEventListener("click", () => {
-        this.isSidebarOpen = !this.isSidebarOpen;
-        
-        // Save state to plugin settings
-        this.plugin.settings.isSidebarOpen = this.isSidebarOpen;
-        this.plugin.saveSettings();
-        
-        // Update UI
-        sidebarEl.classList.toggle("collapsed", !this.isSidebarOpen);
-        sidebarEl.classList.toggle("expanded", this.isSidebarOpen);
-        
-        // Update toggle icon
-        sidebarToggle.innerHTML = this.isSidebarOpen ?
-          `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>` :
-          `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>`;
-        
-        sidebarToggle.setAttribute("title", this.isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar");
-        
-        // Toggle visibility of the collapsed toggle button
-        if (collapsedToggle) {
-          collapsedToggle.style.display = this.isSidebarOpen ? "none" : "block";
-        }
-      });
-    
+
+    sidebarToggle.innerHTML = this.isSidebarOpen
+      ? `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>`
+      : `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>`;
+
+    sidebarToggle.addEventListener("click", () => {
+      this.isSidebarOpen = !this.isSidebarOpen;
+
+      // Save state to plugin settings
+      this.plugin.settings.isSidebarOpen = this.isSidebarOpen;
+      this.plugin.saveSettings();
+
+      // Update UI
+      sidebarEl.classList.toggle("collapsed", !this.isSidebarOpen);
+      sidebarEl.classList.toggle("expanded", this.isSidebarOpen);
+
+      // Update toggle icon
+      sidebarToggle.innerHTML = this.isSidebarOpen
+        ? `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>`
+        : `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>`;
+
+      sidebarToggle.setAttribute(
+        "title",
+        this.isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"
+      );
+
+      // Toggle visibility of the collapsed toggle button
+      if (collapsedToggle) {
+        collapsedToggle.style.display = this.isSidebarOpen ? "none" : "block";
+      }
+    });
+
     // Controls section
-    const controlsSection = sidebarEl.createEl("div", { cls: "chronos-sidebar-section" });
+    const controlsSection = sidebarEl.createEl("div", {
+      cls: "chronos-sidebar-section",
+    });
     controlsSection.createEl("h3", { text: "CONTROLS", cls: "section-header" });
-    const controlsContainer = controlsSection.createEl("div", { cls: "chronos-controls" });
-    
+    const controlsContainer = controlsSection.createEl("div", {
+      cls: "chronos-controls",
+    });
+
     // Plan future event button
     const planEventBtn = controlsContainer.createEl("button", {
       text: "Plan Event",
@@ -1391,7 +1412,7 @@ class ChronosTimelineView extends ItemView {
     planEventBtn.addEventListener("click", () => {
       this.showAddEventModal();
     });
-    
+
     // Manage event types button
     const manageTypesBtn = controlsContainer.createEl("button", {
       text: "Manage Event Types",
@@ -1401,15 +1422,24 @@ class ChronosTimelineView extends ItemView {
       const modal = new ManageEventTypesModal(this.app, this.plugin);
       modal.open();
     });
-    
+
     // Visualization controls section
-    const visualSection = sidebarEl.createEl("div", { cls: "chronos-sidebar-section" });
-    visualSection.createEl("h3", { text: "VIEW OPTIONS", cls: "section-header" });
-    const visualContainer = visualSection.createEl("div", { cls: "chronos-visual-controls" });
-    
+    const visualSection = sidebarEl.createEl("div", {
+      cls: "chronos-sidebar-section",
+    });
+    visualSection.createEl("h3", {
+      text: "VIEW OPTIONS",
+      cls: "section-header",
+    });
+    const visualContainer = visualSection.createEl("div", {
+      cls: "chronos-visual-controls",
+    });
+
     // Zoom controls with 3-button layout
-    const zoomControlsDiv = visualContainer.createEl("div", { cls: "chronos-zoom-controls" });
-    
+    const zoomControlsDiv = visualContainer.createEl("div", {
+      cls: "chronos-zoom-controls",
+    });
+
     // Zoom out button with SVG icon
     const zoomOutBtn = zoomControlsDiv.createEl("button", {
       cls: "chronos-btn chronos-zoom-button",
@@ -1423,13 +1453,13 @@ class ChronosTimelineView extends ItemView {
     zoomOutBtn.addEventListener("click", () => {
       this.zoomOut();
     });
-    
+
     // Add zoom level indicator
     const zoomLabel = zoomControlsDiv.createEl("span", {
       text: `${Math.round(this.plugin.settings.zoomLevel * 100)}%`,
       cls: "chronos-zoom-level",
     });
-    
+
     // Zoom in button with SVG icon
     const zoomInBtn = zoomControlsDiv.createEl("button", {
       cls: "chronos-btn chronos-zoom-button",
@@ -1444,22 +1474,24 @@ class ChronosTimelineView extends ItemView {
     zoomInBtn.addEventListener("click", () => {
       this.zoomIn();
     });
-    
+
     // Fit to screen button
     const fitToScreenBtn = visualContainer.createEl("button", {
       cls: "chronos-btn chronos-fit-to-screen",
       text: "Fit to Screen",
-      attr: { title: "Automatically adjust zoom to fit entire grid on screen" }
+      attr: { title: "Automatically adjust zoom to fit entire grid on screen" },
     });
     fitToScreenBtn.addEventListener("click", () => {
       this.fitToScreen();
     });
-    
+
     // Legend section (vertical)
-    const legendSection = sidebarEl.createEl("div", { cls: "chronos-sidebar-section" });
+    const legendSection = sidebarEl.createEl("div", {
+      cls: "chronos-sidebar-section",
+    });
     legendSection.createEl("h3", { text: "LEGEND", cls: "section-header" });
     const legendEl = legendSection.createEl("div", { cls: "chronos-legend" });
-    
+
     // Standard event types for legend
     const legendItems = [
       { text: "Major Life Events", color: "#4CAF50" },
@@ -1471,7 +1503,7 @@ class ChronosTimelineView extends ItemView {
         color: this.plugin.settings.futureCellColor,
       },
     ];
-    
+
     // Add standard legend items
     legendItems.forEach((item) => {
       const itemEl = legendEl.createEl("div", { cls: "chronos-legend-item" });
@@ -1479,7 +1511,7 @@ class ChronosTimelineView extends ItemView {
       colorEl.style.backgroundColor = item.color;
       itemEl.createEl("span", { text: item.text });
     });
-    
+
     // Render custom event type legends
     if (this.plugin.settings.customEventTypes) {
       this.plugin.settings.customEventTypes.forEach((customType) => {
@@ -1493,34 +1525,36 @@ class ChronosTimelineView extends ItemView {
         customLegendEl.createEl("span", { text: customType.name });
       });
     }
-    
+
     // Footer in sidebar
     sidebarEl.createEl("div", {
       cls: "chronos-footer",
       text: this.plugin.settings.quote,
     });
-    
+
     // Create content area
-    const contentAreaEl = mainContainer.createEl("div", { cls: "chronos-content-area" });
+    const contentAreaEl = mainContainer.createEl("div", {
+      cls: "chronos-content-area",
+    });
 
     // Always create collapsed sidebar indicator/toggle (but hide it when sidebar is open)
     const collapsedToggle = contentAreaEl.createEl("button", {
       cls: "chronos-collapsed-toggle",
-      attr: { title: "Expand Sidebar" }
+      attr: { title: "Expand Sidebar" },
     });
     collapsedToggle.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>`;
     collapsedToggle.addEventListener("click", () => {
       this.isSidebarOpen = true;
-      
+
       // Save state to plugin settings
       this.plugin.settings.isSidebarOpen = true;
       this.plugin.saveSettings();
-      
+
       // Update the view without full re-render
       sidebarEl.classList.remove("collapsed");
       sidebarEl.classList.add("expanded");
       collapsedToggle.style.display = "none";
-      
+
       // Update sidebar toggle icon
       const sidebarToggle = sidebarEl.querySelector(".chronos-sidebar-toggle");
       if (sidebarToggle) {
@@ -1528,13 +1562,13 @@ class ChronosTimelineView extends ItemView {
         sidebarToggle.setAttribute("title", "Collapse Sidebar");
       }
     });
-    
+
     // Show/hide the toggle button based on sidebar state
     collapsedToggle.style.display = this.isSidebarOpen ? "none" : "block";
-    
+
     // Create the view container
     const viewEl = contentAreaEl.createEl("div", { cls: "chronos-view" });
-    
+
     // Render the weeks grid
     this.renderWeeksGrid(viewEl);
   }
@@ -1552,9 +1586,12 @@ class ChronosTimelineView extends ItemView {
    */
   zoomIn(): void {
     // Increase zoom level by 0.1 (10%), max 3.0
-    this.plugin.settings.zoomLevel = Math.min(3.0, this.plugin.settings.zoomLevel + 0.1);
+    this.plugin.settings.zoomLevel = Math.min(
+      3.0,
+      this.plugin.settings.zoomLevel + 0.1
+    );
     this.plugin.saveSettings();
-    
+
     // Update only the grid and zoom level indicator without full re-render
     this.updateZoomLevel();
   }
@@ -1564,114 +1601,326 @@ class ChronosTimelineView extends ItemView {
    */
   zoomOut(): void {
     // Decrease zoom level by 0.1 (10%), min 0.1 (10%)
-    this.plugin.settings.zoomLevel = Math.max(0.1, this.plugin.settings.zoomLevel - 0.1);
+    this.plugin.settings.zoomLevel = Math.max(
+      0.1,
+      this.plugin.settings.zoomLevel - 0.1
+    );
     this.plugin.saveSettings();
-    
+
     // Update only the grid and zoom level indicator without full re-render
     this.updateZoomLevel();
-  }
-
-  /**
-   * Update zoom-affected elements without re-rendering the entire view
-   */
-
-  updateZoomLevel(): void {
-    // Get the container element
-    const contentEl = this.containerEl.children[1];
-    
-    // Update zoom level indicator
-    const zoomLabel = contentEl.querySelector('.chronos-zoom-level');
-    if (zoomLabel) {
-      zoomLabel.textContent = `${Math.round(this.plugin.settings.zoomLevel * 100)}%`;
-    }
-    
-    // Update cell size CSS variable
-    const root = document.documentElement;
-    const baseSize = parseInt(getComputedStyle(root).getPropertyValue("--base-cell-size")) || 16;
-    const cellSize = Math.round(baseSize * this.plugin.settings.zoomLevel);
-    root.style.setProperty("--cell-size", `${cellSize}px`);
-    
-    // Get the view element
-    const viewEl = contentEl.querySelector('.chronos-view');
-    if (viewEl instanceof HTMLElement) {
-      // Clear the view
-      viewEl.empty();
-      // Re-render the grid - THIS WAS MISSING
-      this.renderWeeksGrid(viewEl);
-    }
-    
-    // Update fitToScreen button state if it exists
-    const fitButton = contentEl.querySelector('.chronos-fit-to-screen');
-    if (fitButton) {
-      fitButton.classList.toggle('active', this.isGridFitToScreen());
-    }
   }
 
   /**
    * Automatically adjust zoom level to fit the entire grid on screen
    */
   fitToScreen(): void {
-    // 1) Grab the two containers
-    const contentEl    = this.containerEl.children[1];
-    const contentArea  = contentEl.querySelector('.chronos-content-area') as HTMLElement;
-    const viewEl       = contentArea.querySelector('.chronos-view')       as HTMLElement;
+    // Grab the relevant containers
+    const contentEl = this.containerEl.children[1];
+    const contentArea = contentEl.querySelector(
+      ".chronos-content-area"
+    ) as HTMLElement;
+    const viewEl = contentArea.querySelector(".chronos-view") as HTMLElement;
     if (!viewEl || !contentArea) return;
 
-    // 2) Measure the space available for our grid (inside view padding)
-    const cs     = getComputedStyle(viewEl);
-    const padL   = parseInt(cs.paddingLeft)   || 0;
-    const padR   = parseInt(cs.paddingRight)  || 0;
-    const padT   = parseInt(cs.paddingTop)    || 0;
-    const padB   = parseInt(cs.paddingBottom) || 0;
-    const availW = viewEl.clientWidth  - padL - padR;
+    // Measure the viewport-aware space available
+    const cs = getComputedStyle(viewEl);
+    const padL = parseInt(cs.paddingLeft) || 0;
+    const padR = parseInt(cs.paddingRight) || 0;
+    const padT = parseInt(cs.paddingTop) || 0;
+    const padB = parseInt(cs.paddingBottom) || 0;
+    const availW = viewEl.clientWidth - padL - padR;
     const availH = viewEl.clientHeight - padT - padB;
 
-    // 3) Read our CSS vars + settings
+    // Read CSS vars + settings
     const rootStyle = getComputedStyle(document.documentElement);
-    const baseSize  = parseInt(rootStyle.getPropertyValue("--base-cell-size")) || 16;
-    const gap       = parseInt(rootStyle.getPropertyValue("--cell-gap"))       || 2;
-    const years     = this.plugin.settings.lifespan; // total columns
-    const weeks     = 52;                            // total rows
+    const baseSize =
+      parseInt(rootStyle.getPropertyValue("--base-cell-size")) || 16;
+    const gap = parseInt(rootStyle.getPropertyValue("--cell-gap")) || 2;
+    const years = this.plugin.settings.lifespan;
+    const weeks = 52;
 
-    // 4) Compute the ideal cell size to fill W×H exactly
+    // Compute ideal cell size for both width and height constraints
     const idealW = (availW - (years - 1) * gap) / years;
     const idealH = (availH - (weeks - 1) * gap) / weeks;
     const idealCell = Math.min(idealW, idealH);
 
-    // 5) Convert to zoom ratio and clamp
+    // Convert to zoom ratio and apply a small buffer for safety
     const rawZoom = idealCell / baseSize;
-    const newZoom = rawZoom * 1.05;  
-    this.plugin.settings.zoomLevel = Math.max(0.1, Math.min(4, newZoom));
+    const newZoom = Math.max(0.1, Math.min(4, rawZoom * 0.98)); // 2% buffer for safety
+    this.plugin.settings.zoomLevel = newZoom;
 
-    // 6) Apply it
+    // Apply updated zoom
     this.updateZoomLevel();
+
+    // Add centering to the grid
+    this.centerGridInView();
+
+    // Show statistics if there's available space
+    this.showLifeStatistics();
   }
 
+  /**
+   * Center the grid in the available viewport space
+   */
+  centerGridInView(): void {
+    const contentEl = this.containerEl.children[1];
+    const contentArea = contentEl.querySelector(
+      ".chronos-content-area"
+    ) as HTMLElement;
+    const viewEl = contentArea.querySelector(".chronos-view") as HTMLElement;
+    const gridEl = viewEl.querySelector(".chronos-grid") as HTMLElement;
 
+    if (!gridEl || !viewEl) return;
+
+    // Calculate grid dimensions
+    const gridRect = gridEl.getBoundingClientRect();
+    const viewRect = viewEl.getBoundingClientRect();
+
+    // Calculate available space
+    const availableWidth = viewRect.width - gridRect.width;
+    const availableHeight = viewRect.height - gridRect.height;
+
+    // Only apply centering if there's actual extra space
+    if (availableWidth > 0 || availableHeight > 0) {
+      // Get current CSS positions and offsets
+      const rootStyle = getComputedStyle(document.documentElement);
+      const leftOffset =
+        parseInt(rootStyle.getPropertyValue("--left-offset")) || 70;
+      const topOffset =
+        parseInt(rootStyle.getPropertyValue("--top-offset")) || 50;
+
+      // Calculate centering offsets while preserving the original offsets for markers
+      const centerX = Math.max(0, availableWidth / 2);
+      const centerY = Math.max(0, availableHeight / 2);
+
+      // Apply centering via transform to avoid disturbing other layout elements
+      gridEl.style.transform = `translate(${centerX}px, ${centerY}px)`;
+
+      // Move the decade markers too
+      const decadeMarkers = viewEl.querySelector(
+        ".chronos-decade-markers"
+      ) as HTMLElement;
+      if (decadeMarkers) {
+        decadeMarkers.style.transform = `translateX(${centerX}px)`;
+      }
+
+      // Move vertical markers as well
+      const verticalMarkers = viewEl.querySelector(
+        ".chronos-vertical-markers"
+      ) as HTMLElement;
+      if (verticalMarkers) {
+        verticalMarkers.style.transform = `translateY(${centerY}px)`;
+      }
+    }
+  }
+
+  /**
+   * Generate and show life statistics in available white space
+   */
+  showLifeStatistics(): void {
+    const contentEl = this.containerEl.children[1];
+    const contentArea = contentEl.querySelector(
+      ".chronos-content-area"
+    ) as HTMLElement;
+    const viewEl = contentArea.querySelector(".chronos-view") as HTMLElement;
+
+    // Clean up any existing stats
+    const existingStats = viewEl.querySelector(".chronos-stats-container");
+    if (existingStats) {
+      existingStats.remove();
+    }
+
+    // Create stats container
+    const statsContainer = viewEl.createEl("div", {
+      cls: "chronos-stats-container",
+    });
+
+    // Calculate basic statistics
+    const now = new Date();
+    const birthdayDate = new Date(this.plugin.settings.birthday);
+    const ageInWeeks = this.plugin.getFullWeekAge(birthdayDate, now);
+    const totalWeeks = this.plugin.settings.lifespan * 52;
+    const livedPercentage = ((ageInWeeks / totalWeeks) * 100).toFixed(1);
+    const remainingWeeks = totalWeeks - ageInWeeks;
+
+    // Calculate event counts
+    const majorLifeEvents = this.plugin.settings.greenEvents.length;
+    const travelEvents = this.plugin.settings.blueEvents.length;
+    const relationshipEvents = this.plugin.settings.pinkEvents.length;
+    const educationCareerEvents = this.plugin.settings.purpleEvents.length;
+
+    // Calculate custom event counts
+    let customEventCount = 0;
+    if (
+      this.plugin.settings.customEventTypes &&
+      this.plugin.settings.customEvents
+    ) {
+      for (const eventType of this.plugin.settings.customEventTypes) {
+        if (this.plugin.settings.customEvents[eventType.name]) {
+          customEventCount +=
+            this.plugin.settings.customEvents[eventType.name].length;
+        }
+      }
+    }
+
+    const totalEvents =
+      majorLifeEvents +
+      travelEvents +
+      relationshipEvents +
+      educationCareerEvents +
+      customEventCount;
+
+    // Create header
+    statsContainer.createEl("h3", {
+      text: "Life Statistics",
+      cls: "chronos-stats-header",
+    });
+
+    // Create statistics items
+    const createStatItem = (label: string, value: string) => {
+      const item = statsContainer.createEl("div", { cls: "chronos-stat-item" });
+      item.createEl("span", { text: label, cls: "chronos-stat-label" });
+      item.createEl("span", { text: value, cls: "chronos-stat-value" });
+      return item;
+    };
+
+    // Add key statistics
+    createStatItem("Weeks Lived", ageInWeeks.toString());
+    createStatItem("Weeks Remaining", remainingWeeks.toString());
+    createStatItem("Life Progress", `${livedPercentage}%`);
+
+    // Add event statistics if there are any events
+    if (totalEvents > 0) {
+      statsContainer.createEl("h4", {
+        text: "Event Summary",
+        cls: "chronos-stats-subheader",
+      });
+
+      createStatItem("Total Events", totalEvents.toString());
+
+      if (majorLifeEvents > 0) {
+        createStatItem("Major Life Events", majorLifeEvents.toString());
+      }
+
+      if (travelEvents > 0) {
+        createStatItem("Travel Events", travelEvents.toString());
+      }
+
+      if (relationshipEvents > 0) {
+        createStatItem("Relationship Events", relationshipEvents.toString());
+      }
+
+      if (educationCareerEvents > 0) {
+        createStatItem("Education/Career", educationCareerEvents.toString());
+      }
+
+      // Add custom event types stats
+      if (customEventCount > 0) {
+        for (const eventType of this.plugin.settings.customEventTypes) {
+          const count =
+            this.plugin.settings.customEvents[eventType.name]?.length || 0;
+          if (count > 0) {
+            createStatItem(eventType.name, count.toString());
+          }
+        }
+      }
+    }
+
+    // Calculate decades lived
+    const yearsLived = ageInWeeks / 52;
+    const decadesLived = Math.floor(yearsLived / 10);
+
+    if (decadesLived > 0) {
+      statsContainer.createEl("h4", {
+        text: "Decade Insights",
+        cls: "chronos-stats-subheader",
+      });
+
+      // Basic decade stats
+      createStatItem("Decades Completed", decadesLived.toString());
+      createStatItem(
+        "Current Decade",
+        `${decadesLived * 10}-${decadesLived * 10 + 9}`
+      );
+
+      // Calculate progress in current decade
+      const decadeProgress = ((yearsLived % 10) / 10) * 100;
+      createStatItem("Decade Progress", `${decadeProgress.toFixed(1)}%`);
+    }
+  }
+
+  /**
+   * Update zoom-affected elements with adjusted positioning
+   */
+  updateZoomLevel(): void {
+    // Get the container element
+    const contentEl = this.containerEl.children[1];
+
+    // Update zoom level indicator
+    const zoomLabel = contentEl.querySelector(".chronos-zoom-level");
+    if (zoomLabel) {
+      zoomLabel.textContent = `${Math.round(
+        this.plugin.settings.zoomLevel * 100
+      )}%`;
+    }
+
+    // Update cell size CSS variable
+    const root = document.documentElement;
+    const baseSize =
+      parseInt(getComputedStyle(root).getPropertyValue("--base-cell-size")) ||
+      16;
+    const cellSize = Math.round(baseSize * this.plugin.settings.zoomLevel);
+    root.style.setProperty("--cell-size", `${cellSize}px`);
+
+    // Get the view element
+    const viewEl = contentEl.querySelector(".chronos-view");
+    if (viewEl instanceof HTMLElement) {
+      // Clear the view
+      viewEl.empty();
+      // Re-render the grid
+      this.renderWeeksGrid(viewEl);
+
+      // Apply centering after rendering
+      this.centerGridInView();
+
+      // Show statistics in available space
+      this.showLifeStatistics();
+    }
+
+    // Update fitToScreen button state if it exists
+    const fitButton = contentEl.querySelector(".chronos-fit-to-screen");
+    if (fitButton) {
+      fitButton.classList.toggle("active", this.isGridFitToScreen());
+    }
+  }
 
   /**
    * Check if the grid is currently fit to screen
    */
   isGridFitToScreen(): boolean {
-    const contentEl   = this.containerEl.children[1];
-    const contentArea = contentEl.querySelector('.chronos-content-area') as HTMLElement;
-    const viewEl      = contentArea.querySelector('.chronos-view') as HTMLElement;
+    const contentEl = this.containerEl.children[1];
+    const contentArea = contentEl.querySelector(
+      ".chronos-content-area"
+    ) as HTMLElement;
+    const viewEl = contentArea.querySelector(".chronos-view") as HTMLElement;
     if (!viewEl || !contentArea) return false;
 
     // Same math as fitToScreen()
-    const cs     = getComputedStyle(viewEl);
-    const padL   = parseInt(cs.paddingLeft)   || 0;
-    const padR   = parseInt(cs.paddingRight)  || 0;
-    const padT   = parseInt(cs.paddingTop)    || 0;
-    const padB   = parseInt(cs.paddingBottom) || 0;
-    const availW = viewEl.clientWidth  - padL - padR;
+    const cs = getComputedStyle(viewEl);
+    const padL = parseInt(cs.paddingLeft) || 0;
+    const padR = parseInt(cs.paddingRight) || 0;
+    const padT = parseInt(cs.paddingTop) || 0;
+    const padB = parseInt(cs.paddingBottom) || 0;
+    const availW = viewEl.clientWidth - padL - padR;
     const availH = viewEl.clientHeight - padT - padB;
 
     const rootStyle = getComputedStyle(document.documentElement);
-    const baseSize  = parseInt(rootStyle.getPropertyValue("--base-cell-size")) || 16;
-    const gap       = parseInt(rootStyle.getPropertyValue("--cell-gap"))       || 2;
-    const years     = this.plugin.settings.lifespan;
-    const weeks     = 52;
+    const baseSize =
+      parseInt(rootStyle.getPropertyValue("--base-cell-size")) || 16;
+    const gap = parseInt(rootStyle.getPropertyValue("--cell-gap")) || 2;
+    const years = this.plugin.settings.lifespan;
+    const weeks = 52;
 
     const idealW = (availW - (years - 1) * gap) / years;
     const idealH = (availH - (weeks - 1) * gap) / weeks;
@@ -1681,344 +1930,367 @@ class ChronosTimelineView extends ItemView {
     return Math.abs(this.plugin.settings.zoomLevel - idealZoom) < 0.01;
   }
 
+  /**
+   * Render the main weeks grid visualization
+   * @param container - Container to render grid in
+   */
+  renderWeeksGrid(container: HTMLElement): void {
+    container.empty();
 
-  
-  
+    // Get the CSS variables for positioning and styling
+    const root = document.documentElement;
+    const baseSize =
+      parseInt(getComputedStyle(root).getPropertyValue("--base-cell-size")) ||
+      16;
+    const cellSize = Math.round(baseSize * this.plugin.settings.zoomLevel);
+    // Apply the zoomed cell size to the CSS variable
+    root.style.setProperty("--cell-size", `${cellSize}px`);
+    const cellGap =
+      parseInt(getComputedStyle(root).getPropertyValue("--cell-gap")) || 2;
+    const leftOffset =
+      parseInt(getComputedStyle(root).getPropertyValue("--left-offset")) || 70;
+    const topOffset =
+      parseInt(getComputedStyle(root).getPropertyValue("--top-offset")) || 50;
+    const regularGap = cellGap; // Store the regular gap size
 
-/**
- * Render the main weeks grid visualization
- * @param container - Container to render grid in
- */
-renderWeeksGrid(container: HTMLElement): void {
-  container.empty();
-
-  // Get the CSS variables for positioning and styling
-  const root = document.documentElement;
-  const baseSize = parseInt(getComputedStyle(root).getPropertyValue("--base-cell-size")) || 16;
-  const cellSize = Math.round(baseSize * this.plugin.settings.zoomLevel);
-  // Apply the zoomed cell size to the CSS variable
-  root.style.setProperty("--cell-size", `${cellSize}px`);
-  const cellGap = parseInt(getComputedStyle(root).getPropertyValue("--cell-gap")) || 2;
-  const leftOffset = parseInt(getComputedStyle(root).getPropertyValue("--left-offset")) || 70;
-  const topOffset = parseInt(getComputedStyle(root).getPropertyValue("--top-offset")) || 50;
-  const regularGap = cellGap; // Store the regular gap size
-
-  // Create decade markers container (horizontal markers above the grid)
-  if (this.plugin.settings.showDecadeMarkers) {
-    const decadeMarkersContainer = container.createEl("div", {
-      cls: "chronos-decade-markers",
-    });
-
-    // Add decade markers (0, 10, 20, etc.)
-    for (let decade = 0; decade <= this.plugin.settings.lifespan; decade += 10) {
-      const marker = decadeMarkersContainer.createEl("div", {
-        cls: "chronos-decade-marker",
-        text: decade.toString(),
+    // Create decade markers container (horizontal markers above the grid)
+    if (this.plugin.settings.showDecadeMarkers) {
+      const decadeMarkersContainer = container.createEl("div", {
+        cls: "chronos-decade-markers",
       });
 
-      // Position each decade marker using the calculateYearPosition method
-      marker.style.position = "absolute";
+      // Add decade markers (0, 10, 20, etc.)
+      for (
+        let decade = 0;
+        decade <= this.plugin.settings.lifespan;
+        decade += 10
+      ) {
+        const marker = decadeMarkersContainer.createEl("div", {
+          cls: "chronos-decade-marker",
+          text: decade.toString(),
+        });
 
-      // Calculate position with the decade spacing
-      const leftPosition = this.plugin.calculateYearPosition(decade, cellSize, regularGap) + cellSize / 2;
+        // Position each decade marker using the calculateYearPosition method
+        marker.style.position = "absolute";
 
-      marker.style.left = `${leftPosition}px`;
-      marker.style.top = `${topOffset / 2}px`;
-      marker.style.transform = "translate(-50%, -50%)";
+        // Calculate position with the decade spacing
+        const leftPosition =
+          this.plugin.calculateYearPosition(decade, cellSize, regularGap) +
+          cellSize / 2;
+
+        marker.style.left = `${leftPosition}px`;
+        marker.style.top = `${topOffset / 2}px`;
+        marker.style.transform = "translate(-50%, -50%)";
+      }
     }
-  }
 
     // Add birthday cake marker (independent of month markers)
-  if (this.plugin.settings.showBirthdayMarker) {
-    const birthdayDate = new Date(this.plugin.settings.birthday);
-    const birthMonth = birthdayDate.getMonth();
-    const birthDay = birthdayDate.getDate();
-    const birthYear = birthdayDate.getFullYear();
-    const birthMonthName = MONTH_NAMES[birthMonth];
-    
-    const birthdayMarkerContainer = container.createEl("div", {
-      cls: "chronos-birthday-marker-container",
-    });
+    if (this.plugin.settings.showBirthdayMarker) {
+      const birthdayDate = new Date(this.plugin.settings.birthday);
+      const birthMonth = birthdayDate.getMonth();
+      const birthDay = birthdayDate.getDate();
+      const birthYear = birthdayDate.getFullYear();
+      const birthMonthName = MONTH_NAMES[birthMonth];
 
-    // Position the container near the grid
-    birthdayMarkerContainer.style.position = "absolute";
-    birthdayMarkerContainer.style.top = `${topOffset - 2}px`; // Align with the top of the grid
-    birthdayMarkerContainer.style.left = `${leftOffset - 22}px`; // Position closer to the grid
-    birthdayMarkerContainer.style.zIndex = "15"; // Ensure visibility above other elements
-
-    // Create cake icon for birthday
-    const cakeSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f48fb1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8"/><path d="M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4 2 2-1 2-1"/><path d="M2 21h20"/><path d="M7 8v2"/><path d="M12 8v2"/><path d="M17 8v2"/><path d="M7 4h.01"/><path d="M12 4h.01"/><path d="M17 4h.01"/></svg>`;
-
-    const cakeEl = birthdayMarkerContainer.createEl("div", {
-      cls: "birthday-cake-marker",
-    });
-
-    cakeEl.innerHTML = cakeSvg;
-    cakeEl.setAttribute("title", `${birthMonthName} ${birthDay}, ${birthYear} (Your Birthday)`);
-  }
-
-  // Create vertical markers container with structured layout
-  const markersContainer = container.createEl("div", {
-    cls: "chronos-vertical-markers",
-  });
-
-  // First, create the separate containers for week and month markers
-  const weekMarkersContainer = markersContainer.createEl("div", {
-    cls: "chronos-week-markers",
-  });
-
-  const monthMarkersContainer = markersContainer.createEl("div", {
-    cls: "chronos-month-markers",
-  });
-
-  
-
-  // Add week markers (10, 20, 30, 40, 50) if enabled
-  if (this.plugin.settings.showWeekMarkers) {
-    for (let week = 0; week <= 50; week += 10) {
-      if (week === 0) continue; // Skip 0 to start with 10
-
-      const marker = weekMarkersContainer.createEl("div", {
-        cls: "chronos-week-marker",
-        text: week.toString(),
+      const birthdayMarkerContainer = container.createEl("div", {
+        cls: "chronos-birthday-marker-container",
       });
 
-      // Calculate the exact position - align to grid
-      const topPosition = week * (cellSize + cellGap) + cellSize / 2 - (cellSize + cellGap);
-      
-      marker.style.top = `${topPosition}px`;
+      // Position the container near the grid
+      birthdayMarkerContainer.style.position = "absolute";
+      birthdayMarkerContainer.style.top = `${topOffset - 2}px`; // Align with the top of the grid
+      birthdayMarkerContainer.style.left = `${leftOffset - 22}px`; // Position closer to the grid
+      birthdayMarkerContainer.style.zIndex = "15"; // Ensure visibility above other elements
+
+      // Create cake icon for birthday
+      const cakeSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f48fb1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8"/><path d="M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4 2 2-1 2-1"/><path d="M2 21h20"/><path d="M7 8v2"/><path d="M12 8v2"/><path d="M17 8v2"/><path d="M7 4h.01"/><path d="M12 4h.01"/><path d="M17 4h.01"/></svg>`;
+
+      const cakeEl = birthdayMarkerContainer.createEl("div", {
+        cls: "birthday-cake-marker",
+      });
+
+      cakeEl.innerHTML = cakeSvg;
+      cakeEl.setAttribute(
+        "title",
+        `${birthMonthName} ${birthDay}, ${birthYear} (Your Birthday)`
+      );
     }
-  }
 
-  // Add month markers if enabled
-  if (this.plugin.settings.showMonthMarkers) {
+    // Create vertical markers container with structured layout
+    const markersContainer = container.createEl("div", {
+      cls: "chronos-vertical-markers",
+    });
+
+    // First, create the separate containers for week and month markers
+    const weekMarkersContainer = markersContainer.createEl("div", {
+      cls: "chronos-week-markers",
+    });
+
+    const monthMarkersContainer = markersContainer.createEl("div", {
+      cls: "chronos-month-markers",
+    });
+
+    // Add week markers (10, 20, 30, 40, 50) if enabled
+    if (this.plugin.settings.showWeekMarkers) {
+      for (let week = 0; week <= 50; week += 10) {
+        if (week === 0) continue; // Skip 0 to start with 10
+
+        const marker = weekMarkersContainer.createEl("div", {
+          cls: "chronos-week-marker",
+          text: week.toString(),
+        });
+
+        // Calculate the exact position - align to grid
+        const topPosition =
+          week * (cellSize + cellGap) + cellSize / 2 - (cellSize + cellGap);
+
+        marker.style.top = `${topPosition}px`;
+      }
+    }
+
+    // Add month markers if enabled
+    if (this.plugin.settings.showMonthMarkers) {
+      const birthdayDate = new Date(this.plugin.settings.birthday);
+      const birthMonth = birthdayDate.getMonth();
+      const birthDay = birthdayDate.getDate();
+      const birthYear = birthdayDate.getFullYear();
+      const birthMonthName = MONTH_NAMES[birthMonth];
+
+      // Calculate which week of the month the birthday falls in
+      // First, get first day of birth month
+      const firstDayOfBirthMonth = new Date(birthYear, birthMonth, 1);
+
+      // Calculate days between first of month and birthday
+      const daysBetween =
+        (birthdayDate.getTime() - firstDayOfBirthMonth.getTime()) /
+        (1000 * 60 * 60 * 24);
+
+      // Calculate which week of the month (0-indexed) the birthday falls in
+      const birthWeekOfMonth = Math.floor(daysBetween / 7);
+
+      // Now calculate the position for the birth month marker
+      // If birthday is in week 3 of the month (0-indexed), place month marker at week 51 (second-to-last row)
+      // If birthday is in week 2 of the month, place month marker at week 0 (last row)
+      // If birthday is in week 1 of the month, place month marker at week 1 (first row)
+      const birthMonthMarkerWeek = (52 - birthWeekOfMonth) % 52;
+
+      // Calculate month markers from the plugin
+      const monthMarkers = this.plugin.calculateMonthMarkers(
+        birthdayDate,
+        this.plugin.settings.lifespan,
+        this.plugin.settings.monthMarkerFrequency
+      );
+
+      // Create a map to store one marker per month
+      const monthMarkersMap = new Map<
+        number,
+        {
+          label: string;
+          weekIndex: number;
+          isFirstOfYear: boolean;
+          fullLabel: string;
+        }
+      >();
+
+      // Process all markers to find the best one for each month
+      for (const marker of monthMarkers) {
+        const monthIndex = MONTH_NAMES.indexOf(marker.label);
+        if (monthIndex === -1) continue; // Skip if not a valid month
+
+        // Skip if this is the birth month - we'll handle it separately
+        if (monthIndex === birthMonth) continue;
+
+        // Calculate the actual week position within the grid (0-51)
+        const weekPosition = marker.weekIndex % 52;
+
+        // Only add this month if we haven't seen it yet
+        if (!monthMarkersMap.has(monthIndex)) {
+          monthMarkersMap.set(monthIndex, {
+            label: marker.label,
+            weekIndex: weekPosition,
+            isFirstOfYear: marker.isFirstOfYear,
+            fullLabel: marker.fullLabel,
+          });
+        }
+      }
+
+      // Manually add the birth month marker at the calculated position
+      monthMarkersMap.set(birthMonth, {
+        label: birthMonthName,
+        weekIndex: birthMonthMarkerWeek,
+        isFirstOfYear: birthMonth === 0, // January = true
+        fullLabel: `${birthMonthName} ${birthYear} (Birth Month)`,
+      });
+
+      // Render all month markers
+      for (const [monthIndex, marker] of monthMarkersMap.entries()) {
+        // Create marker element
+        const markerEl = monthMarkersContainer.createEl("div", {
+          cls: `chronos-month-marker ${
+            marker.isFirstOfYear ? "first-of-year" : ""
+          } ${monthIndex === birthMonth ? "birth-month" : ""}`,
+        });
+
+        // Add month name
+        markerEl.textContent = marker.label;
+
+        // Add tooltip
+        markerEl.setAttribute("title", marker.fullLabel);
+
+        // Special styling for birth month
+        if (monthIndex === birthMonth && !markerEl.innerHTML.includes("svg")) {
+          markerEl.style.color = "#e91e63"; // Pink color
+          markerEl.style.fontWeight = "500";
+        }
+
+        // Position the marker
+        markerEl.style.top = `${
+          marker.weekIndex * (cellSize + cellGap) + cellSize / 2
+        }px`;
+      }
+    }
+
+    // Create the grid container
+    const gridEl = container.createEl("div", { cls: "chronos-grid" });
+    // Use display block instead of grid, as we'll manually position each cell
+    gridEl.style.display = "block";
+    gridEl.style.position = "absolute";
+    gridEl.style.top = `${topOffset}px`;
+    gridEl.style.left = `${leftOffset}px`;
+
+    const now = new Date();
     const birthdayDate = new Date(this.plugin.settings.birthday);
-    const birthMonth = birthdayDate.getMonth();
-    const birthDay = birthdayDate.getDate();
-    const birthYear = birthdayDate.getFullYear();
-    const birthMonthName = MONTH_NAMES[birthMonth];
-    
-    
-    // Calculate which week of the month the birthday falls in
-    // First, get first day of birth month
-    const firstDayOfBirthMonth = new Date(birthYear, birthMonth, 1);
-    
-    // Calculate days between first of month and birthday
-    const daysBetween = (birthdayDate.getTime() - firstDayOfBirthMonth.getTime()) / (1000 * 60 * 60 * 24);
-    
-    // Calculate which week of the month (0-indexed) the birthday falls in
-    const birthWeekOfMonth = Math.floor(daysBetween / 7);
-    
-    // Now calculate the position for the birth month marker
-    // If birthday is in week 3 of the month (0-indexed), place month marker at week 51 (second-to-last row)
-    // If birthday is in week 2 of the month, place month marker at week 0 (last row)
-    // If birthday is in week 1 of the month, place month marker at week 1 (first row)
-    const birthMonthMarkerWeek = (52 - birthWeekOfMonth) % 52;
-    
-    // Calculate month markers from the plugin
-    const monthMarkers = this.plugin.calculateMonthMarkers(
-      birthdayDate,
-      this.plugin.settings.lifespan,
-      this.plugin.settings.monthMarkerFrequency
-    );
+    const ageInWeeks = this.plugin.getFullWeekAge(birthdayDate, now);
 
-    // Create a map to store one marker per month 
-    const monthMarkersMap = new Map<number, {label: string, weekIndex: number, isFirstOfYear: boolean, fullLabel: string}>();
-    
-    // Process all markers to find the best one for each month
-    for (const marker of monthMarkers) {
-      const monthIndex = MONTH_NAMES.indexOf(marker.label);
-      if (monthIndex === -1) continue; // Skip if not a valid month
-      
-      // Skip if this is the birth month - we'll handle it separately
-      if (monthIndex === birthMonth) continue;
-      
-      // Calculate the actual week position within the grid (0-51)
-      const weekPosition = marker.weekIndex % 52;
-      
-      // Only add this month if we haven't seen it yet
-      if (!monthMarkersMap.has(monthIndex)) {
-        monthMarkersMap.set(monthIndex, {
-          label: marker.label,
-          weekIndex: weekPosition,
-          isFirstOfYear: marker.isFirstOfYear,
-          fullLabel: marker.fullLabel
+    // For each year, create a column of weeks
+    for (let week = 0; week < 52; week++) {
+      for (let year = 0; year < this.plugin.settings.lifespan; year++) {
+        const weekIndex = year * 52 + week;
+        const cell = gridEl.createEl("div", { cls: "chronos-grid-cell" });
+
+        // Calculate cell date
+        const cellDate = new Date(birthdayDate);
+        cellDate.setDate(cellDate.getDate() + weekIndex * 7);
+        const cellYear = cellDate.getFullYear();
+        const cellWeek = this.plugin.getISOWeekNumber(cellDate);
+        const weekKey = `${cellYear}-W${cellWeek.toString().padStart(2, "0")}`;
+        cell.dataset.weekKey = weekKey;
+
+        // Set the title attribute to show the date range on hover
+        const dateRange = this.plugin.getWeekDateRange(weekKey);
+        cell.setAttribute(
+          "title",
+          `Week ${cellWeek}, ${cellYear}\n${dateRange}`
+        );
+
+        // Position the cell with absolute positioning
+        cell.style.position = "absolute";
+
+        // Calculate left position with decade spacing
+        const leftPos = this.plugin.calculateYearPosition(
+          year,
+          cellSize,
+          regularGap
+        );
+
+        // Calculate top position (unchanged)
+        const topPos = week * (cellSize + regularGap);
+
+        cell.style.left = `${leftPos}px`;
+        cell.style.top = `${topPos}px`;
+
+        // Explicitly set width and height (previously handled by grid)
+        cell.style.width = `${cellSize}px`;
+        cell.style.height = `${cellSize}px`;
+
+        // Color coding (past, present, future)
+        if (weekIndex < ageInWeeks) {
+          cell.addClass("past");
+          cell.style.backgroundColor = this.plugin.settings.pastCellColor;
+        } else if (Math.floor(weekIndex) === Math.floor(ageInWeeks)) {
+          cell.addClass("present");
+          cell.style.backgroundColor = this.plugin.settings.presentCellColor;
+        } else {
+          cell.addClass("future");
+          cell.style.backgroundColor = this.plugin.settings.futureCellColor;
+        }
+
+        // Apply event styling
+        this.applyEventStyling(cell, weekKey);
+
+        // Add click and context menu events to the cell
+        cell.addEventListener("click", async (event) => {
+          // If shift key is pressed, add an event
+          if (event.shiftKey) {
+            const modal = new ChronosEventModal(this.app, this.plugin, weekKey);
+            modal.open();
+            return;
+          }
+
+          // Otherwise open/create the weekly note
+          const fileName = `${weekKey.replace("W", "-W")}.md`;
+          const fullPath = this.plugin.getFullPath(fileName);
+          const existingFile = this.app.vault.getAbstractFileByPath(fullPath);
+
+          if (existingFile instanceof TFile) {
+            // Open existing file
+            await this.app.workspace.getLeaf().openFile(existingFile);
+          } else {
+            // Create new file with template
+            if (
+              this.plugin.settings.notesFolder &&
+              this.plugin.settings.notesFolder.trim() !== ""
+            ) {
+              try {
+                const folderExists = this.app.vault.getAbstractFileByPath(
+                  this.plugin.settings.notesFolder
+                );
+                if (!folderExists) {
+                  await this.app.vault.createFolder(
+                    this.plugin.settings.notesFolder
+                  );
+                }
+              } catch (err) {
+                console.log("Error checking/creating folder:", err);
+              }
+            }
+
+            const content = `# Week ${cellWeek}, ${cellYear}\n\n## Reflections\n\n## Tasks\n\n## Notes\n`;
+            const newFile = await this.app.vault.create(fullPath, content);
+            await this.app.workspace.getLeaf().openFile(newFile);
+          }
+        });
+
+        // Add context menu (right-click) event for manual fill
+        cell.addEventListener("contextmenu", (event) => {
+          // Only allow manual fill if auto-fill is disabled and for future weeks
+          if (this.plugin.settings.enableAutoFill || weekIndex <= ageInWeeks) {
+            return;
+          }
+
+          // Prevent default context menu
+          event.preventDefault();
+
+          // Toggle filled status
+          const filledIndex = this.plugin.settings.filledWeeks.indexOf(weekKey);
+
+          if (filledIndex >= 0) {
+            // Remove from filled weeks
+            this.plugin.settings.filledWeeks.splice(filledIndex, 1);
+            cell.removeClass("filled-week");
+          } else {
+            // Add to filled weeks
+            this.plugin.settings.filledWeeks.push(weekKey);
+            cell.addClass("filled-week");
+            cell.style.backgroundColor = "#8bc34a"; // Light green for filled weeks
+          }
+
+          // Save settings
+          this.plugin.saveSettings();
         });
       }
     }
-    
-    // Manually add the birth month marker at the calculated position
-    monthMarkersMap.set(birthMonth, {
-      label: birthMonthName,
-      weekIndex: birthMonthMarkerWeek, 
-      isFirstOfYear: birthMonth === 0, // January = true
-      fullLabel: `${birthMonthName} ${birthYear} (Birth Month)`
-    });
-
-    // Render all month markers
-    for (const [monthIndex, marker] of monthMarkersMap.entries()) {
-      // Create marker element
-      const markerEl = monthMarkersContainer.createEl("div", {
-        cls: `chronos-month-marker ${marker.isFirstOfYear ? "first-of-year" : ""} ${monthIndex === birthMonth ? "birth-month" : ""}`,
-      });
-      
-      // Add month name
-      markerEl.textContent = marker.label;
-      
-      // Add tooltip
-      markerEl.setAttribute("title", marker.fullLabel);
-      
-      // Special styling for birth month
-      if (monthIndex === birthMonth && !markerEl.innerHTML.includes("svg")) {
-        markerEl.style.color = "#e91e63"; // Pink color
-        markerEl.style.fontWeight = "500";
-      }
-      
-      // Position the marker
-      markerEl.style.top = `${marker.weekIndex * (cellSize + cellGap) + cellSize / 2}px`;
-    }
   }
-
-  // Create the grid container
-  const gridEl = container.createEl("div", { cls: "chronos-grid" });
-  // Use display block instead of grid, as we'll manually position each cell
-  gridEl.style.display = "block";
-  gridEl.style.position = "absolute";
-  gridEl.style.top = `${topOffset}px`;
-  gridEl.style.left = `${leftOffset}px`;
-
-
-  
-  const now = new Date();
-  const birthdayDate = new Date(this.plugin.settings.birthday);
-  const ageInWeeks = this.plugin.getFullWeekAge(birthdayDate, now);
-
-  // For each year, create a column of weeks
-  for (let week = 0; week < 52; week++) {
-    for (let year = 0; year < this.plugin.settings.lifespan; year++) {
-      const weekIndex = year * 52 + week;
-      const cell = gridEl.createEl("div", { cls: "chronos-grid-cell" });
-
-      // Calculate cell date
-      const cellDate = new Date(birthdayDate);
-      cellDate.setDate(cellDate.getDate() + weekIndex * 7);
-      const cellYear = cellDate.getFullYear();
-      const cellWeek = this.plugin.getISOWeekNumber(cellDate);
-      const weekKey = `${cellYear}-W${cellWeek.toString().padStart(2, "0")}`;
-      cell.dataset.weekKey = weekKey;
-
-      // Set the title attribute to show the date range on hover
-      const dateRange = this.plugin.getWeekDateRange(weekKey);
-      cell.setAttribute("title", `Week ${cellWeek}, ${cellYear}\n${dateRange}`);
-
-      // Position the cell with absolute positioning
-      cell.style.position = "absolute";
-
-      // Calculate left position with decade spacing
-      const leftPos = this.plugin.calculateYearPosition(
-        year,
-        cellSize,
-        regularGap
-      );
-
-      // Calculate top position (unchanged)
-      const topPos = week * (cellSize + regularGap);
-
-      cell.style.left = `${leftPos}px`;
-      cell.style.top = `${topPos}px`;
-
-      // Explicitly set width and height (previously handled by grid)
-      cell.style.width = `${cellSize}px`;
-      cell.style.height = `${cellSize}px`;
-
-      // Color coding (past, present, future)
-      if (weekIndex < ageInWeeks) {
-        cell.addClass("past");
-        cell.style.backgroundColor = this.plugin.settings.pastCellColor;
-      } else if (Math.floor(weekIndex) === Math.floor(ageInWeeks)) {
-        cell.addClass("present");
-        cell.style.backgroundColor = this.plugin.settings.presentCellColor;
-      } else {
-        cell.addClass("future");
-        cell.style.backgroundColor = this.plugin.settings.futureCellColor;
-      }
-
-      // Apply event styling
-      this.applyEventStyling(cell, weekKey);
-
-      // Add click and context menu events to the cell
-      cell.addEventListener("click", async (event) => {
-        // If shift key is pressed, add an event
-        if (event.shiftKey) {
-          const modal = new ChronosEventModal(this.app, this.plugin, weekKey);
-          modal.open();
-          return;
-        }
-
-        // Otherwise open/create the weekly note
-        const fileName = `${weekKey.replace("W", "-W")}.md`;
-        const fullPath = this.plugin.getFullPath(fileName);
-        const existingFile = this.app.vault.getAbstractFileByPath(fullPath);
-
-        if (existingFile instanceof TFile) {
-          // Open existing file
-          await this.app.workspace.getLeaf().openFile(existingFile);
-        } else {
-          // Create new file with template
-          if (
-            this.plugin.settings.notesFolder &&
-            this.plugin.settings.notesFolder.trim() !== ""
-          ) {
-            try {
-              const folderExists = this.app.vault.getAbstractFileByPath(
-                this.plugin.settings.notesFolder
-              );
-              if (!folderExists) {
-                await this.app.vault.createFolder(
-                  this.plugin.settings.notesFolder
-                );
-              }
-            } catch (err) {
-              console.log("Error checking/creating folder:", err);
-            }
-          }
-
-          const content = `# Week ${cellWeek}, ${cellYear}\n\n## Reflections\n\n## Tasks\n\n## Notes\n`;
-          const newFile = await this.app.vault.create(fullPath, content);
-          await this.app.workspace.getLeaf().openFile(newFile);
-        }
-      });
-
-    // Add context menu (right-click) event for manual fill
-    cell.addEventListener("contextmenu", (event) => {
-      // Only allow manual fill if auto-fill is disabled and for future weeks
-      if (this.plugin.settings.enableAutoFill || weekIndex <= ageInWeeks) {
-        return;
-      }
-      
-      // Prevent default context menu
-      event.preventDefault();
-      
-      // Toggle filled status
-      const filledIndex = this.plugin.settings.filledWeeks.indexOf(weekKey);
-      
-      if (filledIndex >= 0) {
-        // Remove from filled weeks
-        this.plugin.settings.filledWeeks.splice(filledIndex, 1);
-        cell.removeClass("filled-week");
-      } else {
-        // Add to filled weeks
-        this.plugin.settings.filledWeeks.push(weekKey);
-        cell.addClass("filled-week");
-        cell.style.backgroundColor = "#8bc34a"; // Light green for filled weeks
-      }
-      
-      // Save settings
-      this.plugin.saveSettings();
-    });
-    }
-  }
-}
 
   /**
    * Apply styling for events to a cell
@@ -2081,7 +2353,10 @@ renderWeeksGrid(container: HTMLElement): void {
           cell.addClass("event");
           const eventDesc = description || defaultDesc;
           const currentTitle = cell.getAttribute("title") || "";
-          cell.setAttribute("title", `${eventDesc} (${startWeekKey} to ${endWeekKey})\n${currentTitle}`);
+          cell.setAttribute(
+            "title",
+            `${eventDesc} (${startWeekKey} to ${endWeekKey})\n${currentTitle}`
+          );
           return true;
         }
       }
@@ -2147,7 +2422,7 @@ renderWeeksGrid(container: HTMLElement): void {
       cell.addClass("future-event-highlight");
     }
 
-        // Apply filled week styling if applicable
+    // Apply filled week styling if applicable
     if (this.plugin.settings.filledWeeks.includes(weekKey)) {
       cell.addClass("filled-week");
       // Only change color if no event is on this week
@@ -2213,19 +2488,19 @@ class MarkerSettingsModal extends Modal {
           });
       });
 
-          // Birthday marker setting
+    // Birthday marker setting
     new Setting(contentEl)
-    .setName("Birthday Marker")
-    .setDesc("Show birthday cake icon at your birth week")
-    .addToggle((toggle) =>
-      toggle
-        .setValue(this.plugin.settings.showBirthdayMarker)
-        .onChange(async (value) => {
-          this.plugin.settings.showBirthdayMarker = value;
-          await this.plugin.saveSettings();
-          this.refreshCallback();
-        })
-    );
+      .setName("Birthday Marker")
+      .setDesc("Show birthday cake icon at your birth week")
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.showBirthdayMarker)
+          .onChange(async (value) => {
+            this.plugin.settings.showBirthdayMarker = value;
+            await this.plugin.saveSettings();
+            this.refreshCallback();
+          })
+      );
 
     // Week markers setting
     new Setting(contentEl)
@@ -2824,7 +3099,9 @@ class ChronosSettingTab extends PluginSettingTab {
     // Replace the existing toggles with this single toggle that handles both modes
     new Setting(containerEl)
       .setName("Enable Auto-Fill")
-      .setDesc("When enabled, automatically marks weeks as completed on a specific day. When disabled, you can manually mark weeks by right-clicking them.")
+      .setDesc(
+        "When enabled, automatically marks weeks as completed on a specific day. When disabled, you can manually mark weeks by right-clicking them."
+      )
       .addToggle((toggle) =>
         toggle
           .setValue(this.plugin.settings.enableAutoFill)
@@ -2833,31 +3110,36 @@ class ChronosSettingTab extends PluginSettingTab {
             // If auto-fill is enabled, manual fill should be disabled
             this.plugin.settings.enableManualFill = !value;
             await this.plugin.saveSettings();
-            
+
             // Show/hide day selector based on toggle state
-            const daySelector = containerEl.querySelector(".auto-fill-day-selector");
+            const daySelector = containerEl.querySelector(
+              ".auto-fill-day-selector"
+            );
             if (daySelector) {
-              (daySelector as HTMLElement).style.display = value ? "flex" : "none";
+              (daySelector as HTMLElement).style.display = value
+                ? "flex"
+                : "none";
             }
-            
+
             // Add status indicator text
-            const statusIndicator = containerEl.querySelector(".fill-mode-status");
+            const statusIndicator =
+              containerEl.querySelector(".fill-mode-status");
             if (statusIndicator) {
-              (statusIndicator as HTMLElement).textContent = value 
-                ? "Auto-fill is active. Weeks will be filled automatically." 
+              (statusIndicator as HTMLElement).textContent = value
+                ? "Auto-fill is active. Weeks will be filled automatically."
                 : "Manual fill is active. Right-click on future weeks to mark them as filled.";
             } else {
               const statusEl = containerEl.createEl("div", {
                 cls: "fill-mode-status",
-                text: value 
-                  ? "Auto-fill is active. Weeks will be filled automatically." 
-                  : "Manual fill is active. Right-click on future weeks to mark them as filled."
+                text: value
+                  ? "Auto-fill is active. Weeks will be filled automatically."
+                  : "Manual fill is active. Right-click on future weeks to mark them as filled.",
               });
               statusEl.style.fontStyle = "italic";
               statusEl.style.marginTop = "5px";
               statusEl.style.color = "var(--text-muted)";
             }
-            
+
             this.refreshAllViews();
           })
       );
@@ -2868,11 +3150,19 @@ class ChronosSettingTab extends PluginSettingTab {
       .setDesc("Day of the week when auto-fill should occur")
       .setClass("auto-fill-day-selector")
       .addDropdown((dropdown) => {
-        const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+        const days = [
+          "Sunday",
+          "Monday",
+          "Tuesday",
+          "Wednesday",
+          "Thursday",
+          "Friday",
+          "Saturday",
+        ];
         days.forEach((day, index) => {
           dropdown.addOption(index.toString(), day);
         });
-        
+
         dropdown
           .setValue(this.plugin.settings.autoFillDay.toString())
           .onChange(async (value) => {
@@ -2889,14 +3179,13 @@ class ChronosSettingTab extends PluginSettingTab {
     // Add initial status indicator
     const statusEl = containerEl.createEl("div", {
       cls: "fill-mode-status",
-      text: this.plugin.settings.enableAutoFill 
-        ? "Auto-fill is active. Weeks will be filled automatically." 
-        : "Manual fill is active. Right-click on future weeks to mark them as filled."
+      text: this.plugin.settings.enableAutoFill
+        ? "Auto-fill is active. Weeks will be filled automatically."
+        : "Manual fill is active. Right-click on future weeks to mark them as filled.",
     });
     statusEl.style.fontStyle = "italic";
     statusEl.style.marginTop = "5px";
     statusEl.style.color = "var(--text-muted)";
-    
 
     // Event types management section
     containerEl.createEl("h3", { text: "Event Types" });
@@ -2985,10 +3274,12 @@ class ChronosSettingTab extends PluginSettingTab {
           });
         });
 
-        // Manual fill toggle
-        new Setting(containerEl)
+      // Manual fill toggle
+      new Setting(containerEl)
         .setName("Enable Manual Fill")
-        .setDesc("Allow manually marking weeks as filled by right-clicking on them")
+        .setDesc(
+          "Allow manually marking weeks as filled by right-clicking on them"
+        )
         .addToggle((toggle) =>
           toggle
             .setValue(this.plugin.settings.enableManualFill)
@@ -2999,36 +3290,50 @@ class ChronosSettingTab extends PluginSettingTab {
             })
         );
 
-        // Auto-fill toggle
-        new Setting(containerEl)
+      // Auto-fill toggle
+      new Setting(containerEl)
         .setName("Enable Auto-Fill")
-        .setDesc("Automatically mark the current week as filled on a specific day")
+        .setDesc(
+          "Automatically mark the current week as filled on a specific day"
+        )
         .addToggle((toggle) =>
           toggle
             .setValue(this.plugin.settings.enableAutoFill)
             .onChange(async (value) => {
               this.plugin.settings.enableAutoFill = value;
               await this.plugin.saveSettings();
-              
+
               // Show/hide day selector based on toggle state
-              const daySelector = containerEl.querySelector(".auto-fill-day-selector");
+              const daySelector = containerEl.querySelector(
+                ".auto-fill-day-selector"
+              );
               if (daySelector) {
-                (daySelector as HTMLElement).style.display = value ? "flex" : "none";
+                (daySelector as HTMLElement).style.display = value
+                  ? "flex"
+                  : "none";
               }
             })
         );
 
-        // Auto-fill day selector
-        const daySelector = new Setting(containerEl)
+      // Auto-fill day selector
+      const daySelector = new Setting(containerEl)
         .setName("Auto-Fill Day")
         .setDesc("Day of the week when auto-fill should occur")
         .setClass("auto-fill-day-selector")
         .addDropdown((dropdown) => {
-          const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+          const days = [
+            "Sunday",
+            "Monday",
+            "Tuesday",
+            "Wednesday",
+            "Thursday",
+            "Friday",
+            "Saturday",
+          ];
           days.forEach((day, index) => {
             dropdown.addOption(index.toString(), day);
           });
-          
+
           dropdown
             .setValue(this.plugin.settings.autoFillDay.toString())
             .onChange(async (value) => {
@@ -3037,13 +3342,13 @@ class ChronosSettingTab extends PluginSettingTab {
             });
         });
 
-        // Hide day selector if auto-fill is disabled
-        if (!this.plugin.settings.enableAutoFill) {
+      // Hide day selector if auto-fill is disabled
+      if (!this.plugin.settings.enableAutoFill) {
         daySelector.settingEl.style.display = "none";
-        }
+      }
 
-        // Week start day setting
-        new Setting(containerEl)
+      // Week start day setting
+      new Setting(containerEl)
         .setName("Start Week On Monday")
         .setDesc("Use Monday as the first day of the week (instead of Sunday)")
         .addToggle((toggle) =>
@@ -3056,8 +3361,8 @@ class ChronosSettingTab extends PluginSettingTab {
             })
         );
 
-        // Clear filled weeks button
-        new Setting(containerEl)
+      // Clear filled weeks button
+      new Setting(containerEl)
         .setName("Clear Filled Weeks")
         .setDesc("Remove all filled week markings")
         .addButton((button) => {
@@ -3069,22 +3374,23 @@ class ChronosSettingTab extends PluginSettingTab {
           });
         });
 
-            // Zoom level setting
+      // Zoom level setting
       new Setting(containerEl)
-      .setName("Default Zoom Level")
-      .setDesc("Set the default zoom level for the timeline view (1.0 = 100%)")
-      .addSlider((slider) =>
-        slider
-          .setLimits(0.5, 3.0, 0.25)
-          .setValue(this.plugin.settings.zoomLevel)
-          .setDynamicTooltip()
-          .onChange(async (value) => {
-            this.plugin.settings.zoomLevel = value;
-            await this.plugin.saveSettings();
-            this.refreshAllViews();
-          })
-      );
-
+        .setName("Default Zoom Level")
+        .setDesc(
+          "Set the default zoom level for the timeline view (1.0 = 100%)"
+        )
+        .addSlider((slider) =>
+          slider
+            .setLimits(0.5, 3.0, 0.25)
+            .setValue(this.plugin.settings.zoomLevel)
+            .setDynamicTooltip()
+            .onChange(async (value) => {
+              this.plugin.settings.zoomLevel = value;
+              await this.plugin.saveSettings();
+              this.refreshAllViews();
+            })
+        );
     }
 
     // Help tips section

@@ -172,9 +172,9 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
         }
     }
     /**
-   * Check if the current week should be auto-filled
-   * @returns true if the current week was filled
-   */
+     * Check if the current week should be auto-filled
+     * @returns true if the current week was filled
+     */
     checkAndAutoFill() {
         if (!this.settings.enableAutoFill) {
             return false;
@@ -440,10 +440,10 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
         return monthMarkers;
     }
     /**
-   * Calculate date range for a given week key
-   * @param weekKey - Week key in YYYY-WXX format
-   * @returns String with formatted date range
-   */
+     * Calculate date range for a given week key
+     * @param weekKey - Week key in YYYY-WXX format
+     * @returns String with formatted date range
+     */
     getWeekDateRange(weekKey) {
         const parts = weekKey.split("-W");
         if (parts.length !== 2)
@@ -460,7 +460,20 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
         lastDayOfWeek.setDate(firstDayOfWeek.getDate() + 6);
         // Format the dates
         const formatDate = (date) => {
-            const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            const months = [
+                "Jan",
+                "Feb",
+                "Mar",
+                "Apr",
+                "May",
+                "Jun",
+                "Jul",
+                "Aug",
+                "Sep",
+                "Oct",
+                "Nov",
+                "Dec",
+            ];
             return `${months[date.getMonth()]} ${date.getDate()}`;
         };
         return `${formatDate(firstDayOfWeek)} - ${formatDate(lastDayOfWeek)}`;
@@ -982,13 +995,17 @@ class ChronosTimelineView extends obsidian.ItemView {
         const contentEl = this.containerEl.children[1];
         contentEl.empty();
         // Create main container with flexbox layout
-        const mainContainer = contentEl.createEl("div", { cls: "chronos-main-container" });
+        const mainContainer = contentEl.createEl("div", {
+            cls: "chronos-main-container",
+        });
         // Create sidebar
         const sidebarEl = mainContainer.createEl("div", {
-            cls: `chronos-sidebar ${this.isSidebarOpen ? 'expanded' : 'collapsed'}`
+            cls: `chronos-sidebar ${this.isSidebarOpen ? "expanded" : "collapsed"}`,
         });
         // Add sidebar header with title and toggle
-        const sidebarHeader = sidebarEl.createEl("div", { cls: "chronos-sidebar-header" });
+        const sidebarHeader = sidebarEl.createEl("div", {
+            cls: "chronos-sidebar-header",
+        });
         // Create title in sidebar header
         sidebarHeader.createEl("div", {
             cls: "chronos-title",
@@ -997,11 +1014,13 @@ class ChronosTimelineView extends obsidian.ItemView {
         // Create sidebar toggle as part of the sidebar itself
         const sidebarToggle = sidebarHeader.createEl("button", {
             cls: "chronos-sidebar-toggle",
-            attr: { title: this.isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar" }
+            attr: {
+                title: this.isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar",
+            },
         });
-        sidebarToggle.innerHTML = this.isSidebarOpen ?
-            `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>` :
-            `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>`;
+        sidebarToggle.innerHTML = this.isSidebarOpen
+            ? `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>`
+            : `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>`;
         sidebarToggle.addEventListener("click", () => {
             this.isSidebarOpen = !this.isSidebarOpen;
             // Save state to plugin settings
@@ -1011,9 +1030,9 @@ class ChronosTimelineView extends obsidian.ItemView {
             sidebarEl.classList.toggle("collapsed", !this.isSidebarOpen);
             sidebarEl.classList.toggle("expanded", this.isSidebarOpen);
             // Update toggle icon
-            sidebarToggle.innerHTML = this.isSidebarOpen ?
-                `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>` :
-                `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>`;
+            sidebarToggle.innerHTML = this.isSidebarOpen
+                ? `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>`
+                : `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>`;
             sidebarToggle.setAttribute("title", this.isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar");
             // Toggle visibility of the collapsed toggle button
             if (collapsedToggle) {
@@ -1021,9 +1040,13 @@ class ChronosTimelineView extends obsidian.ItemView {
             }
         });
         // Controls section
-        const controlsSection = sidebarEl.createEl("div", { cls: "chronos-sidebar-section" });
+        const controlsSection = sidebarEl.createEl("div", {
+            cls: "chronos-sidebar-section",
+        });
         controlsSection.createEl("h3", { text: "CONTROLS", cls: "section-header" });
-        const controlsContainer = controlsSection.createEl("div", { cls: "chronos-controls" });
+        const controlsContainer = controlsSection.createEl("div", {
+            cls: "chronos-controls",
+        });
         // Plan future event button
         const planEventBtn = controlsContainer.createEl("button", {
             text: "Plan Event",
@@ -1042,11 +1065,20 @@ class ChronosTimelineView extends obsidian.ItemView {
             modal.open();
         });
         // Visualization controls section
-        const visualSection = sidebarEl.createEl("div", { cls: "chronos-sidebar-section" });
-        visualSection.createEl("h3", { text: "VIEW OPTIONS", cls: "section-header" });
-        const visualContainer = visualSection.createEl("div", { cls: "chronos-visual-controls" });
+        const visualSection = sidebarEl.createEl("div", {
+            cls: "chronos-sidebar-section",
+        });
+        visualSection.createEl("h3", {
+            text: "VIEW OPTIONS",
+            cls: "section-header",
+        });
+        const visualContainer = visualSection.createEl("div", {
+            cls: "chronos-visual-controls",
+        });
         // Zoom controls with 3-button layout
-        const zoomControlsDiv = visualContainer.createEl("div", { cls: "chronos-zoom-controls" });
+        const zoomControlsDiv = visualContainer.createEl("div", {
+            cls: "chronos-zoom-controls",
+        });
         // Zoom out button with SVG icon
         const zoomOutBtn = zoomControlsDiv.createEl("button", {
             cls: "chronos-btn chronos-zoom-button",
@@ -1083,13 +1115,15 @@ class ChronosTimelineView extends obsidian.ItemView {
         const fitToScreenBtn = visualContainer.createEl("button", {
             cls: "chronos-btn chronos-fit-to-screen",
             text: "Fit to Screen",
-            attr: { title: "Automatically adjust zoom to fit entire grid on screen" }
+            attr: { title: "Automatically adjust zoom to fit entire grid on screen" },
         });
         fitToScreenBtn.addEventListener("click", () => {
             this.fitToScreen();
         });
         // Legend section (vertical)
-        const legendSection = sidebarEl.createEl("div", { cls: "chronos-sidebar-section" });
+        const legendSection = sidebarEl.createEl("div", {
+            cls: "chronos-sidebar-section",
+        });
         legendSection.createEl("h3", { text: "LEGEND", cls: "section-header" });
         const legendEl = legendSection.createEl("div", { cls: "chronos-legend" });
         // Standard event types for legend
@@ -1129,11 +1163,13 @@ class ChronosTimelineView extends obsidian.ItemView {
             text: this.plugin.settings.quote,
         });
         // Create content area
-        const contentAreaEl = mainContainer.createEl("div", { cls: "chronos-content-area" });
+        const contentAreaEl = mainContainer.createEl("div", {
+            cls: "chronos-content-area",
+        });
         // Always create collapsed sidebar indicator/toggle (but hide it when sidebar is open)
         const collapsedToggle = contentAreaEl.createEl("button", {
             cls: "chronos-collapsed-toggle",
-            attr: { title: "Expand Sidebar" }
+            attr: { title: "Expand Sidebar" },
         });
         collapsedToggle.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>`;
         collapsedToggle.addEventListener("click", () => {
@@ -1187,46 +1223,16 @@ class ChronosTimelineView extends obsidian.ItemView {
         this.updateZoomLevel();
     }
     /**
-     * Update zoom-affected elements without re-rendering the entire view
-     */
-    updateZoomLevel() {
-        // Get the container element
-        const contentEl = this.containerEl.children[1];
-        // Update zoom level indicator
-        const zoomLabel = contentEl.querySelector('.chronos-zoom-level');
-        if (zoomLabel) {
-            zoomLabel.textContent = `${Math.round(this.plugin.settings.zoomLevel * 100)}%`;
-        }
-        // Update cell size CSS variable
-        const root = document.documentElement;
-        const baseSize = parseInt(getComputedStyle(root).getPropertyValue("--base-cell-size")) || 16;
-        const cellSize = Math.round(baseSize * this.plugin.settings.zoomLevel);
-        root.style.setProperty("--cell-size", `${cellSize}px`);
-        // Get the view element
-        const viewEl = contentEl.querySelector('.chronos-view');
-        if (viewEl instanceof HTMLElement) {
-            // Clear the view
-            viewEl.empty();
-            // Re-render the grid - THIS WAS MISSING
-            this.renderWeeksGrid(viewEl);
-        }
-        // Update fitToScreen button state if it exists
-        const fitButton = contentEl.querySelector('.chronos-fit-to-screen');
-        if (fitButton) {
-            fitButton.classList.toggle('active', this.isGridFitToScreen());
-        }
-    }
-    /**
      * Automatically adjust zoom level to fit the entire grid on screen
      */
     fitToScreen() {
-        // 1) Grab the two containers
+        // Grab the relevant containers
         const contentEl = this.containerEl.children[1];
-        const contentArea = contentEl.querySelector('.chronos-content-area');
-        const viewEl = contentArea.querySelector('.chronos-view');
+        const contentArea = contentEl.querySelector(".chronos-content-area");
+        const viewEl = contentArea.querySelector(".chronos-view");
         if (!viewEl || !contentArea)
             return;
-        // 2) Measure the space available for our grid (inside view padding)
+        // Measure the viewport-aware space available
         const cs = getComputedStyle(viewEl);
         const padL = parseInt(cs.paddingLeft) || 0;
         const padR = parseInt(cs.paddingRight) || 0;
@@ -1234,30 +1240,213 @@ class ChronosTimelineView extends obsidian.ItemView {
         const padB = parseInt(cs.paddingBottom) || 0;
         const availW = viewEl.clientWidth - padL - padR;
         const availH = viewEl.clientHeight - padT - padB;
-        // 3) Read our CSS vars + settings
+        // Read CSS vars + settings
         const rootStyle = getComputedStyle(document.documentElement);
         const baseSize = parseInt(rootStyle.getPropertyValue("--base-cell-size")) || 16;
         const gap = parseInt(rootStyle.getPropertyValue("--cell-gap")) || 2;
-        const years = this.plugin.settings.lifespan; // total columns
-        const weeks = 52; // total rows
-        // 4) Compute the ideal cell size to fill W×H exactly
+        const years = this.plugin.settings.lifespan;
+        const weeks = 52;
+        // Compute ideal cell size for both width and height constraints
         const idealW = (availW - (years - 1) * gap) / years;
         const idealH = (availH - (weeks - 1) * gap) / weeks;
         const idealCell = Math.min(idealW, idealH);
-        // 5) Convert to zoom ratio and clamp
+        // Convert to zoom ratio and apply a small buffer for safety
         const rawZoom = idealCell / baseSize;
-        const newZoom = rawZoom * 1.05;
-        this.plugin.settings.zoomLevel = Math.max(0.1, Math.min(4, newZoom));
-        // 6) Apply it
+        const newZoom = Math.max(0.1, Math.min(4, rawZoom * 0.98)); // 2% buffer for safety
+        this.plugin.settings.zoomLevel = newZoom;
+        // Apply updated zoom
         this.updateZoomLevel();
+        // Add centering to the grid
+        this.centerGridInView();
+        // Show statistics if there's available space
+        this.showLifeStatistics();
+    }
+    /**
+     * Center the grid in the available viewport space
+     */
+    centerGridInView() {
+        const contentEl = this.containerEl.children[1];
+        const contentArea = contentEl.querySelector(".chronos-content-area");
+        const viewEl = contentArea.querySelector(".chronos-view");
+        const gridEl = viewEl.querySelector(".chronos-grid");
+        if (!gridEl || !viewEl)
+            return;
+        // Calculate grid dimensions
+        const gridRect = gridEl.getBoundingClientRect();
+        const viewRect = viewEl.getBoundingClientRect();
+        // Calculate available space
+        const availableWidth = viewRect.width - gridRect.width;
+        const availableHeight = viewRect.height - gridRect.height;
+        // Only apply centering if there's actual extra space
+        if (availableWidth > 0 || availableHeight > 0) {
+            // Get current CSS positions and offsets
+            const rootStyle = getComputedStyle(document.documentElement);
+            parseInt(rootStyle.getPropertyValue("--left-offset")) || 70;
+            parseInt(rootStyle.getPropertyValue("--top-offset")) || 50;
+            // Calculate centering offsets while preserving the original offsets for markers
+            const centerX = Math.max(0, availableWidth / 2);
+            const centerY = Math.max(0, availableHeight / 2);
+            // Apply centering via transform to avoid disturbing other layout elements
+            gridEl.style.transform = `translate(${centerX}px, ${centerY}px)`;
+            // Move the decade markers too
+            const decadeMarkers = viewEl.querySelector(".chronos-decade-markers");
+            if (decadeMarkers) {
+                decadeMarkers.style.transform = `translateX(${centerX}px)`;
+            }
+            // Move vertical markers as well
+            const verticalMarkers = viewEl.querySelector(".chronos-vertical-markers");
+            if (verticalMarkers) {
+                verticalMarkers.style.transform = `translateY(${centerY}px)`;
+            }
+        }
+    }
+    /**
+     * Generate and show life statistics in available white space
+     */
+    showLifeStatistics() {
+        const contentEl = this.containerEl.children[1];
+        const contentArea = contentEl.querySelector(".chronos-content-area");
+        const viewEl = contentArea.querySelector(".chronos-view");
+        // Clean up any existing stats
+        const existingStats = viewEl.querySelector(".chronos-stats-container");
+        if (existingStats) {
+            existingStats.remove();
+        }
+        // Create stats container
+        const statsContainer = viewEl.createEl("div", {
+            cls: "chronos-stats-container",
+        });
+        // Calculate basic statistics
+        const now = new Date();
+        const birthdayDate = new Date(this.plugin.settings.birthday);
+        const ageInWeeks = this.plugin.getFullWeekAge(birthdayDate, now);
+        const totalWeeks = this.plugin.settings.lifespan * 52;
+        const livedPercentage = ((ageInWeeks / totalWeeks) * 100).toFixed(1);
+        const remainingWeeks = totalWeeks - ageInWeeks;
+        // Calculate event counts
+        const majorLifeEvents = this.plugin.settings.greenEvents.length;
+        const travelEvents = this.plugin.settings.blueEvents.length;
+        const relationshipEvents = this.plugin.settings.pinkEvents.length;
+        const educationCareerEvents = this.plugin.settings.purpleEvents.length;
+        // Calculate custom event counts
+        let customEventCount = 0;
+        if (this.plugin.settings.customEventTypes &&
+            this.plugin.settings.customEvents) {
+            for (const eventType of this.plugin.settings.customEventTypes) {
+                if (this.plugin.settings.customEvents[eventType.name]) {
+                    customEventCount +=
+                        this.plugin.settings.customEvents[eventType.name].length;
+                }
+            }
+        }
+        const totalEvents = majorLifeEvents +
+            travelEvents +
+            relationshipEvents +
+            educationCareerEvents +
+            customEventCount;
+        // Create header
+        statsContainer.createEl("h3", {
+            text: "Life Statistics",
+            cls: "chronos-stats-header",
+        });
+        // Create statistics items
+        const createStatItem = (label, value) => {
+            const item = statsContainer.createEl("div", { cls: "chronos-stat-item" });
+            item.createEl("span", { text: label, cls: "chronos-stat-label" });
+            item.createEl("span", { text: value, cls: "chronos-stat-value" });
+            return item;
+        };
+        // Add key statistics
+        createStatItem("Weeks Lived", ageInWeeks.toString());
+        createStatItem("Weeks Remaining", remainingWeeks.toString());
+        createStatItem("Life Progress", `${livedPercentage}%`);
+        // Add event statistics if there are any events
+        if (totalEvents > 0) {
+            statsContainer.createEl("h4", {
+                text: "Event Summary",
+                cls: "chronos-stats-subheader",
+            });
+            createStatItem("Total Events", totalEvents.toString());
+            if (majorLifeEvents > 0) {
+                createStatItem("Major Life Events", majorLifeEvents.toString());
+            }
+            if (travelEvents > 0) {
+                createStatItem("Travel Events", travelEvents.toString());
+            }
+            if (relationshipEvents > 0) {
+                createStatItem("Relationship Events", relationshipEvents.toString());
+            }
+            if (educationCareerEvents > 0) {
+                createStatItem("Education/Career", educationCareerEvents.toString());
+            }
+            // Add custom event types stats
+            if (customEventCount > 0) {
+                for (const eventType of this.plugin.settings.customEventTypes) {
+                    const count = this.plugin.settings.customEvents[eventType.name]?.length || 0;
+                    if (count > 0) {
+                        createStatItem(eventType.name, count.toString());
+                    }
+                }
+            }
+        }
+        // Calculate decades lived
+        const yearsLived = ageInWeeks / 52;
+        const decadesLived = Math.floor(yearsLived / 10);
+        if (decadesLived > 0) {
+            statsContainer.createEl("h4", {
+                text: "Decade Insights",
+                cls: "chronos-stats-subheader",
+            });
+            // Basic decade stats
+            createStatItem("Decades Completed", decadesLived.toString());
+            createStatItem("Current Decade", `${decadesLived * 10}-${decadesLived * 10 + 9}`);
+            // Calculate progress in current decade
+            const decadeProgress = ((yearsLived % 10) / 10) * 100;
+            createStatItem("Decade Progress", `${decadeProgress.toFixed(1)}%`);
+        }
+    }
+    /**
+     * Update zoom-affected elements with adjusted positioning
+     */
+    updateZoomLevel() {
+        // Get the container element
+        const contentEl = this.containerEl.children[1];
+        // Update zoom level indicator
+        const zoomLabel = contentEl.querySelector(".chronos-zoom-level");
+        if (zoomLabel) {
+            zoomLabel.textContent = `${Math.round(this.plugin.settings.zoomLevel * 100)}%`;
+        }
+        // Update cell size CSS variable
+        const root = document.documentElement;
+        const baseSize = parseInt(getComputedStyle(root).getPropertyValue("--base-cell-size")) ||
+            16;
+        const cellSize = Math.round(baseSize * this.plugin.settings.zoomLevel);
+        root.style.setProperty("--cell-size", `${cellSize}px`);
+        // Get the view element
+        const viewEl = contentEl.querySelector(".chronos-view");
+        if (viewEl instanceof HTMLElement) {
+            // Clear the view
+            viewEl.empty();
+            // Re-render the grid
+            this.renderWeeksGrid(viewEl);
+            // Apply centering after rendering
+            this.centerGridInView();
+            // Show statistics in available space
+            this.showLifeStatistics();
+        }
+        // Update fitToScreen button state if it exists
+        const fitButton = contentEl.querySelector(".chronos-fit-to-screen");
+        if (fitButton) {
+            fitButton.classList.toggle("active", this.isGridFitToScreen());
+        }
     }
     /**
      * Check if the grid is currently fit to screen
      */
     isGridFitToScreen() {
         const contentEl = this.containerEl.children[1];
-        const contentArea = contentEl.querySelector('.chronos-content-area');
-        const viewEl = contentArea.querySelector('.chronos-view');
+        const contentArea = contentEl.querySelector(".chronos-content-area");
+        const viewEl = contentArea.querySelector(".chronos-view");
         if (!viewEl || !contentArea)
             return false;
         // Same math as fitToScreen()
@@ -1287,7 +1476,8 @@ class ChronosTimelineView extends obsidian.ItemView {
         container.empty();
         // Get the CSS variables for positioning and styling
         const root = document.documentElement;
-        const baseSize = parseInt(getComputedStyle(root).getPropertyValue("--base-cell-size")) || 16;
+        const baseSize = parseInt(getComputedStyle(root).getPropertyValue("--base-cell-size")) ||
+            16;
         const cellSize = Math.round(baseSize * this.plugin.settings.zoomLevel);
         // Apply the zoomed cell size to the CSS variable
         root.style.setProperty("--cell-size", `${cellSize}px`);
@@ -1309,7 +1499,8 @@ class ChronosTimelineView extends obsidian.ItemView {
                 // Position each decade marker using the calculateYearPosition method
                 marker.style.position = "absolute";
                 // Calculate position with the decade spacing
-                const leftPosition = this.plugin.calculateYearPosition(decade, cellSize, regularGap) + cellSize / 2;
+                const leftPosition = this.plugin.calculateYearPosition(decade, cellSize, regularGap) +
+                    cellSize / 2;
                 marker.style.left = `${leftPosition}px`;
                 marker.style.top = `${topOffset / 2}px`;
                 marker.style.transform = "translate(-50%, -50%)";
@@ -1374,7 +1565,8 @@ class ChronosTimelineView extends obsidian.ItemView {
             // First, get first day of birth month
             const firstDayOfBirthMonth = new Date(birthYear, birthMonth, 1);
             // Calculate days between first of month and birthday
-            const daysBetween = (birthdayDate.getTime() - firstDayOfBirthMonth.getTime()) / (1000 * 60 * 60 * 24);
+            const daysBetween = (birthdayDate.getTime() - firstDayOfBirthMonth.getTime()) /
+                (1000 * 60 * 60 * 24);
             // Calculate which week of the month (0-indexed) the birthday falls in
             const birthWeekOfMonth = Math.floor(daysBetween / 7);
             // Now calculate the position for the birth month marker
@@ -1384,7 +1576,7 @@ class ChronosTimelineView extends obsidian.ItemView {
             const birthMonthMarkerWeek = (52 - birthWeekOfMonth) % 52;
             // Calculate month markers from the plugin
             const monthMarkers = this.plugin.calculateMonthMarkers(birthdayDate, this.plugin.settings.lifespan, this.plugin.settings.monthMarkerFrequency);
-            // Create a map to store one marker per month 
+            // Create a map to store one marker per month
             const monthMarkersMap = new Map();
             // Process all markers to find the best one for each month
             for (const marker of monthMarkers) {
@@ -1402,7 +1594,7 @@ class ChronosTimelineView extends obsidian.ItemView {
                         label: marker.label,
                         weekIndex: weekPosition,
                         isFirstOfYear: marker.isFirstOfYear,
-                        fullLabel: marker.fullLabel
+                        fullLabel: marker.fullLabel,
                     });
                 }
             }
@@ -1411,7 +1603,7 @@ class ChronosTimelineView extends obsidian.ItemView {
                 label: birthMonthName,
                 weekIndex: birthMonthMarkerWeek,
                 isFirstOfYear: birthMonth === 0,
-                fullLabel: `${birthMonthName} ${birthYear} (Birth Month)`
+                fullLabel: `${birthMonthName} ${birthYear} (Birth Month)`,
             });
             // Render all month markers
             for (const [monthIndex, marker] of monthMarkersMap.entries()) {
@@ -2063,7 +2255,9 @@ class ChronosSettingTab extends obsidian.PluginSettingTab {
             // Show/hide day selector based on toggle state
             const daySelector = containerEl.querySelector(".auto-fill-day-selector");
             if (daySelector) {
-                daySelector.style.display = value ? "flex" : "none";
+                daySelector.style.display = value
+                    ? "flex"
+                    : "none";
             }
             // Add status indicator text
             const statusIndicator = containerEl.querySelector(".fill-mode-status");
@@ -2077,7 +2271,7 @@ class ChronosSettingTab extends obsidian.PluginSettingTab {
                     cls: "fill-mode-status",
                     text: value
                         ? "Auto-fill is active. Weeks will be filled automatically."
-                        : "Manual fill is active. Right-click on future weeks to mark them as filled."
+                        : "Manual fill is active. Right-click on future weeks to mark them as filled.",
                 });
                 statusEl.style.fontStyle = "italic";
                 statusEl.style.marginTop = "5px";
@@ -2091,7 +2285,15 @@ class ChronosSettingTab extends obsidian.PluginSettingTab {
             .setDesc("Day of the week when auto-fill should occur")
             .setClass("auto-fill-day-selector")
             .addDropdown((dropdown) => {
-            const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+            const days = [
+                "Sunday",
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+            ];
             days.forEach((day, index) => {
                 dropdown.addOption(index.toString(), day);
             });
@@ -2111,7 +2313,7 @@ class ChronosSettingTab extends obsidian.PluginSettingTab {
             cls: "fill-mode-status",
             text: this.plugin.settings.enableAutoFill
                 ? "Auto-fill is active. Weeks will be filled automatically."
-                : "Manual fill is active. Right-click on future weeks to mark them as filled."
+                : "Manual fill is active. Right-click on future weeks to mark them as filled.",
         });
         statusEl.style.fontStyle = "italic";
         statusEl.style.marginTop = "5px";
@@ -2217,7 +2419,9 @@ class ChronosSettingTab extends obsidian.PluginSettingTab {
                 // Show/hide day selector based on toggle state
                 const daySelector = containerEl.querySelector(".auto-fill-day-selector");
                 if (daySelector) {
-                    daySelector.style.display = value ? "flex" : "none";
+                    daySelector.style.display = value
+                        ? "flex"
+                        : "none";
                 }
             }));
             // Auto-fill day selector
@@ -2226,7 +2430,15 @@ class ChronosSettingTab extends obsidian.PluginSettingTab {
                 .setDesc("Day of the week when auto-fill should occur")
                 .setClass("auto-fill-day-selector")
                 .addDropdown((dropdown) => {
-                const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+                const days = [
+                    "Sunday",
+                    "Monday",
+                    "Tuesday",
+                    "Wednesday",
+                    "Thursday",
+                    "Friday",
+                    "Saturday",
+                ];
                 days.forEach((day, index) => {
                     dropdown.addOption(index.toString(), day);
                 });
