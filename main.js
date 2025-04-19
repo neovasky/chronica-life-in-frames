@@ -45,6 +45,7 @@ const DEFAULT_SETTINGS = {
     autoFillDay: 1,
     filledWeeks: [],
     startWeekOnMonday: true,
+    zoomLevel: 1.0,
 };
 /** SVG icon for the ChronOS Timeline */
 const CHRONOS_ICON = `<svg viewBox="0 0 100 100" width="100" height="100" xmlns="http://www.w3.org/2000/svg">
@@ -1045,6 +1046,30 @@ class ChronosTimelineView extends obsidian.ItemView {
             cls: "chronos-footer",
             text: this.plugin.settings.quote,
         });
+        // Add zoom controls
+        const zoomControlsDiv = controlsEl.createEl("div", { cls: "chronos-zoom-controls" });
+        const zoomOutBtn = zoomControlsDiv.createEl("button", {
+            text: "−",
+            cls: "chronos-zoom-button chronos-zoom-out",
+            attr: { title: "Zoom Out" },
+        });
+        zoomOutBtn.addEventListener("click", () => {
+            this.zoomOut();
+        });
+        // Add zoom level indicator
+        zoomControlsDiv.createEl("span", {
+            text: `${Math.round(this.plugin.settings.zoomLevel * 100)}%`,
+            cls: "chronos-zoom-level",
+        });
+        // Add zoom in button
+        const zoomInBtn = zoomControlsDiv.createEl("button", {
+            text: "+",
+            cls: "chronos-zoom-button chronos-zoom-in",
+            attr: { title: "Zoom In" },
+        });
+        zoomInBtn.addEventListener("click", () => {
+            this.zoomIn();
+        });
     }
     /**
      * Show modal for adding an event
@@ -1054,6 +1079,24 @@ class ChronosTimelineView extends obsidian.ItemView {
         modal.open();
     }
     /**
+     * Zoom in the grid view
+     */
+    zoomIn() {
+        // Increase zoom level by 0.25, max 3.0
+        this.plugin.settings.zoomLevel = Math.min(3.0, this.plugin.settings.zoomLevel + 0.25);
+        this.plugin.saveSettings();
+        this.renderView();
+    }
+    /**
+     * Zoom out the grid view
+     */
+    zoomOut() {
+        // Decrease zoom level by 0.25, min 0.5
+        this.plugin.settings.zoomLevel = Math.max(0.5, this.plugin.settings.zoomLevel - 0.25);
+        this.plugin.saveSettings();
+        this.renderView();
+    }
+    /**
      * Render the main weeks grid visualization
      * @param container - Container to render grid in
      */
@@ -1061,7 +1104,10 @@ class ChronosTimelineView extends obsidian.ItemView {
         container.empty();
         // Get the CSS variables for positioning and styling
         const root = document.documentElement;
-        const cellSize = parseInt(getComputedStyle(root).getPropertyValue("--cell-size")) || 16;
+        const baseSize = parseInt(getComputedStyle(root).getPropertyValue("--base-cell-size")) || 16;
+        const cellSize = Math.round(baseSize * this.plugin.settings.zoomLevel);
+        // Apply the zoomed cell size to the CSS variable
+        root.style.setProperty("--cell-size", `${cellSize}px`);
         const cellGap = parseInt(getComputedStyle(root).getPropertyValue("--cell-gap")) || 2;
         const leftOffset = parseInt(getComputedStyle(root).getPropertyValue("--left-offset")) || 70;
         const topOffset = parseInt(getComputedStyle(root).getPropertyValue("--top-offset")) || 50;
@@ -2035,6 +2081,19 @@ class ChronosSettingTab extends obsidian.PluginSettingTab {
                     new obsidian.Notice("Cleared all filled weeks");
                 });
             });
+            // Zoom level setting
+            new obsidian.Setting(containerEl)
+                .setName("Default Zoom Level")
+                .setDesc("Set the default zoom level for the timeline view (1.0 = 100%)")
+                .addSlider((slider) => slider
+                .setLimits(0.5, 3.0, 0.25)
+                .setValue(this.plugin.settings.zoomLevel)
+                .setDynamicTooltip()
+                .onChange(async (value) => {
+                this.plugin.settings.zoomLevel = value;
+                await this.plugin.saveSettings();
+                this.refreshAllViews();
+            }));
         }
         // Help tips section
         containerEl.createEl("h3", { text: "Tips" });

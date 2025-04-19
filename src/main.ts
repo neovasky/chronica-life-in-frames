@@ -52,6 +52,9 @@ interface ChronosSettings {
   /** Travel events */
   blueEvents: string[];
 
+  /** Current zoom level (1.0 is default, higher values = larger cells) */
+  zoomLevel: number;
+
   /** Relationship events */
   pinkEvents: string[];
 
@@ -149,6 +152,7 @@ const DEFAULT_SETTINGS: ChronosSettings = {
   autoFillDay: 1, // Monday by default
   filledWeeks: [],
   startWeekOnMonday: true,
+  zoomLevel: 1.0,
 };
 
 /** SVG icon for the ChronOS Timeline */
@@ -1149,6 +1153,7 @@ class ChronosEventModal extends Modal {
     }
   }
 
+
   /**
    * Add event to the appropriate collection based on event type
    * @param eventData - Event data string
@@ -1394,6 +1399,33 @@ class ChronosTimelineView extends ItemView {
       cls: "chronos-footer",
       text: this.plugin.settings.quote,
     });
+
+    // Add zoom controls
+    const zoomControlsDiv = controlsEl.createEl("div", { cls: "chronos-zoom-controls" });
+    const zoomOutBtn = zoomControlsDiv.createEl("button", {
+      text: "−",
+      cls: "chronos-zoom-button chronos-zoom-out",
+      attr: { title: "Zoom Out" },
+    });
+    zoomOutBtn.addEventListener("click", () => {
+      this.zoomOut();
+    });
+
+    // Add zoom level indicator
+    zoomControlsDiv.createEl("span", {
+      text: `${Math.round(this.plugin.settings.zoomLevel * 100)}%`,
+      cls: "chronos-zoom-level",
+    });
+
+    // Add zoom in button
+    const zoomInBtn = zoomControlsDiv.createEl("button", {
+      text: "+",
+      cls: "chronos-zoom-button chronos-zoom-in",
+      attr: { title: "Zoom In" },
+    });
+    zoomInBtn.addEventListener("click", () => {
+      this.zoomIn();
+    });
   }
 
   /**
@@ -1402,6 +1434,26 @@ class ChronosTimelineView extends ItemView {
   showAddEventModal(): void {
     const modal = new ChronosEventModal(this.app, this.plugin);
     modal.open();
+  }
+
+  /**
+   * Zoom in the grid view
+   */
+  zoomIn(): void {
+    // Increase zoom level by 0.25, max 3.0
+    this.plugin.settings.zoomLevel = Math.min(3.0, this.plugin.settings.zoomLevel + 0.25);
+    this.plugin.saveSettings();
+    this.renderView();
+  }
+
+  /**
+   * Zoom out the grid view
+   */
+  zoomOut(): void {
+    // Decrease zoom level by 0.25, min 0.5
+    this.plugin.settings.zoomLevel = Math.max(0.5, this.plugin.settings.zoomLevel - 0.25);
+    this.plugin.saveSettings();
+    this.renderView();
   }
 
 /**
@@ -1413,7 +1465,10 @@ renderWeeksGrid(container: HTMLElement): void {
 
   // Get the CSS variables for positioning and styling
   const root = document.documentElement;
-  const cellSize = parseInt(getComputedStyle(root).getPropertyValue("--cell-size")) || 16;
+  const baseSize = parseInt(getComputedStyle(root).getPropertyValue("--base-cell-size")) || 16;
+  const cellSize = Math.round(baseSize * this.plugin.settings.zoomLevel);
+  // Apply the zoomed cell size to the CSS variable
+  root.style.setProperty("--cell-size", `${cellSize}px`);
   const cellGap = parseInt(getComputedStyle(root).getPropertyValue("--cell-gap")) || 2;
   const leftOffset = parseInt(getComputedStyle(root).getPropertyValue("--left-offset")) || 70;
   const topOffset = parseInt(getComputedStyle(root).getPropertyValue("--top-offset")) || 50;
@@ -2784,6 +2839,22 @@ class ChronosSettingTab extends PluginSettingTab {
             new Notice("Cleared all filled weeks");
           });
         });
+
+            // Zoom level setting
+      new Setting(containerEl)
+      .setName("Default Zoom Level")
+      .setDesc("Set the default zoom level for the timeline view (1.0 = 100%)")
+      .addSlider((slider) =>
+        slider
+          .setLimits(0.5, 3.0, 0.25)
+          .setValue(this.plugin.settings.zoomLevel)
+          .setDynamicTooltip()
+          .onChange(async (value) => {
+            this.plugin.settings.zoomLevel = value;
+            await this.plugin.saveSettings();
+            this.refreshAllViews();
+          })
+      );
 
     }
 
