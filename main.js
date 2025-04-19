@@ -1220,35 +1220,64 @@ class ChronosTimelineView extends obsidian.ItemView {
      * Automatically adjust zoom level to fit the entire grid on screen
      */
     fitToScreen() {
-        // Get the view container
+        // 1) Grab the two containers
         const contentEl = this.containerEl.children[1];
-        const viewEl = contentEl.querySelector('.chronos-view');
-        if (!viewEl)
+        const contentArea = contentEl.querySelector('.chronos-content-area');
+        const viewEl = contentArea.querySelector('.chronos-view');
+        if (!viewEl || !contentArea)
             return;
-        // Get available space
-        const viewRect = viewEl.getBoundingClientRect();
-        const availableWidth = viewRect.width - parseInt(getComputedStyle(document.documentElement).getPropertyValue("--left-offset"));
-        const availableHeight = viewRect.height - parseInt(getComputedStyle(document.documentElement).getPropertyValue("--top-offset"));
-        // Calculate required width/height for the grid
-        const yearsCount = this.plugin.settings.lifespan;
-        const weeksCount = 52;
-        parseInt(getComputedStyle(document.documentElement).getPropertyValue("--cell-gap")) || 2;
-        // Calculate the zoom level needed to fit
-        const cellWidth = availableWidth / (yearsCount + yearsCount / 10); // Account for decade spacing
-        const cellHeight = availableHeight / weeksCount;
-        const zoomRatio = Math.min(cellWidth, cellHeight) / (parseInt(getComputedStyle(document.documentElement).getPropertyValue("--base-cell-size")) || 16);
-        // Set the new zoom level (with limits)
-        this.plugin.settings.zoomLevel = Math.max(0.1, Math.min(3.0, zoomRatio * 0.95)); // 95% of calculated size for some margin
-        this.plugin.saveSettings();
-        // Update the UI
+        // 2) Measure the space available for our grid (inside view padding)
+        const cs = getComputedStyle(viewEl);
+        const padL = parseInt(cs.paddingLeft) || 0;
+        const padR = parseInt(cs.paddingRight) || 0;
+        const padT = parseInt(cs.paddingTop) || 0;
+        const padB = parseInt(cs.paddingBottom) || 0;
+        const availW = viewEl.clientWidth - padL - padR;
+        const availH = viewEl.clientHeight - padT - padB;
+        // 3) Read our CSS vars + settings
+        const rootStyle = getComputedStyle(document.documentElement);
+        const baseSize = parseInt(rootStyle.getPropertyValue("--base-cell-size")) || 16;
+        const gap = parseInt(rootStyle.getPropertyValue("--cell-gap")) || 2;
+        const years = this.plugin.settings.lifespan; // total columns
+        const weeks = 52; // total rows
+        // 4) Compute the ideal cell size to fill W×H exactly
+        const idealW = (availW - (years - 1) * gap) / years;
+        const idealH = (availH - (weeks - 1) * gap) / weeks;
+        const idealCell = Math.min(idealW, idealH);
+        // 5) Convert to zoom ratio and clamp
+        const rawZoom = idealCell / baseSize;
+        const newZoom = rawZoom * 1.05;
+        this.plugin.settings.zoomLevel = Math.max(0.1, Math.min(4, newZoom));
+        // 6) Apply it
         this.updateZoomLevel();
     }
     /**
      * Check if the grid is currently fit to screen
      */
     isGridFitToScreen() {
-        // Implementation details would go here - comparing current zoom to calculated ideal zoom
-        return false; // Placeholder
+        const contentEl = this.containerEl.children[1];
+        const contentArea = contentEl.querySelector('.chronos-content-area');
+        const viewEl = contentArea.querySelector('.chronos-view');
+        if (!viewEl || !contentArea)
+            return false;
+        // Same math as fitToScreen()
+        const cs = getComputedStyle(viewEl);
+        const padL = parseInt(cs.paddingLeft) || 0;
+        const padR = parseInt(cs.paddingRight) || 0;
+        const padT = parseInt(cs.paddingTop) || 0;
+        const padB = parseInt(cs.paddingBottom) || 0;
+        const availW = viewEl.clientWidth - padL - padR;
+        const availH = viewEl.clientHeight - padT - padB;
+        const rootStyle = getComputedStyle(document.documentElement);
+        const baseSize = parseInt(rootStyle.getPropertyValue("--base-cell-size")) || 16;
+        const gap = parseInt(rootStyle.getPropertyValue("--cell-gap")) || 2;
+        const years = this.plugin.settings.lifespan;
+        const weeks = 52;
+        const idealW = (availW - (years - 1) * gap) / years;
+        const idealH = (availH - (weeks - 1) * gap) / weeks;
+        const idealCell = Math.min(idealW, idealH);
+        const idealZoom = idealCell / baseSize;
+        return Math.abs(this.plugin.settings.zoomLevel - idealZoom) < 0.01;
     }
     /**
      * Render the main weeks grid visualization
