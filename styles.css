@@ -10,10 +10,13 @@
     --cell-size: 16px;
     --cell-gap: 2px;
     --total-years: 90; /* This should match your lifespan setting */
-    --left-offset: 70px; /* Increased space for markers (was 50px) */
-    --top-offset: 50px; /* Space for decade markers */
-    --marker-week-column: 40px; /* Fixed position for week markers */
+    --left-offset: 60px; /* Slightly reduced space for markers */
+    --top-offset: 40px; /* Slightly reduced space for decade markers */
+    --marker-week-column: 35px; /* Slightly reduced fixed position for week markers */
     --marker-month-column: 10px; /* Fixed position for month markers */
+    --sidebar-width: 240px; /* Width of the sidebar */
+    --sidebar-collapsed-width: 0px; /* Width when collapsed */
+    --sidebar-toggle-size: 24px; /* Size of toggle button */
   }
   
   /* -----------------------------------------------------------------------------
@@ -22,16 +25,137 @@
   /* Main container */
   .chronos-timeline-container {
     font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
-    padding: 10px;
+    padding: 0;
     display: flex;
     flex-direction: column;
     height: 100%;
     overflow: hidden;
   }
   
+  /* Main container with flexbox layout */
+  .chronos-main-container {
+    display: flex;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    position: relative;
+  }
+  
+/* Sidebar */
+.chronos-sidebar {
+  height: 100%;
+  padding: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--background-primary-alt);
+  border-right: 1px solid var(--background-modifier-border);
+  transition: width 0.3s ease, min-width 0.3s ease;
+}
+
+/* Expanded sidebar */
+.chronos-sidebar.expanded {
+  width: var(--sidebar-width);
+  min-width: var(--sidebar-width);
+  padding: 0;
+}
+  
+/* Collapsed sidebar */
+.chronos-sidebar.collapsed {
+  width: var(--sidebar-collapsed-width);
+  min-width: var(--sidebar-collapsed-width);
+  padding: 0;
+  overflow: hidden;
+}
+
+/* Sidebar header */
+.chronos-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+  
+/* Collapsed sidebar toggle button */
+.chronos-collapsed-toggle {
+  position: absolute;
+  left: 0;
+  top: 10px;
+  width: 24px;
+  height: 36px;
+  background-color: var(--background-secondary-alt);
+  border: none;
+  border-radius: 0 4px 4px 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 15;
+  transition: background-color 0.2s ease;
+  color: var(--text-normal);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.chronos-collapsed-toggle:hover {
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+  
+/* Sidebar toggle button in header */
+.chronos-sidebar-toggle {
+  background-color: transparent;
+  border: none;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  border-radius: 4px;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.chronos-sidebar-toggle:hover {
+  background-color: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+  .chronos-sidebar-toggle.expanded {
+    left: var(--sidebar-width);
+  }
+  
+/* Content area */
+.chronos-content-area {
+  flex: 1;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+  
+/* Sidebar sections */
+.chronos-sidebar-section {
+  padding: 15px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+  
+  .section-header {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0 0 10px 0;
+    color: var(--text-normal);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  
   /* Title styling */
   .chronos-title {
-    font-size: 28px;
+    font-size: 24px;
     font-weight: 300;
     font-style: italic;
     text-align: center;
@@ -44,7 +168,6 @@
     position: relative;
     overflow: auto;
     flex-grow: 1;
-    margin-bottom: 15px;
     background-color: var(--background-primary);
     border-radius: 6px;
     padding: var(--top-offset) 20px 20px var(--left-offset);
@@ -83,88 +206,102 @@
   /* -----------------------------------------------------------------------------
          CONTROL ELEMENTS
          ----------------------------------------------------------------------------- */
-  /* Controls bar */
-  .chronos-controls {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 20px;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
+/* Controls styling */
+.chronos-controls, .chronos-visual-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 5px;
+}
   
-  .chronos-controls button {
-    background-color: var(--interactive-accent);
-    color: var(--text-on-accent);
-    border: none;
-    border-radius: 4px;
-    padding: 6px 12px;
-    cursor: pointer;
-    font-size: 14px;
-    transition: background-color 0.2s;
-  }
-  
-  .chronos-controls button:hover {
-    background-color: var(--interactive-accent-hover);
-  }
-
-  /* Zoom controls styling */
-  .chronos-zoom-controls {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    position: absolute;
-    top: 8px;
-    right: 16px;
-    z-index: 16;
-    background-color: var(--background-secondary);
-    border-radius: 4px;
-    padding: 2px 3px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  }
-  
-  
-/* Button container - this controls the purple box size on hover */
-.chronos-zoom-button {
-  background-color: transparent;
+/* Button styling */
+.chronos-btn {
+  background-color: var(--background-modifier-border);
+  color: var(--text-normal);
   border: none;
-  width: 28px;      /* This is the size of the purple box */
-  height: 28px;     /* This is the size of the purple box */
-  padding: 0;
+  border-radius: 4px;
+  padding: 8px 12px;
   cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
-  color: var(--text-normal);
-  /* This is important - ensures the SVG can be larger than the button */
-  overflow: visible;
-  position: relative;
+  gap: 6px;
+}
+  
+.chronos-btn:hover {
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-/* Hover effect for the button */
-.chronos-zoom-button:hover {
-  background-color: var(--background-modifier-hover);
+.chronos-btn-primary {
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+  
+.chronos-btn-primary:hover {
+  background-color: var(--interactive-accent-hover);
 }
 
-/* Icon styling - controls the actual SVG size */
-.chronos-zoom-button svg {
-  width: 14px;      /* Keep the SVG size at 38px */
-  height: 14px;     /* Keep the SVG size at 38px */
-  position: absolute;
-  /* Center the SVG */
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+/* Zoom controls styling */
+.chronos-zoom-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 5px 0 10px;
 }
 
+  
+  /* Button styling */
+  .chronos-zoom-button {
+    background-color: var(--background-modifier-border);
+    border: none;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    color: var(--text-normal);
+    overflow: visible;
+    position: relative;
+  }
+  
+  /* Icon styling */
+  .chronos-zoom-button svg {
+    width: 14px;
+    height: 14px;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+  
   .chronos-zoom-level {
-    min-width: 45px;
+    min-width: 50px;
     text-align: center;
     font-size: 14px;
     font-weight: 500;
     color: var(--text-normal);
     user-select: none;
   }
+
+  /* Fit to screen button */
+.chronos-fit-to-screen {
+  margin-top: 5px;
+  width: 100%;
+}
+
+.chronos-fit-to-screen.active {
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
   
   /* -----------------------------------------------------------------------------
          MARKERS & GRID LAYOUT
@@ -273,7 +410,7 @@
     height: var(--cell-size);
     border-radius: 2px;
     cursor: pointer;
-    transition: none;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
     position: relative;
   }
   
@@ -316,10 +453,9 @@
          ----------------------------------------------------------------------------- */
   .chronos-legend {
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    gap: 10px;
     margin-bottom: 15px;
-    flex-wrap: wrap;
-    gap: 15px;
   }
   
   .chronos-legend-item {
@@ -333,7 +469,8 @@
     width: 16px;
     height: 16px;
     border-radius: 2px;
-    margin-right: 5px;
+    margin-right: 8px;
+    flex-shrink: 0;
   }
   
   /* -----------------------------------------------------------------------------
@@ -344,8 +481,8 @@
     font-style: italic;
     font-size: 14px;
     color: var(--text-muted);
-    margin-top: 10px;
-    padding: 10px;
+    margin-top: auto;
+    padding: 15px 0;
   }
   
   /* -----------------------------------------------------------------------------
@@ -469,23 +606,89 @@
     font-weight: 500;
   }
   
+  /* Birthday cake marker */
+  .chronos-birthday-marker-container {
+    pointer-events: none;
+  }
+  
+  .birthday-cake-marker {
+    color: #f48fb1; /* Lighter pink color */
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    padding: 3px;
+    width: 24px; /* Increased size */
+    height: 24px; /* Increased size */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s;
+  }
+  
+  .birthday-cake-marker:hover {
+    transform: scale(1.2);
+  }
+  
+  /* Make sure the SVG inside takes the color */
+  .birthday-cake-marker svg {
+    color: #f48fb1; /* Ensure SVG takes the color */
+  }
+  
+  /* Filled week styling */
+  .chronos-grid-cell.filled-week {
+    border: 2px solid #8bc34a;
+  }
+  
+  .chronos-grid-cell.filled-week:not(.event) {
+    background-color: #8bc34a;
+  }
+  
+  .chronos-grid-cell.filled-week.event {
+    border: 2px solid #8bc34a;
+  }
+  
+  /* Styling for the auto-fill day selector */
+  .auto-fill-day-selector select {
+    width: 120px;
+  }
+  
   /* -----------------------------------------------------------------------------
          RESPONSIVE DESIGN
          ----------------------------------------------------------------------------- */
   @media (max-width: 768px) {
+    .chronos-main-container {
+      flex-direction: column;
+    }
+    
+    .chronos-sidebar:not(.collapsed) {
+      width: 100%;
+      min-width: 0;
+      height: auto;
+      max-height: 200px;
+      overflow-y: auto;
+      border-right: none;
+      border-bottom: 1px solid var(--background-modifier-border);
+      padding: 10px;
+    }
+    
+    .chronos-sidebar.collapsed {
+      max-height: 0;
+      padding: 0;
+    }
+    
+    .chronos-sidebar-toggle {
+      top: 0 !important;
+      transform: none;
+      border-radius: 0 0 4px 4px;
+    }
+    
+    .chronos-legend {
+      flex-direction: row;
+      flex-wrap: wrap;
+    }
+    
     /* Adjust container padding */
     .chronos-view {
       padding: 45px 15px 15px 45px;
-    }
-  
-    /* Stack controls vertically */
-    .chronos-controls {
-      flex-direction: column;
-      align-items: center;
-    }
-  
-    .chronos-controls button {
-      width: 80%;
     }
   
     /* Adjust markers */
@@ -493,54 +696,4 @@
     .chronos-week-marker {
       font-size: 10px;
     }
-  
-    .chronos-month-marker.birth-month:not(:has(svg)) {
-      color: #e91e63; /* Pink color to match cake icon */
-      font-weight: 500;
-    }
-
-/* Birthday cake marker */
-.chronos-birthday-marker-container {
-  pointer-events: none;
-}
-
-.birthday-cake-marker {
-  color: #f48fb1; /* Lighter pink color */
-  background-color: rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
-  padding: 3px;
-  width: 24px; /* Increased size */
-  height: 24px; /* Increased size */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.2s;
-}
-
-.birthday-cake-marker:hover {
-  transform: scale(1.2);
-}
-
-/* Make sure the SVG inside takes the color */
-.birthday-cake-marker svg {
-  color: #f48fb1; /* Ensure SVG takes the color */
-}
-
-/* Filled week styling */
-.chronos-grid-cell.filled-week {
-  border: 2px solid #8bc34a;
-}
-
-.chronos-grid-cell.filled-week:not(.event) {
-  background-color: #8bc34a;
-}
-
-.chronos-grid-cell.filled-week.event {
-  border: 2px solid #8bc34a;
-}
-
-/* Styling for the auto-fill day selector */
-.auto-fill-day-selector select {
-  width: 120px;
-}
   }

@@ -46,6 +46,7 @@ const DEFAULT_SETTINGS = {
     filledWeeks: [],
     startWeekOnMonday: true,
     zoomLevel: 1.0,
+    isSidebarOpen: true, // Default to open sidebar
 };
 /** SVG icon for the ChronOS Timeline */
 const CHRONOS_ICON = `<svg viewBox="0 0 100 100" width="100" height="100" xmlns="http://www.w3.org/2000/svg">
@@ -932,6 +933,8 @@ class ChronosEventModal extends obsidian.Modal {
 class ChronosTimelineView extends obsidian.ItemView {
     /** Reference to the main plugin */
     plugin;
+    /** Track sidebar open/closed state */
+    isSidebarOpen = true;
     /**
      * Create a new timeline view
      * @param leaf - Workspace leaf to attach to
@@ -982,34 +985,109 @@ class ChronosTimelineView extends obsidian.ItemView {
         // Clear content
         const contentEl = this.containerEl.children[1];
         contentEl.empty();
-        // Create title in cursive style
-        contentEl.createEl("div", {
+        // Create main container with flexbox layout
+        const mainContainer = contentEl.createEl("div", { cls: "chronos-main-container" });
+        // Create sidebar
+        const sidebarEl = mainContainer.createEl("div", {
+            cls: `chronos-sidebar ${this.isSidebarOpen ? 'expanded' : 'collapsed'}`
+        });
+        // Add sidebar header with title and toggle
+        const sidebarHeader = sidebarEl.createEl("div", { cls: "chronos-sidebar-header" });
+        // Create title in sidebar header
+        sidebarHeader.createEl("div", {
             cls: "chronos-title",
             text: "life in weeks",
         });
-        // Create controls
-        const controlsEl = contentEl.createEl("div", { cls: "chronos-controls" });
-        // Plan future event button (keep this one as it's the main interaction point)
-        const planEventBtn = controlsEl.createEl("button", {
+        // Create sidebar toggle as part of the sidebar itself
+        const sidebarToggle = sidebarHeader.createEl("button", {
+            cls: "chronos-sidebar-toggle",
+            attr: { title: this.isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar" }
+        });
+        sidebarToggle.innerHTML = this.isSidebarOpen ?
+            `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>` :
+            `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>`;
+        sidebarToggle.addEventListener("click", () => {
+            this.isSidebarOpen = !this.isSidebarOpen;
+            sidebarEl.classList.toggle("collapsed");
+            sidebarEl.classList.toggle("expanded");
+            // Update toggle icon
+            sidebarToggle.innerHTML = this.isSidebarOpen ?
+                `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>` :
+                `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>`;
+            sidebarToggle.setAttribute("title", this.isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar");
+        });
+        // Controls section
+        const controlsSection = sidebarEl.createEl("div", { cls: "chronos-sidebar-section" });
+        controlsSection.createEl("h3", { text: "CONTROLS", cls: "section-header" });
+        const controlsContainer = controlsSection.createEl("div", { cls: "chronos-controls" });
+        // Plan future event button
+        const planEventBtn = controlsContainer.createEl("button", {
             text: "Plan Event",
+            cls: "chronos-btn chronos-btn-primary",
         });
         planEventBtn.addEventListener("click", () => {
             this.showAddEventModal();
         });
         // Manage event types button
-        const manageTypesBtn = controlsEl.createEl("button", {
+        const manageTypesBtn = controlsContainer.createEl("button", {
             text: "Manage Event Types",
+            cls: "chronos-btn chronos-btn-primary", // Same styling as Plan Event
         });
         manageTypesBtn.addEventListener("click", () => {
             const modal = new ManageEventTypesModal(this.app, this.plugin);
             modal.open();
         });
-        // Create the view container
-        const viewEl = contentEl.createEl("div", { cls: "chronos-view" });
-        // Render the weeks grid
-        this.renderWeeksGrid(viewEl);
-        // Create legend
-        const legendEl = contentEl.createEl("div", { cls: "chronos-legend" });
+        // Visualization controls section
+        const visualSection = sidebarEl.createEl("div", { cls: "chronos-sidebar-section" });
+        visualSection.createEl("h3", { text: "VIEW OPTIONS", cls: "section-header" });
+        const visualContainer = visualSection.createEl("div", { cls: "chronos-visual-controls" });
+        // Zoom controls with 3-button layout
+        const zoomControlsDiv = visualContainer.createEl("div", { cls: "chronos-zoom-controls" });
+        // Zoom out button with SVG icon
+        const zoomOutBtn = zoomControlsDiv.createEl("button", {
+            cls: "chronos-btn chronos-zoom-button",
+            attr: { title: "Zoom Out" },
+        });
+        zoomOutBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="11" cy="11" r="8"></circle>
+      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      <line x1="8" y1="11" x2="14" y2="11"></line>
+    </svg>`;
+        zoomOutBtn.addEventListener("click", () => {
+            this.zoomOut();
+        });
+        // Add zoom level indicator
+        zoomControlsDiv.createEl("span", {
+            text: `${Math.round(this.plugin.settings.zoomLevel * 100)}%`,
+            cls: "chronos-zoom-level",
+        });
+        // Zoom in button with SVG icon
+        const zoomInBtn = zoomControlsDiv.createEl("button", {
+            cls: "chronos-btn chronos-zoom-button",
+            attr: { title: "Zoom In" },
+        });
+        zoomInBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="11" cy="11" r="8"></circle>
+      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      <line x1="11" y1="8" x2="11" y2="14"></line>
+      <line x1="8" y1="11" x2="14" y2="11"></line>
+    </svg>`;
+        zoomInBtn.addEventListener("click", () => {
+            this.zoomIn();
+        });
+        // Fit to screen button
+        const fitToScreenBtn = visualContainer.createEl("button", {
+            cls: "chronos-btn chronos-fit-to-screen",
+            text: "Fit to Screen",
+            attr: { title: "Automatically adjust zoom to fit entire grid on screen" }
+        });
+        fitToScreenBtn.addEventListener("click", () => {
+            this.fitToScreen();
+        });
+        // Legend section (vertical)
+        const legendSection = sidebarEl.createEl("div", { cls: "chronos-sidebar-section" });
+        legendSection.createEl("h3", { text: "LEGEND", cls: "section-header" });
+        const legendEl = legendSection.createEl("div", { cls: "chronos-legend" });
         // Standard event types for legend
         const legendItems = [
             { text: "Major Life Events", color: "#4CAF50" },
@@ -1041,47 +1119,29 @@ class ChronosTimelineView extends obsidian.ItemView {
                 customLegendEl.createEl("span", { text: customType.name });
             });
         }
-        // Add quote at the bottom
-        contentEl.createEl("div", {
+        // Footer in sidebar
+        sidebarEl.createEl("div", {
             cls: "chronos-footer",
             text: this.plugin.settings.quote,
         });
-        // Add zoom controls
-        const zoomControlsDiv = controlsEl.createEl("div", { cls: "chronos-zoom-controls" });
-        // Zoom out button with SVG icon
-        const zoomOutBtn = zoomControlsDiv.createEl("button", {
-            cls: "chronos-zoom-button chronos-zoom-out",
-            attr: { title: "Zoom Out" },
-        });
-        // Add zoom out SVG icon
-        zoomOutBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-  <circle cx="11" cy="11" r="8"></circle>
-  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-  <line x1="8" y1="11" x2="14" y2="11"></line>
-</svg>`;
-        zoomOutBtn.addEventListener("click", () => {
-            this.zoomOut();
-        });
-        // Add zoom level indicator
-        zoomControlsDiv.createEl("span", {
-            text: `${Math.round(this.plugin.settings.zoomLevel * 100)}%`,
-            cls: "chronos-zoom-level",
-        });
-        // Zoom in button with SVG icon
-        const zoomInBtn = zoomControlsDiv.createEl("button", {
-            cls: "chronos-zoom-button chronos-zoom-in",
-            attr: { title: "Zoom In" },
-        });
-        // Add zoom in SVG icon
-        zoomInBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-  <circle cx="11" cy="11" r="8"></circle>
-  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-  <line x1="11" y1="8" x2="11" y2="14"></line>
-  <line x1="8" y1="11" x2="14" y2="11"></line>
-</svg>`;
-        zoomInBtn.addEventListener("click", () => {
-            this.zoomIn();
-        });
+        // Create content area
+        const contentAreaEl = mainContainer.createEl("div", { cls: "chronos-content-area" });
+        // Create collapsed sidebar indicator/toggle for when sidebar is collapsed
+        if (!this.isSidebarOpen) {
+            const collapsedToggle = contentAreaEl.createEl("button", {
+                cls: "chronos-collapsed-toggle",
+                attr: { title: "Expand Sidebar" }
+            });
+            collapsedToggle.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>`;
+            collapsedToggle.addEventListener("click", () => {
+                this.isSidebarOpen = true;
+                this.renderView();
+            });
+        }
+        // Create the view container
+        const viewEl = contentAreaEl.createEl("div", { cls: "chronos-view" });
+        // Render the weeks grid
+        this.renderWeeksGrid(viewEl);
     }
     /**
      * Show modal for adding an event
@@ -1094,19 +1154,82 @@ class ChronosTimelineView extends obsidian.ItemView {
      * Zoom in the grid view
      */
     zoomIn() {
-        // Increase zoom level by 0.25, max 3.0
-        this.plugin.settings.zoomLevel = Math.min(3.0, this.plugin.settings.zoomLevel + 0.25);
+        // Increase zoom level by 0.1 (10%), max 3.0
+        this.plugin.settings.zoomLevel = Math.min(3.0, this.plugin.settings.zoomLevel + 0.1);
         this.plugin.saveSettings();
-        this.renderView();
+        // Update only the grid and zoom level indicator without full re-render
+        this.updateZoomLevel();
     }
     /**
      * Zoom out the grid view
      */
     zoomOut() {
-        // Decrease zoom level by 0.25, min 0.5
-        this.plugin.settings.zoomLevel = Math.max(0.5, this.plugin.settings.zoomLevel - 0.25);
+        // Decrease zoom level by 0.1 (10%), min 0.1 (10%)
+        this.plugin.settings.zoomLevel = Math.max(0.1, this.plugin.settings.zoomLevel - 0.1);
         this.plugin.saveSettings();
-        this.renderView();
+        // Update only the grid and zoom level indicator without full re-render
+        this.updateZoomLevel();
+    }
+    /**
+     * Update zoom-affected elements without re-rendering the entire view
+     */
+    updateZoomLevel() {
+        // Get the container element
+        const contentEl = this.containerEl.children[1];
+        // Update zoom level indicator
+        const zoomLabel = contentEl.querySelector('.chronos-zoom-level');
+        if (zoomLabel) {
+            zoomLabel.textContent = `${Math.round(this.plugin.settings.zoomLevel * 100)}%`;
+        }
+        // Update cell size CSS variable
+        const root = document.documentElement;
+        const baseSize = parseInt(getComputedStyle(root).getPropertyValue("--base-cell-size")) || 16;
+        const cellSize = Math.round(baseSize * this.plugin.settings.zoomLevel);
+        root.style.setProperty("--cell-size", `${cellSize}px`);
+        // Clear and re-render just the grid
+        const viewEl = contentEl.querySelector('.chronos-view');
+        if (viewEl instanceof HTMLElement) {
+            viewEl.empty();
+        }
+        // Update fitToScreen button state if it exists
+        const fitButton = contentEl.querySelector('.chronos-fit-to-screen');
+        if (fitButton) {
+            fitButton.classList.toggle('active', this.isGridFitToScreen());
+        }
+    }
+    /**
+     * Automatically adjust zoom level to fit the entire grid on screen
+     */
+    fitToScreen() {
+        // Get the view container
+        const contentEl = this.containerEl.children[1];
+        const viewEl = contentEl.querySelector('.chronos-view');
+        if (!viewEl)
+            return;
+        // Get available space
+        const viewRect = viewEl.getBoundingClientRect();
+        const availableWidth = viewRect.width - parseInt(getComputedStyle(document.documentElement).getPropertyValue("--left-offset"));
+        const availableHeight = viewRect.height - parseInt(getComputedStyle(document.documentElement).getPropertyValue("--top-offset"));
+        // Calculate required width/height for the grid
+        const yearsCount = this.plugin.settings.lifespan;
+        const weeksCount = 52;
+        parseInt(getComputedStyle(document.documentElement).getPropertyValue("--cell-gap")) || 2;
+        // Calculate the zoom level needed to fit
+        const cellWidth = availableWidth / (yearsCount + yearsCount / 10); // Account for decade spacing
+        const cellHeight = availableHeight / weeksCount;
+        const zoomRatio = Math.min(cellWidth, cellHeight) / (parseInt(getComputedStyle(document.documentElement).getPropertyValue("--base-cell-size")) || 16);
+        // Set the new zoom level (with limits)
+        this.plugin.settings.zoomLevel = Math.max(0.1, Math.min(3.0, zoomRatio * 0.95)); // 95% of calculated size for some margin
+        this.plugin.saveSettings();
+        // Update the UI
+        this.updateZoomLevel();
+    }
+    /**
+     * Check if the grid is currently fit to screen
+     */
+    isGridFitToScreen() {
+        // Implementation details would go here - comparing current zoom to calculated ideal zoom
+        return false; // Placeholder
     }
     /**
      * Render the main weeks grid visualization
