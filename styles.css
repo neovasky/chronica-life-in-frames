@@ -81,20 +81,20 @@
 .chronos-collapsed-toggle {
   position: absolute;
   left: 0;
-  top: 50px; /* Move down from the very top */
-  width: 28px; /* Make slightly wider */
-  height: 40px; /* Make taller */
-  background-color: var(--interactive-accent); /* Use accent color for visibility */
+  top: 10px;
+  width: 24px;
+  height: 36px;
+  background-color: var(--background-secondary-alt);
   border: none;
-  border-radius: 0 6px 6px 0;
+  border-radius: 0 4px 4px 0;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 25; /* Increase z-index to ensure visibility */
-  transition: all 0.2s ease;
-  color: var(--text-on-accent);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  z-index: 15;
+  transition: background-color 0.2s ease;
+  color: var(--text-normal);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .chronos-collapsed-toggle:hover {

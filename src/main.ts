@@ -1491,19 +1491,20 @@ class ChronosTimelineView extends ItemView {
     
     // Create content area
     const contentAreaEl = mainContainer.createEl("div", { cls: "chronos-content-area" });
+
+    // Always create collapsed sidebar indicator/toggle (but hide it when sidebar is open)
+    const collapsedToggle = contentAreaEl.createEl("button", {
+      cls: "chronos-collapsed-toggle",
+      attr: { title: "Expand Sidebar" }
+    });
+    collapsedToggle.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>`;
+    collapsedToggle.addEventListener("click", () => {
+      this.isSidebarOpen = true;
+      this.renderView();
+    });
     
-    // Create collapsed sidebar indicator/toggle for when sidebar is collapsed
-    if (!this.isSidebarOpen) {
-      const collapsedToggle = contentAreaEl.createEl("button", {
-        cls: "chronos-collapsed-toggle",
-        attr: { title: "Expand Sidebar" }
-      });
-      collapsedToggle.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>`;
-      collapsedToggle.addEventListener("click", () => {
-        this.isSidebarOpen = true;
-        this.renderView();
-      });
-    }
+    // Show/hide the toggle button based on sidebar state
+    collapsedToggle.style.display = this.isSidebarOpen ? "none" : "block";
     
     // Create the view container
     const viewEl = contentAreaEl.createEl("div", { cls: "chronos-view" });
@@ -1547,6 +1548,7 @@ class ChronosTimelineView extends ItemView {
   /**
    * Update zoom-affected elements without re-rendering the entire view
    */
+
   updateZoomLevel(): void {
     // Get the container element
     const contentEl = this.containerEl.children[1];
@@ -1563,12 +1565,14 @@ class ChronosTimelineView extends ItemView {
     const cellSize = Math.round(baseSize * this.plugin.settings.zoomLevel);
     root.style.setProperty("--cell-size", `${cellSize}px`);
     
-    // Clear and re-render just the grid
+    // Get the view element
     const viewEl = contentEl.querySelector('.chronos-view');
     if (viewEl instanceof HTMLElement) {
+      // Clear the view
       viewEl.empty();
+      // Re-render the grid - THIS WAS MISSING
+      this.renderWeeksGrid(viewEl);
     }
-    
     
     // Update fitToScreen button state if it exists
     const fitButton = contentEl.querySelector('.chronos-fit-to-screen');
