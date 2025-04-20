@@ -1403,8 +1403,21 @@ class ChronosTimelineView extends obsidian.ItemView {
      * Zoom in the grid view
      */
     zoomIn() {
-        // Increase zoom level by 0.1 (10%), max 3.0
-        this.plugin.settings.zoomLevel = Math.min(3.0, this.plugin.settings.zoomLevel + 0.1);
+        // Get the current zoom level
+        const currentZoom = this.plugin.settings.zoomLevel;
+        // Check if the current zoom is already at a multiple of 0.1
+        const isMultipleOfTen = Math.abs(currentZoom * 10 - Math.round(currentZoom * 10)) < 0.001;
+        let nextZoom;
+        if (isMultipleOfTen) {
+            // If already at a multiple of 0.1, increment by 0.1
+            nextZoom = currentZoom + 0.1;
+        }
+        else {
+            // Otherwise, go to the next multiple of 0.1
+            nextZoom = Math.ceil(currentZoom * 10) / 10;
+        }
+        // Apply the new zoom level, max 3.0
+        this.plugin.settings.zoomLevel = Math.min(3.0, nextZoom);
         this.plugin.saveSettings();
         // Update only the grid and zoom level indicator without full re-render
         this.updateZoomLevel();
@@ -1413,8 +1426,21 @@ class ChronosTimelineView extends obsidian.ItemView {
      * Zoom out the grid view
      */
     zoomOut() {
-        // Decrease zoom level by 0.1 (10%), min 0.1 (10%)
-        this.plugin.settings.zoomLevel = Math.max(0.1, this.plugin.settings.zoomLevel - 0.1);
+        // Get the current zoom level
+        const currentZoom = this.plugin.settings.zoomLevel;
+        // Check if the current zoom is already at a multiple of 0.1
+        const isMultipleOfTen = Math.abs(currentZoom * 10 - Math.round(currentZoom * 10)) < 0.001;
+        let nextZoom;
+        if (isMultipleOfTen) {
+            // If already at a multiple of 0.1, decrement by 0.1
+            nextZoom = currentZoom - 0.1;
+        }
+        else {
+            // Otherwise, go to the previous multiple of 0.1
+            nextZoom = Math.floor(currentZoom * 10) / 10;
+        }
+        // Apply the new zoom level, min 0.1 (10%)
+        this.plugin.settings.zoomLevel = Math.max(0.1, nextZoom);
         this.plugin.saveSettings();
         // Update only the grid and zoom level indicator without full re-render
         this.updateZoomLevel();
