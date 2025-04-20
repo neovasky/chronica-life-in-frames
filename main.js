@@ -1587,8 +1587,12 @@ class ChronosTimelineView extends obsidian.ItemView {
                 // Position each decade marker using the calculateYearPosition method
                 marker.style.position = "absolute";
                 // Calculate position with the decade spacing
-                const leftPosition = this.plugin.calculateYearPosition(decade, cellSize, regularGap) +
-                    cellSize / 2;
+                let leftPosition = this.plugin.calculateYearPosition(decade, cellSize, regularGap) + cellSize / 2;
+                // Special adjustment for the last decade marker to align perfectly with the grid
+                if (decade === this.plugin.settings.lifespan) {
+                    // Fine-tune the position of the last marker
+                    leftPosition -= 2; // Adjust by a small amount
+                }
                 marker.style.left = `${leftPosition}px`;
                 marker.style.top = `${topOffset / 2}px`;
                 marker.style.transform = "translate(-50%, -50%)";

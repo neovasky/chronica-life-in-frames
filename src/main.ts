@@ -2056,29 +2056,39 @@ zoomOut() {
       parseInt(getComputedStyle(root).getPropertyValue("--top-offset")) || 50;
     const regularGap = cellGap; // Store the regular gap size
 
+
+
     
-// Add decade markers (0, 10, 20, etc.)
-for (let decade = 0; decade <= this.plugin.settings.lifespan; decade += 10) {
-  const marker = decadeMarkersContainer.createEl("div", {
-    cls: "chronos-decade-marker", 
-    text: decade.toString(),
+// Create decade markers container (horizontal markers above the grid)
+if (this.plugin.settings.showDecadeMarkers) {
+  const decadeMarkersContainer = container.createEl("div", {
+    cls: "chronos-decade-markers",
   });
-
-  // Position each decade marker using the calculateYearPosition method
-  marker.style.position = "absolute";
-
-  // Calculate position with the decade spacing
-  let leftPosition = this.plugin.calculateYearPosition(decade, cellSize, regularGap) + cellSize / 2;
+  decadeMarkersContainer.style.left = `${leftOffset}px`;
   
-  // Special adjustment for the last decade marker to align perfectly with the grid
-  if (decade === this.plugin.settings.lifespan) {
-    // Fine-tune the position of the last marker
-    leftPosition -= 2; // Adjust by a small amount
-  }
+  // Add decade markers (0, 10, 20, etc.)
+  for (let decade = 0; decade <= this.plugin.settings.lifespan; decade += 10) {
+    const marker = decadeMarkersContainer.createEl("div", {
+      cls: "chronos-decade-marker", 
+      text: decade.toString(),
+    });
 
-  marker.style.left = `${leftPosition}px`;
-  marker.style.top = `${topOffset / 2}px`;
-  marker.style.transform = "translate(-50%, -50%)";
+    // Position each decade marker using the calculateYearPosition method
+    marker.style.position = "absolute";
+
+    // Calculate position with the decade spacing
+    let leftPosition = this.plugin.calculateYearPosition(decade, cellSize, regularGap) + cellSize / 2;
+    
+    // Special adjustment for the last decade marker to align perfectly with the grid
+    if (decade === this.plugin.settings.lifespan) {
+      // Fine-tune the position of the last marker
+      leftPosition -= 2; // Adjust by a small amount
+    }
+
+    marker.style.left = `${leftPosition}px`;
+    marker.style.top = `${topOffset / 2}px`;
+    marker.style.transform = "translate(-50%, -50%)";
+  }
 }
 
     // Add birthday cake marker (independent of month markers)
