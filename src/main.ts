@@ -2056,37 +2056,30 @@ zoomOut() {
       parseInt(getComputedStyle(root).getPropertyValue("--top-offset")) || 50;
     const regularGap = cellGap; // Store the regular gap size
 
-    // Create decade markers container (horizontal markers above the grid)
-    if (this.plugin.settings.showDecadeMarkers) {
-      const decadeMarkersContainer = container.createEl("div", {
-        cls: "chronos-decade-markers",
-      });
-      decadeMarkersContainer.style.left = `${leftOffset}px`;
+    
+// Add decade markers (0, 10, 20, etc.)
+for (let decade = 0; decade <= this.plugin.settings.lifespan; decade += 10) {
+  const marker = decadeMarkersContainer.createEl("div", {
+    cls: "chronos-decade-marker", 
+    text: decade.toString(),
+  });
 
-      // Add decade markers (0, 10, 20, etc.)
-      for (
-        let decade = 0;
-        decade <= this.plugin.settings.lifespan;
-        decade += 10
-      ) {
-        const marker = decadeMarkersContainer.createEl("div", {
-          cls: "chronos-decade-marker",
-          text: decade.toString(),
-        });
+  // Position each decade marker using the calculateYearPosition method
+  marker.style.position = "absolute";
 
-        // Position each decade marker using the calculateYearPosition method
-        marker.style.position = "absolute";
+  // Calculate position with the decade spacing
+  let leftPosition = this.plugin.calculateYearPosition(decade, cellSize, regularGap) + cellSize / 2;
+  
+  // Special adjustment for the last decade marker to align perfectly with the grid
+  if (decade === this.plugin.settings.lifespan) {
+    // Fine-tune the position of the last marker
+    leftPosition -= 2; // Adjust by a small amount
+  }
 
-        // Calculate position with the decade spacing
-        const leftPosition =
-          this.plugin.calculateYearPosition(decade, cellSize, regularGap) +
-          cellSize / 2;
-
-        marker.style.left = `${leftPosition}px`;
-        marker.style.top = `${topOffset / 2}px`;
-        marker.style.transform = "translate(-50%, -50%)";
-      }
-    }
+  marker.style.left = `${leftPosition}px`;
+  marker.style.top = `${topOffset / 2}px`;
+  marker.style.transform = "translate(-50%, -50%)";
+}
 
     // Add birthday cake marker (independent of month markers)
     if (this.plugin.settings.showBirthdayMarker) {
