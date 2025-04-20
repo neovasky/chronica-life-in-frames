@@ -696,6 +696,18 @@ export default class ChronosTimelinePlugin extends Plugin {
 
     return `${formatDate(firstDayOfWeek)} - ${formatDate(lastDayOfWeek)}`;
   }
+
+  /**
+ * Calculate the birthday date for a specific age year
+ * @param birthDate - Original birth date
+ * @param ageYear - Age year to calculate for (0-based, 0 = birth year)
+ * @returns Date object representing the birthday in that age year
+ */
+calculateBirthdayInYear(birthDate: Date, ageYear: number): Date {
+  const targetDate = new Date(birthDate);
+  targetDate.setFullYear(birthDate.getFullYear() + ageYear);
+  return targetDate;
+}
 }
 
 // -----------------------------------------------------------------------
@@ -2271,19 +2283,25 @@ if (this.plugin.settings.showDecadeMarkers) {
     const birthdayDate = new Date(this.plugin.settings.birthday);
     const ageInWeeks = this.plugin.getFullWeekAge(birthdayDate, now);
 
-    // For each year, create a column of weeks
-    for (let week = 0; week < 52; week++) {
+    // For each year of life (column)
       for (let year = 0; year < this.plugin.settings.lifespan; year++) {
-        const weekIndex = year * 52 + week;
-        const cell = gridEl.createEl("div", { cls: "chronos-grid-cell" });
-
-        // Calculate cell date
-        const cellDate = new Date(birthdayDate);
-        cellDate.setDate(cellDate.getDate() + weekIndex * 7);
-        const cellYear = cellDate.getFullYear();
-        const cellWeek = this.plugin.getISOWeekNumber(cellDate);
-        const weekKey = `${cellYear}-W${cellWeek.toString().padStart(2, "0")}`;
-        cell.dataset.weekKey = weekKey;
+        // Get birthday date in this age year
+        const yearBirthday = this.plugin.calculateBirthdayInYear(birthdayDate, year);
+          
+    // For each week in this year (row)
+    for (let week = 0; week < 52; week++) {
+      const weekIndex = year * 52 + week;
+      const cell = gridEl.createEl("div", { cls: "chronos-grid-cell" });
+        
+      // Calculate the date for this week relative to the birthday in this year
+      const cellDate = new Date(yearBirthday);
+      cellDate.setDate(cellDate.getDate() + week * 7);
+        
+      // Get calendar information for display
+      const cellYear = cellDate.getFullYear();
+      const cellWeek = this.plugin.getISOWeekNumber(cellDate);
+      const weekKey = `${cellYear}-W${cellWeek.toString().padStart(2, "0")}`;
+      cell.dataset.weekKey = weekKey;
 
         // Set the title attribute to show the date range on hover
         const dateRange = this.plugin.getWeekDateRange(weekKey);
