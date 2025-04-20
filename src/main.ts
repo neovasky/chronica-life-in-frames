@@ -2066,8 +2066,8 @@ if (this.plugin.settings.showDecadeMarkers) {
   });
   decadeMarkersContainer.style.left = `${leftOffset}px`;
   
-  // Add decade markers (0, 10, 20, etc.)
-  for (let decade = 0; decade <= this.plugin.settings.lifespan; decade += 10) {
+  // Add decade markers starting from 10 (skipping 0)
+  for (let decade = 10; decade <= this.plugin.settings.lifespan; decade += 10) {
     const marker = decadeMarkersContainer.createEl("div", {
       cls: "chronos-decade-marker", 
       text: decade.toString(),
@@ -2075,22 +2075,26 @@ if (this.plugin.settings.showDecadeMarkers) {
 
     // Position each decade marker using the calculateYearPosition method
     marker.style.position = "absolute";
-
-    // Calculate position with the decade spacing
-    let leftPosition = this.plugin.calculateYearPosition(decade, cellSize, regularGap) + cellSize / 2;
     
-    // Special adjustment for the last decade marker to align perfectly with the grid
-    if (decade === this.plugin.settings.lifespan) {
-      // Fine-tune the position of the last marker
-      leftPosition -= 2; // Adjust by a small amount
-    }
+    // Calculate the position of last year of previous decade (e.g., year 9 for marker "10")
+    const lastYearOfPreviousDecade = decade - 1;
+    
+    // Get position of this year - this will be the position of the column we want to place the marker above
+    const decadePosition = this.plugin.calculateYearPosition(
+      lastYearOfPreviousDecade, 
+      cellSize, 
+      regularGap
+    );
+    
+    // Position marker at the CENTER of the column, not past it
+    // We just need to add half the cell size to center it over the column
+    const leftPosition = decadePosition + cellSize/2;
 
     marker.style.left = `${leftPosition}px`;
     marker.style.top = `${topOffset / 2}px`;
     marker.style.transform = "translate(-50%, -50%)";
   }
 }
-
     // Add birthday cake marker (independent of month markers)
     if (this.plugin.settings.showBirthdayMarker) {
       const birthdayDate = new Date(this.plugin.settings.birthday);
