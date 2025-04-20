@@ -2061,6 +2061,7 @@ zoomOut() {
       const decadeMarkersContainer = container.createEl("div", {
         cls: "chronos-decade-markers",
       });
+      decadeMarkersContainer.style.left = `${leftOffset}px`;
 
       // Add decade markers (0, 10, 20, etc.)
       for (

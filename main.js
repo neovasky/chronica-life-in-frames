@@ -1577,6 +1577,7 @@ class ChronosTimelineView extends obsidian.ItemView {
             const decadeMarkersContainer = container.createEl("div", {
                 cls: "chronos-decade-markers",
             });
+            decadeMarkersContainer.style.left = `${leftOffset}px`;
             // Add decade markers (0, 10, 20, etc.)
             for (let decade = 0; decade <= this.plugin.settings.lifespan; decade += 10) {
                 const marker = decadeMarkersContainer.createEl("div", {
