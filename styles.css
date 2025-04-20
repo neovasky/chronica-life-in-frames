@@ -6,17 +6,17 @@
    CSS VARIABLES
    ----------------------------------------------------------------------------- */
 :root {
-  --base-cell-size: 16px; /* Base size that zoom will multiply */
+  --base-cell-size: 16px;
   --cell-size: 16px;
   --cell-gap: 2px;
-  --total-years: 90; /* This should match your lifespan setting */
-  --left-offset: 45px; /* Slightly reduced space for markers */
-  --top-offset: 40px; /* Slightly reduced space for decade markers */
-  --marker-week-column: 25px; /* Slightly reduced fixed position for week markers */
-  --marker-month-column: 10px; /* Fixed position for month markers */
-  --sidebar-width: 240px; /* Width of the sidebar */
-  --sidebar-collapsed-width: 0px; /* Width when collapsed */
-  --sidebar-toggle-size: 18px; /* Size of toggle button */
+  --total-years: 90;
+  --left-offset: 45px;
+  --top-offset: 40px;
+  --marker-week-column: 25px;
+  --marker-month-column: 10px;
+  --sidebar-width: 240px;
+  --sidebar-collapsed-width: 0px;
+  --sidebar-toggle-size: 18px;
 }
 
 /* -----------------------------------------------------------------------------
@@ -179,7 +179,7 @@
   flex-grow: 1;
   background-color: var(--background-primary);
   border-radius: 6px;
-  padding: var(--top-offset) 20px 20px var(--left-offset);
+  padding: var(--top-offset) 20px 20px 0;
   min-height: 400px;
   min-width: 600px;
   z-index: 5;
@@ -321,7 +321,7 @@
 .chronos-decade-markers {
   position: absolute;
   top: 0;
-  left: var(--left-offset);
+  left: 0;
   width: calc(100% - var(--left-offset));
   height: var(--top-offset);
   pointer-events: none;
@@ -625,6 +625,11 @@
 /* Birthday cake marker */
 .chronos-birthday-marker-container {
   pointer-events: none;
+  position: absolute;
+  top: var(--top-offset); /* same vertical offset as the grid */
+  left: calc(var(--left-offset) - 22px); /* shift back by half a cake’s width */
+  z-index: 15;
+  transform: none; /* reset any inline transforms */
 }
 
 .birthday-cake-marker {
@@ -712,99 +717,61 @@
     font-size: 10px;
   }
 
-  /* -----------------------------------------------------------------------------
-   STATISTICS CONTAINER STYLES
+  /* ----------------------------------------------------------------------------- 
+   STATISTICS CONTAINER STYLES 
    ----------------------------------------------------------------------------- */
   .chronos-stats-container {
     position: absolute;
+    top: var(--top-offset);
+    right: 20px;
     background-color: var(--background-secondary);
     border-radius: 8px;
-    padding: 15px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+    z-index: 25;
     max-width: 250px;
-    min-width: 180px;
-    opacity: 0.95;
-    transition: opacity 0.2s, transform 0.2s, background-color 0.2s;
-    z-index: 15;
-    border-left: 3px solid var(--interactive-accent);
+    width: 240px;
+    overflow: hidden;
   }
-
-  .chronos-stats-container:hover {
-    opacity: 1;
-    background-color: var(--background-primary);
-    transform: translateY(-3px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  .chronos-stats-container.chronos-stats-minimized .chronos-stats-content {
+    display: none;
   }
-
-  .stats-right {
-    border-left: 3px solid var(--interactive-accent);
-  }
-
-  .stats-bottom {
-    border-top: 3px solid var(--interactive-accent);
-  }
-
-  .stats-default {
-    border-right: 3px solid var(--interactive-accent);
-  }
-
-  .chronos-stats-header {
-    margin: 0 0 10px 0;
-    font-size: 16px;
-    border-bottom: 1px solid var(--background-modifier-border);
-    padding-bottom: 8px;
-    text-align: center;
-    font-weight: 600;
-    color: var(--text-accent);
-  }
-
-  .chronos-stats-subheader {
-    margin: 12px 0 8px 0;
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text-normal);
-  }
-
-  .chronos-stat-item {
+  .chronos-stats-header-container {
     display: flex;
+    align-items: center;
     justify-content: space-between;
-    margin: 6px 0;
-    font-size: 13px;
-  }
-
-  .chronos-stat-label {
-    color: var(--text-muted);
-  }
-
-  .chronos-stat-value {
-    font-weight: 500;
-    color: var(--text-normal);
-  }
-
-  /* Statistics Dropdown Panel */
-  .chronos-stats-dropdown {
-    background-color: var(--background-primary);
-    border-radius: 8px;
-    box-shadow: 0 2px 15px rgba(0, 0, 0, 0.25);
-    padding: 15px;
-    max-width: 250px;
-    z-index: 100;
-    border: 1px solid var(--background-modifier-border);
-  }
-
-  .chronos-stats-close-btn {
-    margin-top: 10px;
-    width: 100%;
-    padding: 5px;
+    padding: 8px 12px;
     background-color: var(--interactive-accent);
     color: var(--text-on-accent);
+    border-radius: 8px 8px 0 0;
+    cursor: move;
+  }
+  .chronos-stats-header {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .chronos-stats-toggle-btn,
+  .chronos-stats-close-btn-small {
+    background: transparent;
     border: none;
-    border-radius: 4px;
+    color: var(--text-on-accent);
     cursor: pointer;
+    padding: 2px;
+    margin-left: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
     transition: background-color 0.2s;
   }
-
-  .chronos-stats-close-btn:hover {
-    background-color: var(--interactive-accent-hover);
+  .chronos-stats-toggle-btn:hover,
+  .chronos-stats-close-btn-small:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+  .chronos-stats-content {
+    padding: 12px;
+    max-height: 400px;
+    overflow-y: auto;
   }
 }
