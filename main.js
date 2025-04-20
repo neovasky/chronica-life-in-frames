@@ -980,6 +980,80 @@ class ChronosTimelineView extends obsidian.ItemView {
         contentEl.addClass("chronos-timeline-container");
         this.renderView();
     }
+    toggleStatistics() {
+        const contentEl = this.containerEl.children[1];
+        const viewEl = contentEl.querySelector(".chronos-view");
+        // Check if stats panel already exists
+        const existingStats = viewEl.querySelector(".chronos-stats-container");
+        if (existingStats) {
+            // If exists, remove it
+            existingStats.remove();
+        }
+        else {
+            // If doesn't exist, create it
+            this.createStatisticsPanel();
+        }
+    }
+    createStatisticsPanel() {
+        const contentEl = this.containerEl.children[1];
+        const viewEl = contentEl.querySelector(".chronos-view");
+        // Create stats container
+        const statsContainer = viewEl.createEl("div", {
+            cls: "chronos-stats-container chronos-stats-dropdown",
+        });
+        // Position it as a dropdown from top
+        statsContainer.style.position = "absolute";
+        statsContainer.style.top = "10px";
+        statsContainer.style.right = "10px";
+        statsContainer.style.zIndex = "100";
+        // Calculate basic statistics
+        const now = new Date();
+        const birthdayDate = new Date(this.plugin.settings.birthday);
+        const ageInWeeks = this.plugin.getFullWeekAge(birthdayDate, now);
+        const totalWeeks = this.plugin.settings.lifespan * 52;
+        const livedPercentage = ((ageInWeeks / totalWeeks) * 100).toFixed(1);
+        const remainingWeeks = totalWeeks - ageInWeeks;
+        // Create header
+        statsContainer.createEl("h3", {
+            text: "Life Statistics",
+            cls: "chronos-stats-header",
+        });
+        // Create statistics items
+        const createStatItem = (label, value) => {
+            const item = statsContainer.createEl("div", { cls: "chronos-stat-item" });
+            item.createEl("span", { text: label, cls: "chronos-stat-label" });
+            item.createEl("span", { text: value, cls: "chronos-stat-value" });
+            return item;
+        };
+        // Add key statistics
+        createStatItem("Weeks Lived", ageInWeeks.toString());
+        createStatItem("Weeks Remaining", remainingWeeks.toString());
+        createStatItem("Life Progress", `${livedPercentage}%`);
+        // Calculate decades lived
+        const yearsLived = ageInWeeks / 52;
+        const decadesLived = Math.floor(yearsLived / 10);
+        if (decadesLived > 0) {
+            statsContainer.createEl("h4", {
+                text: "Decade Insights",
+                cls: "chronos-stats-subheader",
+            });
+            // Basic decade stats
+            createStatItem("Decades Completed", decadesLived.toString());
+            createStatItem("Current Decade", `${decadesLived * 10}-${decadesLived * 10 + 9}`);
+            // Calculate progress in current decade
+            const decadeProgress = ((yearsLived % 10) / 10) * 100;
+            createStatItem("Decade Progress", `${decadeProgress.toFixed(1)}%`);
+        }
+        // Add close button
+        const closeBtn = statsContainer.createEl("button", {
+            text: "Close",
+            cls: "chronos-stats-close-btn",
+        });
+        closeBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            statsContainer.remove();
+        });
+    }
     /**
      * Clean up when view is closed
      */
@@ -1111,6 +1185,14 @@ class ChronosTimelineView extends obsidian.ItemView {
         zoomInBtn.addEventListener("click", () => {
             this.zoomIn();
         });
+        const statsButton = visualContainer.createEl("button", {
+            cls: "chronos-btn chronos-stats-button",
+            text: "Toggle Statistics",
+            attr: { title: "Show/Hide Life Statistics" },
+        });
+        statsButton.addEventListener("click", () => {
+            this.toggleStatistics();
+        });
         // Fit to screen button
         const fitToScreenBtn = visualContainer.createEl("button", {
             cls: "chronos-btn chronos-fit-to-screen",
@@ -1222,18 +1304,13 @@ class ChronosTimelineView extends obsidian.ItemView {
         // Update only the grid and zoom level indicator without full re-render
         this.updateZoomLevel();
     }
-    /**
-     * Automatically adjust zoom level to fit the entire grid on screen
-     */
-    // Replace the fitToScreen() function in src/main.ts with this improved version:
-    fitToScreen() {
-        // Grab the relevant containers
+    isGridFitToScreen() {
         const contentEl = this.containerEl.children[1];
         const contentArea = contentEl.querySelector(".chronos-content-area");
         const viewEl = contentArea.querySelector(".chronos-view");
         if (!viewEl || !contentArea)
-            return;
-        // Measure the viewport-aware space available
+            return false;
+        // Same math as fitToScreen()
         const cs = getComputedStyle(viewEl);
         const padL = parseInt(cs.paddingLeft) || 0;
         const padR = parseInt(cs.paddingRight) || 0;
@@ -1241,56 +1318,75 @@ class ChronosTimelineView extends obsidian.ItemView {
         const padB = parseInt(cs.paddingBottom) || 0;
         const availW = viewEl.clientWidth - padL - padR;
         const availH = viewEl.clientHeight - padT - padB;
-        // Read CSS vars + settings
         const rootStyle = getComputedStyle(document.documentElement);
         const baseSize = parseInt(rootStyle.getPropertyValue("--base-cell-size")) || 16;
         const gap = parseInt(rootStyle.getPropertyValue("--cell-gap")) || 2;
         const years = this.plugin.settings.lifespan;
         const weeks = 52;
-        // Calculate the minimum zoom level that would make the grid not feel too small
-        const minZoomRatio = 0.5; // Ensures cells don't get too tiny
-        // Compute ideal cell size for both width and height constraints
         const idealW = (availW - (years - 1) * gap) / years;
         const idealH = (availH - (weeks - 1) * gap) / weeks;
-        let idealCell = Math.min(idealW, idealH);
-        // Ensure minimum comfortable size
-        idealCell = Math.max(idealCell, baseSize * minZoomRatio);
-        // Convert to zoom ratio with a smaller buffer (1%)
-        const rawZoom = idealCell / baseSize;
-        let newZoom = Math.max(0.3, Math.min(3.0, rawZoom * 0.99)); // 1% buffer, 0.3 minimum zoom
-        // Adjust zoom to ensure grid is visible without too much scaling
-        const gridWidthAtNewZoom = years * baseSize * newZoom + (years - 1) * gap;
-        const gridHeightAtNewZoom = weeks * baseSize * newZoom + (weeks - 1) * gap;
-        // If resulting grid would be too small relative to viewport, increase zoom
-        if (gridWidthAtNewZoom < availW * 0.6 &&
-            gridHeightAtNewZoom < availH * 0.6) {
-            newZoom = Math.min(3.0, newZoom * 1.2); // Increase zoom by 20% if too small
-        }
-        this.plugin.settings.zoomLevel = newZoom;
-        // Apply updated zoom
+        const idealCell = Math.min(idealW, idealH);
+        const idealZoom = idealCell / baseSize;
+        return Math.abs(this.plugin.settings.zoomLevel - idealZoom) < 0.01;
+    }
+    /**
+     * Automatically adjust zoom level to fit the entire grid on screen
+     */
+    // Replace the fitToScreen() function in src/main.ts with this improved version:
+    fitToScreen() {
+        // Get relevant containers
+        const contentEl = this.containerEl.children[1];
+        const contentArea = contentEl.querySelector(".chronos-content-area");
+        const viewEl = contentArea.querySelector(".chronos-view");
+        if (!viewEl || !contentArea)
+            return;
+        // Get available space (accounting for sidebar and markers)
+        const cs = getComputedStyle(viewEl);
+        const padL = parseInt(cs.paddingLeft) || 0;
+        const padR = parseInt(cs.paddingRight) || 0;
+        const padT = parseInt(cs.paddingTop) || 0;
+        const padB = parseInt(cs.paddingBottom) || 0;
+        // Account for sidebar width
+        this.isSidebarOpen ? 240 : 0;
+        const availW = viewEl.clientWidth - padL - padR;
+        const availH = viewEl.clientHeight - padT - padB;
+        // Get grid parameters
+        const rootStyle = getComputedStyle(document.documentElement);
+        const baseSize = parseInt(rootStyle.getPropertyValue("--base-cell-size")) || 16;
+        parseInt(rootStyle.getPropertyValue("--cell-gap")) || 2;
+        const years = this.plugin.settings.lifespan;
+        const weeks = 52;
+        // Calculate optimal cell size (targeting 75% of available space)
+        const targetWidth = availW * 0.75;
+        const targetHeight = availH * 0.75;
+        const cellW = targetWidth / years;
+        const cellH = targetHeight / weeks;
+        // Get the smaller dimension to ensure fit
+        let idealCellSize = Math.min(cellW, cellH);
+        // Enforce minimum size
+        idealCellSize = Math.max(idealCellSize, 8);
+        // Convert to zoom ratio
+        const newZoom = idealCellSize / baseSize;
+        // Apply zoom (clamped to reasonable range)
+        this.plugin.settings.zoomLevel = Math.max(0.5, Math.min(2.5, newZoom));
+        this.plugin.saveSettings();
+        // Update zoom
         this.updateZoomLevel();
-        // Reset transforms before centering to ensure accurate measurements
+        // Reset transforms
         const gridEl = viewEl.querySelector(".chronos-grid");
         const decadeMarkers = viewEl.querySelector(".chronos-decade-markers");
-        const verticalMarkers = viewEl.querySelector(".chronos-vertical-markers");
         if (gridEl)
             gridEl.style.transform = "";
         if (decadeMarkers)
             decadeMarkers.style.transform = "";
-        if (verticalMarkers)
-            verticalMarkers.style.transform = "";
-        // Wait a bit for the DOM to update before centering
+        // Wait for DOM update then center the grid horizontally only
         setTimeout(() => {
-            // Add centering to the grid
             this.centerGridInView();
-            // Show statistics if there's available space
-            this.showLifeStatistics();
-        }, 100);
+        }, 50);
     }
     /**
      * Center the grid in the available viewport space
      */
-    // Replace the entire centerGridInView() function in src/main.ts with this improved version:
     centerGridInView() {
         const contentEl = this.containerEl.children[1];
         const contentArea = contentEl.querySelector(".chronos-content-area");
@@ -1301,50 +1397,22 @@ class ChronosTimelineView extends obsidian.ItemView {
         // Get dimensions
         const viewRect = viewEl.getBoundingClientRect();
         const gridRect = gridEl.getBoundingClientRect();
-        // Calculate potential offsets for centering
-        const horizontalOffset = Math.max(0, (viewRect.width - gridRect.width) / 2);
-        const verticalOffset = Math.max(0, (viewRect.height - gridRect.height) / 2);
-        // Get CSS variable offsets
-        const rootStyle = getComputedStyle(document.documentElement);
-        parseInt(rootStyle.getPropertyValue("--left-offset")) || 70;
-        parseInt(rootStyle.getPropertyValue("--top-offset")) || 50;
-        // Apply transforms to grid and related elements
-        // First, reset any existing transforms to get accurate measurements
-        gridEl.style.transform = "";
-        const decadeMarkers = viewEl.querySelector(".chronos-decade-markers");
-        if (decadeMarkers)
-            decadeMarkers.style.transform = "";
-        const verticalMarkers = viewEl.querySelector(".chronos-vertical-markers");
-        if (verticalMarkers)
-            verticalMarkers.style.transform = "";
-        // After a slight delay to ensure measurements are accurate, apply the transforms
-        setTimeout(() => {
-            // Apply centering
-            if (horizontalOffset > 10) {
-                // Only center if there's meaningful space (10px buffer)
-                gridEl.style.transform = `translateX(${horizontalOffset}px)`;
-                if (decadeMarkers) {
-                    decadeMarkers.style.transform = `translateX(${horizontalOffset}px)`;
-                }
+        // Calculate horizontal centering only
+        const horizontalOffset = Math.max(0, (viewRect.width - gridRect.width) / 2 - 10);
+        // Apply transform for horizontal centering only
+        if (horizontalOffset > 5) {
+            // Apply centering to grid
+            gridEl.style.transform = `translateX(${horizontalOffset}px)`;
+            // Apply same transform to decade markers for alignment
+            const decadeMarkers = viewEl.querySelector(".chronos-decade-markers");
+            if (decadeMarkers) {
+                decadeMarkers.style.transform = `translateX(${horizontalOffset}px)`;
             }
-            if (verticalOffset > 10) {
-                // Only center if there's meaningful space (10px buffer)
-                if (gridEl.style.transform) {
-                    gridEl.style.transform += ` translateY(${verticalOffset}px)`;
-                }
-                else {
-                    gridEl.style.transform = `translateY(${verticalOffset}px)`;
-                }
-                if (verticalMarkers) {
-                    verticalMarkers.style.transform = `translateY(${verticalOffset}px)`;
-                }
-            }
-        }, 50);
+        }
     }
     /**
      * Generate and show life statistics in available white space
      */
-    // Replace the first part of the showLifeStatistics() function in src/main.ts:
     showLifeStatistics() {
         const contentEl = this.containerEl.children[1];
         const contentArea = contentEl.querySelector(".chronos-content-area");
@@ -1368,9 +1436,9 @@ class ChronosTimelineView extends obsidian.ItemView {
             const bottomSpace = viewRect.bottom - gridRect.bottom;
             if (rightSpace > 280) {
                 // Place on right if there's enough space
+                statsContainer.style.top = "60px";
                 statsContainer.style.right = "20px";
                 statsContainer.style.left = "auto";
-                statsContainer.style.top = "60px"; // Position near the top for better visibility
                 statsContainer.style.bottom = "auto";
                 statsContainer.classList.add("stats-right");
             }
@@ -1389,6 +1457,7 @@ class ChronosTimelineView extends obsidian.ItemView {
                 statsContainer.classList.add("stats-default");
             }
         }
+        // Continue with the rest of the original function...
         // Calculate basic statistics
         const now = new Date();
         const birthdayDate = new Date(this.plugin.settings.birthday);
@@ -1481,7 +1550,6 @@ class ChronosTimelineView extends obsidian.ItemView {
     /**
      * Update zoom-affected elements with adjusted positioning
      */
-    // Replace the updateZoomLevel() function in src/main.ts:
     updateZoomLevel() {
         // Get the container element
         const contentEl = this.containerEl.children[1];
@@ -1524,34 +1592,6 @@ class ChronosTimelineView extends obsidian.ItemView {
                 }
             }, 50);
         }
-    }
-    /**
-     * Check if the grid is currently fit to screen
-     */
-    isGridFitToScreen() {
-        const contentEl = this.containerEl.children[1];
-        const contentArea = contentEl.querySelector(".chronos-content-area");
-        const viewEl = contentArea.querySelector(".chronos-view");
-        if (!viewEl || !contentArea)
-            return false;
-        // Same math as fitToScreen()
-        const cs = getComputedStyle(viewEl);
-        const padL = parseInt(cs.paddingLeft) || 0;
-        const padR = parseInt(cs.paddingRight) || 0;
-        const padT = parseInt(cs.paddingTop) || 0;
-        const padB = parseInt(cs.paddingBottom) || 0;
-        const availW = viewEl.clientWidth - padL - padR;
-        const availH = viewEl.clientHeight - padT - padB;
-        const rootStyle = getComputedStyle(document.documentElement);
-        const baseSize = parseInt(rootStyle.getPropertyValue("--base-cell-size")) || 16;
-        const gap = parseInt(rootStyle.getPropertyValue("--cell-gap")) || 2;
-        const years = this.plugin.settings.lifespan;
-        const weeks = 52;
-        const idealW = (availW - (years - 1) * gap) / years;
-        const idealH = (availH - (weeks - 1) * gap) / weeks;
-        const idealCell = Math.min(idealW, idealH);
-        const idealZoom = idealCell / baseSize;
-        return Math.abs(this.plugin.settings.zoomLevel - idealZoom) < 0.01;
     }
     /**
      * Render the main weeks grid visualization

@@ -10,9 +10,9 @@
   --cell-size: 16px;
   --cell-gap: 2px;
   --total-years: 90; /* This should match your lifespan setting */
-  --left-offset: 60px; /* Slightly reduced space for markers */
+  --left-offset: 45px; /* Slightly reduced space for markers */
   --top-offset: 40px; /* Slightly reduced space for decade markers */
-  --marker-week-column: 35px; /* Slightly reduced fixed position for week markers */
+  --marker-week-column: 25px; /* Slightly reduced fixed position for week markers */
   --marker-month-column: 10px; /* Fixed position for month markers */
   --sidebar-width: 240px; /* Width of the sidebar */
   --sidebar-collapsed-width: 0px; /* Width when collapsed */
@@ -344,14 +344,13 @@
   font-size: 12px;
   color: var(--text-muted);
   font-weight: 600;
-  right: 2px;
+  right: 4px; /* Changed from 2px to 4px */
   transform: translateY(-50%);
-  padding: 2px 4px;
+  padding: 1px 3px; /* Slightly reduced padding */
   border-radius: 3px;
   z-index: 15;
   text-align: right;
-  width: 30px;
-  transition: opacity 0.15s ease;
+  width: 25px; /* Reduced from 30px */
 }
 
 .chronos-week-marker:hover {
@@ -366,8 +365,8 @@
   color: var(--text-muted);
   font-weight: 400;
   font-style: italic;
-  left: 5px;
-  opacity: 0.7;
+  left: 3px; /* Changed from 5px to 3px */
+  opacity: 0.8; /* Slightly increased from 0.7 */
   transform: translateY(-50%);
   transition: opacity 0.2s, color 0.2s;
   text-align: left;
@@ -727,6 +726,7 @@
     opacity: 0.95;
     transition: opacity 0.2s, transform 0.2s, background-color 0.2s;
     z-index: 15;
+    border-left: 3px solid var(--interactive-accent);
   }
 
   .chronos-stats-container:hover {
@@ -779,5 +779,32 @@
   .chronos-stat-value {
     font-weight: 500;
     color: var(--text-normal);
+  }
+
+  /* Statistics Dropdown Panel */
+  .chronos-stats-dropdown {
+    background-color: var(--background-primary);
+    border-radius: 8px;
+    box-shadow: 0 2px 15px rgba(0, 0, 0, 0.25);
+    padding: 15px;
+    max-width: 250px;
+    z-index: 100;
+    border: 1px solid var(--background-modifier-border);
+  }
+
+  .chronos-stats-close-btn {
+    margin-top: 10px;
+    width: 100%;
+    padding: 5px;
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+
+  .chronos-stats-close-btn:hover {
+    background-color: var(--interactive-accent-hover);
   }
 }
