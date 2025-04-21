@@ -2343,7 +2343,8 @@ if (this.plugin.settings.showDecadeMarkers) {
         cell.style.height = `${cellSize}px`;
 
         // Color coding (past, present, future)
-        if (weekKey === currentWeekKey) {
+        const isCurrentWeek = weekKey === currentWeekKey;
+        if (isCurrentWeek) {
           cell.addClass("present");
           cell.style.backgroundColor = this.plugin.settings.presentCellColor;
         } else if (cellDate < now) {
@@ -2356,6 +2357,11 @@ if (this.plugin.settings.showDecadeMarkers) {
 
         // Apply event styling
         this.applyEventStyling(cell, weekKey);
+
+        // Make sure present cell color is preserved even after event styling
+        if (isCurrentWeek) {
+          cell.style.backgroundColor = this.plugin.settings.presentCellColor;
+        }
 
         // Add click and context menu events to the cell
         cell.addEventListener("click", async (event) => {
