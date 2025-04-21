@@ -2294,6 +2294,8 @@ if (this.plugin.settings.showDecadeMarkers) {
     const now = new Date();
     const birthdayDate = new Date(this.plugin.settings.birthday);
     const ageInWeeks = this.plugin.getFullWeekAge(birthdayDate, now);
+    const currentWeekKey = this.plugin.getWeekKeyFromDate(now);
+
 
     // For each year of life (column)
       for (let year = 0; year < this.plugin.settings.lifespan; year++) {
@@ -2343,12 +2345,12 @@ if (this.plugin.settings.showDecadeMarkers) {
         cell.style.height = `${cellSize}px`;
 
         // Color coding (past, present, future)
-        if (weekIndex < ageInWeeks) {
-          cell.addClass("past");
-          cell.style.backgroundColor = this.plugin.settings.pastCellColor;
-        } else if (Math.floor(weekIndex) === Math.floor(ageInWeeks)) {
+        if (weekKey === currentWeekKey) {
           cell.addClass("present");
           cell.style.backgroundColor = this.plugin.settings.presentCellColor;
+        } else if (cellDate < now) {
+          cell.addClass("past");
+          cell.style.backgroundColor = this.plugin.settings.pastCellColor;
         } else {
           cell.addClass("future");
           cell.style.backgroundColor = this.plugin.settings.futureCellColor;
