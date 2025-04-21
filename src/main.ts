@@ -2568,7 +2568,7 @@ if (this.plugin.settings.showDecadeMarkers) {
     }
 
     // Apply filled week styling if applicable
-    if (this.plugin.settings.filledWeeks.includes(weekKey)) {
+    if (this.plugin.settings.filledWeeks.includes(weekKey) && weekKey !== this.plugin.getWeekKeyFromDate(new Date())) {
       cell.addClass("filled-week");
       // Only change color if no event is on this week
       if (!cell.classList.contains("event")) {
