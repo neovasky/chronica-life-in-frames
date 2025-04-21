@@ -498,20 +498,8 @@ export default class ChronosTimelinePlugin extends Plugin {
  * @returns Week key in YYYY-WXX format
  */
 getWeekKeyFromDate(date: Date): string {
-  // Get the year
   const year = date.getFullYear();
-  
-  // Get current date and first day of the year 
-  const firstDayOfYear = new Date(year, 0, 1);
-  
-  // Calculate days passed since first day of the year
-  const daysPassed = Math.floor((date.getTime() - firstDayOfYear.getTime()) / (24 * 60 * 60 * 1000));
-  
-  // Calculate the week number (1-53)
-  // Adding 1 because we want weeks to be 1-indexed
-  const weekNum = Math.floor(daysPassed / 7) + 1;
-  
-  // Format with leading zero
+  const weekNum = this.getISOWeekNumber(date);
   return `${year}-W${weekNum.toString().padStart(2, "0")}`;
 }
 
@@ -679,35 +667,45 @@ getWeekKeyFromDate(date: Date): string {
  * @param weekKey - Week key in YYYY-WXX format
  * @returns String with formatted date range
  */
-  getWeekDateRange(weekKey: string): string {
-    const parts = weekKey.split("-W");
-    if (parts.length !== 2) return "";
+getWeekDateRange(weekKey: string): string {
+  const parts = weekKey.split("-W");
+  if (parts.length !== 2) return "";
 
-    const year = parseInt(parts[0]);
-    const weekNum = parseInt(parts[1]);
-    
-    // First day of the year
-    const firstDayOfYear = new Date(year, 0, 1);
-    
-    // Calculate start of the specified week (weekNum weeks from year start)
-    const weekStart = new Date(firstDayOfYear);
-    weekStart.setDate(firstDayOfYear.getDate() + (weekNum - 1) * 7);
-    
-    // Calculate end of the week (6 days after start)
-    const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekStart.getDate() + 6);
-    
-    // Format the dates
-    const formatDate = (date: Date): string => {
-      const months = [
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-      ];
-      return `${months[date.getMonth()]} ${date.getDate()}`;
-    };
+  const year = parseInt(parts[0]);
+  const week = parseInt(parts[1]);
 
-    return `${formatDate(weekStart)} - ${formatDate(weekEnd)}`;
-  }
+  // Calculate the first day of the week (Monday of that week for ISO weeks)
+  const firstDayOfWeek = new Date(year, 0, 1);
+  const dayOffset = firstDayOfWeek.getDay() || 7; // getDay returns 0 for Sunday
+  const dayToAdd = 1 + (week - 1) * 7 - (dayOffset - 1);
+
+  firstDayOfWeek.setDate(dayToAdd);
+
+  // Calculate the last day of the week (Sunday if not startWeekOnMonday, otherwise Sunday)
+  const lastDayOfWeek = new Date(firstDayOfWeek);
+  lastDayOfWeek.setDate(firstDayOfWeek.getDate() + 6);
+
+  // Format the dates
+  const formatDate = (date: Date): string => {
+    const months = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
+    return `${months[date.getMonth()]} ${date.getDate()}`;
+  };
+
+  return `${formatDate(firstDayOfWeek)} - ${formatDate(lastDayOfWeek)}`;
+}
 
     /**
    * Calculate the birthday date for a specific age year

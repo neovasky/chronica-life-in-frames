@@ -438,8 +438,8 @@
 
 /* Special cell states */
 .chronos-grid-cell.present {
-  box-shadow: 0 0 8px var(--text-accent);
   z-index: 5;
+  box-shadow: 0 0 8px var(--text-accent);
 }
 
 .chronos-grid-cell.event {
