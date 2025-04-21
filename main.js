@@ -229,8 +229,16 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
      * @returns Number of full weeks between dates
      */
     getFullWeekAge(birthday, today) {
-        const diffMs = today.getTime() - birthday.getTime();
+        // First, create copies to avoid modifying the original dates
+        const birthdayClone = new Date(birthday.getTime());
+        const todayClone = new Date(today.getTime());
+        // Normalize both dates to start of day
+        birthdayClone.setHours(0, 0, 0, 0);
+        todayClone.setHours(0, 0, 0, 0);
+        // Calculate milliseconds between dates
+        const diffMs = todayClone.getTime() - birthdayClone.getTime();
         const msPerWeek = 1000 * 60 * 60 * 24 * 7;
+        // Return full weeks
         return Math.floor(diffMs / msPerWeek);
     }
     /**
@@ -293,14 +301,19 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
      * @returns ISO week number (1-53)
      */
     getISOWeekNumber(date) {
-        const d = new Date(date);
-        d.setHours(0, 0, 0, 0);
-        // Set to nearest Thursday (to match ISO 8601 week start)
-        d.setDate(d.getDate() + 4 - (d.getDay() || 7));
-        // Get first day of the year
-        const yearStart = new Date(d.getFullYear(), 0, 1);
-        // Calculate full weeks between year start and current date
-        return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+        // Create a copy of the date to avoid modifying the original
+        const target = new Date(date.getTime());
+        target.setHours(0, 0, 0, 0);
+        // ISO week starts on Monday
+        const dayNumber = target.getDay() || 7; // Convert Sunday (0) to 7
+        // Move target to Thursday in the same week
+        target.setDate(target.getDate() - dayNumber + 4);
+        // Get January 1st of the target year
+        const yearStart = new Date(target.getFullYear(), 0, 1);
+        // Calculate the number of days since January 1st
+        const daysSinceFirstDay = Math.floor((target.getTime() - yearStart.getTime()) / 86400000);
+        // Calculate the week number
+        return 1 + Math.floor(daysSinceFirstDay / 7);
     }
     /**
      * Get week key in YYYY-WXX format from date
@@ -308,15 +321,16 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
      * @returns Week key in YYYY-WXX format
      */
     getWeekKeyFromDate(date) {
-        // Get the ISO week number
-        const weekNum = this.getISOWeekNumber(date);
-        // Determine the correct year for this ISO week
-        // By getting the Thursday of the week (since ISO weeks are defined by their Thursday)
-        const d = new Date(date);
-        d.setHours(0, 0, 0, 0);
-        const dayOfWeek = d.getDay() || 7; // Convert Sunday (0) to 7
-        d.setDate(d.getDate() + 4 - dayOfWeek); // Move to Thursday
-        const year = d.getFullYear();
+        // Get the year
+        const year = date.getFullYear();
+        // Get current date and first day of the year 
+        const firstDayOfYear = new Date(year, 0, 1);
+        // Calculate days passed since first day of the year
+        const daysPassed = Math.floor((date.getTime() - firstDayOfYear.getTime()) / (24 * 60 * 60 * 1000));
+        // Calculate the week number (1-53)
+        // Adding 1 because we want weeks to be 1-indexed
+        const weekNum = Math.floor(daysPassed / 7) + 1;
+        // Format with leading zero
         return `${year}-W${weekNum.toString().padStart(2, "0")}`;
     }
     /**
@@ -382,68 +396,65 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
     calculateMonthMarkers(birthdayDate, totalYears, frequency = "all") {
         const monthMarkers = [];
         // Clone the birthday date to avoid modifying the original
-        const startDate = new Date(birthdayDate);
+        const startDate = new Date(birthdayDate.getTime());
+        startDate.setHours(0, 0, 0, 0);
         // Calculate the end date (birthday + total years)
-        const endDate = new Date(birthdayDate);
+        const endDate = new Date(startDate.getTime());
         endDate.setFullYear(endDate.getFullYear() + totalYears);
-        // Create a date iterator starting from the birthday
-        const currentDate = new Date(startDate);
-        // Store birth month and year for special handling
+        // Get the birth month and year for special handling
         const birthMonth = startDate.getMonth();
         const birthYear = startDate.getFullYear();
-        // Track the last shown month to avoid duplicates
-        let lastShownMonth = -1;
-        let lastShownYear = -1;
+        // Create a calendar date iterator starting from birthday
+        const currentDate = new Date(startDate.getTime());
+        // Keep track of previously added month/year to avoid duplicates
+        let lastMarkedMonth = -1;
+        let lastMarkedYear = -1;
         // Helper to determine if a month should be shown based on frequency
         const shouldShowMonth = (monthNum) => {
-            // Always show January as the first month of the year
-            if (monthNum === 0)
+            // Always show January and birth month
+            if (monthNum === 0 || monthNum === birthMonth)
                 return true;
             switch (frequency) {
                 case "all":
                     return true;
                 case "quarter":
-                    // Show first month of each quarter (Jan, Apr, Jul, Oct)
+                    // Show Jan, Apr, Jul, Oct
                     return monthNum % 3 === 0;
                 case "half-year":
-                    // Show first month of each half year (Jan, Jul)
+                    // Show Jan, Jul
                     return monthNum % 6 === 0;
                 case "year":
-                    // Only show January
-                    return monthNum === 0;
+                    // Only show January and birth month
+                    return monthNum === 0 || monthNum === birthMonth;
                 default:
                     return true;
             }
         };
-        // Iterate through each day until we reach the end date
+        // Iterate by weeks until we reach the end date
         while (currentDate < endDate) {
             const currentMonth = currentDate.getMonth();
             const currentYear = currentDate.getFullYear();
-            // Check if this is a new month and should be shown
-            if ((currentMonth !== lastShownMonth || currentYear !== lastShownYear) &&
+            // Check if this is a new month that should be shown
+            if ((currentMonth !== lastMarkedMonth || currentYear !== lastMarkedYear) &&
                 shouldShowMonth(currentMonth)) {
-                // Calculate the exact week index based on days since birth
-                const daysSinceBirth = Math.floor((currentDate.getTime() - birthdayDate.getTime()) /
-                    (1000 * 60 * 60 * 24));
-                const exactWeekIndex = Math.floor(daysSinceBirth / 7);
-                // Check if this is the birth month
-                const isBirthMonth = currentMonth === birthMonth && currentYear === birthYear;
+                // Calculate exact week index relative to birth date
+                const weeksSinceBirth = this.getFullWeekAge(birthdayDate, currentDate);
                 // Add marker for this month
                 monthMarkers.push({
-                    weekIndex: exactWeekIndex,
+                    weekIndex: weeksSinceBirth,
                     label: MONTH_NAMES[currentMonth],
                     isFirstOfYear: currentMonth === 0,
-                    isBirthMonth: isBirthMonth,
-                    fullLabel: `${MONTH_NAMES[currentMonth]} ${currentYear}`,
+                    isBirthMonth: currentMonth === birthMonth && currentYear === birthYear,
+                    fullLabel: `${MONTH_NAMES[currentMonth]} ${currentYear}`
                 });
-                // Update last shown month/year
-                lastShownMonth = currentMonth;
-                lastShownYear = currentYear;
+                // Update last marked month/year
+                lastMarkedMonth = currentMonth;
+                lastMarkedYear = currentYear;
             }
-            // Move to the next day
-            currentDate.setDate(currentDate.getDate() + 1);
+            // Move forward one week at a time
+            currentDate.setDate(currentDate.getDate() + 7);
         }
-        // Sort markers by week index to ensure proper rendering order
+        // Sort by week index
         monthMarkers.sort((a, b) => a.weekIndex - b.weekIndex);
         return monthMarkers;
     }
@@ -457,38 +468,24 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
         if (parts.length !== 2)
             return "";
         const year = parseInt(parts[0]);
-        const week = parseInt(parts[1]);
-        // Function to get a date from ISO year, week, and day (1=Monday, 7=Sunday)
-        function getDateOfISOWeek(isoYear, isoWeek, isoDayOfWeek) {
-            // Create a date for January 4th of the given year
-            // (this is always in week 1 according to ISO 8601)
-            const jan4 = new Date(isoYear, 0, 4);
-            // Get the day of the week (0 = Sunday, 6 = Saturday)
-            // Convert to ISO where 1 = Monday, 7 = Sunday
-            const jan4Day = jan4.getDay() || 7;
-            // Find the Monday of week 1
-            const week1Monday = new Date(jan4);
-            week1Monday.setDate(jan4.getDate() - jan4Day + 1);
-            // Find the Monday of the desired week
-            const targetMonday = new Date(week1Monday);
-            targetMonday.setDate(week1Monday.getDate() + (isoWeek - 1) * 7);
-            // Find the desired day of that week
-            const targetDate = new Date(targetMonday);
-            targetDate.setDate(targetMonday.getDate() + isoDayOfWeek - 1);
-            return targetDate;
-        }
-        // Get Monday (day 1) and Sunday (day 7) of the week
-        const monday = getDateOfISOWeek(year, week, 1);
-        const sunday = getDateOfISOWeek(year, week, 7);
+        const weekNum = parseInt(parts[1]);
+        // First day of the year
+        const firstDayOfYear = new Date(year, 0, 1);
+        // Calculate start of the specified week (weekNum weeks from year start)
+        const weekStart = new Date(firstDayOfYear);
+        weekStart.setDate(firstDayOfYear.getDate() + (weekNum - 1) * 7);
+        // Calculate end of the week (6 days after start)
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 6);
         // Format the dates
         const formatDate = (date) => {
             const months = [
                 "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
             ];
             return `${months[date.getMonth()]} ${date.getDate()}`;
         };
-        return `${formatDate(monday)} - ${formatDate(sunday)}`;
+        return `${formatDate(weekStart)} - ${formatDate(weekEnd)}`;
     }
     /**
    * Calculate the birthday date for a specific age year
