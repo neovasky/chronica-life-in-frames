@@ -442,8 +442,17 @@
   box-shadow: 0 0 8px var(--text-accent);
 }
 
+.chronos-grid-cell.past.event {
+  border-width: 2px !important;
+}
+
+.chronos-grid-cell.future.event {
+  border-width: 2px !important;
+}
+
 .chronos-grid-cell.event {
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-width: 2px;
+  border-style: solid;
 }
 
 /* Future event highlight - subtle indicator */

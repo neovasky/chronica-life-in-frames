@@ -2450,13 +2450,17 @@ if (this.plugin.settings.showDecadeMarkers) {
       defaultDesc: string
     ): boolean => {
       // Check for exact match (single date events)
-      const singleEvent = events.find(
-        (e) => e.startsWith(`${weekKey}:`) && !e.includes(":", 10)
-      );
+      const singleEvent = events.find((e) => {
+        const parts = e.split(":");
+        return parts.length === 2 && parts[0] === weekKey;
+      });
 
       if (singleEvent) {
         cell.style.backgroundColor = defaultColor;
         cell.addClass("event");
+        cell.style.borderColor = defaultColor; // Add this line
+        // Force higher specificity for the background color
+        cell.setAttribute("style", `background-color: ${defaultColor} !important; border: 2px solid ${defaultColor};`);
         const description = singleEvent.split(":")[1] || defaultDesc;
         const currentTitle = cell.getAttribute("title") || "";
         cell.setAttribute("title", `${description}\n${currentTitle}`);
