@@ -474,16 +474,26 @@ export default class ChronosTimelinePlugin extends Plugin {
     return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
   }
 
-  /**
-   * Get week key in YYYY-WXX format from date
-   * @param date - Date to get week key for
-   * @returns Week key in YYYY-WXX format
-   */
-  getWeekKeyFromDate(date: Date): string {
-    const year = date.getFullYear();
-    const weekNum = this.getISOWeekNumber(date);
-    return `${year}-W${weekNum.toString().padStart(2, "0")}`;
-  }
+/**
+ * Get week key in YYYY-WXX format from date
+ * @param date - Date to get week key for
+ * @returns Week key in YYYY-WXX format
+ */
+getWeekKeyFromDate(date: Date): string {
+  // Get the ISO week number
+  const weekNum = this.getISOWeekNumber(date);
+  
+  // Determine the correct year for this ISO week
+  // By getting the Thursday of the week (since ISO weeks are defined by their Thursday)
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  const dayOfWeek = d.getDay() || 7; // Convert Sunday (0) to 7
+  d.setDate(d.getDate() + 4 - dayOfWeek); // Move to Thursday
+  
+  const year = d.getFullYear();
+  
+  return `${year}-W${weekNum.toString().padStart(2, "0")}`;
+}
 
   /**
    * Get all week keys between two dates
@@ -652,50 +662,58 @@ export default class ChronosTimelinePlugin extends Plugin {
     return monthMarkers;
   }
 
-  /**
-   * Calculate date range for a given week key
-   * @param weekKey - Week key in YYYY-WXX format
-   * @returns String with formatted date range
-   */
-  getWeekDateRange(weekKey: string): string {
-    const parts = weekKey.split("-W");
-    if (parts.length !== 2) return "";
+/**
+ * Calculate date range for a given week key
+ * @param weekKey - Week key in YYYY-WXX format
+ * @returns String with formatted date range
+ */
+getWeekDateRange(weekKey: string): string {
+  const parts = weekKey.split("-W");
+  if (parts.length !== 2) return "";
 
-    const year = parseInt(parts[0]);
-    const week = parseInt(parts[1]);
-
-    // Calculate the first day of the week (Monday of that week)
-    const firstDayOfWeek = new Date(year, 0, 1);
-    const dayOffset = firstDayOfWeek.getDay() || 7; // getDay returns 0 for Sunday
-    const dayToAdd = 1 + (week - 1) * 7 - (dayOffset - 1);
-
-    firstDayOfWeek.setDate(dayToAdd);
-
-    // Calculate the last day of the week (Sunday)
-    const lastDayOfWeek = new Date(firstDayOfWeek);
-    lastDayOfWeek.setDate(firstDayOfWeek.getDate() + 6);
-
-    // Format the dates
-    const formatDate = (date: Date): string => {
-      const months = [
-        "Jan",
-        "Feb",
-        "Mar",
-        "Apr",
-        "May",
-        "Jun",
-        "Jul",
-        "Aug",
-        "Sep",
-        "Oct",
-        "Nov",
-        "Dec",
-      ];
-      return `${months[date.getMonth()]} ${date.getDate()}`;
-    };
-
-    return `${formatDate(firstDayOfWeek)} - ${formatDate(lastDayOfWeek)}`;
+  const year = parseInt(parts[0]);
+  const week = parseInt(parts[1]);
+  
+  // Function to get a date from ISO year, week, and day (1=Monday, 7=Sunday)
+  function getDateOfISOWeek(isoYear: number, isoWeek: number, isoDayOfWeek: number): Date {
+    // Create a date for January 4th of the given year
+    // (this is always in week 1 according to ISO 8601)
+    const jan4 = new Date(isoYear, 0, 4);
+    
+    // Get the day of the week (0 = Sunday, 6 = Saturday)
+    // Convert to ISO where 1 = Monday, 7 = Sunday
+    const jan4Day = jan4.getDay() || 7;
+    
+    // Find the Monday of week 1
+    const week1Monday = new Date(jan4);
+    week1Monday.setDate(jan4.getDate() - jan4Day + 1);
+    
+    // Find the Monday of the desired week
+    const targetMonday = new Date(week1Monday);
+    targetMonday.setDate(week1Monday.getDate() + (isoWeek - 1) * 7);
+    
+    // Find the desired day of that week
+    const targetDate = new Date(targetMonday);
+    targetDate.setDate(targetMonday.getDate() + isoDayOfWeek - 1);
+    
+    return targetDate;
   }
+  
+  // Get Monday (day 1) and Sunday (day 7) of the week
+  const monday = getDateOfISOWeek(year, week, 1);
+  const sunday = getDateOfISOWeek(year, week, 7);
+  
+  // Format the dates
+  const formatDate = (date: Date): string => {
+    const months = [
+      "Jan", "Feb", "Mar", "Apr", "May", "Jun", 
+      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+    ];
+    return `${months[date.getMonth()]} ${date.getDate()}`;
+  };
+
+  return `${formatDate(monday)} - ${formatDate(sunday)}`;
+}
 
   /**
  * Calculate the birthday date for a specific age year

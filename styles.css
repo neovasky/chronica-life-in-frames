@@ -446,21 +446,26 @@
   border: 1px solid rgba(255, 255, 255, 0.4);
 }
 
-/* Future event highlight with animation */
+/* Future event highlight - subtle indicator */
 .chronos-grid-cell.future-event-highlight {
-  box-shadow: 0 0 8px rgba(255, 215, 0, 0.7);
-  animation: pulse 2s infinite;
+  border: 1px solid rgba(255, 215, 0, 0.5);
 }
 
-@keyframes pulse {
+/* Only show animation on hover */
+.chronos-grid-cell.future-event-highlight:hover {
+  box-shadow: 0 0 5px rgba(255, 215, 0, 0.6);
+  animation: subtle-pulse 1.5s infinite;
+}
+
+@keyframes subtle-pulse {
   0% {
-    box-shadow: 0 0 8px rgba(255, 215, 0, 0.7);
+    box-shadow: 0 0 5px rgba(255, 215, 0, 0.6);
   }
   50% {
-    box-shadow: 0 0 12px rgba(255, 215, 0, 0.9);
+    box-shadow: 0 0 8px rgba(255, 215, 0, 0.7);
   }
   100% {
-    box-shadow: 0 0 8px rgba(255, 215, 0, 0.7);
+    box-shadow: 0 0 5px rgba(255, 215, 0, 0.6);
   }
 }
 
