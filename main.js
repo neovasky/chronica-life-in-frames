@@ -1872,11 +1872,9 @@ class ChronosTimelineView extends obsidian.ItemView {
                 return parts.length === 2 && parts[0] === weekKey;
             });
             if (singleEvent) {
-                cell.style.backgroundColor = defaultColor;
                 cell.addClass("event");
-                cell.style.borderColor = defaultColor; // Add this line
-                // Force higher specificity for the background color
-                cell.setAttribute("style", `background-color: ${defaultColor} !important; border: 2px solid ${defaultColor};`);
+                // Apply all styles in one go with !important to ensure they take effect
+                cell.setAttribute("style", `background-color: ${defaultColor} !important; border: 2px solid ${defaultColor} !important;`);
                 const description = singleEvent.split(":")[1] || defaultDesc;
                 const currentTitle = cell.getAttribute("title") || "";
                 cell.setAttribute("title", `${description}\n${currentTitle}`);
@@ -1905,8 +1903,9 @@ class ChronosTimelineView extends obsidian.ItemView {
                     (cellYear === startYear && cellWeek >= startWeek)) &&
                     (cellYear < endYear || (cellYear === endYear && cellWeek <= endWeek));
                 if (isInRange) {
-                    cell.style.backgroundColor = defaultColor;
                     cell.addClass("event");
+                    // Apply all styles in one go with !important to ensure they take effect
+                    cell.setAttribute("style", `background-color: ${defaultColor} !important; border: 2px solid ${defaultColor} !important;`);
                     const eventDesc = description || defaultDesc;
                     const currentTitle = cell.getAttribute("title") || "";
                     cell.setAttribute("title", `${eventDesc} (${startWeekKey} to ${endWeekKey})\n${currentTitle}`);

@@ -2456,11 +2456,9 @@ if (this.plugin.settings.showDecadeMarkers) {
       });
 
       if (singleEvent) {
-        cell.style.backgroundColor = defaultColor;
         cell.addClass("event");
-        cell.style.borderColor = defaultColor; // Add this line
-        // Force higher specificity for the background color
-        cell.setAttribute("style", `background-color: ${defaultColor} !important; border: 2px solid ${defaultColor};`);
+        // Apply all styles in one go with !important to ensure they take effect
+        cell.setAttribute("style", `background-color: ${defaultColor} !important; border: 2px solid ${defaultColor} !important;`);
         const description = singleEvent.split(":")[1] || defaultDesc;
         const currentTitle = cell.getAttribute("title") || "";
         cell.setAttribute("title", `${description}\n${currentTitle}`);
@@ -2497,17 +2495,18 @@ if (this.plugin.settings.showDecadeMarkers) {
             (cellYear === startYear && cellWeek >= startWeek)) &&
           (cellYear < endYear || (cellYear === endYear && cellWeek <= endWeek));
 
-        if (isInRange) {
-          cell.style.backgroundColor = defaultColor;
-          cell.addClass("event");
-          const eventDesc = description || defaultDesc;
-          const currentTitle = cell.getAttribute("title") || "";
-          cell.setAttribute(
-            "title",
-            `${eventDesc} (${startWeekKey} to ${endWeekKey})\n${currentTitle}`
-          );
-          return true;
-        }
+          if (isInRange) {
+            cell.addClass("event");
+            // Apply all styles in one go with !important to ensure they take effect
+            cell.setAttribute("style", `background-color: ${defaultColor} !important; border: 2px solid ${defaultColor} !important;`);
+            const eventDesc = description || defaultDesc;
+            const currentTitle = cell.getAttribute("title") || "";
+            cell.setAttribute(
+              "title",
+              `${eventDesc} (${startWeekKey} to ${endWeekKey})\n${currentTitle}`
+            );
+            return true;
+          }
       }
 
       return false;
