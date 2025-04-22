@@ -2343,25 +2343,28 @@ if (this.plugin.settings.showDecadeMarkers) {
 
         // Color coding (past, present, future)
         const isCurrentWeek = weekKey === currentWeekKey;
+        const hasEvent = this.applyEventStyling(cell, weekKey);
+        
+        // Add appropriate class regardless of color
         if (isCurrentWeek) {
           cell.addClass("present");
-          cell.style.backgroundColor = this.plugin.settings.presentCellColor;
         } else if (cellDate < now) {
           cell.addClass("past");
-          cell.style.backgroundColor = this.plugin.settings.pastCellColor;
         } else {
           cell.addClass("future");
-          cell.style.backgroundColor = this.plugin.settings.futureCellColor;
         }
-
-        // Apply event styling
-        this.applyEventStyling(cell, weekKey);
-
-        // Make sure present cell color is preserved even after event styling
-        if (isCurrentWeek) {
-          cell.style.backgroundColor = this.plugin.settings.presentCellColor;
+        
+        // Only apply base color coding if there's no event
+        if (!hasEvent) {
+          if (isCurrentWeek) {
+            cell.style.backgroundColor = this.plugin.settings.presentCellColor;
+          } else if (cellDate < now) {
+            cell.style.backgroundColor = this.plugin.settings.pastCellColor;
+          } else {
+            cell.style.backgroundColor = this.plugin.settings.futureCellColor;
+          }
         }
-
+      
         // Add click and context menu events to the cell
         cell.addEventListener("click", async (event) => {
           // If shift key is pressed, add an event
@@ -2436,12 +2439,14 @@ if (this.plugin.settings.showDecadeMarkers) {
     }
   }
 
-  /**
-   * Apply styling for events to a cell
-   * @param cell - Cell element to style
-   * @param weekKey - Week key to check for events (YYYY-WXX)
-   */
-  applyEventStyling(cell: HTMLElement, weekKey: string): void {
+/**
+ * Apply styling for events to a cell
+ * @param cell - Cell element to style
+ * @param weekKey - Week key to check for events (YYYY-WXX)
+ * @returns Whether an event was applied to this cell
+ */
+applyEventStyling(cell: HTMLElement, weekKey: string): boolean {
+
     // Helper to check for range events and apply styling
     const applyEventStyle = (
       events: string[],
@@ -2532,39 +2537,41 @@ if (this.plugin.settings.showDecadeMarkers) {
       "#4CAF50",
       "Major Life Event"
     );
-    if (!hasGreenEvent) {
-      const hasBlueEvent = applyEventStyle(
-        this.plugin.settings.blueEvents,
-        "#2196F3",
-        "Travel"
-      );
-      if (!hasBlueEvent) {
-        const hasPinkEvent = applyEventStyle(
-          this.plugin.settings.pinkEvents,
-          "#E91E63",
-          "Relationship"
+    if (hasGreenEvent) return true;
+
+    const hasBlueEvent = applyEventStyle(
+      this.plugin.settings.blueEvents,
+      "#2196F3",
+      "Travel"
+    );
+    if (hasBlueEvent) return true;
+
+    const hasPinkEvent = applyEventStyle(
+      this.plugin.settings.pinkEvents,
+      "#E91E63",
+      "Relationship"
+    );
+    if (hasPinkEvent) return true;
+
+    const hasPurpleEvent = applyEventStyle(
+      this.plugin.settings.purpleEvents,
+      "#9C27B0",
+      "Education/Career"
+    );
+    if (hasPurpleEvent) return true;
+
+    // Only check custom events if no built-in event was found
+    if (this.plugin.settings.customEvents) {
+      for (const [typeName, events] of Object.entries(
+        this.plugin.settings.customEvents
+      )) {
+        const customType = this.plugin.settings.customEventTypes.find(
+          (type) => type.name === typeName
         );
-        if (!hasPinkEvent) {
-          const hasPurpleEvent = applyEventStyle(
-            this.plugin.settings.purpleEvents,
-            "#9C27B0",
-            "Education/Career"
-          );
-  
-          // Only check custom events if no built-in event was found
-          if (!hasPurpleEvent && this.plugin.settings.customEvents) {
-            for (const [typeName, events] of Object.entries(
-              this.plugin.settings.customEvents
-            )) {
-              const customType = this.plugin.settings.customEventTypes.find(
-                (type) => type.name === typeName
-              );
-  
-              if (customType && events.length > 0) {
-                applyEventStyle(events, customType.color, typeName);
-              }
-            }
-          }
+
+        if (customType && events.length > 0) {
+          const hasCustomEvent = applyEventStyle(events, customType.color, typeName);
+          if (hasCustomEvent) return true;
         }
       }
     }
@@ -2592,6 +2599,7 @@ if (this.plugin.settings.showDecadeMarkers) {
         cell.style.backgroundColor = "#8bc34a"; // Light green for filled weeks
       }
     }
+    return false;
   }
 }
 
