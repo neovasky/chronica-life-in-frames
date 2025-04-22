@@ -1872,9 +1872,12 @@ class ChronosTimelineView extends obsidian.ItemView {
                 return parts.length === 2 && parts[0] === weekKey;
             });
             if (singleEvent) {
+                // Apply styles individually instead of using setAttribute("style")
                 cell.addClass("event");
-                // Apply all styles in one go with !important to ensure they take effect
-                cell.setAttribute("style", `background-color: ${defaultColor} !important; border: 2px solid ${defaultColor} !important;`);
+                cell.style.backgroundColor = defaultColor;
+                cell.style.borderColor = defaultColor;
+                cell.style.borderWidth = "2px";
+                cell.style.borderStyle = "solid";
                 const description = singleEvent.split(":")[1] || defaultDesc;
                 const currentTitle = cell.getAttribute("title") || "";
                 cell.setAttribute("title", `${description}\n${currentTitle}`);
@@ -1890,22 +1893,30 @@ class ChronosTimelineView extends obsidian.ItemView {
                 // Skip if the format is invalid
                 if (!startWeekKey || !endWeekKey)
                     continue;
-                // Parse the week numbers
-                const startYear = parseInt(startWeekKey.split("-W")[0]);
-                const startWeek = parseInt(startWeekKey.split("-W")[1]);
-                const endYear = parseInt(endWeekKey.split("-W")[0]);
-                const endWeek = parseInt(endWeekKey.split("-W")[1]);
+                // Parse the week numbers more carefully
+                const startYear = parseInt(startWeekKey.split("-W")[0], 10);
+                const startWeek = parseInt(startWeekKey.split("-W")[1], 10);
+                const endYear = parseInt(endWeekKey.split("-W")[0], 10);
+                const endWeek = parseInt(endWeekKey.split("-W")[1], 10);
                 // Parse current cell week
-                const cellYear = parseInt(weekKey.split("-W")[0]);
-                const cellWeek = parseInt(weekKey.split("-W")[1]);
-                // Check if current week falls within the range
-                const isInRange = (cellYear > startYear ||
-                    (cellYear === startYear && cellWeek >= startWeek)) &&
-                    (cellYear < endYear || (cellYear === endYear && cellWeek <= endWeek));
+                const cellYear = parseInt(weekKey.split("-W")[0], 10);
+                const cellWeek = parseInt(weekKey.split("-W")[1], 10);
+                // Create actual dates to compare
+                const startDate = new Date(startYear, 0, 1);
+                startDate.setDate(startDate.getDate() + (startWeek - 1) * 7);
+                const endDate = new Date(endYear, 0, 1);
+                endDate.setDate(endDate.getDate() + (endWeek - 1) * 7 + 6); // Add 6 to include full end week
+                const cellDate = new Date(cellYear, 0, 1);
+                cellDate.setDate(cellDate.getDate() + (cellWeek - 1) * 7);
+                // Check if current week falls within the range using actual dates
+                const isInRange = cellDate >= startDate && cellDate <= endDate;
                 if (isInRange) {
+                    // Apply styles individually instead of using setAttribute("style")
                     cell.addClass("event");
-                    // Apply all styles in one go with !important to ensure they take effect
-                    cell.setAttribute("style", `background-color: ${defaultColor} !important; border: 2px solid ${defaultColor} !important;`);
+                    cell.style.backgroundColor = defaultColor;
+                    cell.style.borderColor = defaultColor;
+                    cell.style.borderWidth = "2px";
+                    cell.style.borderStyle = "solid";
                     const eventDesc = description || defaultDesc;
                     const currentTitle = cell.getAttribute("title") || "";
                     cell.setAttribute("title", `${eventDesc} (${startWeekKey} to ${endWeekKey})\n${currentTitle}`);
@@ -1938,8 +1949,8 @@ class ChronosTimelineView extends obsidian.ItemView {
         const now = new Date();
         const cellDate = new Date();
         const [cellYearStr, weekNumStr] = weekKey.split("-W");
-        cellDate.setFullYear(parseInt(cellYearStr));
-        cellDate.setDate(1 + (parseInt(weekNumStr) - 1) * 7);
+        cellDate.setFullYear(parseInt(cellYearStr, 10));
+        cellDate.setDate(1 + (parseInt(weekNumStr, 10) - 1) * 7);
         if (cellDate > now &&
             cellDate < new Date(now.getTime() + 6 * 30 * 24 * 60 * 60 * 1000) &&
             cell.classList.contains("event")) {
