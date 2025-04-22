@@ -520,6 +520,8 @@ class ChronosEventModal extends obsidian.Modal {
     selectedColor = "#4CAF50";
     /** Description of the event */
     eventDescription = "";
+    /** Currently selected date input field reference */
+    singleDateInput;
     /** Start date input field reference */
     startDateInput;
     /** End date input field reference */
@@ -614,14 +616,14 @@ class ChronosEventModal extends obsidian.Modal {
         const singleDateSetting = new obsidian.Setting(singleDateContainer)
             .setName("Date")
             .setDesc("Enter the exact date of the event");
-        this.startDateInput = singleDateSetting.controlEl.createEl("input", {
+        this.singleDateInput = singleDateSetting.controlEl.createEl("input", {
             type: "date",
             value: this.selectedDate
                 ? this.convertWeekToDate(this.selectedDate)
                 : new Date().toISOString().split("T")[0],
         });
-        this.startDateInput.addEventListener("change", () => {
-            const specificDate = this.startDateInput.value;
+        this.singleDateInput.addEventListener("change", () => {
+            const specificDate = this.singleDateInput.value;
             if (specificDate) {
                 const date = new Date(specificDate);
                 this.selectedDate = this.plugin.getWeekKeyFromDate(date);
@@ -858,16 +860,12 @@ class ChronosEventModal extends obsidian.Modal {
         }
         else {
             // Handle single date event (original functionality)
-            const eventDate = new Date(this.startDateInput.value);
+            const eventDate = new Date(this.singleDateInput.value);
             const weekKey = this.plugin.getWeekKeyFromDate(eventDate);
-            // Format event data string
             const eventData = `${weekKey}:${this.eventDescription}`;
-            // Add event to appropriate collection
             this.addEventToCollection(eventData);
-            // Create note file
             const fileName = `${weekKey.replace("W", "-W")}.md`;
             this.createEventNote(fileName, eventDate);
-            // Save settings
             this.plugin.saveSettings().then(() => {
                 new obsidian.Notice(`Event added: ${this.eventDescription}`);
                 this.close();
@@ -1868,63 +1866,47 @@ class ChronosTimelineView extends obsidian.ItemView {
      * @param weekKey - Week key to check for events (YYYY-WXX)
      * @returns Whether an event was applied to this cell
      */
+    /**
+     * Apply styling for events to a cell
+     * @param cell - Cell element to style
+     * @param weekKey - Week key to check for events (YYYY-WXX)
+     * @returns Whether an event was applied to this cell
+     */
     applyEventStyling(cell, weekKey) {
-        // Helper to check for range events and apply styling
+        // Helper to check for events and apply styling
         const applyEventStyle = (events, defaultColor, defaultDesc) => {
-            // Check for exact match (single date events)
-            const singleEvent = events.find((e) => {
+            // First, handle single-day events (format: weekKey:description)
+            // Single‑week events (format: weekKey:description)
+            const singleEvents = events.filter(e => {
                 const parts = e.split(":");
-                return parts.length === 2 && parts[0] === weekKey;
+                return parts.length === 2 && parts[0].includes("W");
             });
-            for (const event of events) {
-                const parts = event.split(":");
-                // Skip if not a single-day event or if already processed above
-                if (parts.length !== 2 || parts[0] === weekKey)
-                    continue;
-                const eventWeekKey = parts[0];
-                const description = parts[1] || defaultDesc;
-                // Parse event week key
-                const eventYear = parseInt(eventWeekKey.split("-W")[0], 10);
-                const eventWeek = parseInt(eventWeekKey.split("-W")[1], 10);
-                // Parse cell week key
-                const cellYear = parseInt(weekKey.split("-W")[0], 10);
-                const cellWeek = parseInt(weekKey.split("-W")[1], 10);
-                // Consider events in the same week
-                if (eventYear === cellYear && eventWeek === cellWeek) {
+            for (const ev of singleEvents) {
+                const [eventWeekKey, description] = ev.split(":");
+                // Direct string match: if the event’s weekKey equals this cell's weekKey
+                if (eventWeekKey === weekKey) {
                     // Apply styles
-                    cell.addClass("event");
+                    cell.classList.add("event");
                     cell.style.backgroundColor = defaultColor;
-                    cell.style.borderColor = defaultColor;
-                    cell.style.borderWidth = "2px";
-                    cell.style.borderStyle = "solid";
-                    const currentTitle = cell.getAttribute("title") || "";
-                    cell.setAttribute("title", `${description}\n${currentTitle}`);
+                    cell.style.border = `2px solid ${defaultColor}`;
+                    // Build tooltip
+                    const eventDesc = description || defaultDesc;
+                    const prevTitle = cell.getAttribute("title") || "";
+                    cell.setAttribute("title", `${eventDesc} (${eventWeekKey})\n${prevTitle}`);
                     return true;
                 }
             }
-            if (singleEvent) {
-                // Apply styles individually instead of using setAttribute("style")
-                cell.addClass("event");
-                cell.style.backgroundColor = defaultColor;
-                cell.style.borderColor = defaultColor;
-                cell.style.borderWidth = "2px";
-                cell.style.borderStyle = "solid";
-                const description = singleEvent.split(":")[1] || defaultDesc;
-                const currentTitle = cell.getAttribute("title") || "";
-                cell.setAttribute("title", `${description}\n${currentTitle}`);
-                return true;
-            }
-            // Check for range events (format: startWeek:endWeek:description)
-            const rangeEvents = events.filter((e) => {
+            // Next, handle range events (format: startWeek:endWeek:description)
+            const rangeEvents = events.filter(e => {
                 const parts = e.split(":");
-                return (parts.length >= 3 && parts[0].includes("W") && parts[1].includes("W"));
+                return parts.length >= 3 && parts[0].includes("W") && parts[1].includes("W");
             });
             for (const rangeEvent of rangeEvents) {
                 const [startWeekKey, endWeekKey, description] = rangeEvent.split(":");
                 // Skip if the format is invalid
                 if (!startWeekKey || !endWeekKey)
                     continue;
-                // Parse the week numbers more carefully
+                // Parse the week numbers
                 const startYear = parseInt(startWeekKey.split("-W")[0], 10);
                 const startWeek = parseInt(startWeekKey.split("-W")[1], 10);
                 const endYear = parseInt(endWeekKey.split("-W")[0], 10);
@@ -1942,7 +1924,7 @@ class ChronosTimelineView extends obsidian.ItemView {
                 // Check if current week falls within the range using actual dates
                 const isInRange = cellDate >= startDate && cellDate <= endDate;
                 if (isInRange) {
-                    // Apply styles individually instead of using setAttribute("style")
+                    // Apply styles
                     cell.addClass("event");
                     cell.style.backgroundColor = defaultColor;
                     cell.style.borderColor = defaultColor;

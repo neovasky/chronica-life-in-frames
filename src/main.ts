@@ -746,6 +746,9 @@ class ChronosEventModal extends Modal {
   /** Description of the event */
   eventDescription: string = "";
 
+  /** Currently selected date input field reference */
+  singleDateInput!: HTMLInputElement; 
+
   /** Start date input field reference */
   startDateInput!: HTMLInputElement;
 
@@ -861,19 +864,21 @@ class ChronosEventModal extends Modal {
       .setName("Date")
       .setDesc("Enter the exact date of the event");
 
-    this.startDateInput = singleDateSetting.controlEl.createEl("input", {
+      this.singleDateInput = singleDateSetting.controlEl.createEl("input", {
       type: "date",
       value: this.selectedDate
         ? this.convertWeekToDate(this.selectedDate)
         : new Date().toISOString().split("T")[0],
     });
 
-    this.startDateInput.addEventListener("change", () => {
-      const specificDate = this.startDateInput.value;
+    
+
+    this.singleDateInput.addEventListener("change", () => {
+      const specificDate = this.singleDateInput.value;
       if (specificDate) {
         const date = new Date(specificDate);
         this.selectedDate = this.plugin.getWeekKeyFromDate(date);
-
+    
         // If using date range, initialize end date to same as start if not set
         if (this.isDateRange && !this.endDateInput.value) {
           this.endDateInput.value = specificDate;
@@ -1172,20 +1177,15 @@ class ChronosEventModal extends Modal {
       });
     } else {
       // Handle single date event (original functionality)
-      const eventDate = new Date(this.startDateInput.value);
-      const weekKey = this.plugin.getWeekKeyFromDate(eventDate);
-
-      // Format event data string
+      const eventDate = new Date(this.singleDateInput.value);
+      const weekKey   = this.plugin.getWeekKeyFromDate(eventDate);
       const eventData = `${weekKey}:${this.eventDescription}`;
-
-      // Add event to appropriate collection
+    
       this.addEventToCollection(eventData);
-
-      // Create note file
+    
       const fileName = `${weekKey.replace("W", "-W")}.md`;
       this.createEventNote(fileName, eventDate);
-
-      // Save settings
+    
       this.plugin.saveSettings().then(() => {
         new Notice(`Event added: ${this.eventDescription}`);
         this.close();
@@ -2445,192 +2445,175 @@ if (this.plugin.settings.showDecadeMarkers) {
  * @param weekKey - Week key to check for events (YYYY-WXX)
  * @returns Whether an event was applied to this cell
  */
+/**
+ * Apply styling for events to a cell
+ * @param cell - Cell element to style
+ * @param weekKey - Week key to check for events (YYYY-WXX)
+ * @returns Whether an event was applied to this cell
+ */
 applyEventStyling(cell: HTMLElement, weekKey: string): boolean {
+  // Helper to check for events and apply styling
+  const applyEventStyle = (
+    events: string[],
+    defaultColor: string,
+    defaultDesc: string
+  ): boolean => {
+    // First, handle single-day events (format: weekKey:description)
 
-    // Helper to check for range events and apply styling
-    const applyEventStyle = (
-      events: string[],
-      defaultColor: string,
-      defaultDesc: string
-    ): boolean => {
-      // Check for exact match (single date events)
-      const singleEvent = events.find((e) => {
-        const parts = e.split(":");
-        return parts.length === 2 && parts[0] === weekKey;
-      });
-      for (const event of events) {
-        const parts = event.split(":");
-        
-        // Skip if not a single-day event or if already processed above
-        if (parts.length !== 2 || parts[0] === weekKey) continue;
-        
-        const eventWeekKey = parts[0];
-        const description = parts[1] || defaultDesc;
-        
-        // Parse event week key
-        const eventYear = parseInt(eventWeekKey.split("-W")[0], 10);
-        const eventWeek = parseInt(eventWeekKey.split("-W")[1], 10);
-        
-        // Parse cell week key
-        const cellYear = parseInt(weekKey.split("-W")[0], 10);
-        const cellWeek = parseInt(weekKey.split("-W")[1], 10);
-        
-        // Consider events in the same week
-        if (eventYear === cellYear && eventWeek === cellWeek) {
-          // Apply styles
-          cell.addClass("event");
-          cell.style.backgroundColor = defaultColor;
-          cell.style.borderColor = defaultColor;
-          cell.style.borderWidth = "2px";
-          cell.style.borderStyle = "solid";
-          
-          const currentTitle = cell.getAttribute("title") || "";
-          cell.setAttribute("title", `${description}\n${currentTitle}`);
-          return true;
-        }
-      }
-      if (singleEvent) {
-        // Apply styles individually instead of using setAttribute("style")
+// Single‑week events (format: weekKey:description)
+const singleEvents = events.filter(e => {
+  const parts = e.split(":");
+  return parts.length === 2 && parts[0].includes("W");
+});
+
+for (const ev of singleEvents) {
+  const [eventWeekKey, description] = ev.split(":");
+
+  // Direct string match: if the event’s weekKey equals this cell's weekKey
+  if (eventWeekKey === weekKey) {
+    // Apply styles
+    cell.classList.add("event");
+    cell.style.backgroundColor = defaultColor;
+    cell.style.border = `2px solid ${defaultColor}`;
+
+    // Build tooltip
+    const eventDesc = description || defaultDesc;
+    const prevTitle = cell.getAttribute("title") || "";
+    cell.setAttribute(
+      "title",
+      `${eventDesc} (${eventWeekKey})\n${prevTitle}`
+    );
+
+    return true;
+  }
+}
+    
+    // Next, handle range events (format: startWeek:endWeek:description)
+    const rangeEvents = events.filter(e => {
+      const parts = e.split(":");
+      return parts.length >= 3 && parts[0].includes("W") && parts[1].includes("W");
+    });
+    
+    for (const rangeEvent of rangeEvents) {
+      const [startWeekKey, endWeekKey, description] = rangeEvent.split(":");
+      
+      // Skip if the format is invalid
+      if (!startWeekKey || !endWeekKey) continue;
+      
+      // Parse the week numbers
+      const startYear = parseInt(startWeekKey.split("-W")[0], 10);
+      const startWeek = parseInt(startWeekKey.split("-W")[1], 10);
+      const endYear = parseInt(endWeekKey.split("-W")[0], 10);
+      const endWeek = parseInt(endWeekKey.split("-W")[1], 10);
+      
+      // Parse current cell week
+      const cellYear = parseInt(weekKey.split("-W")[0], 10);
+      const cellWeek = parseInt(weekKey.split("-W")[1], 10);
+      
+      // Create actual dates to compare
+      const startDate = new Date(startYear, 0, 1);
+      startDate.setDate(startDate.getDate() + (startWeek - 1) * 7);
+      
+      const endDate = new Date(endYear, 0, 1);
+      endDate.setDate(endDate.getDate() + (endWeek - 1) * 7 + 6); // Add 6 to include full end week
+      
+      const cellDate = new Date(cellYear, 0, 1);
+      cellDate.setDate(cellDate.getDate() + (cellWeek - 1) * 7);
+      
+      // Check if current week falls within the range using actual dates
+      const isInRange = cellDate >= startDate && cellDate <= endDate;
+      
+      if (isInRange) {
+        // Apply styles
         cell.addClass("event");
         cell.style.backgroundColor = defaultColor;
         cell.style.borderColor = defaultColor;
         cell.style.borderWidth = "2px";
         cell.style.borderStyle = "solid";
         
-        const description = singleEvent.split(":")[1] || defaultDesc;
+        const eventDesc = description || defaultDesc;
         const currentTitle = cell.getAttribute("title") || "";
-        cell.setAttribute("title", `${description}\n${currentTitle}`);
+        cell.setAttribute(
+          "title",
+          `${eventDesc} (${startWeekKey} to ${endWeekKey})\n${currentTitle}`
+        );
         return true;
       }
-  
-      // Check for range events (format: startWeek:endWeek:description)
-      const rangeEvents = events.filter((e) => {
-        const parts = e.split(":");
-        return (
-          parts.length >= 3 && parts[0].includes("W") && parts[1].includes("W")
-        );
-      });
-  
-      for (const rangeEvent of rangeEvents) {
-        const [startWeekKey, endWeekKey, description] = rangeEvent.split(":");
-  
-        // Skip if the format is invalid
-        if (!startWeekKey || !endWeekKey) continue;
-  
-        // Parse the week numbers more carefully
-        const startYear = parseInt(startWeekKey.split("-W")[0], 10);
-        const startWeek = parseInt(startWeekKey.split("-W")[1], 10);
-        const endYear = parseInt(endWeekKey.split("-W")[0], 10);
-        const endWeek = parseInt(endWeekKey.split("-W")[1], 10);
-  
-        // Parse current cell week
-        const cellYear = parseInt(weekKey.split("-W")[0], 10);
-        const cellWeek = parseInt(weekKey.split("-W")[1], 10);
-  
-        // Create actual dates to compare
-        const startDate = new Date(startYear, 0, 1);
-        startDate.setDate(startDate.getDate() + (startWeek - 1) * 7);
-        
-        const endDate = new Date(endYear, 0, 1);
-        endDate.setDate(endDate.getDate() + (endWeek - 1) * 7 + 6); // Add 6 to include full end week
-        
-        const cellDate = new Date(cellYear, 0, 1);
-        cellDate.setDate(cellDate.getDate() + (cellWeek - 1) * 7);
-  
-        // Check if current week falls within the range using actual dates
-        const isInRange = cellDate >= startDate && cellDate <= endDate;
-  
-        if (isInRange) {
-          // Apply styles individually instead of using setAttribute("style")
-          cell.addClass("event");
-          cell.style.backgroundColor = defaultColor;
-          cell.style.borderColor = defaultColor;
-          cell.style.borderWidth = "2px";
-          cell.style.borderStyle = "solid";
-          
-          const eventDesc = description || defaultDesc;
-          const currentTitle = cell.getAttribute("title") || "";
-          cell.setAttribute(
-            "title",
-            `${eventDesc} (${startWeekKey} to ${endWeekKey})\n${currentTitle}`
-          );
-          return true;
-        }
-      }
-  
-      return false;
-    };
-  
-    // Apply event styling for each event type
-    const hasGreenEvent = applyEventStyle(
-      this.plugin.settings.greenEvents,
-      "#4CAF50",
-      "Major Life Event"
-    );
-    if (hasGreenEvent) return true;
-
-    const hasBlueEvent = applyEventStyle(
-      this.plugin.settings.blueEvents,
-      "#2196F3",
-      "Travel"
-    );
-    if (hasBlueEvent) return true;
-
-    const hasPinkEvent = applyEventStyle(
-      this.plugin.settings.pinkEvents,
-      "#E91E63",
-      "Relationship"
-    );
-    if (hasPinkEvent) return true;
-
-    const hasPurpleEvent = applyEventStyle(
-      this.plugin.settings.purpleEvents,
-      "#9C27B0",
-      "Education/Career"
-    );
-    if (hasPurpleEvent) return true;
-
-    // Only check custom events if no built-in event was found
-    if (this.plugin.settings.customEvents) {
-      for (const [typeName, events] of Object.entries(
-        this.plugin.settings.customEvents
-      )) {
-        const customType = this.plugin.settings.customEventTypes.find(
-          (type) => type.name === typeName
-        );
-
-        if (customType && events.length > 0) {
-          const hasCustomEvent = applyEventStyle(events, customType.color, typeName);
-          if (hasCustomEvent) return true;
-        }
-      }
     }
-  
-    // Highlight future events within next 6 months
-    const now = new Date();
-    const cellDate = new Date();
-    const [cellYearStr, weekNumStr] = weekKey.split("-W");
-    cellDate.setFullYear(parseInt(cellYearStr, 10));
-    cellDate.setDate(1 + (parseInt(weekNumStr, 10) - 1) * 7);
-  
-    if (
-      cellDate > now &&
-      cellDate < new Date(now.getTime() + 6 * 30 * 24 * 60 * 60 * 1000) &&
-      cell.classList.contains("event")
-    ) {
-      cell.addClass("future-event-highlight");
-    }
-  
-    // Apply filled week styling if applicable
-    if (this.plugin.settings.filledWeeks.includes(weekKey) && weekKey !== this.plugin.getWeekKeyFromDate(new Date())) {
-      cell.addClass("filled-week");
-      // Only change color if no event is on this week
-      if (!cell.classList.contains("event")) {
-        cell.style.backgroundColor = "#8bc34a"; // Light green for filled weeks
-      }
-    }
+    
     return false;
+  };
+
+  // Apply event styling for each event type
+  const hasGreenEvent = applyEventStyle(
+    this.plugin.settings.greenEvents,
+    "#4CAF50",
+    "Major Life Event"
+  );
+  if (hasGreenEvent) return true;
+
+  const hasBlueEvent = applyEventStyle(
+    this.plugin.settings.blueEvents,
+    "#2196F3",
+    "Travel"
+  );
+  if (hasBlueEvent) return true;
+
+  const hasPinkEvent = applyEventStyle(
+    this.plugin.settings.pinkEvents,
+    "#E91E63",
+    "Relationship"
+  );
+  if (hasPinkEvent) return true;
+
+  const hasPurpleEvent = applyEventStyle(
+    this.plugin.settings.purpleEvents,
+    "#9C27B0",
+    "Education/Career"
+  );
+  if (hasPurpleEvent) return true;
+
+  // Only check custom events if no built-in event was found
+  if (this.plugin.settings.customEvents) {
+    for (const [typeName, events] of Object.entries(
+      this.plugin.settings.customEvents
+    )) {
+      const customType = this.plugin.settings.customEventTypes.find(
+        (type) => type.name === typeName
+      );
+
+      if (customType && events.length > 0) {
+        const hasCustomEvent = applyEventStyle(events, customType.color, typeName);
+        if (hasCustomEvent) return true;
+      }
+    }
   }
+
+  // Highlight future events within next 6 months
+  const now = new Date();
+  const cellDate = new Date();
+  const [cellYearStr, weekNumStr] = weekKey.split("-W");
+  cellDate.setFullYear(parseInt(cellYearStr, 10));
+  cellDate.setDate(1 + (parseInt(weekNumStr, 10) - 1) * 7);
+
+  if (
+    cellDate > now &&
+    cellDate < new Date(now.getTime() + 6 * 30 * 24 * 60 * 60 * 1000) &&
+    cell.classList.contains("event")
+  ) {
+    cell.addClass("future-event-highlight");
+  }
+
+  // Apply filled week styling if applicable
+  if (this.plugin.settings.filledWeeks.includes(weekKey) && weekKey !== this.plugin.getWeekKeyFromDate(new Date())) {
+    cell.addClass("filled-week");
+    // Only change color if no event is on this week
+    if (!cell.classList.contains("event")) {
+      cell.style.backgroundColor = "#8bc34a"; // Light green for filled weeks
+    }
+  }
+  return false;
+}
 }
 
 // -----------------------------------------------------------------------
