@@ -858,8 +858,7 @@ class ChronosEventModal extends obsidian.Modal {
         }
         else {
             // Handle single date event (original functionality)
-            const eventDateStr = this.selectedDate || this.startDateInput.value;
-            const eventDate = new Date(eventDateStr);
+            const eventDate = new Date(this.startDateInput.value);
             const weekKey = this.plugin.getWeekKeyFromDate(eventDate);
             // Format event data string
             const eventData = `${weekKey}:${this.eventDescription}`;
