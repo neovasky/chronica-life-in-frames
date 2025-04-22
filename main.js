@@ -1876,6 +1876,32 @@ class ChronosTimelineView extends obsidian.ItemView {
                 const parts = e.split(":");
                 return parts.length === 2 && parts[0] === weekKey;
             });
+            for (const event of events) {
+                const parts = event.split(":");
+                // Skip if not a single-day event or if already processed above
+                if (parts.length !== 2 || parts[0] === weekKey)
+                    continue;
+                const eventWeekKey = parts[0];
+                const description = parts[1] || defaultDesc;
+                // Parse event week key
+                const eventYear = parseInt(eventWeekKey.split("-W")[0], 10);
+                const eventWeek = parseInt(eventWeekKey.split("-W")[1], 10);
+                // Parse cell week key
+                const cellYear = parseInt(weekKey.split("-W")[0], 10);
+                const cellWeek = parseInt(weekKey.split("-W")[1], 10);
+                // Consider events in the same week
+                if (eventYear === cellYear && eventWeek === cellWeek) {
+                    // Apply styles
+                    cell.addClass("event");
+                    cell.style.backgroundColor = defaultColor;
+                    cell.style.borderColor = defaultColor;
+                    cell.style.borderWidth = "2px";
+                    cell.style.borderStyle = "solid";
+                    const currentTitle = cell.getAttribute("title") || "";
+                    cell.setAttribute("title", `${description}\n${currentTitle}`);
+                    return true;
+                }
+            }
             if (singleEvent) {
                 // Apply styles individually instead of using setAttribute("style")
                 cell.addClass("event");
