@@ -230,12 +230,36 @@ export default class ChronosTimelinePlugin extends Plugin {
     // 3) On deletion, remove from settings AND re-draw
     this.registerEvent(
       this.app.vault.on("delete", async (file) => {
-        if (file instanceof TFile) {
-          await this.handleFileDelete(file);
-          this.refreshAllViews();
+        if (!(file instanceof TFile)) return;
+    
+        // 1) Only run on notes named like "2025--W23.md"
+        const base = file.basename;                 // e.g. "2025--W23"
+        if (!/^\d{4}--W\d{2}$/.test(base)) return;  // skip everything else
+    
+        // 2) Normalize to "2025-W23" so it matches your settings entries
+        const weekKey = base.replace("--", "-");
+    
+        // 3) Purge it from every array, same as before
+        const purge = (arr: string[]) => arr.filter((e) => e.split(":")[0] !== weekKey);
+        this.settings.greenEvents  = purge(this.settings.greenEvents);
+        this.settings.blueEvents   = purge(this.settings.blueEvents);
+        this.settings.pinkEvents   = purge(this.settings.pinkEvents);
+        this.settings.purpleEvents = purge(this.settings.purpleEvents);
+    
+        if (this.settings.customEventTypes) {
+          for (const t of this.settings.customEventTypes) {
+            const list = this.settings.customEvents[t.name] || [];
+            this.settings.customEvents[t.name] = purge(list);
+          }
         }
+    
+        // 4) Save & redraw  
+        await this.saveSettings();
+        this.refreshAllViews();
       })
     );
+    
+    
   
     // 4) Now your regular setup
     addIcon("chronos-icon", CHRONOS_ICON);
