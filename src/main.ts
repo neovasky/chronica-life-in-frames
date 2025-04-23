@@ -2658,11 +2658,9 @@ zoomOut() {
     const contentEl = this.containerEl.children[1];
   
     // Use a more robust selector to find the zoom level indicator anywhere in the container
-    const zoomLabel = this.containerEl.querySelector(".chronos-zoom-level");
-    if (zoomLabel) {
-      zoomLabel.textContent = `${Math.round(
-        this.plugin.settings.zoomLevel * 100
-      )}%`;
+    const zoomInput = this.containerEl.querySelector(".chronos-zoom-input") as HTMLInputElement;
+    if (zoomInput) {
+      zoomInput.value = `${Math.round(this.plugin.settings.zoomLevel * 100)}`;
     }
 
     // Update cell size CSS variable
