@@ -849,133 +849,133 @@ getWeekDateRange(weekKey: string): string {
     return targetDate;
   }
 
-      /**
-     * Get event metadata from a note
-     * @param weekKey - Week key in YYYY-WXX format
-     * @returns Event metadata if found
-     */
-    async getEventFromNote(weekKey: string): Promise<{
-      event?: string;
-      description?: string;
-      type?: string;
-      color?: string;
-      startDate?: string;
-      endDate?: string;
-    } | null> {
-      const fileName = `${weekKey.replace("W", "-W")}.md`;
-      const fullPath = this.getFullPath(fileName);
-      
-      // Check if file exists
-      const file = this.app.vault.getAbstractFileByPath(fullPath);
-      if (!(file instanceof TFile)) {
-        return null;
+/**
+ * Get event metadata from a note
+ * @param weekKey - Week key in YYYY-WXX format
+ * @returns Event metadata if found
+ */
+async getEventFromNote(weekKey: string): Promise<{
+  event?: string;
+  description?: string;
+  type?: string;
+  color?: string;
+  startDate?: string;
+  endDate?: string;
+} | null> {
+  const fileName = `${weekKey.replace("W", "-W")}.md`;
+  const fullPath = this.getFullPath(fileName);
+  
+  // Check if file exists
+  const file = this.app.vault.getAbstractFileByPath(fullPath);
+  if (!(file instanceof TFile)) {
+    return null;
+  }
+  
+  // Read file content
+  const content = await this.app.vault.read(file);
+  
+  // Check for YAML frontmatter
+  const frontmatterMatch = content.match(/^---\s+([\s\S]*?)\s+---/);
+  if (!frontmatterMatch) {
+    return null;
+  }
+  
+  // Parse YAML frontmatter
+  try {
+    const frontmatter = frontmatterMatch[1];
+    const metadata: Record<string, any> = {};
+    
+    // Simple YAML parsing (not using an external parser for simplicity)
+    frontmatter.split('\n').forEach(line => {
+      const match = line.match(/^([^:]+):\s*(.+)$/);
+      if (match) {
+        const [_, key, value] = match;
+        metadata[key.trim()] = value.trim().replace(/^"(.*)"$/, '$1');
       }
-      
-      // Read file content
-      const content = await this.app.vault.read(file);
-      
-      // Check for YAML frontmatter
-      const frontmatterMatch = content.match(/^---\s+([\s\S]*?)\s+---/);
-      if (!frontmatterMatch) {
-        return null;
-      }
-      
-      // Parse YAML frontmatter
-      try {
-        const frontmatter = frontmatterMatch[1];
-        const metadata: Record<string, any> = {};
-        
-        // Simple YAML parsing (not using an external parser for simplicity)
-        frontmatter.split('\n').forEach(line => {
-          const match = line.match(/^([^:]+):\s*(.+)$/);
-          if (match) {
-            const [_, key, value] = match;
-            metadata[key.trim()] = value.trim().replace(/^"(.*)"$/, '$1');
-          }
-        });
-        
-        return {
-          event: metadata.event,
-          description: metadata.description,
-          type: metadata.type,
-          color: metadata.color,
-          startDate: metadata.startDate,
-          endDate: metadata.endDate
-        };
-      } catch (error) {
-        console.log("Error parsing frontmatter:", error);
-        return null;
-      }
-    }
+    });
+    
+    return {
+      event: metadata.event,
+      description: metadata.description,
+      type: metadata.type,
+      color: metadata.color,
+      startDate: metadata.startDate,
+      endDate: metadata.endDate
+    };
+  } catch (error) {
+    console.log("Error parsing frontmatter:", error);
+    return null;
+  }
+}
 
-    /**
-     * Update or add event metadata to a note
-     * @param weekKey - Week key in YYYY-WXX format
-     * @param metadata - Event metadata to add
-     * @returns True if successful
-     */
-    async updateEventInNote(
-      weekKey: string, 
-      metadata: {
-        event: string;
-        description?: string;
-        type: string;
-        color: string;
-        startDate?: string;
-        endDate?: string;
-      }
-    ): Promise<boolean> {
-      const fileName = `${weekKey.replace("W", "-W")}.md`;
-      const fullPath = this.getFullPath(fileName);
-      
-      // Check if file exists
-      let file = this.app.vault.getAbstractFileByPath(fullPath);
-      let content = "";
-      
-      if (file instanceof TFile) {
-        // Read existing content
-        content = await this.app.vault.read(file);
-        
-        // Replace existing frontmatter or add new frontmatter
-        const hasFrontmatter = content.match(/^---\s+[\s\S]*?\s+---/);
-        if (hasFrontmatter) {
-          // Replace existing frontmatter
-          content = content.replace(/^---\s+[\s\S]*?\s+---/, this.formatFrontmatter(metadata));
-        } else {
-          // Add frontmatter at the beginning
-          content = this.formatFrontmatter(metadata) + content;
-        }
-        
-        // Update file
-        await this.app.vault.modify(file, content);
-      } else {
-        // Create new file with frontmatter and basic template
-        content = this.formatFrontmatter(metadata);
-        
-        // Add basic template
-        const weekNum = parseInt(weekKey.split('-W')[1]);
-        const year = parseInt(weekKey.split('-')[0]);
-        
-        content += `# Week ${weekNum}, ${year}\n\n## Reflections\n\n## Tasks\n\n## Notes\n\n`;
-        
-        // Create folder if needed
-        if (this.settings.notesFolder && this.settings.notesFolder.trim() !== "") {
-          try {
-            const folderExists = this.app.vault.getAbstractFileByPath(this.settings.notesFolder);
-            if (!folderExists) {
-              await this.app.vault.createFolder(this.settings.notesFolder);
-            }
-          } catch (err) {
-            console.log("Error checking/creating folder:", err);
-          }
-        }
-        
-        // Create file
-        await this.app.vault.create(fullPath, content);
-      }
-      
-      return true;
+/**
+ * Update or add event metadata to a note
+ * @param weekKey - Week key in YYYY-WXX format
+ * @param metadata - Event metadata to add
+ * @returns True if successful
+ */
+async updateEventInNote(
+  weekKey: string, 
+  metadata: {
+    event: string;
+    description?: string;
+    type: string;
+    color: string;
+    startDate?: string;
+    endDate?: string;
+  }
+): Promise<boolean> {
+  const fileName = `${weekKey.replace("W", "-W")}.md`;
+  const fullPath = this.getFullPath(fileName);
+  
+  // Check if file exists
+  let file = this.app.vault.getAbstractFileByPath(fullPath);
+  let content = "";
+  
+  if (file instanceof TFile) {
+    // Read existing content
+    content = await this.app.vault.read(file);
+    
+    // Replace existing frontmatter or add new frontmatter
+    const hasFrontmatter = content.match(/^---\s+[\s\S]*?\s+---/);
+    if (hasFrontmatter) {
+      // Replace existing frontmatter
+      content = content.replace(/^---\s+[\s\S]*?\s+---/, this.formatFrontmatter(metadata));
+    } else {
+      // Add frontmatter at the beginning
+      content = this.formatFrontmatter(metadata) + content;
     }
+    
+    // Update file
+    await this.app.vault.modify(file, content);
+  } else {
+    // Create new file with frontmatter and basic template
+    content = this.formatFrontmatter(metadata);
+    
+    // Add basic template
+    const weekNum = parseInt(weekKey.split('-W')[1]);
+    const year = parseInt(weekKey.split('-')[0]);
+    
+    content += `# Week ${weekNum}, ${year}\n\n## Reflections\n\n## Tasks\n\n## Notes\n\n`;
+    
+    // Create folder if needed
+    if (this.settings.notesFolder && this.settings.notesFolder.trim() !== "") {
+      try {
+        const folderExists = this.app.vault.getAbstractFileByPath(this.settings.notesFolder);
+        if (!folderExists) {
+          await this.app.vault.createFolder(this.settings.notesFolder);
+        }
+      } catch (err) {
+        console.log("Error checking/creating folder:", err);
+      }
+    }
+    
+    // Create file
+    await this.app.vault.create(fullPath, content);
+  }
+  
+  return true;
+}
 
 /**
  * Format metadata as YAML frontmatter

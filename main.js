@@ -616,10 +616,10 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
         return targetDate;
     }
     /**
-   * Get event metadata from a note
-   * @param weekKey - Week key in YYYY-WXX format
-   * @returns Event metadata if found
-   */
+     * Get event metadata from a note
+     * @param weekKey - Week key in YYYY-WXX format
+     * @returns Event metadata if found
+     */
     async getEventFromNote(weekKey) {
         const fileName = `${weekKey.replace("W", "-W")}.md`;
         const fullPath = this.getFullPath(fileName);
