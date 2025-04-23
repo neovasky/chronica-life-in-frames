@@ -648,8 +648,8 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
                 }
             });
             return {
-                event: metadata.event,
-                name: metadata.name,
+                event: metadata.event || metadata.name,
+                name: metadata.name || metadata.event,
                 description: metadata.description,
                 type: metadata.type,
                 color: metadata.color,
@@ -721,6 +721,11 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
      */
     formatFrontmatter(metadata) {
         let frontmatter = "---\n";
+        // If both event and name are the same value, only include name
+        if (metadata.event && metadata.name && metadata.event === metadata.name) {
+            const { event, ...rest } = metadata; // Remove event property
+            metadata = rest;
+        }
         // Add each metadata field
         Object.entries(metadata).forEach(([key, value]) => {
             if (value !== undefined && value !== null && value !== '') {

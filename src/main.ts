@@ -896,8 +896,8 @@ async getEventFromNote(weekKey: string): Promise<{
     });
     
     return {
-      event: metadata.event,
-      name: metadata.name,
+      event: metadata.event || metadata.name, 
+      name: metadata.name || metadata.event,  
       description: metadata.description,
       type: metadata.type,
       color: metadata.color,
@@ -985,22 +985,28 @@ async updateEventInNote(
  * @param metadata - Event metadata
  * @returns Formatted frontmatter string
  */
-formatFrontmatter(metadata: Record<string, any>): string {
-  let frontmatter = "---\n";
-  
-  // Add each metadata field
-  Object.entries(metadata).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== '') {
-      // If value contains special characters, wrap in quotes
-      const needsQuotes = /[:#\[\]{}|>*&!%@,]/.test(String(value));
-      const formattedValue = needsQuotes ? `"${value}"` : value;
-      frontmatter += `${key}: ${formattedValue}\n`;
+    formatFrontmatter(metadata: Record<string, any>): string {
+      let frontmatter = "---\n";
+      
+      // If both event and name are the same value, only include name
+      if (metadata.event && metadata.name && metadata.event === metadata.name) {
+        const { event, ...rest } = metadata; // Remove event property
+        metadata = rest;
+      }
+      
+      // Add each metadata field
+      Object.entries(metadata).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          // If value contains special characters, wrap in quotes
+          const needsQuotes = /[:#\[\]{}|>*&!%@,]/.test(String(value));
+          const formattedValue = needsQuotes ? `"${value}"` : value;
+          frontmatter += `${key}: ${formattedValue}\n`;
+        }
+      });
+      
+      frontmatter += "---\n\n";
+      return frontmatter;
     }
-  });
-  
-  frontmatter += "---\n\n";
-  return frontmatter;
-}
 }
 
 
