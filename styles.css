@@ -430,6 +430,17 @@
   position: relative;
 }
 
+/* ── Shape Variants ── */
+.chronos-grid.shape-circle .chronos-grid-cell {
+  border-radius: 50%;
+  clip-path: none;
+}
+
+.chronos-grid.shape-diamond .chronos-grid-cell {
+  border-radius: 0;
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+}
+
 .chronos-grid-cell:hover {
   transform: scale(1.2);
   box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);

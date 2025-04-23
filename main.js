@@ -81,6 +81,7 @@ const DEFAULT_SETTINGS = {
     zoomLevel: 1.0,
     isSidebarOpen: false,
     isStatsPanelMinimized: false,
+    cellShape: 'square',
 };
 /** SVG icon for the ChronOS Timeline */
 const CHRONOS_ICON = `<svg viewBox="0 0 100 100" width="100" height="100" xmlns="http://www.w3.org/2000/svg">
@@ -1813,6 +1814,30 @@ class ChronosTimelineView extends obsidian.ItemView {
         fitToScreenBtn.addEventListener("click", () => {
             this.fitToScreen();
         });
+        // ── Cell Shape Dropdown ──
+        visualContainer.createEl("div", {
+            cls: "section-header",
+            text: "Cell Shape"
+        });
+        // Select
+        const shapeSelect = visualContainer.createEl("select", {
+            cls: "chronos-select"
+        });
+        ["square", "circle", "diamond"].forEach((opt) => {
+            const option = shapeSelect.createEl("option", {
+                attr: { value: opt },
+                text: opt.charAt(0).toUpperCase() + opt.slice(1)
+            });
+            if (this.plugin.settings.cellShape === opt) {
+                option.selected = true;
+            }
+        });
+        shapeSelect.addEventListener("change", async () => {
+            this.plugin.settings.cellShape = shapeSelect.value;
+            await this.plugin.saveSettings();
+            // Re-render grid with new shape
+            this.updateZoomLevel();
+        });
         // Legend section (vertical)
         const legendSection = sidebarEl.createEl("div", {
             cls: "chronos-sidebar-section",
@@ -2212,6 +2237,8 @@ class ChronosTimelineView extends obsidian.ItemView {
         }
         // Create the grid container
         const gridEl = container.createEl("div", { cls: "chronos-grid" });
+        gridEl.toggleClass('shape-circle', this.plugin.settings.cellShape === 'circle');
+        gridEl.toggleClass('shape-diamond', this.plugin.settings.cellShape === 'diamond');
         // Use display block instead of grid, as we'll manually position each cell
         gridEl.style.display = "block";
         gridEl.style.position = "absolute";
@@ -3187,6 +3214,25 @@ class ChronosSettingTab extends obsidian.PluginSettingTab {
                 this.plugin.settings.zoomLevel = value;
                 await this.plugin.saveSettings();
                 this.refreshAllViews();
+            }));
+            new obsidian.Setting(containerEl)
+                .setName('Cell Shape')
+                .setDesc('Square, circle, or diamond.')
+                .addDropdown(drop => drop
+                .addOption('square', 'Square')
+                .addOption('circle', 'Circle')
+                .addOption('diamond', 'Diamond')
+                .setValue(this.plugin.settings.cellShape)
+                .onChange(async (value) => {
+                this.plugin.settings.cellShape = value;
+                await this.plugin.saveSettings();
+                // Re-render each open ChronOS Timeline view so the new shape takes effect
+                this.plugin.app.workspace
+                    .getLeavesOfType(TIMELINE_VIEW_TYPE)
+                    .forEach((leaf) => {
+                    const view = leaf.view;
+                    view.updateZoomLevel();
+                });
             }));
         }
         // Help tips section
