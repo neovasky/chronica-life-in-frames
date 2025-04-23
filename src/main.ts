@@ -211,20 +211,35 @@ export default class ChronosTimelinePlugin extends Plugin {
    */
   async onload(): Promise<void> {
     console.log("Loading ChronOS Timeline Plugin");
-
-    // Register the custom icon
-    addIcon("chronos-icon", CHRONOS_ICON);
-
-    // Load settings from storage
-    await this.loadSettings();
-
-    // Register the timeline view
-    this.registerView(
-      TIMELINE_VIEW_TYPE,
-      (leaf) => new ChronosTimelineView(leaf, this)
+  
+    // 1) Register the timeline view exactly once
+    try {
+      this.registerView(
+        TIMELINE_VIEW_TYPE,
+        (leaf) => new ChronosTimelineView(leaf, this)
+      );
+    } catch (e) {
+      // already registered on hot-reload—ignore
+    }
+  
+    // 2) Re-draw whenever a new weekly note appears
+    this.registerEvent(
+      this.app.vault.on("create", () => this.refreshAllViews())
     );
-
-    // Add ribbon icon to open timeline
+  
+    // 3) On deletion, remove from settings AND re-draw
+    this.registerEvent(
+      this.app.vault.on("delete", async (file) => {
+        if (file instanceof TFile) {
+          await this.handleFileDelete(file);
+          this.refreshAllViews();
+        }
+      })
+    );
+  
+    // 4) Now your regular setup
+    addIcon("chronos-icon", CHRONOS_ICON);
+    await this.loadSettings();
     this.addRibbonIcon("chronos-icon", "Open ChronOS Timeline", () => {
       this.activateView();
     });
@@ -257,6 +272,15 @@ export default class ChronosTimelinePlugin extends Plugin {
     this.registerInterval(
       window.setInterval(() => this.checkAndAutoFill(), 1000 * 60 * 60)
     );
+
+  }
+
+  public refreshAllViews(): void {
+    this.app.workspace
+      .getLeavesOfType(TIMELINE_VIEW_TYPE)
+      .forEach((leaf) => {
+        (leaf.view as ChronosTimelineView).renderView();
+      });
   }
 
   /**
@@ -1007,6 +1031,140 @@ async updateEventInNote(
       frontmatter += "---\n\n";
       return frontmatter;
     }
+
+    /**
+ * Handle file deletion and remove any associated events
+ * @param file - File that was deleted
+ */
+async handleFileDelete(file: TFile): Promise<void> {
+  // Check if the file is a week or event note
+  const filePath = file.path;
+  const fileName = filePath.split("/").pop() || "";
+  
+  // Check if it matches our event file naming pattern
+  const weekPattern = /(\d{4}-W\d{2})\.md$/;
+  const rangePattern = /(\d{4}-W\d{2})_to_(\d{4}-W\d{2})\.md$/;
+  
+  let weekKeys: string[] = [];
+  
+  // Single week file
+  const weekMatch = fileName.match(weekPattern);
+  if (weekMatch) {
+    const weekKey = weekMatch[1].replace("-W", "-W");
+    weekKeys.push(weekKey);
+  }
+  
+  // Range week file
+  const rangeMatch = fileName.match(rangePattern);
+  if (rangeMatch) {
+    const startWeekKey = rangeMatch[1].replace("-W", "-W");
+    const endWeekKey = rangeMatch[2].replace("-W", "-W");
+    
+    // For range events, we need to get all weeks in the range
+    // Parse dates from week keys
+    const startYear = parseInt(startWeekKey.split("-W")[0]);
+    const startWeek = parseInt(startWeekKey.split("-W")[1]);
+    const endYear = parseInt(endWeekKey.split("-W")[0]);
+    const endWeek = parseInt(endWeekKey.split("-W")[1]);
+    
+    // Create actual dates
+    const startDate = new Date(startYear, 0, 1);
+    startDate.setDate(startDate.getDate() + (startWeek - 1) * 7);
+    
+    const endDate = new Date(endYear, 0, 1);
+    endDate.setDate(endDate.getDate() + (endWeek - 1) * 7 + 6);
+    
+    // Get all week keys in the range
+    weekKeys = this.getWeekKeysBetweenDates(startDate, endDate);
+  }
+  
+  // If no matching week keys found, exit
+  if (weekKeys.length === 0) return;
+  
+  // Check each of our event collections and remove matching events
+  let needsSave = false;
+  
+  // Helper function to filter events
+  const filterEvents = (events: string[]): string[] => {
+    return events.filter((eventData) => {
+      const parts = eventData.split(":");
+      
+      // Single event (format: weekKey:description)
+      if (parts.length === 2) {
+        return !weekKeys.includes(parts[0]);
+      }
+      
+      // Range event (format: startWeekKey:endWeekKey:description)
+      if (parts.length === 3) {
+        const [startKey, endKey] = parts;
+        // Skip if either the start or end key matches one of our weeks
+        return !(weekKeys.includes(startKey) || weekKeys.includes(endKey));
+      }
+      
+      return true; // Keep any event we don't understand
+    });
+  };
+  
+  // Filter standard event types
+  const newGreenEvents = filterEvents(this.settings.greenEvents);
+  if (newGreenEvents.length !== this.settings.greenEvents.length) {
+    this.settings.greenEvents = newGreenEvents;
+    needsSave = true;
+  }
+  
+  const newBlueEvents = filterEvents(this.settings.blueEvents);
+  if (newBlueEvents.length !== this.settings.blueEvents.length) {
+    this.settings.blueEvents = newBlueEvents;
+    needsSave = true;
+  }
+  
+  const newPinkEvents = filterEvents(this.settings.pinkEvents);
+  if (newPinkEvents.length !== this.settings.pinkEvents.length) {
+    this.settings.pinkEvents = newPinkEvents;
+    needsSave = true;
+  }
+  
+  const newPurpleEvents = filterEvents(this.settings.purpleEvents);
+  if (newPurpleEvents.length !== this.settings.purpleEvents.length) {
+    this.settings.purpleEvents = newPurpleEvents;
+    needsSave = true;
+  }
+  
+  // Filter custom events
+  if (this.settings.customEventTypes && this.settings.customEvents) {
+    for (const type of this.settings.customEventTypes) {
+      if (this.settings.customEvents[type.name]) {
+        const newCustomEvents = filterEvents(this.settings.customEvents[type.name]);
+        if (newCustomEvents.length !== this.settings.customEvents[type.name].length) {
+          this.settings.customEvents[type.name] = newCustomEvents;
+          needsSave = true;
+        }
+      }
+    }
+  }
+  
+  // If we made changes, save settings and refresh views
+  if (needsSave) {
+    await this.saveSettings();
+    
+    // Refresh all timeline views
+    this.app.workspace
+    .getLeavesOfType(TIMELINE_VIEW_TYPE)
+    .forEach((leaf) => {
+      const view = leaf.view as ChronosTimelineView;
+      view.renderView();
+    });
+    
+    new Notice(`Event removed from timeline grid`);
+  }
+  else {
+    // Weekly‐note file was deleted (no settings event removed) — still need to repaint
+      this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE).forEach((leaf) => {
+            const view = leaf.view as ChronosTimelineView;
+              view.renderView();
+    });
+    }
+  }
 }
 
 
