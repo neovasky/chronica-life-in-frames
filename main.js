@@ -2067,8 +2067,8 @@ class ChronosTimelineView extends obsidian.ItemView {
     updateZoomLevel() {
         // Get the container element
         const contentEl = this.containerEl.children[1];
-        // Update zoom level indicator
-        const zoomLabel = contentEl.querySelector(".chronos-zoom-level");
+        // Use a more robust selector to find the zoom level indicator anywhere in the container
+        const zoomLabel = this.containerEl.querySelector(".chronos-zoom-level");
         if (zoomLabel) {
             zoomLabel.textContent = `${Math.round(this.plugin.settings.zoomLevel * 100)}%`;
         }
