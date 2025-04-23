@@ -649,6 +649,7 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
             });
             return {
                 event: metadata.event,
+                name: metadata.name,
                 description: metadata.description,
                 type: metadata.type,
                 color: metadata.color,
@@ -752,6 +753,8 @@ class ChronosEventModal extends obsidian.Modal {
     selectedColor = "#4CAF50";
     /** Description of the event */
     eventDescription = "";
+    /** Name of the event */
+    eventName = "";
     /** Currently selected date input field reference */
     singleDateInput;
     /** Start date input field reference */
@@ -931,6 +934,13 @@ class ChronosEventModal extends obsidian.Modal {
                     : `This date falls in week: ${this.selectedDate}`,
             });
         }
+        // Event name field - This should be OUTSIDE of any conditional blocks
+        new obsidian.Setting(contentEl)
+            .setName("Event Name")
+            .setDesc("Short title for this event")
+            .addText((text) => text.setPlaceholder("Event name").onChange((value) => {
+            this.eventName = value;
+        }));
         // Event description field
         new obsidian.Setting(contentEl)
             .setName("Description")
@@ -1044,8 +1054,8 @@ class ChronosEventModal extends obsidian.Modal {
             new obsidian.Notice("Please select a date");
             return;
         }
-        if (!this.eventDescription) {
-            new obsidian.Notice("Please add a description");
+        if (!this.eventName) {
+            new obsidian.Notice("Please add an event name");
             return;
         }
         // For date range, validate end date
@@ -1085,7 +1095,8 @@ class ChronosEventModal extends obsidian.Modal {
             this.createEventNote(fileName, startDate, endDate);
             // NEW: Add metadata to the first week's note
             const metadata = {
-                event: this.eventDescription,
+                event: this.eventName,
+                name: this.eventName,
                 description: this.eventDescription,
                 type: this.selectedEventType,
                 color: this.selectedColor,
@@ -1112,7 +1123,8 @@ class ChronosEventModal extends obsidian.Modal {
             this.createEventNote(fileName, eventDate);
             // NEW: Add metadata to the week note
             const metadata = {
-                event: this.eventDescription,
+                event: this.eventName,
+                name: this.eventName,
                 description: this.eventDescription,
                 type: this.selectedEventType,
                 color: this.selectedColor,
@@ -1183,7 +1195,8 @@ class ChronosEventModal extends obsidian.Modal {
                 const endDateStr = endDate.toISOString().split("T")[0];
                 // Add frontmatter
                 const metadata = {
-                    event: this.eventDescription,
+                    event: this.eventName,
+                    name: this.eventName,
                     description: this.eventDescription,
                     type: this.selectedEventType,
                     color: this.selectedColor,
@@ -1199,7 +1212,8 @@ class ChronosEventModal extends obsidian.Modal {
                 const dateStr = startDate.toISOString().split("T")[0];
                 // Add frontmatter
                 const metadata = {
-                    event: this.eventDescription,
+                    event: this.eventName,
+                    name: this.eventName,
                     description: this.eventDescription,
                     type: this.selectedEventType,
                     color: this.selectedColor,
@@ -2180,7 +2194,8 @@ class ChronosTimelineView extends obsidian.ItemView {
                         cell.style.border = `2px solid ${defaultColor}`;
                     }
                     // Build tooltip
-                    const eventDesc = eventData.description || eventData.event;
+                    const eventName = eventData.name || eventData.event;
+                    const eventDesc = eventData.description ? `: ${eventData.description}` : '';
                     const prevTitle = cell.getAttribute("title") || "";
                     // Include date range info if present
                     let dateInfo = "";
@@ -2190,7 +2205,7 @@ class ChronosTimelineView extends obsidian.ItemView {
                     else if (eventData.startDate) {
                         dateInfo = ` (${eventData.startDate})`;
                     }
-                    cell.setAttribute("title", `${eventDesc}${dateInfo}${prevTitle ? '\n' + prevTitle : ''}`);
+                    cell.setAttribute("title", `${eventName}${eventDesc}${dateInfo}${prevTitle ? '\n' + prevTitle : ''}`);
                     return true;
                 }
                 return false;

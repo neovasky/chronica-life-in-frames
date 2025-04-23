@@ -856,6 +856,7 @@ getWeekDateRange(weekKey: string): string {
  */
 async getEventFromNote(weekKey: string): Promise<{
   event?: string;
+  name: string;
   description?: string;
   type?: string;
   color?: string;
@@ -896,6 +897,7 @@ async getEventFromNote(weekKey: string): Promise<{
     
     return {
       event: metadata.event,
+      name: metadata.name,
       description: metadata.description,
       type: metadata.type,
       color: metadata.color,
@@ -915,9 +917,10 @@ async getEventFromNote(weekKey: string): Promise<{
  * @returns True if successful
  */
 async updateEventInNote(
-  weekKey: string, 
+  weekKey: string,
   metadata: {
     event: string;
+    name: string;
     description?: string;
     type: string;
     color: string;
@@ -1026,6 +1029,9 @@ class ChronosEventModal extends Modal {
 
   /** Description of the event */
   eventDescription: string = "";
+
+  /** Name of the event */
+  eventName: string = "";
 
   /** Currently selected date input field reference */
   singleDateInput!: HTMLInputElement; 
@@ -1236,7 +1242,7 @@ class ChronosEventModal extends Modal {
       text: "Select the date(s) of your event. The system determines the week(s) automatically.",
       cls: "chronos-helper-text",
     });
-
+    
     if (this.selectedDate) {
       contentEl.createEl("p", {
         text: this.isDateRange
@@ -1246,7 +1252,17 @@ class ChronosEventModal extends Modal {
           : `This date falls in week: ${this.selectedDate}`,
       });
     }
-
+    
+    // Event name field - This should be OUTSIDE of any conditional blocks
+    new Setting(contentEl)
+      .setName("Event Name")
+      .setDesc("Short title for this event")
+      .addText((text) =>
+        text.setPlaceholder("Event name").onChange((value) => {
+          this.eventName = value;
+        })
+      );
+    
     // Event description field
     new Setting(contentEl)
       .setName("Description")
@@ -1390,12 +1406,12 @@ async saveEvent(): Promise<void> {
     new Notice("Please select a date");
     return;
   }
-
-  if (!this.eventDescription) {
-    new Notice("Please add a description");
+  
+  if (!this.eventName) {
+    new Notice("Please add an event name");
     return;
   }
-
+  
   // For date range, validate end date
   if (
     this.isDateRange &&
@@ -1447,7 +1463,8 @@ async saveEvent(): Promise<void> {
     
     // NEW: Add metadata to the first week's note
     const metadata = {
-      event: this.eventDescription,
+      event: this.eventName,
+      name: this.eventName,
       description: this.eventDescription,
       type: this.selectedEventType,
       color: this.selectedColor,
@@ -1478,7 +1495,8 @@ async saveEvent(): Promise<void> {
     
     // NEW: Add metadata to the week note
     const metadata = {
-      event: this.eventDescription,
+      event: this.eventName,
+      name: this.eventName,
       description: this.eventDescription,
       type: this.selectedEventType,
       color: this.selectedColor,
@@ -1567,15 +1585,16 @@ async createEventNote(
       const startDateStr = startDate.toISOString().split("T")[0];
       const endDateStr = endDate.toISOString().split("T")[0];
       
-      // Add frontmatter
-      const metadata = {
-        event: this.eventDescription,
-        description: this.eventDescription,
-        type: this.selectedEventType,
-        color: this.selectedColor,
-        startDate: startDateStr,
-        endDate: endDateStr
-      };
+    // Add frontmatter
+    const metadata = {
+      event: this.eventName,
+      name: this.eventName,
+      description: this.eventDescription,
+      type: this.selectedEventType,
+      color: this.selectedColor,
+      startDate: startDateStr,
+      endDate: endDateStr
+    };
       
       content = this.plugin.formatFrontmatter(metadata);
       
@@ -1587,7 +1606,8 @@ async createEventNote(
       
       // Add frontmatter
       const metadata = {
-        event: this.eventDescription,
+        event: this.eventName,
+        name: this.eventName,
         description: this.eventDescription,
         type: this.selectedEventType,
         color: this.selectedColor,
@@ -2821,7 +2841,8 @@ applyEventStyling(cell: HTMLElement, weekKey: string): boolean {
         }
         
         // Build tooltip
-        const eventDesc = eventData.description || eventData.event;
+        const eventName = eventData.name || eventData.event;
+        const eventDesc = eventData.description ? `: ${eventData.description}` : '';
         const prevTitle = cell.getAttribute("title") || "";
         
         // Include date range info if present
@@ -2834,7 +2855,7 @@ applyEventStyling(cell: HTMLElement, weekKey: string): boolean {
         
         cell.setAttribute(
           "title",
-          `${eventDesc}${dateInfo}${prevTitle ? '\n' + prevTitle : ''}`
+          `${eventName}${eventDesc}${dateInfo}${prevTitle ? '\n' + prevTitle : ''}`
         );
         
         return true;
