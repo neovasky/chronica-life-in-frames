@@ -15,8 +15,11 @@ import {
   PluginSettingTab,
   Setting,
   TFile,
+  TFolder,
+  TAbstractFile,
   WorkspaceLeaf,
   addIcon,
+  AbstractInputSuggest,
 } from "obsidian";
 
 // -----------------------------------------------------------------------
@@ -118,6 +121,47 @@ interface CustomEventType {
   /** Color code for the event type (hex format) */
   color: string;
 }
+
+/**
+ * Suggest-modal that lists every vault folder path.
+ */
+class FolderSuggest extends AbstractInputSuggest<string> {
+  public inputEl: HTMLInputElement;
+  constructor(app: App, inputEl: HTMLInputElement) {
+    super(app, inputEl);
+    this.inputEl = inputEl;
+  }
+  
+
+  // Gather & filter all folder paths
+  getSuggestions(query: string): string[] {
+    const results: string[] = [];
+    const traverse = (folder: TFolder) => {
+      results.push(folder.path);
+      folder.children.forEach((child: TAbstractFile) => {
+        if (child instanceof TFolder) {
+          traverse(child);
+        }
+      });
+    };
+    traverse(this.app.vault.getRoot());
+    return results.filter((f) =>
+      f.toLowerCase().includes(query.toLowerCase())
+    );
+  }
+
+  // How each suggestion is rendered in the dropdown
+  renderSuggestion(item: string, el: HTMLElement): void {
+    el.createEl('div', { text: item });
+  }
+
+  // What happens when the user picks one
+  onChooseSuggestion(item: string): void {
+    this.inputEl.value = item;
+    this.inputEl.trigger('input');
+  }
+}
+
 
 /** Month marker information */
 interface MonthMarker {
@@ -3736,17 +3780,18 @@ class ChronosSettingTab extends PluginSettingTab {
 
     // Notes folder setting
     new Setting(containerEl)
-      .setName("Notes Folder")
-      .setDesc("Where to store week notes (leave empty for vault root)")
-      .addText((text) =>
-        text
-          .setPlaceholder("ChronOS Notes")
-          .setValue(this.plugin.settings.notesFolder || "")
-          .onChange(async (value) => {
-            this.plugin.settings.notesFolder = value;
-            await this.plugin.saveSettings();
-          })
-      );
+    .setName("Notes folder")
+    .setDesc("Select the folder where your weekly notes live")
+    .addSearch((search) => {
+      search
+        .setPlaceholder("Pick a folder…")
+        .setValue(this.plugin.settings.notesFolder)
+        .onChange(async (value) => {
+          this.plugin.settings.notesFolder = value;
+          await this.plugin.saveSettings();
+        });
+      new FolderSuggest(this.app, search.inputEl);
+    });
 
     // Quote setting
     new Setting(containerEl)

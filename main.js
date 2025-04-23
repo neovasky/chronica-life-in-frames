@@ -19,6 +19,39 @@ var obsidian = require('obsidian');
 // -----------------------------------------------------------------------
 /** Unique identifier for the timeline view */
 const TIMELINE_VIEW_TYPE = "chronos-timeline-view";
+/**
+ * Suggest-modal that lists every vault folder path.
+ */
+class FolderSuggest extends obsidian.AbstractInputSuggest {
+    inputEl;
+    constructor(app, inputEl) {
+        super(app, inputEl);
+        this.inputEl = inputEl;
+    }
+    // Gather & filter all folder paths
+    getSuggestions(query) {
+        const results = [];
+        const traverse = (folder) => {
+            results.push(folder.path);
+            folder.children.forEach((child) => {
+                if (child instanceof obsidian.TFolder) {
+                    traverse(child);
+                }
+            });
+        };
+        traverse(this.app.vault.getRoot());
+        return results.filter((f) => f.toLowerCase().includes(query.toLowerCase()));
+    }
+    // How each suggestion is rendered in the dropdown
+    renderSuggestion(item, el) {
+        el.createEl('div', { text: item });
+    }
+    // What happens when the user picks one
+    onChooseSuggestion(item) {
+        this.inputEl.value = item;
+        this.inputEl.trigger('input');
+    }
+}
 /** Default plugin settings */
 const DEFAULT_SETTINGS = {
     birthday: "2003-07-18",
@@ -157,12 +190,6 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
             .forEach((leaf) => {
             leaf.view.renderView();
         });
-    }
-    /**
-     * Clean up on plugin unload
-     */
-    onunload() {
-        console.log("Unloading ChronOS Timeline Plugin");
     }
     /**
      * Load settings from storage
@@ -2788,15 +2815,18 @@ class ChronosSettingTab extends obsidian.PluginSettingTab {
         }));
         // Notes folder setting
         new obsidian.Setting(containerEl)
-            .setName("Notes Folder")
-            .setDesc("Where to store week notes (leave empty for vault root)")
-            .addText((text) => text
-            .setPlaceholder("ChronOS Notes")
-            .setValue(this.plugin.settings.notesFolder || "")
-            .onChange(async (value) => {
-            this.plugin.settings.notesFolder = value;
-            await this.plugin.saveSettings();
-        }));
+            .setName("Notes folder")
+            .setDesc("Select the folder where your weekly notes live")
+            .addSearch((search) => {
+            search
+                .setPlaceholder("Pick a folder…")
+                .setValue(this.plugin.settings.notesFolder)
+                .onChange(async (value) => {
+                this.plugin.settings.notesFolder = value;
+                await this.plugin.saveSettings();
+            });
+            new FolderSuggest(this.app, search.inputEl);
+        });
         // Quote setting
         new obsidian.Setting(containerEl)
             .setName("Footer Quote")
