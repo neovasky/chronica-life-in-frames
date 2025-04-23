@@ -305,6 +305,23 @@
   user-select: none;
 }
 
+/* ► type your own zoom % */
+.chronos-zoom-input {
+  width: 60px;
+  font-size: 16px;
+  text-align: center;
+  background: transparent;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  color: var(--text-normal);
+  padding: 4px 6px;
+  margin: 0 8px;
+}
+.chronos-zoom-input:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+}
+
 /* Fit to screen button */
 .chronos-fit-to-screen {
   margin-top: 5px;

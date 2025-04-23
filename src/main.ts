@@ -2315,9 +2315,27 @@ class ChronosTimelineView extends ItemView {
     });
 
     // Add zoom level indicator
-    const zoomLabel = zoomControlsDiv.createEl("span", {
-      text: `${Math.round(this.plugin.settings.zoomLevel * 100)}%`,
-      cls: "chronos-zoom-level",
+    const zoomInput = zoomControlsDiv.createEl("input", {
+      cls: "chronos-zoom-input",
+      attr: {
+        type:   "number",
+        min:    "10",
+        max:    "500",
+        step:   "1",
+        value:  `${Math.round(this.plugin.settings.zoomLevel * 100)}`,
+        title:  "Enter zoom % and press ↵",
+      },
+    });
+    zoomInput.addEventListener("change", async (e) => {
+      const input = e.target as HTMLInputElement;
+      let val = parseInt(input.value, 10);
+      if (isNaN(val)) val = Math.round(this.plugin.settings.zoomLevel * 100);
+      val = Math.min(500, Math.max(10, val));
+      this.plugin.settings.zoomLevel = val / 100;
+      await this.plugin.saveSettings();
+      this.updateZoomLevel();
+      // reflect any clamping back
+      input.value = `${Math.round(this.plugin.settings.zoomLevel * 100)}`;
     });
 
     // Zoom in button with SVG icon
