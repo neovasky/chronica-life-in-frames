@@ -422,49 +422,177 @@ export default class ChronosTimelinePlugin extends Plugin {
     return fileName;
   }
 
-  /**
-   * Create or open a note for the current week
-   */
-  async createOrOpenWeekNote(): Promise<void> {
-    try {
-      const date = new Date();
-      const year = date.getFullYear();
-      const weekNum = this.getISOWeekNumber(date);
-      const fileName = `${year}-W${weekNum.toString().padStart(2, "0")}.md`;
-      const fullPath = this.getFullPath(fileName);
+/**
+ * Create or open a note for the current week
+ */
+async createOrOpenWeekNote(): Promise<void> {
+  try {
+    const date = new Date();
+    const year = date.getFullYear();
+    const weekNum = this.getISOWeekNumber(date);
+    const fileName = `${year}-W${weekNum.toString().padStart(2, "0")}.md`;
+    const fullPath = this.getFullPath(fileName);
+    const weekKey = `${year}-W${weekNum.toString().padStart(2, "0")}`;
 
-      const existingFile = this.app.vault.getAbstractFileByPath(fullPath);
+    const existingFile = this.app.vault.getAbstractFileByPath(fullPath);
 
-      if (existingFile instanceof TFile) {
-        // Open existing file
-        await this.app.workspace.getLeaf().openFile(existingFile);
-      } else {
-        // Create folder if needed
-        if (
-          this.settings.notesFolder &&
-          this.settings.notesFolder.trim() !== ""
-        ) {
-          try {
-            const folderExists = this.app.vault.getAbstractFileByPath(
-              this.settings.notesFolder
-            );
-            if (!folderExists) {
-              await this.app.vault.createFolder(this.settings.notesFolder);
+    if (existingFile instanceof TFile) {
+      // Open existing file
+      await this.app.workspace.getLeaf().openFile(existingFile);
+    } else {
+      // Create folder if needed
+      if (
+        this.settings.notesFolder &&
+        this.settings.notesFolder.trim() !== ""
+      ) {
+        try {
+          const folderExists = this.app.vault.getAbstractFileByPath(
+            this.settings.notesFolder
+          );
+          if (!folderExists) {
+            await this.app.vault.createFolder(this.settings.notesFolder);
+          }
+        } catch (err) {
+          console.log("Error checking/creating folder:", err);
+        }
+      }
+
+      // Check if any events exist for this week in the plugin settings
+      let content = "";
+      let eventMeta = null;
+      
+      // Check built-in event types
+      const eventTypes = [
+        { events: this.settings.greenEvents, type: "Major Life", color: "#4CAF50" },
+        { events: this.settings.blueEvents, type: "Travel", color: "#2196F3" },
+        { events: this.settings.pinkEvents, type: "Relationship", color: "#E91E63" },
+        { events: this.settings.purpleEvents, type: "Education/Career", color: "#9C27B0" }
+      ];
+      
+      // Check for single events
+      for (const { events, type, color } of eventTypes) {
+        for (const eventData of events) {
+          const parts = eventData.split(':');
+          // Check single events (2 parts)
+          if (parts.length === 2 && parts[0] === weekKey) {
+            eventMeta = {
+              event: parts[1],
+              description: parts[1],
+              type: type,
+              color: color,
+              startDate: date.toISOString().split('T')[0]
+            };
+            break;
+          }
+          // Check range events (3 parts)
+          if (parts.length === 3) {
+            const [startWeekKey, endWeekKey, description] = parts;
+            // Parse week numbers
+            const startYear = parseInt(startWeekKey.split('-W')[0]);
+            const startWeek = parseInt(startWeekKey.split('-W')[1]);
+            const endYear = parseInt(endWeekKey.split('-W')[0]);
+            const endWeek = parseInt(endWeekKey.split('-W')[1]);
+            
+            // Create dates to compare
+            const startDate = new Date(startYear, 0, 1);
+            startDate.setDate(startDate.getDate() + (startWeek - 1) * 7);
+            
+            const endDate = new Date(endYear, 0, 1);
+            endDate.setDate(endDate.getDate() + (endWeek - 1) * 7 + 6);
+            
+            // Check if current week falls within range
+            if (
+              year >= startYear && year <= endYear &&
+              ((year === startYear && weekNum >= startWeek) || year > startYear) &&
+              ((year === endYear && weekNum <= endWeek) || year < endYear)
+            ) {
+              eventMeta = {
+                event: description,
+                description: description,
+                type: type,
+                color: color,
+                startDate: startDate.toISOString().split('T')[0],
+                endDate: endDate.toISOString().split('T')[0]
+              };
+              break;
             }
-          } catch (err) {
-            console.log("Error checking/creating folder:", err);
           }
         }
-
-        // Create new file with template
-        const content = `# Week ${weekNum}, ${year}\n\n## Reflections\n\n## Tasks\n\n## Notes\n`;
-        const newFile = await this.app.vault.create(fullPath, content);
-        await this.app.workspace.getLeaf().openFile(newFile);
+        if (eventMeta) break;
       }
-    } catch (error) {
-      new Notice(`Error creating week note: ${error}`);
+      
+      // Check custom events if no built-in event found
+      if (!eventMeta && this.settings.customEventTypes) {
+        for (const customType of this.settings.customEventTypes) {
+          const events = this.settings.customEvents[customType.name] || [];
+          for (const eventData of events) {
+            const parts = eventData.split(':');
+            // Check single events
+            if (parts.length === 2 && parts[0] === weekKey) {
+              eventMeta = {
+                event: parts[1],
+                description: parts[1],
+                type: customType.name,
+                color: customType.color,
+                startDate: date.toISOString().split('T')[0]
+              };
+              break;
+            }
+            // Check range events
+            if (parts.length === 3) {
+              const [startWeekKey, endWeekKey, description] = parts;
+              // Parse week numbers
+              const startYear = parseInt(startWeekKey.split('-W')[0]);
+              const startWeek = parseInt(startWeekKey.split('-W')[1]);
+              const endYear = parseInt(endWeekKey.split('-W')[0]);
+              const endWeek = parseInt(endWeekKey.split('-W')[1]);
+              
+              // Check if current week falls within range
+              if (
+                year >= startYear && year <= endYear &&
+                ((year === startYear && weekNum >= startWeek) || year > startYear) &&
+                ((year === endYear && weekNum <= endWeek) || year < endYear)
+              ) {
+                const startDate = new Date(startYear, 0, 1);
+                startDate.setDate(startDate.getDate() + (startWeek - 1) * 7);
+                
+                const endDate = new Date(endYear, 0, 1);
+                endDate.setDate(endDate.getDate() + (endWeek - 1) * 7 + 6);
+                
+                eventMeta = {
+                  event: description,
+                  description: description,
+                  type: customType.name,
+                  color: customType.color,
+                  startDate: startDate.toISOString().split('T')[0],
+                  endDate: endDate.toISOString().split('T')[0]
+                };
+                break;
+              }
+            }
+          }
+          if (eventMeta) break;
+        }
+      }
+      
+      // Add frontmatter if event exists
+      if (eventMeta) {
+        content = this.formatFrontmatter(eventMeta);
+      } else {
+        // Add empty frontmatter
+        content = this.formatFrontmatter({});
+      }
+      
+      // Add note template
+      content += `# Week ${weekNum}, ${year}\n\n## Reflections\n\n## Tasks\n\n## Notes\n`;
+
+      const newFile = await this.app.vault.create(fullPath, content);
+      await this.app.workspace.getLeaf().openFile(newFile);
     }
+  } catch (error) {
+    new Notice(`Error creating week note: ${error}`);
   }
+}
 
   /**
    * Calculate ISO week number for a given date
@@ -588,6 +716,8 @@ getWeekKeyFromDate(date: Date): string {
     // Clone the birthday date to avoid modifying the original
     const startDate = new Date(birthdayDate.getTime());
     startDate.setHours(0, 0, 0, 0);
+
+    
     
     // Calculate the end date (birthday + total years)
     const endDate = new Date(startDate.getTime());
@@ -718,7 +848,158 @@ getWeekDateRange(weekKey: string): string {
     targetDate.setFullYear(birthDate.getFullYear() + ageYear);
     return targetDate;
   }
+
+      /**
+     * Get event metadata from a note
+     * @param weekKey - Week key in YYYY-WXX format
+     * @returns Event metadata if found
+     */
+    async getEventFromNote(weekKey: string): Promise<{
+      event?: string;
+      description?: string;
+      type?: string;
+      color?: string;
+      startDate?: string;
+      endDate?: string;
+    } | null> {
+      const fileName = `${weekKey.replace("W", "-W")}.md`;
+      const fullPath = this.getFullPath(fileName);
+      
+      // Check if file exists
+      const file = this.app.vault.getAbstractFileByPath(fullPath);
+      if (!(file instanceof TFile)) {
+        return null;
+      }
+      
+      // Read file content
+      const content = await this.app.vault.read(file);
+      
+      // Check for YAML frontmatter
+      const frontmatterMatch = content.match(/^---\s+([\s\S]*?)\s+---/);
+      if (!frontmatterMatch) {
+        return null;
+      }
+      
+      // Parse YAML frontmatter
+      try {
+        const frontmatter = frontmatterMatch[1];
+        const metadata: Record<string, any> = {};
+        
+        // Simple YAML parsing (not using an external parser for simplicity)
+        frontmatter.split('\n').forEach(line => {
+          const match = line.match(/^([^:]+):\s*(.+)$/);
+          if (match) {
+            const [_, key, value] = match;
+            metadata[key.trim()] = value.trim().replace(/^"(.*)"$/, '$1');
+          }
+        });
+        
+        return {
+          event: metadata.event,
+          description: metadata.description,
+          type: metadata.type,
+          color: metadata.color,
+          startDate: metadata.startDate,
+          endDate: metadata.endDate
+        };
+      } catch (error) {
+        console.log("Error parsing frontmatter:", error);
+        return null;
+      }
+    }
+
+    /**
+     * Update or add event metadata to a note
+     * @param weekKey - Week key in YYYY-WXX format
+     * @param metadata - Event metadata to add
+     * @returns True if successful
+     */
+    async updateEventInNote(
+      weekKey: string, 
+      metadata: {
+        event: string;
+        description?: string;
+        type: string;
+        color: string;
+        startDate?: string;
+        endDate?: string;
+      }
+    ): Promise<boolean> {
+      const fileName = `${weekKey.replace("W", "-W")}.md`;
+      const fullPath = this.getFullPath(fileName);
+      
+      // Check if file exists
+      let file = this.app.vault.getAbstractFileByPath(fullPath);
+      let content = "";
+      
+      if (file instanceof TFile) {
+        // Read existing content
+        content = await this.app.vault.read(file);
+        
+        // Replace existing frontmatter or add new frontmatter
+        const hasFrontmatter = content.match(/^---\s+[\s\S]*?\s+---/);
+        if (hasFrontmatter) {
+          // Replace existing frontmatter
+          content = content.replace(/^---\s+[\s\S]*?\s+---/, this.formatFrontmatter(metadata));
+        } else {
+          // Add frontmatter at the beginning
+          content = this.formatFrontmatter(metadata) + content;
+        }
+        
+        // Update file
+        await this.app.vault.modify(file, content);
+      } else {
+        // Create new file with frontmatter and basic template
+        content = this.formatFrontmatter(metadata);
+        
+        // Add basic template
+        const weekNum = parseInt(weekKey.split('-W')[1]);
+        const year = parseInt(weekKey.split('-')[0]);
+        
+        content += `# Week ${weekNum}, ${year}\n\n## Reflections\n\n## Tasks\n\n## Notes\n\n`;
+        
+        // Create folder if needed
+        if (this.settings.notesFolder && this.settings.notesFolder.trim() !== "") {
+          try {
+            const folderExists = this.app.vault.getAbstractFileByPath(this.settings.notesFolder);
+            if (!folderExists) {
+              await this.app.vault.createFolder(this.settings.notesFolder);
+            }
+          } catch (err) {
+            console.log("Error checking/creating folder:", err);
+          }
+        }
+        
+        // Create file
+        await this.app.vault.create(fullPath, content);
+      }
+      
+      return true;
+    }
+
+/**
+ * Format metadata as YAML frontmatter
+ * @param metadata - Event metadata
+ * @returns Formatted frontmatter string
+ */
+formatFrontmatter(metadata: Record<string, any>): string {
+  let frontmatter = "---\n";
+  
+  // Add each metadata field
+  Object.entries(metadata).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      // If value contains special characters, wrap in quotes
+      const needsQuotes = /[:#\[\]{}|>*&!%@,]/.test(String(value));
+      const formattedValue = needsQuotes ? `"${value}"` : value;
+      frontmatter += `${key}: ${formattedValue}\n`;
+    }
+  });
+  
+  frontmatter += "---\n\n";
+  return frontmatter;
 }
+}
+
 
 // -----------------------------------------------------------------------
 // EVENT MODAL CLASS
@@ -1100,99 +1381,119 @@ class ChronosEventModal extends Modal {
     }
   }
 
-  /**
-   * Save the event to settings and create a note
-   */
-  saveEvent(): void {
-    // Validate inputs
-    if (!this.selectedDate && this.startDateInput) {
-      new Notice("Please select a date");
-      return;
-    }
-
-    if (!this.eventDescription) {
-      new Notice("Please add a description");
-      return;
-    }
-
-    // For date range, validate end date
-    if (
-      this.isDateRange &&
-      (!this.selectedEndDate || !this.endDateInput?.value)
-    ) {
-      new Notice("Please select an end date for the range");
-      return;
-    }
-
-    // Handle adding custom event type if needed
-    if (this.isCustomType && this.customEventName) {
-      const existingIndex = this.plugin.settings.customEventTypes.findIndex(
-        (type) => type.name === this.customEventName
-      );
-
-      if (existingIndex === -1) {
-        this.plugin.settings.customEventTypes.push({
-          name: this.customEventName,
-          color: this.selectedColor,
-        });
-        this.plugin.settings.customEvents[this.customEventName] = [];
-      }
-
-      this.selectedEventType = this.customEventName;
-    }
-
-    // If using date range, create events for all weeks in the range
-    if (this.isDateRange && this.selectedEndDate) {
-      // Get start and end dates
-      const startDate = new Date(this.startDateInput.value);
-      const endDate = new Date(this.endDateInput.value);
-
-      // Get all week keys in the range
-      const weekKeys = this.plugin.getWeekKeysBetweenDates(startDate, endDate);
-
-      // Create filename for the note (use the whole range)
-      const startWeekKey = this.plugin.getWeekKeyFromDate(startDate);
-      const endWeekKey = this.plugin.getWeekKeyFromDate(endDate);
-      const fileName = `${startWeekKey.replace(
-        "W",
-        "-W"
-      )}_to_${endWeekKey.replace("W", "-W")}.md`;
-
-      // Format date range event data with range markers
-      const eventData = `${startWeekKey}:${endWeekKey}:${this.eventDescription}`;
-
-      // Add event to appropriate collection
-      this.addEventToCollection(eventData);
-
-      // Create a note for the event (for the range)
-      this.createEventNote(fileName, startDate, endDate);
-
-      // Save settings
-      this.plugin.saveSettings().then(() => {
-        new Notice(
-          `Event added: ${this.eventDescription} (${weekKeys.length} weeks)`
-        );
-        this.close();
-        this.refreshViews();
-      });
-    } else {
-      // Handle single date event (original functionality)
-      const eventDate = new Date(this.singleDateInput.value);
-      const weekKey   = this.plugin.getWeekKeyFromDate(eventDate);
-      const eventData = `${weekKey}:${this.eventDescription}`;
-    
-      this.addEventToCollection(eventData);
-    
-      const fileName = `${weekKey.replace("W", "-W")}.md`;
-      this.createEventNote(fileName, eventDate);
-    
-      this.plugin.saveSettings().then(() => {
-        new Notice(`Event added: ${this.eventDescription}`);
-        this.close();
-        this.refreshViews();
-      });
-    }
+/**
+ * Save the event to settings and create a note
+ */
+async saveEvent(): Promise<void> {
+  // Validate inputs
+  if (!this.selectedDate && this.startDateInput) {
+    new Notice("Please select a date");
+    return;
   }
+
+  if (!this.eventDescription) {
+    new Notice("Please add a description");
+    return;
+  }
+
+  // For date range, validate end date
+  if (
+    this.isDateRange &&
+    (!this.selectedEndDate || !this.endDateInput?.value)
+  ) {
+    new Notice("Please select an end date for the range");
+    return;
+  }
+
+  // Handle adding custom event type if needed
+  if (this.isCustomType && this.customEventName) {
+    const existingIndex = this.plugin.settings.customEventTypes.findIndex(
+      (type) => type.name === this.customEventName
+    );
+
+    if (existingIndex === -1) {
+      this.plugin.settings.customEventTypes.push({
+        name: this.customEventName,
+        color: this.selectedColor,
+      });
+      this.plugin.settings.customEvents[this.customEventName] = [];
+    }
+
+    this.selectedEventType = this.customEventName;
+  }
+
+  // If using date range, create events for all weeks in the range
+  if (this.isDateRange && this.selectedEndDate) {
+    // Get start and end dates
+    const startDate = new Date(this.startDateInput.value);
+    const endDate = new Date(this.endDateInput.value);
+
+    // Get all week keys in the range
+    const weekKeys = this.plugin.getWeekKeysBetweenDates(startDate, endDate);
+
+    // Create filename for the note (use the whole range)
+    const startWeekKey = this.plugin.getWeekKeyFromDate(startDate);
+    const endWeekKey = this.plugin.getWeekKeyFromDate(endDate);
+    const fileName = `${startWeekKey.replace("W", "-W")}_to_${endWeekKey.replace("W", "-W")}.md`;
+
+    // Format date range event data with range markers
+    const eventData = `${startWeekKey}:${endWeekKey}:${this.eventDescription}`;
+
+    // Add event to appropriate collection
+    this.addEventToCollection(eventData);
+
+    // Create a note for the event (for the range)
+    this.createEventNote(fileName, startDate, endDate);
+    
+    // NEW: Add metadata to the first week's note
+    const metadata = {
+      event: this.eventDescription,
+      description: this.eventDescription,
+      type: this.selectedEventType,
+      color: this.selectedColor,
+      startDate: startDate.toISOString().split('T')[0],
+      endDate: endDate.toISOString().split('T')[0]
+    };
+    
+    await this.plugin.updateEventInNote(startWeekKey, metadata);
+
+    // Save settings
+    this.plugin.saveSettings().then(() => {
+      new Notice(`Event added: ${this.eventDescription} (${weekKeys.length} weeks)`);
+      this.close();
+      this.refreshViews();
+    });
+  } else {
+    // Handle single date event (original functionality)
+    const eventDate = new Date(this.singleDateInput.value);
+    const weekKey = this.plugin.getWeekKeyFromDate(eventDate);
+    const eventData = `${weekKey}:${this.eventDescription}`;
+    const fileName = `${weekKey.replace("W", "-W")}.md`;
+    
+    // Add to existing event collections
+    this.addEventToCollection(eventData);
+    
+    // Create a note for the event
+    this.createEventNote(fileName, eventDate);
+    
+    // NEW: Add metadata to the week note
+    const metadata = {
+      event: this.eventDescription,
+      description: this.eventDescription,
+      type: this.selectedEventType,
+      color: this.selectedColor,
+      startDate: eventDate.toISOString().split('T')[0]
+    };
+    
+    await this.plugin.updateEventInNote(weekKey, metadata);
+
+    this.plugin.saveSettings().then(() => {
+      new Notice(`Event added: ${this.eventDescription}`);
+      this.close();
+      this.refreshViews();
+    });
+  }
+}
 
   /**
    * Add event to the appropriate collection based on event type
@@ -1223,55 +1524,85 @@ class ChronosEventModal extends Modal {
     }
   }
 
-  /**
-   * Create a note file for the event
-   * @param fileName - Name of the file
-   * @param startDate - Start date of the event
-   * @param endDate - Optional end date for range events
-   */
-  async createEventNote(
-    fileName: string,
-    startDate: Date,
-    endDate?: Date
-  ): Promise<void> {
-    const fullPath = this.plugin.getFullPath(fileName);
-    const fileExists =
-      this.plugin.app.vault.getAbstractFileByPath(fullPath) instanceof TFile;
+/**
+ * Create a note file for the event
+ * @param fileName - Name of the file
+ * @param startDate - Start date of the event
+ * @param endDate - Optional end date for range events
+ */
+async createEventNote(
+  fileName: string,
+  startDate: Date,
+  endDate?: Date
+): Promise<void> {
+  const fullPath = this.plugin.getFullPath(fileName);
+  const fileExists =
+    this.plugin.app.vault.getAbstractFileByPath(fullPath) instanceof TFile;
 
-    if (!fileExists) {
-      // Create folder if needed
-      if (
-        this.plugin.settings.notesFolder &&
-        this.plugin.settings.notesFolder.trim() !== ""
-      ) {
-        try {
-          const folderExists = this.app.vault.getAbstractFileByPath(
+  if (!fileExists) {
+    // Create folder if needed
+    if (
+      this.plugin.settings.notesFolder &&
+      this.plugin.settings.notesFolder.trim() !== ""
+    ) {
+      try {
+        const folderExists = this.app.vault.getAbstractFileByPath(
+          this.plugin.settings.notesFolder
+        );
+        if (!folderExists) {
+          await this.app.vault.createFolder(
             this.plugin.settings.notesFolder
           );
-          if (!folderExists) {
-            await this.app.vault.createFolder(this.plugin.settings.notesFolder);
-          }
-        } catch (err) {
-          console.log("Error checking/creating folder:", err);
         }
+      } catch (err) {
+        console.log("Error checking/creating folder:", err);
       }
-
-      // Create event note file with appropriate content
-      let content = "";
-      if (endDate) {
-        // Range event
-        const startDateStr = startDate.toISOString().split("T")[0];
-        const endDateStr = endDate.toISOString().split("T")[0];
-        content = `# Event: ${this.eventDescription}\n\nStart Date: ${startDateStr}\nEnd Date: ${endDateStr}\nType: ${this.selectedEventType}\n\n## Notes\n\n`;
-      } else {
-        // Single date event
-        const dateStr = startDate.toISOString().split("T")[0];
-        content = `# Event: ${this.eventDescription}\n\nDate: ${dateStr}\nType: ${this.selectedEventType}\n\n## Notes\n\n`;
-      }
-
-      await this.app.vault.create(fullPath, content);
     }
+
+    // Create event note file with frontmatter and content
+    let content = "";
+    
+    if (endDate) {
+      // Range event
+      const startDateStr = startDate.toISOString().split("T")[0];
+      const endDateStr = endDate.toISOString().split("T")[0];
+      
+      // Add frontmatter
+      const metadata = {
+        event: this.eventDescription,
+        description: this.eventDescription,
+        type: this.selectedEventType,
+        color: this.selectedColor,
+        startDate: startDateStr,
+        endDate: endDateStr
+      };
+      
+      content = this.plugin.formatFrontmatter(metadata);
+      
+      // Add note content
+      content += `# Event: ${this.eventDescription}\n\nStart Date: ${startDateStr}\nEnd Date: ${endDateStr}\nType: ${this.selectedEventType}\n\n## Notes\n\n`;
+    } else {
+      // Single date event
+      const dateStr = startDate.toISOString().split("T")[0];
+      
+      // Add frontmatter
+      const metadata = {
+        event: this.eventDescription,
+        description: this.eventDescription,
+        type: this.selectedEventType,
+        color: this.selectedColor,
+        startDate: dateStr
+      };
+      
+      content = this.plugin.formatFrontmatter(metadata);
+      
+      // Add note content
+      content += `# Event: ${this.eventDescription}\n\nDate: ${dateStr}\nType: ${this.selectedEventType}\n\n## Notes\n\n`;
+    }
+
+    await this.app.vault.create(fullPath, content);
   }
+}
 
   /**
    * Refresh all timeline views
@@ -2445,48 +2776,120 @@ if (this.plugin.settings.showDecadeMarkers) {
  * @param weekKey - Week key to check for events (YYYY-WXX)
  * @returns Whether an event was applied to this cell
  */
-/**
- * Apply styling for events to a cell
- * @param cell - Cell element to style
- * @param weekKey - Week key to check for events (YYYY-WXX)
- * @returns Whether an event was applied to this cell
- */
 applyEventStyling(cell: HTMLElement, weekKey: string): boolean {
-  // Helper to check for events and apply styling
+  // Check if we have an event in the note frontmatter (new functionality)
+  const checkNoteEvent = async () => {
+    try {
+      const eventData = await this.plugin.getEventFromNote(weekKey);
+      if (eventData && eventData.event) {
+        // Apply styling based on note frontmatter
+        cell.classList.add("event");
+        
+        // Apply color if specified in frontmatter
+        if (eventData.color) {
+          cell.style.backgroundColor = eventData.color;
+          cell.style.border = `2px solid ${eventData.color}`;
+        } else {
+          // Default color based on type
+          let defaultColor = "#4CAF50"; // Default to green (Major Life)
+          
+          switch (eventData.type) {
+            case "Major Life":
+              defaultColor = "#4CAF50";
+              break;
+            case "Travel":
+              defaultColor = "#2196F3";
+              break;
+            case "Relationship":
+              defaultColor = "#E91E63";
+              break;
+            case "Education/Career":
+              defaultColor = "#9C27B0";
+              break;
+            default:
+              // Check if it's a custom type
+              const customType = this.plugin.settings.customEventTypes.find(
+                t => t.name === eventData.type
+              );
+              if (customType) {
+                defaultColor = customType.color;
+              }
+          }
+          
+          cell.style.backgroundColor = defaultColor;
+          cell.style.border = `2px solid ${defaultColor}`;
+        }
+        
+        // Build tooltip
+        const eventDesc = eventData.description || eventData.event;
+        const prevTitle = cell.getAttribute("title") || "";
+        
+        // Include date range info if present
+        let dateInfo = "";
+        if (eventData.startDate && eventData.endDate) {
+          dateInfo = ` (${eventData.startDate} to ${eventData.endDate})`;
+        } else if (eventData.startDate) {
+          dateInfo = ` (${eventData.startDate})`;
+        }
+        
+        cell.setAttribute(
+          "title",
+          `${eventDesc}${dateInfo}${prevTitle ? '\n' + prevTitle : ''}`
+        );
+        
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.log("Error checking note event:", error);
+      return false;
+    }
+  };
+
+  // Schedule the async check to happen soon (we can't make this method async without breaking a lot of code)
+  setTimeout(async () => {
+    if (await checkNoteEvent()) {
+      // Force a refresh of any display properties
+      const currBg = cell.style.backgroundColor;
+      cell.style.backgroundColor = "transparent";
+      cell.style.backgroundColor = currBg;
+    }
+  }, 0);
+
+  // Continue with existing functionality (fallback) - helper to check for events and apply styling
   const applyEventStyle = (
     events: string[],
     defaultColor: string,
     defaultDesc: string
   ): boolean => {
     // First, handle single-day events (format: weekKey:description)
+    // Single‑week events (format: weekKey:description)
+    const singleEvents = events.filter(e => {
+      const parts = e.split(":");
+      return parts.length === 2 && parts[0].includes("W");
+    });
 
-// Single‑week events (format: weekKey:description)
-const singleEvents = events.filter(e => {
-  const parts = e.split(":");
-  return parts.length === 2 && parts[0].includes("W");
-});
+    for (const ev of singleEvents) {
+      const [eventWeekKey, description] = ev.split(":");
 
-for (const ev of singleEvents) {
-  const [eventWeekKey, description] = ev.split(":");
+      // Direct string match: if the event's weekKey equals this cell's weekKey
+      if (eventWeekKey === weekKey) {
+        // Apply styles
+        cell.classList.add("event");
+        cell.style.backgroundColor = defaultColor;
+        cell.style.border = `2px solid ${defaultColor}`;
 
-  // Direct string match: if the event’s weekKey equals this cell's weekKey
-  if (eventWeekKey === weekKey) {
-    // Apply styles
-    cell.classList.add("event");
-    cell.style.backgroundColor = defaultColor;
-    cell.style.border = `2px solid ${defaultColor}`;
+        // Build tooltip
+        const eventDesc = description || defaultDesc;
+        const prevTitle = cell.getAttribute("title") || "";
+        cell.setAttribute(
+          "title",
+          `${eventDesc} (${eventWeekKey})\n${prevTitle}`
+        );
 
-    // Build tooltip
-    const eventDesc = description || defaultDesc;
-    const prevTitle = cell.getAttribute("title") || "";
-    cell.setAttribute(
-      "title",
-      `${eventDesc} (${eventWeekKey})\n${prevTitle}`
-    );
-
-    return true;
-  }
-}
+        return true;
+      }
+    }
     
     // Next, handle range events (format: startWeek:endWeek:description)
     const rangeEvents = events.filter(e => {
