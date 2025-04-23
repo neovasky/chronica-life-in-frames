@@ -308,13 +308,6 @@ export default class ChronosTimelinePlugin extends Plugin {
   }
 
   /**
-   * Clean up on plugin unload
-   */
-  onunload(): void {
-    console.log("Unloading ChronOS Timeline Plugin");
-  }
-
-  /**
    * Load settings from storage
    */
   async loadSettings(): Promise<void> {
