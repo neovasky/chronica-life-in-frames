@@ -1591,24 +1591,34 @@ async createEventNote(
       const startDateStr = startDate.toISOString().split("T")[0];
       const endDateStr = endDate.toISOString().split("T")[0];
       
-    // Add frontmatter
-    const metadata = {
-      event: this.eventName,
-      name: this.eventName,
-      description: this.eventDescription,
-      type: this.selectedEventType,
-      color: this.selectedColor,
-      startDate: startDateStr,
-      endDate: endDateStr
-    };
+      // Get week keys for title
+      const startWeekKey = this.plugin.getWeekKeyFromDate(startDate);
+      const endWeekKey = this.plugin.getWeekKeyFromDate(endDate);
+      const startWeekDisplayName = startWeekKey.replace("W", "-W");
+      const endWeekDisplayName = endWeekKey.replace("W", "-W");
       
+      // Add frontmatter
+      const metadata = {
+        event: this.eventName,
+        name: this.eventName,
+        description: this.eventDescription,
+        type: this.selectedEventType,
+        color: this.selectedColor,
+        startDate: startDateStr,
+        endDate: endDateStr
+      };
+        
       content = this.plugin.formatFrontmatter(metadata);
       
-      // Add note content
-      content += `# Event: ${this.eventDescription}\n\nStart Date: ${startDateStr}\nEnd Date: ${endDateStr}\nType: ${this.selectedEventType}\n\n## Notes\n\n`;
+      // Add note content with updated title
+      content += `# ${startWeekDisplayName}_to_${endWeekDisplayName} (${this.eventName})\n\nStart Date: ${startDateStr}\nEnd Date: ${endDateStr}\nType: ${this.selectedEventType}\nDescription: ${this.eventDescription}\n\n## Notes\n\n`;
     } else {
       // Single date event
       const dateStr = startDate.toISOString().split("T")[0];
+      
+      // Get week key for title
+      const weekKey = this.plugin.getWeekKeyFromDate(startDate);
+      const weekDisplayName = weekKey.replace("W", "-W");
       
       // Add frontmatter
       const metadata = {
@@ -1622,8 +1632,8 @@ async createEventNote(
       
       content = this.plugin.formatFrontmatter(metadata);
       
-      // Add note content
-      content += `# Event: ${this.eventDescription}\n\nDate: ${dateStr}\nType: ${this.selectedEventType}\n\n## Notes\n\n`;
+      // Add note content with updated title
+      content += `# ${weekDisplayName} (${this.eventName})\n\nDate: ${dateStr}\nType: ${this.selectedEventType}\nDescription: ${this.eventDescription}\n\n## Notes\n\n`;
     }
 
     await this.app.vault.create(fullPath, content);
