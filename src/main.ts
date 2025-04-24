@@ -3092,7 +3092,24 @@ applyEventStyling(cell: HTMLElement, weekKey: string): boolean {
       if (eventData && eventData.event) {
         // Apply styling based on note frontmatter
         cell.classList.add("event");
-        
+        cell.classList.add("major-life-event");
+
+        // Add specific event type class based on type
+        switch (eventData.type) {
+          case "Major Life":
+            cell.classList.add("major-life-event");
+            break;
+          case "Travel":
+            cell.classList.add("travel-event");
+            break;
+          case "Relationship":
+            cell.classList.add("relationship-event");
+            break;
+          case "Education/Career":
+            cell.classList.add("education-career-event");
+            break;
+        }
+              
         // Apply color if specified in frontmatter
         if (eventData.color) {
           cell.style.backgroundColor = eventData.color;
