@@ -2783,70 +2783,40 @@ if (this.plugin.settings.showDecadeMarkers) {
     decadeMarkersContainer.style.left = `${leftOffset}px`;
   }
   
-  // Add decade markers starting from 10 (skipping 0)
-  for (let decade = 10; decade <= this.plugin.settings.lifespan; decade += 10) {
-    const marker = decadeMarkersContainer.createEl("div", {
-      cls: `chronos-decade-marker ${isPortrait ? 'portrait-mode' : ''}`, 
-      text: decade.toString(),
-    });
+// Add decade markers starting from 10 (skipping 0)
+for (let decade = 10; decade <= this.plugin.settings.lifespan; decade += 10) {
+  const marker = decadeMarkersContainer.createEl("div", {
+    cls: `chronos-decade-marker ${isPortrait ? 'portrait-mode' : ''}`, 
+    text: decade.toString(),
+  });
 
-    // Position each decade marker using the calculateYearPosition method
-    marker.style.position = "absolute";
-    
-    // Calculate the position of last year of previous decade (e.g., year 9 for marker "10")
-    const lastYearOfPreviousDecade = decade - 1;
-    
-    // Get position of this year 
-    const decadePosition = this.plugin.calculateYearPosition(
-      lastYearOfPreviousDecade, 
-      cellSize, 
-      regularGap
-    );
-    
-    // Position marker at the CENTER of the column/row
-    const markerPosition = decadePosition + cellSize/2;
-
-    if (isPortrait) {
-      marker.style.top = `${markerPosition}px`;
-      marker.style.left = "50%";
-      marker.style.transform = "translateX(-50%)";
-    } else {
-      marker.style.left = `${markerPosition}px`;
-      marker.style.top = `${topOffset / 2}px`;
-      marker.style.transform = "translate(-50%, -50%)";
-    }
-  }
-}
-
+  // Position each decade marker using the calculateYearPosition method
+  marker.style.position = "absolute";
   
-  // Add decade markers starting from 10 (skipping 0)
-  for (let decade = 10; decade <= this.plugin.settings.lifespan; decade += 10) {
-    const marker = decadeMarkersContainer.createEl("div", {
-      cls: "chronos-decade-marker", 
-      text: decade.toString(),
-    });
+  // Calculate the position of last year of previous decade (e.g., year 9 for marker "10")
+  const lastYearOfPreviousDecade = decade - 1;
+  
+  // Get position of this year - this will be the position of the column we want to place the marker above
+  const decadePosition = this.plugin.calculateYearPosition(
+    lastYearOfPreviousDecade, 
+    cellSize, 
+    regularGap
+  );
+  
+  // Position marker at the CENTER of the column, not past it
+  const leftPosition = decadePosition + cellSize/2;
 
-    // Position each decade marker using the calculateYearPosition method
-    marker.style.position = "absolute";
-    
-    // Calculate the position of last year of previous decade (e.g., year 9 for marker "10")
-    const lastYearOfPreviousDecade = decade - 1;
-    
-    // Get position of this year - this will be the position of the column we want to place the marker above
-    const decadePosition = this.plugin.calculateYearPosition(
-      lastYearOfPreviousDecade, 
-      cellSize, 
-      regularGap
-    );
-    
-    // Position marker at the CENTER of the column, not past it
-    // We just need to add half the cell size to center it over the column
-    const leftPosition = decadePosition + cellSize/2;
-
+  if (isPortrait) {
+    marker.style.top = `${leftPosition}px`;
+    marker.style.left = `${topOffset / 2}px`;
+    marker.style.transform = "translate(-50%, -50%) rotate(90deg)";
+  } else {
     marker.style.left = `${leftPosition}px`;
     marker.style.top = `${topOffset / 2}px`;
     marker.style.transform = "translate(-50%, -50%)";
   }
+}
+}
 }
     // Add birthday cake marker (independent of month markers)
     if (this.plugin.settings.showBirthdayMarker) {
@@ -2893,26 +2863,31 @@ if (this.plugin.settings.showDecadeMarkers) {
         cls: "chronos-month-markers",
       });
 
-      // Add week markers (10, 20, 30, 40, 50) if enabled
-      if (this.plugin.settings.showWeekMarkers) {
-        for (let week = 0; week <= 50; week += 10) {
-          if (week === 0) continue; // Skip 0 to start with 10
+// Add week markers (10, 20, 30, 40, 50) if enabled
+if (this.plugin.settings.showWeekMarkers) {
+  for (let week = 0; week <= 50; week += 10) {
+    if (week === 0) continue; // Skip 0 to start with 10
 
-          const marker = weekMarkersContainer.createEl("div", {
-            cls: `chronos-week-marker ${isPortrait ? 'portrait-mode' : ''}`,
-            text: week.toString(),
-          });
+    const marker = weekMarkersContainer.createEl("div", {
+      cls: `chronos-week-marker ${isPortrait ? 'portrait-mode' : ''}`,
+      text: week.toString(),
+    });
 
-          // Calculate the exact position - align to grid
-          const position =
-            week * (cellSize + cellGap) + cellSize / 2 - (cellSize + cellGap);
-            
-          if (isPortrait) {
-            marker.style.left = `${position}px`;
-          } else {
-            marker.style.top = `${position}px`;
-          }
-        }
+    // Calculate the exact position - align to grid
+    const position = week * (cellSize + cellGap) + cellSize / 2 - (cellSize + cellGap);
+    if (isPortrait) {
+      marker.style.left = `${position}px`;
+      marker.style.top = "auto";
+      marker.style.right = "auto";
+      marker.style.transform = "translateY(-50%) rotate(-90deg)";
+      marker.style.transformOrigin = "left center";
+    } else {
+      marker.style.top = `${position}px`;
+      marker.style.left = "auto";
+      marker.style.right = "4px";
+    }
+  }
+
       }
 
     // Add month markers if enabled
@@ -2989,36 +2964,32 @@ if (this.plugin.settings.showDecadeMarkers) {
         fullLabel: `${birthMonthName} ${birthYear} (Birth Month)`,
       });
 
-      // Render all month markers
-      for (const [monthIndex, marker] of monthMarkersMap.entries()) {
-        // Create marker element
-        const markerEl = monthMarkersContainer.createEl("div", {
-          cls: `chronos-month-marker ${marker.isFirstOfYear ? "first-of-year" : ""} ${monthIndex === birthMonth ? "birth-month" : ""} ${isPortrait ? 'portrait-mode' : ''}`,
-        });
-        
-        // Add month name
-        markerEl.textContent = marker.label;
-
-        // Add tooltip
-        markerEl.setAttribute("title", marker.fullLabel);
-
-        // Special styling for birth month
-        if (monthIndex === birthMonth && !markerEl.innerHTML.includes("svg")) {
-          markerEl.style.color = "#e91e63"; // Pink color
-          markerEl.style.fontWeight = "500";
-        }
-
-        // Position the marker
-        if (isPortrait) {
-          markerEl.style.left = `${
-            marker.weekIndex * (cellSize + cellGap) + cellSize / 2
-          }px`;
-        } else {
-          markerEl.style.top = `${
-            marker.weekIndex * (cellSize + cellGap) + cellSize / 2
-          }px`;
-        }
-      }
+// Render all month markers
+for (const [monthIndex, marker] of monthMarkersMap.entries()) {
+  // Create marker element
+  const markerEl = monthMarkersContainer.createEl("div", {
+    cls: `chronos-month-marker ${marker.isFirstOfYear ? "first-of-year" : ""} ${monthIndex === birthMonth ? "birth-month" : ""} ${isPortrait ? 'portrait-mode' : ''}`,
+  });
+  
+  // Add the month name
+  markerEl.textContent = marker.label;
+  
+  // Position the marker based on orientation
+  if (isPortrait) {
+    markerEl.style.left = `${marker.weekIndex * (cellSize + cellGap) + cellSize / 2}px`;
+    markerEl.style.top = "5px";
+    markerEl.style.transformOrigin = "left center";
+  } else {
+    markerEl.style.top = `${marker.weekIndex * (cellSize + cellGap) + cellSize / 2}px`;
+    markerEl.style.left = "3px";
+  }
+  
+  // Special styling for birth month
+  if (monthIndex === birthMonth && !markerEl.innerHTML.includes("svg")) {
+    markerEl.style.color = "#e91e63"; // Pink color
+    markerEl.style.fontWeight = "500";
+  }
+}
     }
 
     // Create the grid container

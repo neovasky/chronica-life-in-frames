@@ -2175,40 +2175,21 @@ class ChronosTimelineView extends obsidian.ItemView {
                     marker.style.position = "absolute";
                     // Calculate the position of last year of previous decade (e.g., year 9 for marker "10")
                     const lastYearOfPreviousDecade = decade - 1;
-                    // Get position of this year 
+                    // Get position of this year - this will be the position of the column we want to place the marker above
                     const decadePosition = this.plugin.calculateYearPosition(lastYearOfPreviousDecade, cellSize, regularGap);
-                    // Position marker at the CENTER of the column/row
-                    const markerPosition = decadePosition + cellSize / 2;
+                    // Position marker at the CENTER of the column, not past it
+                    const leftPosition = decadePosition + cellSize / 2;
                     if (isPortrait) {
-                        marker.style.top = `${markerPosition}px`;
-                        marker.style.left = "50%";
-                        marker.style.transform = "translateX(-50%)";
+                        marker.style.top = `${leftPosition}px`;
+                        marker.style.left = `${topOffset / 2}px`;
+                        marker.style.transform = "translate(-50%, -50%) rotate(90deg)";
                     }
                     else {
-                        marker.style.left = `${markerPosition}px`;
+                        marker.style.left = `${leftPosition}px`;
                         marker.style.top = `${topOffset / 2}px`;
                         marker.style.transform = "translate(-50%, -50%)";
                     }
                 }
-            }
-            // Add decade markers starting from 10 (skipping 0)
-            for (let decade = 10; decade <= this.plugin.settings.lifespan; decade += 10) {
-                const marker = decadeMarkersContainer.createEl("div", {
-                    cls: "chronos-decade-marker",
-                    text: decade.toString(),
-                });
-                // Position each decade marker using the calculateYearPosition method
-                marker.style.position = "absolute";
-                // Calculate the position of last year of previous decade (e.g., year 9 for marker "10")
-                const lastYearOfPreviousDecade = decade - 1;
-                // Get position of this year - this will be the position of the column we want to place the marker above
-                const decadePosition = this.plugin.calculateYearPosition(lastYearOfPreviousDecade, cellSize, regularGap);
-                // Position marker at the CENTER of the column, not past it
-                // We just need to add half the cell size to center it over the column
-                const leftPosition = decadePosition + cellSize / 2;
-                marker.style.left = `${leftPosition}px`;
-                marker.style.top = `${topOffset / 2}px`;
-                marker.style.transform = "translate(-50%, -50%)";
             }
         }
         // Add birthday cake marker (independent of month markers)
@@ -2257,9 +2238,15 @@ class ChronosTimelineView extends obsidian.ItemView {
                 const position = week * (cellSize + cellGap) + cellSize / 2 - (cellSize + cellGap);
                 if (isPortrait) {
                     marker.style.left = `${position}px`;
+                    marker.style.top = "auto";
+                    marker.style.right = "auto";
+                    marker.style.transform = "translateY(-50%) rotate(-90deg)";
+                    marker.style.transformOrigin = "left center";
                 }
                 else {
                     marker.style.top = `${position}px`;
+                    marker.style.left = "auto";
+                    marker.style.right = "4px";
                 }
             }
         }
@@ -2320,21 +2307,22 @@ class ChronosTimelineView extends obsidian.ItemView {
                 const markerEl = monthMarkersContainer.createEl("div", {
                     cls: `chronos-month-marker ${marker.isFirstOfYear ? "first-of-year" : ""} ${monthIndex === birthMonth ? "birth-month" : ""} ${isPortrait ? 'portrait-mode' : ''}`,
                 });
-                // Add month name
+                // Add the month name
                 markerEl.textContent = marker.label;
-                // Add tooltip
-                markerEl.setAttribute("title", marker.fullLabel);
+                // Position the marker based on orientation
+                if (isPortrait) {
+                    markerEl.style.left = `${marker.weekIndex * (cellSize + cellGap) + cellSize / 2}px`;
+                    markerEl.style.top = "5px";
+                    markerEl.style.transformOrigin = "left center";
+                }
+                else {
+                    markerEl.style.top = `${marker.weekIndex * (cellSize + cellGap) + cellSize / 2}px`;
+                    markerEl.style.left = "3px";
+                }
                 // Special styling for birth month
                 if (monthIndex === birthMonth && !markerEl.innerHTML.includes("svg")) {
                     markerEl.style.color = "#e91e63"; // Pink color
                     markerEl.style.fontWeight = "500";
-                }
-                // Position the marker
-                if (isPortrait) {
-                    markerEl.style.left = `${marker.weekIndex * (cellSize + cellGap) + cellSize / 2}px`;
-                }
-                else {
-                    markerEl.style.top = `${marker.weekIndex * (cellSize + cellGap) + cellSize / 2}px`;
                 }
             }
         }

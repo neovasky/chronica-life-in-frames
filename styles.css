@@ -855,34 +855,52 @@
     overflow-y: auto;
   }
 
-  /* Portrait orientation specific styles */
-  .chronos-vertical-markers.portrait-mode {
-    transform: rotate(90deg);
-    transform-origin: top left;
-    width: calc(100% - var(--top-offset));
-    height: var(--left-offset);
-    top: var(--left-offset);
-    left: var(--top-offset);
-  }
-  
-  .chronos-decade-markers.portrait-mode {
-    top: 0;
-    left: var(--top-offset);
-    width: var(--left-offset);
-    height: calc(100% - var(--top-offset));
-    flex-direction: column;
-  }
-  
-  .chronos-decade-marker.portrait-mode {
-    top: auto;
-    left: 50% !important;
-  }
+/* Portrait mode style adjustments */
+.chronos-vertical-markers.portrait-mode {
+  transform: rotate(90deg);
+  transform-origin: top left;
+  width: calc(100% - var(--top-offset));
+  height: var(--left-offset);
+  top: var(--top-offset);
+  left: var(--left-offset);
+  display: flex;
+  flex-direction: column;
+}
 
-  .chronos-week-marker.portrait-mode,
-  .chronos-month-marker.portrait-mode {
-    transform: rotate(-90deg);
-    transform-origin: left top;
-    left: -5px !important;
-  }
+.chronos-decade-markers.portrait-mode {
+  top: 0;
+  left: var(--top-offset);
+  width: var(--left-offset);
+  height: calc(100% - var(--top-offset));
+  flex-direction: column;
+}
 
+.chronos-decade-marker.portrait-mode {
+  transform: rotate(90deg);
+  left: 50%;
+}
+
+.chronos-week-marker.portrait-mode {
+  transform: rotate(-90deg);
+  text-align: right;
+  right: auto;
+  top: 50%;
+  transform-origin: left center;
+}
+
+.chronos-month-marker.portrait-mode {
+  transform-origin: left center;
+  text-align: left;
+}
+
+/* Make month markers more visible in portrait mode */
+.chronos-month-markers.portrait-mode {
+  display: flex;
+  flex-direction: row;
+  height: auto;
+  width: 100%;
+  position: absolute;
+  top: 0;
+  left: var(--left-offset);
+}
 }
