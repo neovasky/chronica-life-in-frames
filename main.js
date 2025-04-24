@@ -2305,7 +2305,7 @@ class ChronosTimelineView extends obsidian.ItemView {
         for (let year = 0; year < this.plugin.settings.lifespan; year++) {
             // Get birthday date in this age year
             const yearBirthday = this.plugin.calculateBirthdayInYear(birthdayDate, year);
-            // For each week in this year (row)
+            // For each week in this year
             for (let week = 0; week < 52; week++) {
                 const weekIndex = year * 52 + week;
                 const cell = gridEl.createEl("div", { cls: "chronos-grid-cell" });
@@ -2322,12 +2322,21 @@ class ChronosTimelineView extends obsidian.ItemView {
                 cell.setAttribute("title", `Week ${cellWeek}, ${cellYear}\n${dateRange}`);
                 // Position the cell with absolute positioning
                 cell.style.position = "absolute";
-                // Calculate left position with decade spacing
-                const leftPos = this.plugin.calculateYearPosition(year, cellSize, regularGap);
-                // Calculate top position (unchanged)
-                const topPos = week * (cellSize + regularGap);
-                cell.style.left = `${leftPos}px`;
-                cell.style.top = `${topPos}px`;
+                // Calculate year position with decade spacing
+                const yearPos = this.plugin.calculateYearPosition(year, cellSize, regularGap);
+                // Calculate week position (simple)
+                const weekPos = week * (cellSize + regularGap);
+                // Position based on orientation
+                if (this.plugin.settings.gridOrientation === 'landscape') {
+                    // Landscape mode (default): years as columns, weeks as rows
+                    cell.style.left = `${yearPos}px`;
+                    cell.style.top = `${weekPos}px`;
+                }
+                else {
+                    // Portrait mode: years as rows, weeks as columns
+                    cell.style.left = `${weekPos}px`;
+                    cell.style.top = `${yearPos}px`;
+                }
                 // Explicitly set width and height (previously handled by grid)
                 cell.style.width = `${cellSize}px`;
                 cell.style.height = `${cellSize}px`;
@@ -3281,6 +3290,18 @@ class ChronosSettingTab extends obsidian.PluginSettingTab {
                 .setDynamicTooltip()
                 .onChange(async (value) => {
                 this.plugin.settings.zoomLevel = value;
+                await this.plugin.saveSettings();
+                this.refreshAllViews();
+            }));
+            new obsidian.Setting(containerEl)
+                .setName('Grid Orientation')
+                .setDesc('Display years as columns/weeks as rows (landscape) or years as rows/weeks as columns (portrait)')
+                .addDropdown(drop => drop
+                .addOption('landscape', 'Landscape (Default)')
+                .addOption('portrait', 'Portrait')
+                .setValue(this.plugin.settings.gridOrientation)
+                .onChange(async (value) => {
+                this.plugin.settings.gridOrientation = value;
                 await this.plugin.saveSettings();
                 this.refreshAllViews();
             }));

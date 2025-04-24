@@ -2979,47 +2979,55 @@ if (this.plugin.settings.showDecadeMarkers) {
 
 
     // For each year of life (column)
-      for (let year = 0; year < this.plugin.settings.lifespan; year++) {
-        // Get birthday date in this age year
-        const yearBirthday = this.plugin.calculateBirthdayInYear(birthdayDate, year);
+    for (let year = 0; year < this.plugin.settings.lifespan; year++) {
+      // Get birthday date in this age year
+      const yearBirthday = this.plugin.calculateBirthdayInYear(birthdayDate, year);
+        
+      // For each week in this year
+      for (let week = 0; week < 52; week++) {
+        const weekIndex = year * 52 + week;
+        const cell = gridEl.createEl("div", { cls: "chronos-grid-cell" });
           
-    // For each week in this year (row)
-    for (let week = 0; week < 52; week++) {
-      const weekIndex = year * 52 + week;
-      const cell = gridEl.createEl("div", { cls: "chronos-grid-cell" });
-        
-      // Calculate the date for this week relative to the birthday in this year
-      const cellDate = new Date(yearBirthday);
-      cellDate.setDate(cellDate.getDate() + week * 7);
-        
-      // Get calendar information for display
-      const cellYear = cellDate.getFullYear();
-      const cellWeek = this.plugin.getISOWeekNumber(cellDate);
-      const weekKey = `${cellYear}-W${cellWeek.toString().padStart(2, "0")}`;
-      cell.dataset.weekKey = weekKey;
-
+        // Calculate the date for this week relative to the birthday in this year
+        const cellDate = new Date(yearBirthday);
+        cellDate.setDate(cellDate.getDate() + week * 7);
+          
+        // Get calendar information for display
+        const cellYear = cellDate.getFullYear();
+        const cellWeek = this.plugin.getISOWeekNumber(cellDate);
+        const weekKey = `${cellYear}-W${cellWeek.toString().padStart(2, "0")}`;
+        cell.dataset.weekKey = weekKey;
+    
         // Set the title attribute to show the date range on hover
         const dateRange = this.plugin.getWeekDateRange(weekKey);
         cell.setAttribute(
           "title",
           `Week ${cellWeek}, ${cellYear}\n${dateRange}`
         );
-
+    
         // Position the cell with absolute positioning
         cell.style.position = "absolute";
-
-        // Calculate left position with decade spacing
-        const leftPos = this.plugin.calculateYearPosition(
+    
+        // Calculate year position with decade spacing
+        const yearPos = this.plugin.calculateYearPosition(
           year,
           cellSize,
           regularGap
         );
-
-        // Calculate top position (unchanged)
-        const topPos = week * (cellSize + regularGap);
-
-        cell.style.left = `${leftPos}px`;
-        cell.style.top = `${topPos}px`;
+    
+        // Calculate week position (simple)
+        const weekPos = week * (cellSize + regularGap);
+    
+        // Position based on orientation
+        if (this.plugin.settings.gridOrientation === 'landscape') {
+          // Landscape mode (default): years as columns, weeks as rows
+          cell.style.left = `${yearPos}px`;
+          cell.style.top = `${weekPos}px`;
+        } else {
+          // Portrait mode: years as rows, weeks as columns
+          cell.style.left = `${weekPos}px`;
+          cell.style.top = `${yearPos}px`;
+        }
 
         // Explicitly set width and height (previously handled by grid)
         cell.style.width = `${cellSize}px`;
@@ -4349,6 +4357,21 @@ class ChronosSettingTab extends PluginSettingTab {
               this.refreshAllViews();
             })
         );
+
+        new Setting(containerEl)
+      .setName('Grid Orientation')
+      .setDesc('Display years as columns/weeks as rows (landscape) or years as rows/weeks as columns (portrait)')
+      .addDropdown(drop =>
+        drop
+          .addOption('landscape', 'Landscape (Default)')
+          .addOption('portrait', 'Portrait')
+          .setValue(this.plugin.settings.gridOrientation)
+          .onChange(async (value) => {
+            this.plugin.settings.gridOrientation = value as 'landscape' | 'portrait';
+            await this.plugin.saveSettings();
+            this.refreshAllViews();
+          })
+      );
 
         new Setting(containerEl)
   .setName('Cell Shape')
