@@ -57,7 +57,7 @@ const DEFAULT_SETTINGS = {
     birthday: "2003-07-18",
     lifespan: 90,
     defaultView: "weeks",
-    pastCellColor: "#44cf6e",
+    pastCellColor: "#27ae60",
     presentCellColor: "#a882ff",
     futureCellColor: "#d8e2e6",
     greenEvents: [],
