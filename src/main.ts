@@ -2808,7 +2808,7 @@ for (let decade = 10; decade <= this.plugin.settings.lifespan; decade += 10) {
 
       if (isPortrait) {
         marker.style.top = `${leftPosition + 40}px`;
-        marker.style.left = `${topOffset * 0.88}px`; 
+        marker.style.left = `${topOffset * 0.85}px`; 
         marker.style.transform = "translate(-50%, -50%)"; // Keep centered
       } else {
         marker.style.left = `${leftPosition}px`;
