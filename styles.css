@@ -857,20 +857,19 @@
 
 /* Portrait mode style adjustments */
 .chronos-vertical-markers.portrait-mode {
-  transform: rotate(90deg);
-  transform-origin: top left;
+  transform: none; /* Remove rotation */
   width: calc(100% - var(--top-offset));
   height: var(--left-offset);
-  top: var(--left-offset);
+  top: 0;
   left: var(--top-offset);
+  flex-direction: column;
 }
 
 .chronos-decade-markers.portrait-mode {
-  top: 0;
-  left: var(--top-offset);
+  top: auto;
+  left: 0;
   width: var(--left-offset);
   height: calc(100% - var(--top-offset));
-  display: flex;
   flex-direction: column;
 }
 
@@ -892,21 +891,20 @@
   text-align: left;
 }
 
-.chronos-week-marker.portrait-mode,
+.chronos-week-marker.portrait-mode, 
 .chronos-month-marker.portrait-mode {
-  transform: rotate(-90deg);
-  left: auto;
-  right: 4px;
+  transform: none; /* Remove rotation */
 }
 
 /* Make month markers more visible in portrait mode */
 .chronos-month-markers.portrait-mode {
-  display: flex;
-  flex-direction: row;
-  height: auto;
-  width: 100%;
   position: absolute;
   top: 0;
   left: var(--left-offset);
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding-left: 10px;
 }
 }

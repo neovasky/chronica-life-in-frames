@@ -2180,9 +2180,9 @@ class ChronosTimelineView extends obsidian.ItemView {
                     // Position marker at the CENTER of the column, not past it
                     const leftPosition = decadePosition + cellSize / 2;
                     if (isPortrait) {
-                        marker.style.top = `${leftPosition}px`;
-                        marker.style.left = `${topOffset / 2}px`;
-                        marker.style.transform = "translate(-50%, -50%) rotate(90deg)";
+                        marker.style.top = `${leftPosition + 40}px`;
+                        marker.style.left = `${topOffset * 0.88}px`;
+                        marker.style.transform = "translate(-50%, -50%)"; // Keep centered
                     }
                     else {
                         marker.style.left = `${leftPosition}px`;
@@ -2239,9 +2239,8 @@ class ChronosTimelineView extends obsidian.ItemView {
                 if (isPortrait) {
                     marker.style.left = `${position}px`;
                     marker.style.top = "auto";
-                    marker.style.right = "auto";
-                    marker.style.transform = "translateY(-50%) rotate(-90deg)";
-                    marker.style.transformOrigin = "left center";
+                    marker.style.right = `8px`; // Fixed distance from edge
+                    marker.style.transform = "translateY(-50%)"; // Center on row without rotation
                 }
                 else {
                     marker.style.top = `${position}px`;
@@ -2312,7 +2311,8 @@ class ChronosTimelineView extends obsidian.ItemView {
                 // Position the marker based on orientation
                 if (isPortrait) {
                     markerEl.style.left = `${marker.weekIndex * (cellSize + cellGap) + cellSize / 2}px`;
-                    markerEl.style.top = "3px"; // Small offset from the edge
+                    markerEl.style.top = `${leftOffset / 2}px`; // Use half of leftOffset for better clearance
+                    markerEl.style.transform = "translateX(-50%)"; // Center on column
                 }
                 else {
                     markerEl.style.top = `${marker.weekIndex * (cellSize + cellGap) + cellSize / 2}px`;
