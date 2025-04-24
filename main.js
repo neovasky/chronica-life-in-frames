@@ -2240,7 +2240,7 @@ class ChronosTimelineView extends obsidian.ItemView {
                     marker.style.left = `${position + 10}px`;
                     marker.style.top = "- 50px"; // Change this value to move markers down (larger number) or up (smaller number)
                     marker.style.right = "auto"; // Adjust right position for portrait mode
-                    marker.style.transform = "translateY(-100%)";
+                    marker.style.transform = "translateY(-110%)";
                     marker.style.transformOrigin = "left center";
                 }
                 else {
@@ -2312,8 +2312,8 @@ class ChronosTimelineView extends obsidian.ItemView {
                 // Position the marker based on orientation
                 if (isPortrait) {
                     markerEl.style.left = `${marker.weekIndex * (cellSize + cellGap) + cellSize / 2}px`;
-                    markerEl.style.top = `${leftOffset / 2}px`; // Use half of leftOffset for better clearance
-                    markerEl.style.transform = "translateX(-50%)"; // Center on column
+                    markerEl.style.top = `${leftOffset - 80}px`; // Use half of leftOffset for better clearance
+                    markerEl.style.transform = "translateX(110%)"; // Center on column
                 }
                 else {
                     markerEl.style.top = `${marker.weekIndex * (cellSize + cellGap) + cellSize / 2}px`;
