@@ -2181,7 +2181,7 @@ class ChronosTimelineView extends obsidian.ItemView {
                     const leftPosition = decadePosition + cellSize / 2;
                     if (isPortrait) {
                         marker.style.top = `${leftPosition + 40}px`;
-                        marker.style.left = `${topOffset * 0.88}px`;
+                        marker.style.left = `${topOffset * 0.85}px`;
                         marker.style.transform = "translate(-50%, -50%)"; // Keep centered
                     }
                     else {
@@ -2237,10 +2237,11 @@ class ChronosTimelineView extends obsidian.ItemView {
                 // Calculate the exact position - align to grid
                 const position = week * (cellSize + cellGap) + cellSize / 2 - (cellSize + cellGap);
                 if (isPortrait) {
-                    marker.style.left = `${position}px`;
-                    marker.style.top = "auto";
-                    marker.style.right = `8px`; // Fixed distance from edge
-                    marker.style.transform = "translateY(-50%)"; // Center on row without rotation
+                    marker.style.left = `${position + 10}px`;
+                    marker.style.top = "- 50px"; // Change this value to move markers down (larger number) or up (smaller number)
+                    marker.style.right = "auto"; // Adjust right position for portrait mode
+                    marker.style.transform = "translateY(-100%)";
+                    marker.style.transformOrigin = "left center";
                 }
                 else {
                     marker.style.top = `${position}px`;
