@@ -43,6 +43,9 @@ interface ChronosSettings {
   /** Cell shape variants */
   cellShape: 'square' | 'circle' | 'diamond';
 
+  /** Grid orientation - landscape (default) or portrait */
+  gridOrientation: 'landscape' | 'portrait';
+
   /** Color for past weeks */
   pastCellColor: string;
 
@@ -210,6 +213,7 @@ const DEFAULT_SETTINGS: ChronosSettings = {
   isSidebarOpen: false,
   isStatsPanelMinimized: false,
   cellShape: 'square',
+  gridOrientation: 'landscape',
 };
 
 /** SVG icon for the ChronOS Timeline */
@@ -2294,6 +2298,7 @@ class ChronosTimelineView extends ItemView {
       text: "VIEW OPTIONS",
       cls: "section-header",
     });
+
     const visualContainer = visualSection.createEl("div", {
       cls: "chronos-visual-controls",
     });
@@ -2380,6 +2385,7 @@ class ChronosTimelineView extends ItemView {
       cls: "section-header",
       text: "Cell Shape"
     });
+    
     // Select
     const shapeSelect = visualContainer.createEl("select", {
       cls: "chronos-select"
@@ -2400,6 +2406,45 @@ class ChronosTimelineView extends ItemView {
       this.updateZoomLevel();
         });
 
+    // ── Grid Orientation Toggle ──
+    visualContainer.createEl("div", {
+      cls: "section-header",
+      text: "Grid Orientation"
+    });
+    
+    // Orientation toggle button
+    const orientationBtn = visualContainer.createEl("button", {
+      cls: "chronos-btn chronos-orientation-button",
+      text: this.plugin.settings.gridOrientation === 'landscape' 
+        ? "Switch to Portrait" 
+        : "Switch to Landscape",
+      attr: { 
+        title: this.plugin.settings.gridOrientation === 'landscape'
+          ? "Display years as rows, weeks as columns" 
+          : "Display years as columns, weeks as rows" 
+      },
+    });
+    
+    orientationBtn.addEventListener("click", async () => {
+      // Toggle the orientation
+      this.plugin.settings.gridOrientation = 
+        this.plugin.settings.gridOrientation === 'landscape' ? 'portrait' : 'landscape';
+      
+      // Save settings
+      await this.plugin.saveSettings();
+      
+      // Update button text
+      orientationBtn.textContent = this.plugin.settings.gridOrientation === 'landscape' 
+        ? "Switch to Portrait" 
+        : "Switch to Landscape";
+      
+      orientationBtn.setAttribute("title", this.plugin.settings.gridOrientation === 'landscape'
+        ? "Display years as rows, weeks as columns" 
+        : "Display years as columns, weeks as rows");
+      
+      // Re-render the grid with new orientation
+      this.updateZoomLevel();
+    });
 
     // Legend section (vertical)
     const legendSection = sidebarEl.createEl("div", {

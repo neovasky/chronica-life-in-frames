@@ -82,6 +82,7 @@ const DEFAULT_SETTINGS = {
     isSidebarOpen: false,
     isStatsPanelMinimized: false,
     cellShape: 'square',
+    gridOrientation: 'landscape',
 };
 /** SVG icon for the ChronOS Timeline */
 const CHRONOS_ICON = `<svg viewBox="0 0 100 100" width="100" height="100" xmlns="http://www.w3.org/2000/svg">
@@ -1855,6 +1856,39 @@ class ChronosTimelineView extends obsidian.ItemView {
             this.plugin.settings.cellShape = shapeSelect.value;
             await this.plugin.saveSettings();
             // Re-render grid with new shape
+            this.updateZoomLevel();
+        });
+        // ── Grid Orientation Toggle ──
+        visualContainer.createEl("div", {
+            cls: "section-header",
+            text: "Grid Orientation"
+        });
+        // Orientation toggle button
+        const orientationBtn = visualContainer.createEl("button", {
+            cls: "chronos-btn chronos-orientation-button",
+            text: this.plugin.settings.gridOrientation === 'landscape'
+                ? "Switch to Portrait"
+                : "Switch to Landscape",
+            attr: {
+                title: this.plugin.settings.gridOrientation === 'landscape'
+                    ? "Display years as rows, weeks as columns"
+                    : "Display years as columns, weeks as rows"
+            },
+        });
+        orientationBtn.addEventListener("click", async () => {
+            // Toggle the orientation
+            this.plugin.settings.gridOrientation =
+                this.plugin.settings.gridOrientation === 'landscape' ? 'portrait' : 'landscape';
+            // Save settings
+            await this.plugin.saveSettings();
+            // Update button text
+            orientationBtn.textContent = this.plugin.settings.gridOrientation === 'landscape'
+                ? "Switch to Portrait"
+                : "Switch to Landscape";
+            orientationBtn.setAttribute("title", this.plugin.settings.gridOrientation === 'landscape'
+                ? "Display years as rows, weeks as columns"
+                : "Display years as columns, weeks as rows");
+            // Re-render the grid with new orientation
             this.updateZoomLevel();
         });
         // Legend section (vertical)
