@@ -2976,12 +2976,14 @@ for (const [monthIndex, marker] of monthMarkersMap.entries()) {
   
   // Position the marker based on orientation
   if (isPortrait) {
-    markerEl.style.left = `${marker.weekIndex * (cellSize + cellGap) + cellSize / 2}px`;
-    markerEl.style.top = "5px";
-    markerEl.style.transformOrigin = "left center";
+    markerEl.style.left = `${
+      marker.weekIndex * (cellSize + cellGap) + cellSize / 2
+    }px`;
+    markerEl.style.top = "3px"; // Small offset from the edge
   } else {
-    markerEl.style.top = `${marker.weekIndex * (cellSize + cellGap) + cellSize / 2}px`;
-    markerEl.style.left = "3px";
+    markerEl.style.top = `${
+      marker.weekIndex * (cellSize + cellGap) + cellSize / 2
+    }px`;
   }
   
   // Special styling for birth month

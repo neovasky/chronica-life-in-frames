@@ -861,10 +861,8 @@
   transform-origin: top left;
   width: calc(100% - var(--top-offset));
   height: var(--left-offset);
-  top: var(--top-offset);
-  left: var(--left-offset);
-  display: flex;
-  flex-direction: column;
+  top: var(--left-offset);
+  left: var(--top-offset);
 }
 
 .chronos-decade-markers.portrait-mode {
@@ -872,12 +870,13 @@
   left: var(--top-offset);
   width: var(--left-offset);
   height: calc(100% - var(--top-offset));
+  display: flex;
   flex-direction: column;
 }
 
 .chronos-decade-marker.portrait-mode {
-  transform: rotate(90deg);
-  left: 50%;
+  top: auto;
+  left: 50% !important;
 }
 
 .chronos-week-marker.portrait-mode {
@@ -891,6 +890,13 @@
 .chronos-month-marker.portrait-mode {
   transform-origin: left center;
   text-align: left;
+}
+
+.chronos-week-marker.portrait-mode,
+.chronos-month-marker.portrait-mode {
+  transform: rotate(-90deg);
+  left: auto;
+  right: 4px;
 }
 
 /* Make month markers more visible in portrait mode */
