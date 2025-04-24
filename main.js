@@ -2156,26 +2156,39 @@ class ChronosTimelineView extends obsidian.ItemView {
                 decadeMarkersContainer.style.left = `${leftOffset}px`;
             }
             // Add decade markers starting from 10 (skipping 0)
-            for (let decade = 10; decade <= this.plugin.settings.lifespan; decade += 10) {
-                const marker = decadeMarkersContainer.createEl("div", {
-                    cls: `chronos-decade-marker ${isPortrait ? 'portrait-mode' : ''}`,
-                    text: decade.toString(),
+            // Create decade markers container (horizontal markers above the grid)
+            if (this.plugin.settings.showDecadeMarkers) {
+                const isPortrait = this.plugin.settings.gridOrientation === 'portrait';
+                const decadeMarkersContainer = container.createEl("div", {
+                    cls: `chronos-decade-markers ${isPortrait ? 'portrait-mode' : ''}`,
                 });
-                // Position each decade marker using the calculateYearPosition method
-                marker.style.position = "absolute";
-                // Calculate the position of last year of previous decade (e.g., year 9 for marker "10")
-                const lastYearOfPreviousDecade = decade - 1;
-                // Get position of this year - this will be the position of the column we want to place the marker above
-                const decadePosition = this.plugin.calculateYearPosition(lastYearOfPreviousDecade, cellSize, regularGap);
-                // Position marker at the CENTER of the column, not past it
-                const leftPosition = decadePosition + cellSize / 2;
-                if (isPortrait) {
-                    marker.style.top = `${leftPosition}px`;
+                if (!isPortrait) {
+                    decadeMarkersContainer.style.left = `${leftOffset}px`;
                 }
-                else {
-                    marker.style.left = `${leftPosition}px`;
-                    marker.style.top = `${topOffset / 2}px`;
-                    marker.style.transform = "translate(-50%, -50%)";
+                // Add decade markers starting from 10 (skipping 0)
+                for (let decade = 10; decade <= this.plugin.settings.lifespan; decade += 10) {
+                    const marker = decadeMarkersContainer.createEl("div", {
+                        cls: `chronos-decade-marker ${isPortrait ? 'portrait-mode' : ''}`,
+                        text: decade.toString(),
+                    });
+                    // Position each decade marker using the calculateYearPosition method
+                    marker.style.position = "absolute";
+                    // Calculate the position of last year of previous decade (e.g., year 9 for marker "10")
+                    const lastYearOfPreviousDecade = decade - 1;
+                    // Get position of this year 
+                    const decadePosition = this.plugin.calculateYearPosition(lastYearOfPreviousDecade, cellSize, regularGap);
+                    // Position marker at the CENTER of the column/row
+                    const markerPosition = decadePosition + cellSize / 2;
+                    if (isPortrait) {
+                        marker.style.top = `${markerPosition}px`;
+                        marker.style.left = "50%";
+                        marker.style.transform = "translateX(-50%)";
+                    }
+                    else {
+                        marker.style.left = `${markerPosition}px`;
+                        marker.style.top = `${topOffset / 2}px`;
+                        marker.style.transform = "translate(-50%, -50%)";
+                    }
                 }
             }
             // Add decade markers starting from 10 (skipping 0)
@@ -2242,7 +2255,12 @@ class ChronosTimelineView extends obsidian.ItemView {
                 });
                 // Calculate the exact position - align to grid
                 const position = week * (cellSize + cellGap) + cellSize / 2 - (cellSize + cellGap);
-                marker.style.top = `${position}px`;
+                if (isPortrait) {
+                    marker.style.left = `${position}px`;
+                }
+                else {
+                    marker.style.top = `${position}px`;
+                }
             }
         }
         // Add month markers if enabled
@@ -2312,7 +2330,12 @@ class ChronosTimelineView extends obsidian.ItemView {
                     markerEl.style.fontWeight = "500";
                 }
                 // Position the marker
-                markerEl.style.top = `${marker.weekIndex * (cellSize + cellGap) + cellSize / 2}px`;
+                if (isPortrait) {
+                    markerEl.style.left = `${marker.weekIndex * (cellSize + cellGap) + cellSize / 2}px`;
+                }
+                else {
+                    markerEl.style.top = `${marker.weekIndex * (cellSize + cellGap) + cellSize / 2}px`;
+                }
             }
         }
         // Create the grid container
