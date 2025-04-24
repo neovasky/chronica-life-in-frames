@@ -619,7 +619,8 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
                     label: MONTH_NAMES[currentMonth],
                     isFirstOfYear: currentMonth === 0,
                     isBirthMonth: currentMonth === birthMonth && currentYear === birthYear,
-                    fullLabel: `${MONTH_NAMES[currentMonth]} ${currentYear}`
+                    fullLabel: `${MONTH_NAMES[currentMonth]} ${currentYear}`,
+                    monthNumber: currentMonth + (currentYear - birthYear) * 12 // Add this line
                 });
                 // Update last marked month/year
                 lastMarkedMonth = currentMonth;
@@ -2291,6 +2292,7 @@ class ChronosTimelineView extends obsidian.ItemView {
                         weekIndex: weekPosition,
                         isFirstOfYear: marker.isFirstOfYear,
                         fullLabel: marker.fullLabel,
+                        monthNumber: marker.monthNumber
                     });
                 }
             }
@@ -2300,7 +2302,9 @@ class ChronosTimelineView extends obsidian.ItemView {
                 weekIndex: birthMonthMarkerWeek,
                 isFirstOfYear: birthMonth === 0,
                 fullLabel: `${birthMonthName} ${birthYear} (Birth Month)`,
+                monthNumber: birthMonth
             });
+            // Render all month markers
             // Render all month markers
             for (const [monthIndex, marker] of monthMarkersMap.entries()) {
                 // Create marker element
@@ -2311,9 +2315,17 @@ class ChronosTimelineView extends obsidian.ItemView {
                 markerEl.textContent = marker.label;
                 // Position the marker based on orientation
                 if (isPortrait) {
-                    markerEl.style.left = `${marker.weekIndex * (cellSize + cellGap) + cellSize / 2}px`;
-                    markerEl.style.top = `${leftOffset - 80}px`; // Use half of leftOffset for better clearance
-                    markerEl.style.transform = "translateX(110%)"; // Center on column
+                    if (marker.monthNumber !== undefined) {
+                        // Calculate position based on month number for even spacing
+                        const monthPosition = (marker.monthNumber * (cellSize * 4)) + cellSize;
+                        markerEl.style.left = `${monthPosition}px`;
+                    }
+                    else {
+                        // Fallback to week-based position if monthNumber is not available
+                        markerEl.style.left = `${marker.weekIndex * (cellSize + cellGap) + cellSize / 2}px`;
+                    }
+                    markerEl.style.top = `${leftOffset - 80}px`;
+                    markerEl.style.transform = "translateX(0)"; // Changed from 110% to prevent overlap
                 }
                 else {
                     markerEl.style.top = `${marker.weekIndex * (cellSize + cellGap) + cellSize / 2}px`;

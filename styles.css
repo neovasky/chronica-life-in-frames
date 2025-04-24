@@ -879,7 +879,7 @@
 }
 
 .chronos-week-marker.portrait-mode {
-  transform: rotate(-90deg);
+  transform: none;
   text-align: right;
   right: auto;
   top: 50%;
@@ -887,13 +887,11 @@
 }
 
 .chronos-month-marker.portrait-mode {
+  transform: none;
   transform-origin: left center;
   text-align: left;
-}
-
-.chronos-week-marker.portrait-mode, 
-.chronos-month-marker.portrait-mode {
-  transform: none; /* Remove rotation */
+  white-space: nowrap; /* Prevent wrapping of month names */
+  left: 0 !important; /* Let JavaScript set this property */
 }
 
 /* Make month markers more visible in portrait mode */
