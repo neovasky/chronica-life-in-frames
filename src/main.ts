@@ -2762,10 +2762,47 @@ zoomOut() {
     
 // Create decade markers container (horizontal markers above the grid)
 if (this.plugin.settings.showDecadeMarkers) {
+  const isPortrait = this.plugin.settings.gridOrientation === 'portrait';
   const decadeMarkersContainer = container.createEl("div", {
-    cls: "chronos-decade-markers",
+    cls: `chronos-decade-markers ${isPortrait ? 'portrait-mode' : ''}`,
   });
-  decadeMarkersContainer.style.left = `${leftOffset}px`;
+  
+  if (!isPortrait) {
+    decadeMarkersContainer.style.left = `${leftOffset}px`;
+  }
+  
+  // Add decade markers starting from 10 (skipping 0)
+  for (let decade = 10; decade <= this.plugin.settings.lifespan; decade += 10) {
+    const marker = decadeMarkersContainer.createEl("div", {
+      cls: `chronos-decade-marker ${isPortrait ? 'portrait-mode' : ''}`, 
+      text: decade.toString(),
+    });
+
+    // Position each decade marker using the calculateYearPosition method
+    marker.style.position = "absolute";
+    
+    // Calculate the position of last year of previous decade (e.g., year 9 for marker "10")
+    const lastYearOfPreviousDecade = decade - 1;
+    
+    // Get position of this year - this will be the position of the column we want to place the marker above
+    const decadePosition = this.plugin.calculateYearPosition(
+      lastYearOfPreviousDecade, 
+      cellSize, 
+      regularGap
+    );
+    
+    // Position marker at the CENTER of the column, not past it
+    const leftPosition = decadePosition + cellSize/2;
+
+    if (isPortrait) {
+      marker.style.top = `${leftPosition}px`;
+    } else {
+      marker.style.left = `${leftPosition}px`;
+      marker.style.top = `${topOffset / 2}px`;
+      marker.style.transform = "translate(-50%, -50%)";
+    }
+  }
+
   
   // Add decade markers starting from 10 (skipping 0)
   for (let decade = 10; decade <= this.plugin.settings.lifespan; decade += 10) {
@@ -2826,37 +2863,38 @@ if (this.plugin.settings.showDecadeMarkers) {
       );
     }
 
-    // Create vertical markers container with structured layout
-    const markersContainer = container.createEl("div", {
-      cls: "chronos-vertical-markers",
-    });
+      // Create markers container with structured layout
+      const isPortrait = this.plugin.settings.gridOrientation === 'portrait';
+      const markersContainer = container.createEl("div", {
+        cls: `chronos-vertical-markers ${isPortrait ? 'portrait-mode' : ''}`,
+      });
 
-    // First, create the separate containers for week and month markers
-    const weekMarkersContainer = markersContainer.createEl("div", {
-      cls: "chronos-week-markers",
-    });
+      // First, create the separate containers for week and month markers
+      const weekMarkersContainer = markersContainer.createEl("div", {
+        cls: "chronos-week-markers",
+      });
 
-    const monthMarkersContainer = markersContainer.createEl("div", {
-      cls: "chronos-month-markers",
-    });
+      const monthMarkersContainer = markersContainer.createEl("div", {
+        cls: "chronos-month-markers",
+      });
 
-    // Add week markers (10, 20, 30, 40, 50) if enabled
-    if (this.plugin.settings.showWeekMarkers) {
-      for (let week = 0; week <= 50; week += 10) {
-        if (week === 0) continue; // Skip 0 to start with 10
+      // Add week markers (10, 20, 30, 40, 50) if enabled
+      if (this.plugin.settings.showWeekMarkers) {
+        for (let week = 0; week <= 50; week += 10) {
+          if (week === 0) continue; // Skip 0 to start with 10
 
-        const marker = weekMarkersContainer.createEl("div", {
-          cls: "chronos-week-marker",
-          text: week.toString(),
-        });
+          const marker = weekMarkersContainer.createEl("div", {
+            cls: `chronos-week-marker ${isPortrait ? 'portrait-mode' : ''}`,
+            text: week.toString(),
+          });
 
-        // Calculate the exact position - align to grid
-        const topPosition =
-          week * (cellSize + cellGap) + cellSize / 2 - (cellSize + cellGap);
+          // Calculate the exact position - align to grid
+          const position =
+            week * (cellSize + cellGap) + cellSize / 2 - (cellSize + cellGap);
 
-        marker.style.top = `${topPosition}px`;
+          marker.style.top = `${position}px`;
+        }
       }
-    }
 
     // Add month markers if enabled
     if (this.plugin.settings.showMonthMarkers) {
@@ -2936,11 +2974,9 @@ if (this.plugin.settings.showDecadeMarkers) {
       for (const [monthIndex, marker] of monthMarkersMap.entries()) {
         // Create marker element
         const markerEl = monthMarkersContainer.createEl("div", {
-          cls: `chronos-month-marker ${
-            marker.isFirstOfYear ? "first-of-year" : ""
-          } ${monthIndex === birthMonth ? "birth-month" : ""}`,
+          cls: `chronos-month-marker ${marker.isFirstOfYear ? "first-of-year" : ""} ${monthIndex === birthMonth ? "birth-month" : ""} ${isPortrait ? 'portrait-mode' : ''}`,
         });
-
+        
         // Add month name
         markerEl.textContent = marker.label;
 
