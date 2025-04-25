@@ -117,7 +117,9 @@ interface ChronosSettings {
 
   /** Whether the stats panel is minimized */
   isStatsPanelMinimized: boolean;
-  
+
+/** Stored position for stats panel to keep it at the same place when toggled */
+lastStatsPanelPos: {top: number, left: number} | null = null;
 }
 
 /** Interface for custom event types */
@@ -2013,10 +2015,19 @@ class ChronosTimelineView extends ItemView {
     this.renderView();
   }
   toggleStatistics(): void {
-    // Always attach to the main view wrapper
-    const contentArea = this.containerEl.children[1] as HTMLElement;
-    const stats = contentArea.querySelector(".chronos-stats-container");
+    // Always check for the view element
+    const viewEl = this.containerEl.querySelector(".chronos-view") as HTMLElement;
+    const stats = viewEl.querySelector(".chronos-stats-container");
+    
     if (stats) {
+      // Store position in memory before removing the panel
+      const rect = stats.getBoundingClientRect();
+      const viewRect = viewEl.getBoundingClientRect();
+      this.lastStatsPanelPos = {
+        top: rect.top - viewRect.top,
+        left: rect.left - viewRect.left
+      };
+      
       stats.remove();
       this.plugin.settings.isStatsPanelMinimized = false;
     } else {
@@ -2053,30 +2064,26 @@ class ChronosTimelineView extends ItemView {
       if (!isDragging) return;
       
       const viewEl = this.containerEl.querySelector(".chronos-view") as HTMLElement;
-      if (!viewEl) return;
-      
       const viewRect = viewEl.getBoundingClientRect();
       
       // Calculate new position
       let newLeft = e.clientX - viewRect.left - offsetX;
       let newTop = e.clientY - viewRect.top - offsetY;
       
-      // Get panel dimensions
-      const panelWidth = statsContainer.offsetWidth;
-      const panelHeight = statsContainer.offsetHeight;
+      // Ensure the panel stays within the view boundaries
+      // Left boundary
+      newLeft = Math.max(0, newLeft);
+      // Right boundary
+      newLeft = Math.min(newLeft, viewRect.width - statsContainer.offsetWidth);
+      // Top boundary (ensure header is always accessible)
+      newTop = Math.max(0, newTop);
+      // Bottom boundary
+      newTop = Math.min(newTop, viewRect.height - statsContainer.offsetHeight);
       
-      // Ensure the panel stays mostly visible within the view
-      // Left boundary (at least 30px remains visible)
-      newLeft = Math.max(-panelWidth + 30, Math.min(newLeft, viewRect.width - 30));
-      
-      // Top boundary (at least 30px remains visible)
-      newTop = Math.max(0, Math.min(newTop, viewRect.height - 30));
-      
-      // Apply the new position
+      // Apply the position
       statsContainer.style.left = `${newLeft}px`;
       statsContainer.style.top = `${newTop}px`;
-      
-      // Make sure the right position is not interfering
+      // Remove right positioning when manually positioned by left
       statsContainer.style.right = "auto";
     });
   
@@ -2086,23 +2093,33 @@ class ChronosTimelineView extends ItemView {
   }
 
   createStatisticsPanel(isMinimized: boolean = false): void {
-    const contentEl = this.containerEl.children[1];
-    
-    // Remove any existing stats panel first
-    const existingPanel = this.containerEl.querySelector(".chronos-stats-container");
-    if (existingPanel) existingPanel.remove();
+    const viewEl = this.containerEl.querySelector(".chronos-view") as HTMLElement;
+  
+  // Remove any existing stats panel before creating a new one
+  const existingPanel = viewEl.querySelector(".chronos-stats-container");
+  if (existingPanel) {
+    existingPanel.remove();
+  }
   
     // Create stats container
-    const statsContainer = contentEl.createEl("div", {
-      cls: `chronos-stats-container ${isMinimized ? "chronos-stats-minimized" : "chronos-stats-expanded"}`,
+    const statsContainer = viewEl.createEl("div", {
+      cls: `chronos-stats-container ${
+        isMinimized ? "chronos-stats-minimized" : "chronos-stats-expanded"
+      }`,
     });
-    
-    // Set initial position - centered more visibly in the view
-    const viewEl = this.containerEl.querySelector(".chronos-view") as HTMLElement;
-    if (viewEl) {
-      statsContainer.style.top = "100px";
-      statsContainer.style.right = "50px";
-    }
+
+    // If we have a stored position from a previous panel, use that instead
+  if (this.lastStatsPanelPos) {
+  statsContainer.style.top = `${this.lastStatsPanelPos.top}px`;
+  statsContainer.style.left = `${this.lastStatsPanelPos.left}px`;
+  statsContainer.style.right = "auto"; // Clear right position when using left
+}
+  
+    // Set initial position - ADDED THIS SECTION
+    statsContainer.style.top = "60px";  // Below the decade markers
+    statsContainer.style.right = "20px";
+    statsContainer.style.position = "absolute";
+    statsContainer.style.zIndex = "25";  // Ensure it's above other elements
   
     // Create header with minimize/maximize toggle
     const headerContainer = statsContainer.createEl("div", {
@@ -2448,10 +2465,14 @@ class ChronosTimelineView extends ItemView {
 
     const statsButton = visualContainer.createEl("button", {
       cls: "chronos-btn chronos-stats-button",
-      text: "Toggle Statistics",
-      attr: { title: "Show/Hide Life Statistics" },
+      text: "Show Statistics",
+      attr: { title: "Show/Hide Life Statistics Panel" },
     });
+    
+    // Update the button text based on panel existence
     statsButton.addEventListener("click", () => {
+      const statsPanel = this.containerEl.querySelector(".chronos-stats-container");
+      statsButton.textContent = statsPanel ? "Show Statistics" : "Hide Statistics";
       this.toggleStatistics();
     });
 
