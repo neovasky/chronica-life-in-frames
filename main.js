@@ -700,6 +700,22 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
         // Move to the Monday of this week (ISO week starts on Monday)
         tempDate.setDate(tempDate.getDate() - (dayOfWeek - 1));
         tempDate.setHours(0, 0, 0, 0);
+        // Verify this week actually contains the birthday
+        const weekEndDate = new Date(tempDate);
+        weekEndDate.setDate(weekEndDate.getDate() + 6); // Sunday
+        const containsBirthday = birthdayDate >= tempDate && birthdayDate <= weekEndDate;
+        if (!containsBirthday) {
+            // If the calculated week doesn't contain the birthday, something is wrong
+            // Let's recalculate more directly
+            const correctedDate = new Date(birthdayDate);
+            const birthdayDayOfWeek = correctedDate.getDay() || 7;
+            correctedDate.setDate(correctedDate.getDate() - (birthdayDayOfWeek - 1));
+            correctedDate.setHours(0, 0, 0, 0);
+            return {
+                weekNumber: weekNumber,
+                weekStart: correctedDate
+            };
+        }
         return {
             weekNumber: weekNumber,
             weekStart: tempDate
@@ -1541,7 +1557,7 @@ class ChronosTimelineView extends obsidian.ItemView {
         let offsetY = 0;
         handle.style.cursor = "move";
         handle.addEventListener("mousedown", (e) => {
-            // skip clicks on buttons inside header
+            // Skip clicks on buttons inside header
             if (e.target.tagName === "BUTTON")
                 return;
             isDragging = true;
@@ -1553,14 +1569,25 @@ class ChronosTimelineView extends obsidian.ItemView {
             if (!isDragging)
                 return;
             const viewEl = this.containerEl.querySelector(".chronos-view");
+            if (!viewEl)
+                return;
             const viewRect = viewEl.getBoundingClientRect();
+            // Calculate new position
             let newLeft = e.clientX - viewRect.left - offsetX;
             let newTop = e.clientY - viewRect.top - offsetY;
-            // constrain within view
-            newLeft = Math.max(0, Math.min(newLeft, viewRect.width - statsContainer.offsetWidth));
-            newTop = Math.max(0, Math.min(newTop, viewRect.height - statsContainer.offsetHeight));
+            // Get panel dimensions
+            const panelWidth = statsContainer.offsetWidth;
+            statsContainer.offsetHeight;
+            // Ensure the panel stays mostly visible within the view
+            // Left boundary (at least 30px remains visible)
+            newLeft = Math.max(-panelWidth + 30, Math.min(newLeft, viewRect.width - 30));
+            // Top boundary (at least 30px remains visible)
+            newTop = Math.max(0, Math.min(newTop, viewRect.height - 30));
+            // Apply the new position
             statsContainer.style.left = `${newLeft}px`;
             statsContainer.style.top = `${newTop}px`;
+            // Make sure the right position is not interfering
+            statsContainer.style.right = "auto";
         });
         document.addEventListener("mouseup", () => {
             isDragging = false;
@@ -1568,10 +1595,20 @@ class ChronosTimelineView extends obsidian.ItemView {
     }
     createStatisticsPanel(isMinimized = false) {
         const contentEl = this.containerEl.children[1];
+        // Remove any existing stats panel first
+        const existingPanel = this.containerEl.querySelector(".chronos-stats-container");
+        if (existingPanel)
+            existingPanel.remove();
         // Create stats container
         const statsContainer = contentEl.createEl("div", {
             cls: `chronos-stats-container ${isMinimized ? "chronos-stats-minimized" : "chronos-stats-expanded"}`,
         });
+        // Set initial position - centered more visibly in the view
+        const viewEl = this.containerEl.querySelector(".chronos-view");
+        if (viewEl) {
+            statsContainer.style.top = "100px";
+            statsContainer.style.right = "50px";
+        }
         // Create header with minimize/maximize toggle
         const headerContainer = statsContainer.createEl("div", {
             cls: "chronos-stats-header-container",
@@ -1585,9 +1622,7 @@ class ChronosTimelineView extends obsidian.ItemView {
             cls: "chronos-stats-toggle-btn",
             attr: {
                 title: isMinimized ? "Expand" : "Minimize",
-                "aria-label": isMinimized
-                    ? "Expand statistics panel"
-                    : "Minimize statistics panel",
+                "aria-label": isMinimized ? "Expand statistics panel" : "Minimize statistics panel",
             },
         });
         toggleBtn.innerHTML = isMinimized
@@ -1703,7 +1738,7 @@ class ChronosTimelineView extends obsidian.ItemView {
                 }
             }
         }
-        // Make the panel draggable
+        // Make the panel draggable with improved bounds checking
         this.makeStatsPanelDraggable(statsContainer, headerContainer);
     }
     /**

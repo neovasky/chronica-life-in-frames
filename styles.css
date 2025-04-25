@@ -802,58 +802,87 @@
    ----------------------------------------------------------------------------- */
    .chronos-stats-container {
     position: absolute;
-    top: var(--top-offset);
-    right: 20px;
     background-color: var(--background-secondary);
     border-radius: var(--container-border-radius);
-    box-shadow: var(--card-shadow);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     transition: all 0.3s ease;
-    z-index: 25;
-    max-width: 250px;
-    width: 240px;
+    z-index: 100;
+    max-width: 300px;
+    width: 280px;
     overflow: hidden;
   }
+  
   .chronos-stats-container.chronos-stats-minimized .chronos-stats-content {
     display: none;
   }
-  .chronos-stats-header-container {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 8px 12px;
-    background-color: var(--interactive-accent);
-    color: var(--text-on-accent);
-    border-radius: 8px 8px 0 0;
-    cursor: move;
-  }
-  .chronos-stats-header {
-    margin: 0;
-    font-size: 14px;
-    font-weight: 600;
-  }
-  .chronos-stats-toggle-btn,
-  .chronos-stats-close-btn-small {
-    background: transparent;
-    border: none;
-    color: var(--text-on-accent);
-    cursor: pointer;
-    padding: 2px;
-    margin-left: 5px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 4px;
-    transition: background-color 0.2s;
-  }
-  .chronos-stats-toggle-btn:hover,
-  .chronos-stats-close-btn-small:hover {
-    background-color: rgba(255, 255, 255, 0.2);
-  }
-  .chronos-stats-content {
-    padding: 12px;
-    max-height: 400px;
-    overflow-y: auto;
-  }
+
+.chronos-stats-header-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 15px;
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-radius: 6px 6px 0 0;
+  cursor: move;
+}
+.chronos-stats-header {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.chronos-stats-toggle-btn,
+.chronos-stats-close-btn-small {
+  background: transparent;
+  border: none;
+  color: var(--text-on-accent);
+  cursor: pointer;
+  padding: 4px;
+  margin-left: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.chronos-stats-toggle-btn:hover,
+.chronos-stats-close-btn-small:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+.chronos-stats-content {
+  padding: 15px;
+  max-height: 400px;
+  overflow-y: auto;
+  background-color: var(--background-secondary);
+}
+
+.chronos-stat-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.chronos-stat-label {
+  font-weight: 500;
+}
+
+.chronos-stat-value {
+  font-weight: 600;
+  color: var(--interactive-accent);
+}
+
+.chronos-stats-subheader {
+  margin: 15px 0 10px 0;
+  font-size: 15px;
+  color: var(--text-normal);
+  border-bottom: 1px solid var(--background-modifier-border);
+  padding-bottom: 5px;
+}
 
 /* Portrait mode style adjustments */
 .chronos-vertical-markers.portrait-mode {

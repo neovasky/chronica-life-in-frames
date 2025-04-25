@@ -967,6 +967,26 @@ getBirthdayWeekForYear(year: number): {weekNumber: number, weekStart: Date} {
   tempDate.setDate(tempDate.getDate() - (dayOfWeek - 1));
   tempDate.setHours(0, 0, 0, 0);
   
+  // Verify this week actually contains the birthday
+  const weekEndDate = new Date(tempDate);
+  weekEndDate.setDate(weekEndDate.getDate() + 6); // Sunday
+  
+  const containsBirthday = birthdayDate >= tempDate && birthdayDate <= weekEndDate;
+  
+  if (!containsBirthday) {
+    // If the calculated week doesn't contain the birthday, something is wrong
+    // Let's recalculate more directly
+    const correctedDate = new Date(birthdayDate);
+    const birthdayDayOfWeek = correctedDate.getDay() || 7;
+    correctedDate.setDate(correctedDate.getDate() - (birthdayDayOfWeek - 1));
+    correctedDate.setHours(0, 0, 0, 0);
+    
+    return {
+      weekNumber: weekNumber,
+      weekStart: correctedDate
+    };
+  }
+  
   return {
     weekNumber: weekNumber,
     weekStart: tempDate
@@ -2017,42 +2037,49 @@ class ChronosTimelineView extends ItemView {
     let isDragging = false;
     let offsetX = 0;
     let offsetY = 0;
-
+  
     handle.style.cursor = "move";
-
+  
     handle.addEventListener("mousedown", (e: MouseEvent) => {
-      // skip clicks on buttons inside header
+      // Skip clicks on buttons inside header
       if ((e.target as HTMLElement).tagName === "BUTTON") return;
       isDragging = true;
       offsetX = e.clientX - statsContainer.getBoundingClientRect().left;
       offsetY = e.clientY - statsContainer.getBoundingClientRect().top;
       e.preventDefault();
     });
-
+  
     document.addEventListener("mousemove", (e: MouseEvent) => {
       if (!isDragging) return;
-      const viewEl = this.containerEl.querySelector(
-        ".chronos-view"
-      ) as HTMLElement;
+      
+      const viewEl = this.containerEl.querySelector(".chronos-view") as HTMLElement;
+      if (!viewEl) return;
+      
       const viewRect = viewEl.getBoundingClientRect();
-
+      
+      // Calculate new position
       let newLeft = e.clientX - viewRect.left - offsetX;
       let newTop = e.clientY - viewRect.top - offsetY;
-
-      // constrain within view
-      newLeft = Math.max(
-        0,
-        Math.min(newLeft, viewRect.width - statsContainer.offsetWidth)
-      );
-      newTop = Math.max(
-        0,
-        Math.min(newTop, viewRect.height - statsContainer.offsetHeight)
-      );
-
+      
+      // Get panel dimensions
+      const panelWidth = statsContainer.offsetWidth;
+      const panelHeight = statsContainer.offsetHeight;
+      
+      // Ensure the panel stays mostly visible within the view
+      // Left boundary (at least 30px remains visible)
+      newLeft = Math.max(-panelWidth + 30, Math.min(newLeft, viewRect.width - 30));
+      
+      // Top boundary (at least 30px remains visible)
+      newTop = Math.max(0, Math.min(newTop, viewRect.height - 30));
+      
+      // Apply the new position
       statsContainer.style.left = `${newLeft}px`;
       statsContainer.style.top = `${newTop}px`;
+      
+      // Make sure the right position is not interfering
+      statsContainer.style.right = "auto";
     });
-
+  
     document.addEventListener("mouseup", () => {
       isDragging = false;
     });
@@ -2060,45 +2087,52 @@ class ChronosTimelineView extends ItemView {
 
   createStatisticsPanel(isMinimized: boolean = false): void {
     const contentEl = this.containerEl.children[1];
-
+    
+    // Remove any existing stats panel first
+    const existingPanel = this.containerEl.querySelector(".chronos-stats-container");
+    if (existingPanel) existingPanel.remove();
+  
     // Create stats container
     const statsContainer = contentEl.createEl("div", {
-      cls: `chronos-stats-container ${
-        isMinimized ? "chronos-stats-minimized" : "chronos-stats-expanded"
-      }`,
+      cls: `chronos-stats-container ${isMinimized ? "chronos-stats-minimized" : "chronos-stats-expanded"}`,
     });
-
+    
+    // Set initial position - centered more visibly in the view
+    const viewEl = this.containerEl.querySelector(".chronos-view") as HTMLElement;
+    if (viewEl) {
+      statsContainer.style.top = "100px";
+      statsContainer.style.right = "50px";
+    }
+  
     // Create header with minimize/maximize toggle
     const headerContainer = statsContainer.createEl("div", {
       cls: "chronos-stats-header-container",
     });
-
+  
     headerContainer.createEl("h3", {
       text: "Life Statistics",
       cls: "chronos-stats-header",
     });
-
+  
     // Add toggle button
     const toggleBtn = headerContainer.createEl("button", {
       cls: "chronos-stats-toggle-btn",
       attr: {
         title: isMinimized ? "Expand" : "Minimize",
-        "aria-label": isMinimized
-          ? "Expand statistics panel"
-          : "Minimize statistics panel",
+        "aria-label": isMinimized ? "Expand statistics panel" : "Minimize statistics panel",
       },
     });
-
+  
     toggleBtn.innerHTML = isMinimized
       ? `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`
       : `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>`;
-
+  
     toggleBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       this.isStatsPanelMinimized = !this.isStatsPanelMinimized;
       this.createStatisticsPanel(this.isStatsPanelMinimized);
     });
-
+  
     // Add close button to header
     const closeBtn = headerContainer.createEl("button", {
       cls: "chronos-stats-close-btn-small",
@@ -2107,24 +2141,24 @@ class ChronosTimelineView extends ItemView {
         "aria-label": "Close statistics panel",
       },
     });
-
+  
     closeBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
-
+  
     closeBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       statsContainer.remove();
     });
-
+  
     // If minimized, don't add the content
     if (isMinimized) {
       return;
     }
-
+  
     // Content container for statistics
     const contentContainer = statsContainer.createEl("div", {
       cls: "chronos-stats-content",
     });
-
+  
     // Calculate basic statistics
     const now = new Date();
     const birthdayDate = new Date(this.plugin.settings.birthday);
@@ -2132,7 +2166,7 @@ class ChronosTimelineView extends ItemView {
     const totalWeeks = this.plugin.settings.lifespan * 52;
     const livedPercentage = ((ageInWeeks / totalWeeks) * 100).toFixed(1);
     const remainingWeeks = totalWeeks - ageInWeeks;
-
+  
     // Create statistics items
     const createStatItem = (label: string, value: string) => {
       const item = contentContainer.createEl("div", {
@@ -2142,40 +2176,40 @@ class ChronosTimelineView extends ItemView {
       item.createEl("span", { text: value, cls: "chronos-stat-value" });
       return item;
     };
-
+  
     // Add key statistics
     createStatItem("Weeks Lived", ageInWeeks.toString());
     createStatItem("Weeks Remaining", remainingWeeks.toString());
     createStatItem("Life Progress", `${livedPercentage}%`);
-
+  
     // Calculate decades lived
     const yearsLived = ageInWeeks / 52;
     const decadesLived = Math.floor(yearsLived / 10);
-
+  
     if (decadesLived > 0) {
       contentContainer.createEl("h4", {
         text: "Decade Insights",
         cls: "chronos-stats-subheader",
       });
-
+  
       // Basic decade stats
       createStatItem("Decades Completed", decadesLived.toString());
       createStatItem(
         "Current Decade",
         `${decadesLived * 10}-${decadesLived * 10 + 9}`
       );
-
+  
       // Calculate progress in current decade
       const decadeProgress = ((yearsLived % 10) / 10) * 100;
       createStatItem("Decade Progress", `${decadeProgress.toFixed(1)}%`);
     }
-
+  
     // Add event statistics if available
     const majorLifeEvents = this.plugin.settings.greenEvents.length;
     const travelEvents = this.plugin.settings.blueEvents.length;
     const relationshipEvents = this.plugin.settings.pinkEvents.length;
     const educationCareerEvents = this.plugin.settings.purpleEvents.length;
-
+  
     // Calculate custom event counts
     let customEventCount = 0;
     if (
@@ -2189,38 +2223,38 @@ class ChronosTimelineView extends ItemView {
         }
       }
     }
-
+  
     const totalEvents =
       majorLifeEvents +
       travelEvents +
       relationshipEvents +
       educationCareerEvents +
       customEventCount;
-
+  
     if (totalEvents > 0) {
       contentContainer.createEl("h4", {
         text: "Event Summary",
         cls: "chronos-stats-subheader",
       });
-
+  
       createStatItem("Total Events", totalEvents.toString());
-
+  
       if (majorLifeEvents > 0) {
         createStatItem("Major Life Events", majorLifeEvents.toString());
       }
-
+  
       if (travelEvents > 0) {
         createStatItem("Travel Events", travelEvents.toString());
       }
-
+  
       if (relationshipEvents > 0) {
         createStatItem("Relationship Events", relationshipEvents.toString());
       }
-
+  
       if (educationCareerEvents > 0) {
         createStatItem("Education/Career", educationCareerEvents.toString());
       }
-
+  
       // Add custom event types stats
       if (customEventCount > 0) {
         for (const eventType of this.plugin.settings.customEventTypes) {
@@ -2232,8 +2266,8 @@ class ChronosTimelineView extends ItemView {
         }
       }
     }
-
-    // Make the panel draggable
+  
+    // Make the panel draggable with improved bounds checking
     this.makeStatsPanelDraggable(statsContainer, headerContainer);
   }
 
