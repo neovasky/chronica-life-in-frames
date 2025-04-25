@@ -946,6 +946,34 @@ getWeekDateRange(weekKey: string): string {
     return targetDate;
   }
 
+/**
+ * Calculate which ISO week number contains the birthday in a specific year
+ * @param year - Year to check
+ * @returns ISO week number (1-53) containing the birthday
+ */
+getBirthdayWeekForYear(year: number): {weekNumber: number, weekStart: Date} {
+  // Get the birthday in this specific year
+  const birthdayDate = new Date(this.settings.birthday);
+  birthdayDate.setFullYear(year);
+  
+  // Find ISO week number
+  const weekNumber = this.getISOWeekNumber(birthdayDate);
+  
+  // Find the Monday that starts this week
+  const tempDate = new Date(birthdayDate.getTime());
+  const dayOfWeek = tempDate.getDay() || 7; // Convert Sunday (0) to 7
+  
+  // Move to the Monday of this week (ISO week starts on Monday)
+  tempDate.setDate(tempDate.getDate() - (dayOfWeek - 1));
+  tempDate.setHours(0, 0, 0, 0);
+  
+  return {
+    weekNumber: weekNumber,
+    weekStart: tempDate
+  };
+}
+
+
   /**
  * Get the start date (Monday) of the ISO week containing the given date
  * @param date - Date to find the containing week for
@@ -3049,19 +3077,19 @@ for (const [monthIndex, marker] of monthMarkersMap.entries()) {
 
 // For each year of life (column)
 for (let year = 0; year < this.plugin.settings.lifespan; year++) {
-  // Get birthday date in this age year
-  const yearBirthday = this.plugin.calculateBirthdayInYear(birthdayDate, year);
+  // Get calendar year to display (birth year + year)
+  const displayYear = birthdayDate.getFullYear() + year;
   
-  // Get the Monday of the week containing the birthday
-  const birthdayWeekStart = this.plugin.getStartOfISOWeek(yearBirthday);
-    
+  // Get birthday week information for this year
+  const birthdayWeekInfo = this.plugin.getBirthdayWeekForYear(displayYear);
+  
   // For each week in this year
   for (let week = 0; week < 52; week++) {
     const weekIndex = year * 52 + week;
     const cell = gridEl.createEl("div", { cls: "chronos-grid-cell" });
-      
+    
     // Calculate the date for this week relative to the birthday week start
-    const cellDate = new Date(birthdayWeekStart);
+    const cellDate = new Date(birthdayWeekInfo.weekStart);
     cellDate.setDate(cellDate.getDate() + week * 7);
           
         // Get calendar information for display
