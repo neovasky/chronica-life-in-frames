@@ -1556,58 +1556,6 @@ class ChronosTimelineView extends obsidian.ItemView {
             statsButton.textContent = statsPanel ? "Show Statistics" : "Hide Statistics";
         }
     }
-    /**
-     * Render the view with the life grid and events
-     */
-    makeStatsPanelDraggable(statsContainer, handle) {
-        let isDragging = false;
-        let offsetX = 0;
-        let offsetY = 0;
-        handle.style.cursor = "move";
-        handle.addEventListener("mousedown", (e) => {
-            // Skip clicks on buttons inside header
-            if (e.target.tagName === "BUTTON")
-                return;
-            isDragging = true;
-            offsetX = e.clientX - statsContainer.getBoundingClientRect().left;
-            offsetY = e.clientY - statsContainer.getBoundingClientRect().top;
-            e.preventDefault();
-        });
-        document.addEventListener("mousemove", (e) => {
-            if (!isDragging)
-                return;
-            const viewEl = this.containerEl.querySelector(".chronos-view");
-            if (!viewEl)
-                return;
-            const viewRect = viewEl.getBoundingClientRect();
-            // Calculate position relative to view
-            let newLeft = e.clientX - viewRect.left - offsetX;
-            let newTop = e.clientY - viewRect.top - offsetY;
-            // Constrain within view with padding
-            const padding = 5;
-            const maxRight = viewRect.width - statsContainer.offsetWidth - padding;
-            const maxBottom = viewRect.height - statsContainer.offsetHeight - padding;
-            newLeft = Math.max(padding, Math.min(newLeft, maxRight));
-            newTop = Math.max(padding, Math.min(newTop, maxBottom));
-            // Apply the new position
-            statsContainer.style.left = `${newLeft}px`;
-            statsContainer.style.top = `${newTop}px`;
-        });
-        document.addEventListener("mouseup", () => {
-            if (isDragging) {
-                // Save the position to settings
-                const currentLeft = parseInt(statsContainer.style.left, 10) || 0;
-                const currentTop = parseInt(statsContainer.style.top, 10) || 0;
-                this.plugin.settings.lastStatsPanelPos = {
-                    left: currentLeft,
-                    top: currentTop
-                };
-                // Save settings
-                this.plugin.saveSettings();
-                isDragging = false;
-            }
-        });
-    }
     createStatisticsPanel() {
         // Find the view container
         const viewEl = this.containerEl.querySelector(".chronos-view");
@@ -1617,11 +1565,11 @@ class ChronosTimelineView extends obsidian.ItemView {
         const existingPanel = this.containerEl.querySelector(".chronos-stats-panel");
         if (existingPanel)
             existingPanel.remove();
-        // Create stats container with fixed position
+        // Create stats container with Obsidian-style design
         const statsPanel = viewEl.createEl("div", {
             cls: "chronos-stats-panel"
         });
-        // Position based on user preference (top or bottom)
+        // Apply position based on settings
         statsPanel.classList.add(this.plugin.settings.statsPosition);
         // Create header
         const headerEl = statsPanel.createEl("div", {
@@ -3494,6 +3442,19 @@ class ChronosSettingTab extends obsidian.PluginSettingTab {
                     const view = leaf.view;
                     view.updateZoomLevel();
                 });
+            }));
+            // Stats panel position
+            new obsidian.Setting(containerEl)
+                .setName("Statistics Panel Position")
+                .setDesc("Choose where the statistics panel appears")
+                .addDropdown(dropdown => dropdown
+                .addOption("top-right", "Top Right")
+                .addOption("bottom-right", "Bottom Right")
+                .setValue(this.plugin.settings.statsPosition)
+                .onChange(async (value) => {
+                this.plugin.settings.statsPosition = value;
+                await this.plugin.saveSettings();
+                this.refreshAllViews();
             }));
         }
         // Help tips section

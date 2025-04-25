@@ -2023,92 +2023,25 @@ class ChronosTimelineView extends ItemView {
     contentEl.addClass("chronos-timeline-container");
     this.renderView();
   }
-  toggleStatistics(): void {
-    // Check if the panel is already visible
-    const statsPanel = this.containerEl.querySelector(".chronos-stats-panel");
-    
-    if (statsPanel) {
-      // If it exists, remove it
-      statsPanel.remove();
-    } else {
-      // If it doesn't exist, create it
-      this.createStatisticsPanel();
-    }
-    
-    // Update button text in sidebar
-    const statsButton = this.containerEl.querySelector(".chronos-stats-button");
-    if (statsButton) {
-      statsButton.textContent = statsPanel ? "Show Statistics" : "Hide Statistics";
-    }
+
+toggleStatistics(): void {
+  // Check if the panel is already visible
+  const statsPanel = this.containerEl.querySelector(".chronos-stats-panel");
+  
+  if (statsPanel) {
+    // If it exists, remove it
+    statsPanel.remove();
+  } else {
+    // If it doesn't exist, create it
+    this.createStatisticsPanel();
   }
-
   
-
-  /**
-   * Render the view with the life grid and events
-   */
-
-  makeStatsPanelDraggable(
-    statsContainer: HTMLElement,
-    handle: HTMLElement
-  ): void {
-    let isDragging = false;
-    let offsetX = 0;
-    let offsetY = 0;
-  
-    handle.style.cursor = "move";
-  
-    handle.addEventListener("mousedown", (e: MouseEvent) => {
-      // Skip clicks on buttons inside header
-      if ((e.target as HTMLElement).tagName === "BUTTON") return;
-      isDragging = true;
-      offsetX = e.clientX - statsContainer.getBoundingClientRect().left;
-      offsetY = e.clientY - statsContainer.getBoundingClientRect().top;
-      e.preventDefault();
-    });
-  
-    document.addEventListener("mousemove", (e: MouseEvent) => {
-      if (!isDragging) return;
-      
-      const viewEl = this.containerEl.querySelector(".chronos-view") as HTMLElement;
-      if (!viewEl) return;
-      
-      const viewRect = viewEl.getBoundingClientRect();
-      
-      // Calculate position relative to view
-      let newLeft = e.clientX - viewRect.left - offsetX;
-      let newTop = e.clientY - viewRect.top - offsetY;
-      
-      // Constrain within view with padding
-      const padding = 5;
-      const maxRight = viewRect.width - statsContainer.offsetWidth - padding;
-      const maxBottom = viewRect.height - statsContainer.offsetHeight - padding;
-      
-      newLeft = Math.max(padding, Math.min(newLeft, maxRight));
-      newTop = Math.max(padding, Math.min(newTop, maxBottom));
-      
-      // Apply the new position
-      statsContainer.style.left = `${newLeft}px`;
-      statsContainer.style.top = `${newTop}px`;
-    });
-  
-    document.addEventListener("mouseup", () => {
-      if (isDragging) {
-        // Save the position to settings
-        const currentLeft = parseInt(statsContainer.style.left, 10) || 0;
-        const currentTop = parseInt(statsContainer.style.top, 10) || 0;
-        
-        this.plugin.settings.lastStatsPanelPos = {
-          left: currentLeft,
-          top: currentTop
-        };
-        
-        // Save settings
-        this.plugin.saveSettings();
-        isDragging = false;
-      }
-    });
+  // Update button text in sidebar
+  const statsButton = this.containerEl.querySelector(".chronos-stats-button");
+  if (statsButton) {
+    statsButton.textContent = statsPanel ? "Show Statistics" : "Hide Statistics";
   }
+}
 
   createStatisticsPanel(): void {
     // Find the view container
@@ -2119,14 +2052,14 @@ class ChronosTimelineView extends ItemView {
     const existingPanel = this.containerEl.querySelector(".chronos-stats-panel");
     if (existingPanel) existingPanel.remove();
   
-    // Create stats container with fixed position
+    // Create stats container with Obsidian-style design
     const statsPanel = viewEl.createEl("div", {
       cls: "chronos-stats-panel"
     });
     
-    // Position based on user preference (top or bottom)
+    // Apply position based on settings
     statsPanel.classList.add(this.plugin.settings.statsPosition);
-  
+    
     // Create header
     const headerEl = statsPanel.createEl("div", {
       cls: "chronos-stats-header"
@@ -2136,7 +2069,7 @@ class ChronosTimelineView extends ItemView {
       text: "Life Statistics",
       cls: "chronos-stats-title"
     });
-  
+    
     // Create content wrapper
     const contentEl = statsPanel.createEl("div", {
       cls: "chronos-stats-content"
@@ -4595,6 +4528,22 @@ class ChronosSettingTab extends PluginSettingTab {
                      const view = leaf.view as ChronosTimelineView;
                  view.updateZoomLevel();
                   });
+              })
+            );
+
+
+            // Stats panel position
+            new Setting(containerEl)
+            .setName("Statistics Panel Position")
+            .setDesc("Choose where the statistics panel appears")
+            .addDropdown(dropdown => dropdown
+              .addOption("top-right", "Top Right")
+              .addOption("bottom-right", "Bottom Right")
+              .setValue(this.plugin.settings.statsPosition)
+              .onChange(async (value) => {
+                this.plugin.settings.statsPosition = value as 'top-right' | 'bottom-right';
+                await this.plugin.saveSettings();
+                this.refreshAllViews();
               })
             );
     }

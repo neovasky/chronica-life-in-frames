@@ -803,11 +803,13 @@
    .chronos-stats-panel {
     position: absolute;
     width: 280px;
-    background-color: var(--background-secondary);
+    background-color: var(--background-primary);
     border-radius: var(--container-border-radius);
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--background-modifier-border);
+    box-shadow: var(--card-shadow);
     z-index: 20;
     overflow: hidden;
+    max-height: 80%;
     transition: opacity 0.2s ease;
   }
   
@@ -823,21 +825,25 @@
   }
   
   .chronos-stats-header {
-    background-color: var(--background-modifier-border);
+    background-color: var(--background-secondary-alt);
     padding: 12px 16px;
-    border-bottom: 1px solid var(--background-modifier-border-hover);
+    border-bottom: 1px solid var(--background-modifier-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
   }
   
   .chronos-stats-title {
     margin: 0;
-    text-align: center;
     font-size: 16px;
     font-weight: 600;
     color: var(--text-normal);
+    flex-grow: 1;
+    text-align: center;
   }
   
   .chronos-stats-content {
-    max-height: 500px;
+    max-height: calc(80vh - 60px);
     overflow-y: auto;
   }
   
