@@ -804,32 +804,33 @@
     position: absolute;
     background-color: var(--background-secondary);
     border-radius: var(--container-border-radius);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    transition: all 0.3s ease;
+    box-shadow: var(--card-shadow);
     z-index: 100;
-    max-width: 300px;
-    width: 280px;
+    width: 240px;
+    max-width: 240px;
     overflow: hidden;
+    pointer-events: auto;
   }
   
   .chronos-stats-container.chronos-stats-minimized .chronos-stats-content {
     display: none;
   }
 
-.chronos-stats-header-container {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 15px;
-  background-color: var(--interactive-accent);
-  color: var(--text-on-accent);
-  border-radius: 6px 6px 0 0;
-  cursor: move;
-}
-.chronos-stats-header {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
+  .chronos-stats-header-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border-radius: 8px 8px 0 0;
+    cursor: move;
+  }
+
+.chronos-stats-content {
+  padding: 12px;
+  max-height: 400px;
+  overflow-y: auto;
 }
 
 .chronos-stats-toggle-btn,
@@ -862,9 +863,7 @@
 .chronos-stat-item {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 10px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--background-modifier-border);
+  margin-bottom: 6px;
 }
 
 .chronos-stat-label {

@@ -119,7 +119,7 @@ interface ChronosSettings {
   isStatsPanelMinimized: boolean;
 
 /** Stored position for stats panel to keep it at the same place when toggled */
-lastStatsPanelPos: {top: number, left: number} | null = null;
+lastStatsPanelPos: { top: number; left: number };
 }
 
 /** Interface for custom event types */
@@ -218,6 +218,7 @@ const DEFAULT_SETTINGS: ChronosSettings = {
   isStatsPanelMinimized: false,
   cellShape: 'square',
   gridOrientation: 'landscape',
+  lastStatsPanelPos: { top: 60, left: 20 },
 };
 
 /** SVG icon for the ChronOS Timeline */
@@ -2015,22 +2016,15 @@ class ChronosTimelineView extends ItemView {
     this.renderView();
   }
   toggleStatistics(): void {
-    // Always check for the view element
-    const viewEl = this.containerEl.querySelector(".chronos-view") as HTMLElement;
-    const stats = viewEl.querySelector(".chronos-stats-container");
+    // Check if the panel is already visible
+    const statsPanel = this.containerEl.querySelector(".chronos-stats-container");
     
-    if (stats) {
-      // Store position in memory before removing the panel
-      const rect = stats.getBoundingClientRect();
-      const viewRect = viewEl.getBoundingClientRect();
-      this.lastStatsPanelPos = {
-        top: rect.top - viewRect.top,
-        left: rect.left - viewRect.left
-      };
-      
-      stats.remove();
+    if (statsPanel) {
+      // If it exists, remove it
+      statsPanel.remove();
       this.plugin.settings.isStatsPanelMinimized = false;
     } else {
+      // If it doesn't exist, create it
       this.createStatisticsPanel(false);
     }
   }
@@ -2041,7 +2035,7 @@ class ChronosTimelineView extends ItemView {
    * Render the view with the life grid and events
    */
 
-  private makeStatsPanelDraggable(
+  makeStatsPanelDraggable(
     statsContainer: HTMLElement,
     handle: HTMLElement
   ): void {
@@ -2064,63 +2058,70 @@ class ChronosTimelineView extends ItemView {
       if (!isDragging) return;
       
       const viewEl = this.containerEl.querySelector(".chronos-view") as HTMLElement;
+      if (!viewEl) return;
+      
       const viewRect = viewEl.getBoundingClientRect();
       
-      // Calculate new position
+      // Calculate position relative to view
       let newLeft = e.clientX - viewRect.left - offsetX;
       let newTop = e.clientY - viewRect.top - offsetY;
       
-      // Ensure the panel stays within the view boundaries
-      // Left boundary
-      newLeft = Math.max(0, newLeft);
-      // Right boundary
-      newLeft = Math.min(newLeft, viewRect.width - statsContainer.offsetWidth);
-      // Top boundary (ensure header is always accessible)
-      newTop = Math.max(0, newTop);
-      // Bottom boundary
-      newTop = Math.min(newTop, viewRect.height - statsContainer.offsetHeight);
+      // Constrain within view with padding
+      const padding = 5;
+      const maxRight = viewRect.width - statsContainer.offsetWidth - padding;
+      const maxBottom = viewRect.height - statsContainer.offsetHeight - padding;
       
-      // Apply the position
+      newLeft = Math.max(padding, Math.min(newLeft, maxRight));
+      newTop = Math.max(padding, Math.min(newTop, maxBottom));
+      
+      // Apply the new position
       statsContainer.style.left = `${newLeft}px`;
       statsContainer.style.top = `${newTop}px`;
-      // Remove right positioning when manually positioned by left
-      statsContainer.style.right = "auto";
     });
   
     document.addEventListener("mouseup", () => {
-      isDragging = false;
+      if (isDragging) {
+        // Save the position to settings
+        const currentLeft = parseInt(statsContainer.style.left, 10) || 0;
+        const currentTop = parseInt(statsContainer.style.top, 10) || 0;
+        
+        this.plugin.settings.lastStatsPanelPos = {
+          left: currentLeft,
+          top: currentTop
+        };
+        
+        // Save settings
+        this.plugin.saveSettings();
+        isDragging = false;
+      }
     });
   }
 
   createStatisticsPanel(isMinimized: boolean = false): void {
+    // Find the view container (not the main content area)
     const viewEl = this.containerEl.querySelector(".chronos-view") as HTMLElement;
-  
-  // Remove any existing stats panel before creating a new one
-  const existingPanel = viewEl.querySelector(".chronos-stats-container");
-  if (existingPanel) {
-    existingPanel.remove();
-  }
+    if (!viewEl) return;
+    
+    // Remove any existing stats panel
+    const existingPanel = this.containerEl.querySelector(".chronos-stats-container");
+    if (existingPanel) existingPanel.remove();
   
     // Create stats container
-    const statsContainer = viewEl.createEl("div", {
-      cls: `chronos-stats-container ${
-        isMinimized ? "chronos-stats-minimized" : "chronos-stats-expanded"
-      }`,
-    });
-
-    // If we have a stored position from a previous panel, use that instead
-  if (this.lastStatsPanelPos) {
-  statsContainer.style.top = `${this.lastStatsPanelPos.top}px`;
-  statsContainer.style.left = `${this.lastStatsPanelPos.left}px`;
-  statsContainer.style.right = "auto"; // Clear right position when using left
-}
-  
-    // Set initial position - ADDED THIS SECTION
-    statsContainer.style.top = "60px";  // Below the decade markers
-    statsContainer.style.right = "20px";
+    const statsContainer = document.createElement("div");
+    statsContainer.className = `chronos-stats-container ${
+      isMinimized ? "chronos-stats-minimized" : ""
+    }`;
+    
+    // Position the panel using saved coordinates or defaults
+    const defaultTop = 60;
+    const defaultLeft = 20;
+    
+    const savedPos = this.plugin.settings.lastStatsPanelPos || { top: defaultTop, left: defaultLeft };
     statsContainer.style.position = "absolute";
-    statsContainer.style.zIndex = "25";  // Ensure it's above other elements
-  
+    statsContainer.style.top = `${savedPos.top}px`;
+    statsContainer.style.left = `${savedPos.left}px`;
+    statsContainer.style.zIndex = "100";
+    
     // Create header with minimize/maximize toggle
     const headerContainer = statsContainer.createEl("div", {
       cls: "chronos-stats-header-container",
@@ -2136,7 +2137,9 @@ class ChronosTimelineView extends ItemView {
       cls: "chronos-stats-toggle-btn",
       attr: {
         title: isMinimized ? "Expand" : "Minimize",
-        "aria-label": isMinimized ? "Expand statistics panel" : "Minimize statistics panel",
+        "aria-label": isMinimized
+          ? "Expand statistics panel"
+          : "Minimize statistics panel",
       },
     });
   
@@ -2164,127 +2167,129 @@ class ChronosTimelineView extends ItemView {
     closeBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       statsContainer.remove();
+      this.plugin.settings.isStatsPanelMinimized = false;
     });
   
     // If minimized, don't add the content
-    if (isMinimized) {
-      return;
-    }
-  
-    // Content container for statistics
-    const contentContainer = statsContainer.createEl("div", {
-      cls: "chronos-stats-content",
-    });
-  
-    // Calculate basic statistics
-    const now = new Date();
-    const birthdayDate = new Date(this.plugin.settings.birthday);
-    const ageInWeeks = this.plugin.getFullWeekAge(birthdayDate, now);
-    const totalWeeks = this.plugin.settings.lifespan * 52;
-    const livedPercentage = ((ageInWeeks / totalWeeks) * 100).toFixed(1);
-    const remainingWeeks = totalWeeks - ageInWeeks;
-  
-    // Create statistics items
-    const createStatItem = (label: string, value: string) => {
-      const item = contentContainer.createEl("div", {
-        cls: "chronos-stat-item",
-      });
-      item.createEl("span", { text: label, cls: "chronos-stat-label" });
-      item.createEl("span", { text: value, cls: "chronos-stat-value" });
-      return item;
-    };
-  
-    // Add key statistics
-    createStatItem("Weeks Lived", ageInWeeks.toString());
-    createStatItem("Weeks Remaining", remainingWeeks.toString());
-    createStatItem("Life Progress", `${livedPercentage}%`);
-  
-    // Calculate decades lived
-    const yearsLived = ageInWeeks / 52;
-    const decadesLived = Math.floor(yearsLived / 10);
-  
-    if (decadesLived > 0) {
-      contentContainer.createEl("h4", {
-        text: "Decade Insights",
-        cls: "chronos-stats-subheader",
+    if (!isMinimized) {
+      // Content container for statistics
+      const contentContainer = statsContainer.createEl("div", {
+        cls: "chronos-stats-content",
       });
   
-      // Basic decade stats
-      createStatItem("Decades Completed", decadesLived.toString());
-      createStatItem(
-        "Current Decade",
-        `${decadesLived * 10}-${decadesLived * 10 + 9}`
-      );
+      // Calculate basic statistics
+      const now = new Date();
+      const birthdayDate = new Date(this.plugin.settings.birthday);
+      const ageInWeeks = this.plugin.getFullWeekAge(birthdayDate, now);
+      const totalWeeks = this.plugin.settings.lifespan * 52;
+      const livedPercentage = ((ageInWeeks / totalWeeks) * 100).toFixed(1);
+      const remainingWeeks = totalWeeks - ageInWeeks;
   
-      // Calculate progress in current decade
-      const decadeProgress = ((yearsLived % 10) / 10) * 100;
-      createStatItem("Decade Progress", `${decadeProgress.toFixed(1)}%`);
-    }
+      // Create statistics items
+      const createStatItem = (label: string, value: string) => {
+        const item = contentContainer.createEl("div", {
+          cls: "chronos-stat-item",
+        });
+        item.createEl("span", { text: label, cls: "chronos-stat-label" });
+        item.createEl("span", { text: value, cls: "chronos-stat-value" });
+        return item;
+      };
   
-    // Add event statistics if available
-    const majorLifeEvents = this.plugin.settings.greenEvents.length;
-    const travelEvents = this.plugin.settings.blueEvents.length;
-    const relationshipEvents = this.plugin.settings.pinkEvents.length;
-    const educationCareerEvents = this.plugin.settings.purpleEvents.length;
+      // Add key statistics
+      createStatItem("Weeks Lived", ageInWeeks.toString());
+      createStatItem("Weeks Remaining", remainingWeeks.toString());
+      createStatItem("Life Progress", `${livedPercentage}%`);
   
-    // Calculate custom event counts
-    let customEventCount = 0;
-    if (
-      this.plugin.settings.customEventTypes &&
-      this.plugin.settings.customEvents
-    ) {
-      for (const eventType of this.plugin.settings.customEventTypes) {
-        if (this.plugin.settings.customEvents[eventType.name]) {
-          customEventCount +=
-            this.plugin.settings.customEvents[eventType.name].length;
+      // Calculate decades lived
+      const yearsLived = ageInWeeks / 52;
+      const decadesLived = Math.floor(yearsLived / 10);
+  
+      if (decadesLived > 0) {
+        contentContainer.createEl("h4", {
+          text: "Decade Insights",
+          cls: "chronos-stats-subheader",
+        });
+  
+        // Basic decade stats
+        createStatItem("Decades Completed", decadesLived.toString());
+        createStatItem(
+          "Current Decade",
+          `${decadesLived * 10}-${decadesLived * 10 + 9}`
+        );
+  
+        // Calculate progress in current decade
+        const decadeProgress = ((yearsLived % 10) / 10) * 100;
+        createStatItem("Decade Progress", `${decadeProgress.toFixed(1)}%`);
+      }
+  
+      // Add event statistics if available
+      const majorLifeEvents = this.plugin.settings.greenEvents.length;
+      const travelEvents = this.plugin.settings.blueEvents.length;
+      const relationshipEvents = this.plugin.settings.pinkEvents.length;
+      const educationCareerEvents = this.plugin.settings.purpleEvents.length;
+  
+      // Calculate custom event counts
+      let customEventCount = 0;
+      if (
+        this.plugin.settings.customEventTypes &&
+        this.plugin.settings.customEvents
+      ) {
+        for (const eventType of this.plugin.settings.customEventTypes) {
+          if (this.plugin.settings.customEvents[eventType.name]) {
+            customEventCount +=
+              this.plugin.settings.customEvents[eventType.name].length;
+          }
         }
       }
-    }
   
-    const totalEvents =
-      majorLifeEvents +
-      travelEvents +
-      relationshipEvents +
-      educationCareerEvents +
-      customEventCount;
+      const totalEvents =
+        majorLifeEvents +
+        travelEvents +
+        relationshipEvents +
+        educationCareerEvents +
+        customEventCount;
   
-    if (totalEvents > 0) {
-      contentContainer.createEl("h4", {
-        text: "Event Summary",
-        cls: "chronos-stats-subheader",
-      });
+      if (totalEvents > 0) {
+        contentContainer.createEl("h4", {
+          text: "Event Summary",
+          cls: "chronos-stats-subheader",
+        });
   
-      createStatItem("Total Events", totalEvents.toString());
+        createStatItem("Total Events", totalEvents.toString());
   
-      if (majorLifeEvents > 0) {
-        createStatItem("Major Life Events", majorLifeEvents.toString());
-      }
+        if (majorLifeEvents > 0) {
+          createStatItem("Major Life Events", majorLifeEvents.toString());
+        }
   
-      if (travelEvents > 0) {
-        createStatItem("Travel Events", travelEvents.toString());
-      }
+        if (travelEvents > 0) {
+          createStatItem("Travel Events", travelEvents.toString());
+        }
   
-      if (relationshipEvents > 0) {
-        createStatItem("Relationship Events", relationshipEvents.toString());
-      }
+        if (relationshipEvents > 0) {
+          createStatItem("Relationship Events", relationshipEvents.toString());
+        }
   
-      if (educationCareerEvents > 0) {
-        createStatItem("Education/Career", educationCareerEvents.toString());
-      }
+        if (educationCareerEvents > 0) {
+          createStatItem("Education/Career", educationCareerEvents.toString());
+        }
   
-      // Add custom event types stats
-      if (customEventCount > 0) {
-        for (const eventType of this.plugin.settings.customEventTypes) {
-          const count =
-            this.plugin.settings.customEvents[eventType.name]?.length || 0;
-          if (count > 0) {
-            createStatItem(eventType.name, count.toString());
+        // Add custom event types stats
+        if (customEventCount > 0) {
+          for (const eventType of this.plugin.settings.customEventTypes) {
+            const count =
+              this.plugin.settings.customEvents[eventType.name]?.length || 0;
+            if (count > 0) {
+              createStatItem(eventType.name, count.toString());
+            }
           }
         }
       }
     }
+    
+    // Append to the view container
+    viewEl.appendChild(statsContainer);
   
-    // Make the panel draggable with improved bounds checking
+    // Make the panel draggable
     this.makeStatsPanelDraggable(statsContainer, headerContainer);
   }
 
