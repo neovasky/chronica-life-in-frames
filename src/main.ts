@@ -3098,12 +3098,26 @@ for (let year = 0; year < this.plugin.settings.lifespan; year++) {
         const weekKey = `${cellYear}-W${cellWeek.toString().padStart(2, "0")}`;
         cell.dataset.weekKey = weekKey;
     
-        // Set the title attribute to show the date range on hover
-        const dateRange = this.plugin.getWeekDateRange(weekKey);
-        cell.setAttribute(
-          "title",
-          `Week ${cellWeek}, ${cellYear}\n${dateRange}`
-        );
+      // Calculate the date range directly from the actual cell date
+      const firstDayOfWeek = new Date(cellDate);
+      const lastDayOfWeek = new Date(cellDate);
+      lastDayOfWeek.setDate(firstDayOfWeek.getDate() + 6);
+        
+      // Format the dates
+      const formatDate = (date: Date): string => {
+        const months = [
+          "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+          "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+        ];
+        return `${months[date.getMonth()]} ${date.getDate()}`;
+      };
+        
+      const dateRange = `${formatDate(firstDayOfWeek)} - ${formatDate(lastDayOfWeek)}`;
+        
+      cell.setAttribute(
+        "title",
+        `Week ${cellWeek}, ${cellYear}\n${dateRange}`
+      );
     
         // Position the cell with absolute positioning
         cell.style.position = "absolute";
