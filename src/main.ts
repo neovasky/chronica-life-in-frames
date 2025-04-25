@@ -203,7 +203,7 @@ const DEFAULT_SETTINGS: ChronosSettings = {
   notesFolder: "",
   showDecadeMarkers: true,
   showWeekMarkers: true,
-  showMonthMarkers: true,
+  showMonthMarkers: false,
   showBirthdayMarker: true,
   monthMarkerFrequency: "all",
   enableManualFill: false,
