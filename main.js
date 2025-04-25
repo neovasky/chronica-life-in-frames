@@ -684,6 +684,22 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
         return targetDate;
     }
     /**
+   * Get the start date (Monday) of the ISO week containing the given date
+   * @param date - Date to find the containing week for
+   * @returns Date object representing the start of the week (Monday)
+   */
+    getStartOfISOWeek(date) {
+        const tempDate = new Date(date.getTime());
+        const dayOfWeek = tempDate.getDay() || 7; // Convert Sunday (0) to 7
+        // Move to the Monday of the current week (ISO week starts on Monday)
+        if (dayOfWeek !== 1) {
+            tempDate.setDate(tempDate.getDate() - (dayOfWeek - 1));
+        }
+        // Reset time to start of day
+        tempDate.setHours(0, 0, 0, 0);
+        return tempDate;
+    }
+    /**
      * Get event metadata from a note
      * @param weekKey - Week key in YYYY-WXX format
      * @returns Event metadata if found
@@ -2355,12 +2371,14 @@ class ChronosTimelineView extends obsidian.ItemView {
         for (let year = 0; year < this.plugin.settings.lifespan; year++) {
             // Get birthday date in this age year
             const yearBirthday = this.plugin.calculateBirthdayInYear(birthdayDate, year);
+            // Get the Monday of the week containing the birthday
+            const birthdayWeekStart = this.plugin.getStartOfISOWeek(yearBirthday);
             // For each week in this year
             for (let week = 0; week < 52; week++) {
                 const weekIndex = year * 52 + week;
                 const cell = gridEl.createEl("div", { cls: "chronos-grid-cell" });
-                // Calculate the date for this week relative to the birthday in this year
-                const cellDate = new Date(yearBirthday);
+                // Calculate the date for this week relative to the birthday week start
+                const cellDate = new Date(birthdayWeekStart);
                 cellDate.setDate(cellDate.getDate() + week * 7);
                 // Get calendar information for display
                 const cellYear = cellDate.getFullYear();
