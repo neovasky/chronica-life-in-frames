@@ -123,6 +123,9 @@ interface ChronosSettings {
 
   /** Whether the stats panel is pinned in place */
   isStatsPanelPinned: boolean;
+
+  /** Position of the stats panel */
+  lastStatsPanelPos?: { top: number; left: number };
   }
 
 /** Interface for custom event types */
@@ -223,6 +226,7 @@ const DEFAULT_SETTINGS: ChronosSettings = {
   gridOrientation: 'landscape',
   isStatsPanelPinned: false,
   statsPosition: 'top-right',
+  lastStatsPanelPos: { top: 60, left: 20 },
 };
 
 /** SVG icon for the ChronOS Timeline */
