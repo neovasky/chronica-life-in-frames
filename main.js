@@ -70,7 +70,7 @@ const DEFAULT_SETTINGS = {
     notesFolder: "",
     showDecadeMarkers: true,
     showWeekMarkers: true,
-    showMonthMarkers: true,
+    showMonthMarkers: false,
     showBirthdayMarker: true,
     monthMarkerFrequency: "all",
     enableManualFill: false,
