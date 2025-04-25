@@ -2985,7 +2985,7 @@ for (const [monthIndex, marker] of monthMarkersMap.entries()) {
     if (marker.monthNumber !== undefined) {
       // Calculate position based on month number for even spacing
       const weekPosition = marker.weekIndex % 52;
-      markerEl.style.left = `${weekPosition * (cellSize + cellGap) + cellSize / 2}px`;
+      markerEl.style.left = `${weekPosition * (cellSize + cellGap) + (cellSize + cellGap) + cellSize / 2}px`;
       markerEl.style.top = `10px`; // Fixed distance from the top
       markerEl.style.transform = "translateX(-50%)"; // Center marker on its position
     }
