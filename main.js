@@ -2305,7 +2305,6 @@ class ChronosTimelineView extends obsidian.ItemView {
                 monthNumber: birthMonth
             });
             // Render all month markers
-            // Render all month markers
             for (const [monthIndex, marker] of monthMarkersMap.entries()) {
                 // Create marker element
                 const markerEl = monthMarkersContainer.createEl("div", {
@@ -2317,12 +2316,14 @@ class ChronosTimelineView extends obsidian.ItemView {
                 if (isPortrait) {
                     if (marker.monthNumber !== undefined) {
                         // Calculate position based on month number for even spacing
-                        const monthPosition = (marker.monthNumber * (cellSize * 4)) + cellSize;
-                        markerEl.style.left = `${monthPosition}px`;
+                        const weekPosition = marker.weekIndex % 52;
+                        markerEl.style.left = `${weekPosition * (cellSize + cellGap) + cellSize / 2}px`;
+                        markerEl.style.top = `10px`; // Fixed distance from the top
+                        markerEl.style.transform = "translateX(-50%)"; // Center marker on its position
                     }
                     else {
-                        // Fallback to week-based position if monthNumber is not available
-                        markerEl.style.left = `${marker.weekIndex * (cellSize + cellGap) + cellSize / 2}px`;
+                        // Original landscape positioning logic
+                        markerEl.style.top = `${marker.weekIndex * (cellSize + cellGap) + cellSize / 2}px`;
                     }
                     markerEl.style.top = `${leftOffset - 80}px`;
                     markerEl.style.transform = "translateX(0)"; // Changed from 110% to prevent overlap

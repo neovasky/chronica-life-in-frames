@@ -887,11 +887,10 @@
 }
 
 .chronos-month-marker.portrait-mode {
-  transform: none;
-  transform-origin: left center;
-  text-align: left;
-  white-space: nowrap; /* Prevent wrapping of month names */
-  left: 0 !important; /* Let JavaScript set this property */
+  text-align: center;
+  font-size: 10px;
+  position: absolute;
+  transform: translateX(-50%);
 }
 
 /* Make month markers more visible in portrait mode */
@@ -899,10 +898,9 @@
   position: absolute;
   top: 0;
   left: var(--left-offset);
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  padding-left: 10px;
+  width: calc(100% - var(--left-offset));
+  height: var(--top-offset);
+  display: block; /* Change from flex to block */
+  padding-top: 5px;
 }
 }
