@@ -797,91 +797,114 @@
     font-size: 10px;
   }
 
-  /* ----------------------------------------------------------------------------- 
-   STATISTICS CONTAINER STYLES 
+/* ----------------------------------------------------------------------------- 
+   STATISTICS PANEL STYLES
    ----------------------------------------------------------------------------- */
-   .chronos-stats-container {
+   .chronos-stats-panel {
     position: absolute;
+    width: 280px;
     background-color: var(--background-secondary);
     border-radius: var(--container-border-radius);
-    box-shadow: var(--card-shadow);
-    z-index: 100;
-    width: 240px;
-    max-width: 240px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    z-index: 20;
     overflow: hidden;
-    pointer-events: auto;
+    transition: opacity 0.2s ease;
   }
   
-  .chronos-stats-container.chronos-stats-minimized .chronos-stats-content {
-    display: none;
+  /* Position variants */
+  .chronos-stats-panel.top-right {
+    top: 20px;
+    right: 20px;
   }
-
-  .chronos-stats-header-container {
+  
+  .chronos-stats-panel.bottom-right {
+    bottom: 20px;
+    right: 20px;
+  }
+  
+  .chronos-stats-header {
+    background-color: var(--background-modifier-border);
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--background-modifier-border-hover);
+  }
+  
+  .chronos-stats-title {
+    margin: 0;
+    text-align: center;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-normal);
+  }
+  
+  .chronos-stats-content {
+    max-height: 500px;
+    overflow-y: auto;
+  }
+  
+  .chronos-stats-section {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--background-modifier-border);
+  }
+  
+  .chronos-stats-section:last-child {
+    border-bottom: none;
+  }
+  
+  .chronos-section-title {
+    margin: 0 0 10px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-normal);
+  }
+  
+  .chronos-stat-row {
     display: flex;
-    align-items: center;
     justify-content: space-between;
-    padding: 8px 12px;
-    background-color: var(--interactive-accent);
-    color: var(--text-on-accent);
-    border-radius: 8px 8px 0 0;
-    cursor: move;
+    align-items: center;
+    margin-bottom: 8px;
   }
-
-.chronos-stats-content {
-  padding: 12px;
-  max-height: 400px;
-  overflow-y: auto;
-}
-
-.chronos-stats-toggle-btn,
-.chronos-stats-close-btn-small {
-  background: transparent;
-  border: none;
-  color: var(--text-on-accent);
-  cursor: pointer;
-  padding: 4px;
-  margin-left: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  transition: background-color 0.2s;
-}
-
-.chronos-stats-toggle-btn:hover,
-.chronos-stats-close-btn-small:hover {
-  background-color: rgba(255, 255, 255, 0.3);
-}
-
-.chronos-stats-content {
-  padding: 15px;
-  max-height: 400px;
-  overflow-y: auto;
-  background-color: var(--background-secondary);
-}
-
-.chronos-stat-item {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 6px;
-}
-
-.chronos-stat-label {
-  font-weight: 500;
-}
-
-.chronos-stat-value {
-  font-weight: 600;
-  color: var(--interactive-accent);
-}
-
-.chronos-stats-subheader {
-  margin: 15px 0 10px 0;
-  font-size: 15px;
-  color: var(--text-normal);
-  border-bottom: 1px solid var(--background-modifier-border);
-  padding-bottom: 5px;
-}
+  
+  .chronos-stat-label {
+    font-size: 14px;
+    color: var(--text-muted);
+  }
+  
+  .chronos-stat-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-normal);
+  }
+  
+  .chronos-progress-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .chronos-progress-row .chronos-stat-value {
+    align-self: flex-end;
+    margin-bottom: 4px;
+    color: var(--interactive-accent);
+  }
+  
+  .chronos-progress-bar-container {
+    width: 100%;
+    height: 6px;
+    background-color: var(--background-modifier-border);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: 4px;
+  }
+  
+  .chronos-progress-fill {
+    height: 100%;
+    background-color: var(--interactive-accent);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+  }
+  
+/* -----------------------------------------------------------------------------
+         PORTRAIT MODE STYLES
+         ----------------------------------------------------------------------------- */
 
 /* Portrait mode style adjustments */
 .chronos-vertical-markers.portrait-mode {

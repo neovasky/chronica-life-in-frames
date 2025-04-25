@@ -84,6 +84,7 @@ const DEFAULT_SETTINGS = {
     cellShape: 'square',
     gridOrientation: 'landscape',
     lastStatsPanelPos: { top: 60, left: 20 },
+    isStatsPanelPinned: false,
 };
 /** SVG icon for the ChronOS Timeline */
 const CHRONOS_ICON = `<svg viewBox="0 0 100 100" width="100" height="100" xmlns="http://www.w3.org/2000/svg">
@@ -1622,16 +1623,25 @@ class ChronosTimelineView extends obsidian.ItemView {
         statsContainer.style.top = `${savedPos.top}px`;
         statsContainer.style.left = `${savedPos.left}px`;
         statsContainer.style.zIndex = "100";
-        // Create header with minimize/maximize toggle
+        // Create header with controls
         const headerContainer = statsContainer.createEl("div", {
             cls: "chronos-stats-header-container",
+        });
+        // Add drag handle indicator to make it obvious the panel is draggable
+        headerContainer.createEl("div", {
+            cls: "chronos-stats-drag-handle",
+            text: "::::"
         });
         headerContainer.createEl("h3", {
             text: "Life Statistics",
             cls: "chronos-stats-header",
         });
-        // Add toggle button
-        const toggleBtn = headerContainer.createEl("button", {
+        // Create controls container for all buttons
+        const controlsContainer = headerContainer.createEl("div", {
+            cls: "chronos-stats-controls"
+        });
+        // Add toggle button with better icon
+        const toggleBtn = controlsContainer.createEl("button", {
             cls: "chronos-stats-toggle-btn",
             attr: {
                 title: isMinimized ? "Expand" : "Minimize",
@@ -1648,9 +1658,26 @@ class ChronosTimelineView extends obsidian.ItemView {
             this.isStatsPanelMinimized = !this.isStatsPanelMinimized;
             this.createStatisticsPanel(this.isStatsPanelMinimized);
         });
-        // Add close button to header
-        const closeBtn = headerContainer.createEl("button", {
-            cls: "chronos-stats-close-btn-small",
+        // Add pin/unpin toggle
+        const isPinned = this.plugin.settings.isStatsPanelPinned || false;
+        const pinBtn = controlsContainer.createEl("button", {
+            cls: `chronos-stats-pin-btn ${isPinned ? "pinned" : ""}`,
+            attr: {
+                title: isPinned ? "Unpin" : "Pin panel",
+                "aria-label": isPinned ? "Unpin panel" : "Pin panel",
+            },
+        });
+        pinBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L12 19"></path><path d="M18 9L12 2 6 9"></path><path d="M5 19H19"></path></svg>`;
+        pinBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            this.plugin.settings.isStatsPanelPinned = !this.plugin.settings.isStatsPanelPinned;
+            this.plugin.saveSettings();
+            pinBtn.classList.toggle("pinned");
+            pinBtn.setAttribute("title", this.plugin.settings.isStatsPanelPinned ? "Unpin" : "Pin panel");
+        });
+        // Add close button with improved styling
+        const closeBtn = controlsContainer.createEl("button", {
+            cls: "chronos-stats-close-btn",
             attr: {
                 title: "Close",
                 "aria-label": "Close statistics panel",
@@ -1675,9 +1702,13 @@ class ChronosTimelineView extends obsidian.ItemView {
             const totalWeeks = this.plugin.settings.lifespan * 52;
             const livedPercentage = ((ageInWeeks / totalWeeks) * 100).toFixed(1);
             const remainingWeeks = totalWeeks - ageInWeeks;
+            // Create section for basic stats
+            const basicStatsSection = contentContainer.createEl("div", {
+                cls: "chronos-stats-section"
+            });
             // Create statistics items
-            const createStatItem = (label, value) => {
-                const item = contentContainer.createEl("div", {
+            const createStatItem = (label, value, section) => {
+                const item = section.createEl("div", {
                     cls: "chronos-stat-item",
                 });
                 item.createEl("span", { text: label, cls: "chronos-stat-label" });
@@ -1685,23 +1716,63 @@ class ChronosTimelineView extends obsidian.ItemView {
                 return item;
             };
             // Add key statistics
-            createStatItem("Weeks Lived", ageInWeeks.toString());
-            createStatItem("Weeks Remaining", remainingWeeks.toString());
-            createStatItem("Life Progress", `${livedPercentage}%`);
+            createStatItem("Weeks Lived", ageInWeeks.toString(), basicStatsSection);
+            createStatItem("Weeks Remaining", remainingWeeks.toString(), basicStatsSection);
+            // Add progress bar for life progress
+            const progressContainer = basicStatsSection.createEl("div", {
+                cls: "chronos-progress-container"
+            });
+            progressContainer.createEl("span", {
+                text: "Life Progress",
+                cls: "chronos-stat-label"
+            });
+            progressContainer.createEl("span", {
+                text: `${livedPercentage}%`,
+                cls: "chronos-stat-value"
+            });
+            const progressBarContainer = progressContainer.createEl("div", {
+                cls: "chronos-progress-bar-container"
+            });
+            const progressBar = progressBarContainer.createEl("div", {
+                cls: "chronos-progress-bar"
+            });
+            progressBar.style.width = `${livedPercentage}%`;
             // Calculate decades lived
             const yearsLived = ageInWeeks / 52;
             const decadesLived = Math.floor(yearsLived / 10);
             if (decadesLived > 0) {
-                contentContainer.createEl("h4", {
+                // Create decade insights section
+                const decadeSection = contentContainer.createEl("div", {
+                    cls: "chronos-stats-section"
+                });
+                decadeSection.createEl("h4", {
                     text: "Decade Insights",
                     cls: "chronos-stats-subheader",
                 });
                 // Basic decade stats
-                createStatItem("Decades Completed", decadesLived.toString());
-                createStatItem("Current Decade", `${decadesLived * 10}-${decadesLived * 10 + 9}`);
+                createStatItem("Decades Completed", decadesLived.toString(), decadeSection);
+                createStatItem("Current Decade", `${decadesLived * 10}-${decadesLived * 10 + 9}`, decadeSection);
                 // Calculate progress in current decade
                 const decadeProgress = ((yearsLived % 10) / 10) * 100;
-                createStatItem("Decade Progress", `${decadeProgress.toFixed(1)}%`);
+                // Add decade progress bar
+                const decadeProgressContainer = decadeSection.createEl("div", {
+                    cls: "chronos-progress-container"
+                });
+                decadeProgressContainer.createEl("span", {
+                    text: "Decade Progress",
+                    cls: "chronos-stat-label"
+                });
+                decadeProgressContainer.createEl("span", {
+                    text: `${decadeProgress.toFixed(1)}%`,
+                    cls: "chronos-stat-value"
+                });
+                const decadeProgressBarContainer = decadeProgressContainer.createEl("div", {
+                    cls: "chronos-progress-bar-container"
+                });
+                const decadeProgressBar = decadeProgressBarContainer.createEl("div", {
+                    cls: "chronos-progress-bar"
+                });
+                decadeProgressBar.style.width = `${decadeProgress}%`;
             }
             // Add event statistics if available
             const majorLifeEvents = this.plugin.settings.greenEvents.length;
@@ -1725,29 +1796,33 @@ class ChronosTimelineView extends obsidian.ItemView {
                 educationCareerEvents +
                 customEventCount;
             if (totalEvents > 0) {
-                contentContainer.createEl("h4", {
+                // Create events section
+                const eventsSection = contentContainer.createEl("div", {
+                    cls: "chronos-stats-section"
+                });
+                eventsSection.createEl("h4", {
                     text: "Event Summary",
                     cls: "chronos-stats-subheader",
                 });
-                createStatItem("Total Events", totalEvents.toString());
+                createStatItem("Total Events", totalEvents.toString(), eventsSection);
                 if (majorLifeEvents > 0) {
-                    createStatItem("Major Life Events", majorLifeEvents.toString());
+                    createStatItem("Major Life Events", majorLifeEvents.toString(), eventsSection);
                 }
                 if (travelEvents > 0) {
-                    createStatItem("Travel Events", travelEvents.toString());
+                    createStatItem("Travel Events", travelEvents.toString(), eventsSection);
                 }
                 if (relationshipEvents > 0) {
-                    createStatItem("Relationship Events", relationshipEvents.toString());
+                    createStatItem("Relationship Events", relationshipEvents.toString(), eventsSection);
                 }
                 if (educationCareerEvents > 0) {
-                    createStatItem("Education/Career", educationCareerEvents.toString());
+                    createStatItem("Education/Career", educationCareerEvents.toString(), eventsSection);
                 }
                 // Add custom event types stats
                 if (customEventCount > 0) {
                     for (const eventType of this.plugin.settings.customEventTypes) {
                         const count = this.plugin.settings.customEvents[eventType.name]?.length || 0;
                         if (count > 0) {
-                            createStatItem(eventType.name, count.toString());
+                            createStatItem(eventType.name, count.toString(), eventsSection);
                         }
                     }
                 }
@@ -1755,8 +1830,10 @@ class ChronosTimelineView extends obsidian.ItemView {
         }
         // Append to the view container
         viewEl.appendChild(statsContainer);
-        // Make the panel draggable
-        this.makeStatsPanelDraggable(statsContainer, headerContainer);
+        // Make the panel draggable, but only if not pinned
+        if (!this.plugin.settings.isStatsPanelPinned) {
+            this.makeStatsPanelDraggable(statsContainer, headerContainer);
+        }
     }
     /**
      * Clean up when view is closed
