@@ -120,13 +120,14 @@ interface ChronosSettings {
 
   /** Position of the stats panel */
   statsPosition: 'top-right' | 'bottom-right';
-
+  
   /** Whether the stats panel is pinned in place */
   isStatsPanelPinned: boolean;
-
+  
   /** Position of the stats panel */
   lastStatsPanelPos?: { top: number; left: number };
-  }
+
+}
 
 /** Interface for custom event types */
 interface CustomEventType {
@@ -2024,235 +2025,250 @@ class ChronosTimelineView extends ItemView {
     this.renderView();
   }
 
-toggleStatistics(): void {
-  // Check if the panel is already visible
-  const statsPanel = this.containerEl.querySelector(".chronos-stats-panel");
-  
-  if (statsPanel) {
-    // If it exists, remove it
-    statsPanel.remove();
-  } else {
-    // If it doesn't exist, create it
-    this.createStatisticsPanel();
+  toggleStatistics(): void {
+    // Create and open a new statistics modal
+    const modal = new StatisticsModal(this.app, this.plugin);
+    modal.open();
   }
-  
-  // Update button text in sidebar
-  const statsButton = this.containerEl.querySelector(".chronos-stats-button");
-  if (statsButton) {
-    statsButton.textContent = statsPanel ? "Show Statistics" : "Hide Statistics";
-  }
-}
 
-  createStatisticsPanel(): void {
-    // Find the view container
-    const viewEl = this.containerEl.querySelector(".chronos-view") as HTMLElement;
-    if (!viewEl) return;
-    
-    // Remove any existing stats panel
-    const existingPanel = this.containerEl.querySelector(".chronos-stats-panel");
-    if (existingPanel) existingPanel.remove();
+createStatisticsPanel(): void {
+  // Find the view container
+  const viewEl = this.containerEl.querySelector(".chronos-view") as HTMLElement;
+  if (!viewEl) return;
   
-    // Create stats container with Obsidian-style design
-    const statsPanel = viewEl.createEl("div", {
-      cls: "chronos-stats-panel"
-    });
-    
-    // Apply position based on settings
-    statsPanel.classList.add(this.plugin.settings.statsPosition);
-    
-    // Create header
-    const headerEl = statsPanel.createEl("div", {
-      cls: "chronos-stats-header"
-    });
-    
-    headerEl.createEl("h3", {
-      text: "Life Statistics",
-      cls: "chronos-stats-title"
-    });
-    
-    // Create content wrapper
-    const contentEl = statsPanel.createEl("div", {
-      cls: "chronos-stats-content"
-    });
+  // Remove any existing stats panel
+  const existingPanel = this.containerEl.querySelector(".chronos-stats-panel");
+  if (existingPanel) existingPanel.remove();
+
+  // Create stats container with Obsidian-style design
+  const statsPanel = document.createElement("div");
+  statsPanel.className = "chronos-stats-panel";
+  statsPanel.classList.add(this.plugin.settings.statsPosition);
   
-    // Calculate basic statistics
-    const now = new Date();
-    const birthdayDate = new Date(this.plugin.settings.birthday);
-    const ageInWeeks = this.plugin.getFullWeekAge(birthdayDate, now);
-    const totalWeeks = this.plugin.settings.lifespan * 52;
-    const livedPercentage = ((ageInWeeks / totalWeeks) * 100).toFixed(1);
-    const remainingWeeks = totalWeeks - ageInWeeks;
-    
-    // Create basic stats section
-    const basicSection = contentEl.createEl("div", {
-      cls: "chronos-stats-section"
-    });
+  // Create header with title and close button
+  const headerEl = document.createElement("div");
+  headerEl.className = "chronos-stats-header";
   
-    this.createStatRow(basicSection, "Weeks Lived", ageInWeeks.toString());
-    this.createStatRow(basicSection, "Weeks Remaining", remainingWeeks.toString());
-    
-    // Add life progress with bar visualization
-    const progressRow = basicSection.createEl("div", {
-      cls: "chronos-stat-row chronos-progress-row"
-    });
-    
-    progressRow.createEl("span", {
-      text: "Life Progress",
-      cls: "chronos-stat-label"
-    });
-    
-    progressRow.createEl("span", {
-      text: `${livedPercentage}%`,
-      cls: "chronos-stat-value"
-    });
-    
-    const progressBar = progressRow.createEl("div", {
-      cls: "chronos-progress-bar-container"
-    });
-    
-    const progressFill = progressBar.createEl("div", {
-      cls: "chronos-progress-fill"
-    });
-    
-    progressFill.style.width = `${livedPercentage}%`;
+  const titleEl = document.createElement("h3");
+  titleEl.className = "chronos-stats-title";
+  titleEl.textContent = "Life Statistics";
+  headerEl.appendChild(titleEl);
   
-    // Calculate decades lived
-    const yearsLived = ageInWeeks / 52;
-    const decadesLived = Math.floor(yearsLived / 10);
-  
-    if (decadesLived > 0) {
-      // Create decade section
-      const decadeSection = contentEl.createEl("div", {
-        cls: "chronos-stats-section"
-      });
-      
-      decadeSection.createEl("h4", {
-        text: "Decade Insights",
-        cls: "chronos-section-title"
-      });
-      
-      this.createStatRow(decadeSection, "Decades Completed", decadesLived.toString());
-      this.createStatRow(
-        decadeSection,
-        "Current Decade",
-        `${decadesLived * 10}-${decadesLived * 10 + 9}`
-      );
-      
-      // Calculate decade progress
-      const decadeProgress = ((yearsLived % 10) / 10) * 100;
-      
-      // Add decade progress with visualization
-      const decadeProgressRow = decadeSection.createEl("div", {
-        cls: "chronos-stat-row chronos-progress-row"
-      });
-      
-      decadeProgressRow.createEl("span", {
-        text: "Decade Progress", 
-        cls: "chronos-stat-label"
-      });
-      
-      decadeProgressRow.createEl("span", {
-        text: `${decadeProgress.toFixed(1)}%`,
-        cls: "chronos-stat-value"
-      });
-      
-      const decadeProgressBar = decadeProgressRow.createEl("div", {
-        cls: "chronos-progress-bar-container"
-      });
-      
-      const decadeProgressFill = decadeProgressBar.createEl("div", {
-        cls: "chronos-progress-fill"
-      });
-      
-      decadeProgressFill.style.width = `${decadeProgress}%`;
+  // Add close button
+  const closeBtn = document.createElement("div");
+  closeBtn.className = "chronos-stats-close";
+  closeBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+  closeBtn.addEventListener("click", () => {
+    statsPanel.remove();
+    
+    // Update button text
+    const statsButton = this.containerEl.querySelector(".chronos-stats-button");
+    if (statsButton) {
+      statsButton.textContent = "Show Statistics";
     }
+  });
+  headerEl.appendChild(closeBtn);
   
-    // Count events
-    const majorLifeEvents = this.plugin.settings.greenEvents.length;
-    const travelEvents = this.plugin.settings.blueEvents.length;
-    const relationshipEvents = this.plugin.settings.pinkEvents.length;
-    const educationCareerEvents = this.plugin.settings.purpleEvents.length;
+  // Create content wrapper 
+  const contentEl = document.createElement("div");
+  contentEl.className = "chronos-stats-content";
+  
+  // Calculate basic statistics
+  const now = new Date();
+  const birthdayDate = new Date(this.plugin.settings.birthday);
+  const ageInWeeks = this.plugin.getFullWeekAge(birthdayDate, now);
+  const totalWeeks = this.plugin.settings.lifespan * 52;
+  const livedPercentage = ((ageInWeeks / totalWeeks) * 100).toFixed(1);
+  const remainingWeeks = totalWeeks - ageInWeeks;
+  
+  // Create basic stats section
+  const basicSection = document.createElement("div");
+  basicSection.className = "chronos-stats-section";
+  
+  this.createStatRow(basicSection, "Weeks Lived", ageInWeeks.toString());
+  this.createStatRow(basicSection, "Weeks Remaining", remainingWeeks.toString());
+  
+  // Add life progress with bar visualization
+  const progressRow = document.createElement("div");
+  progressRow.className = "chronos-stat-row chronos-progress-row";
+  
+  const progressLabel = document.createElement("span");
+  progressLabel.className = "chronos-stat-label";
+  progressLabel.textContent = "Life Progress";
+  progressRow.appendChild(progressLabel);
+  
+  const progressValue = document.createElement("span");
+  progressValue.className = "chronos-stat-value";
+  progressValue.textContent = `${livedPercentage}%`;
+  progressRow.appendChild(progressValue);
+  
+  const progressBar = document.createElement("div");
+  progressBar.className = "chronos-progress-bar-container";
+  
+  const progressFill = document.createElement("div");
+  progressFill.className = "chronos-progress-fill";
+  progressFill.style.width = `${livedPercentage}%`;
+  
+  progressBar.appendChild(progressFill);
+  progressRow.appendChild(progressBar);
+  basicSection.appendChild(progressRow);
+  
+  contentEl.appendChild(basicSection);
+  
+  // Calculate decades lived
+  const yearsLived = ageInWeeks / 52;
+  const decadesLived = Math.floor(yearsLived / 10);
+
+  if (decadesLived > 0) {
+    // Create decade section
+    const decadeSection = document.createElement("div");
+    decadeSection.className = "chronos-stats-section";
     
-    // Calculate custom event counts
-    let customEventCount = 0;
-    if (
-      this.plugin.settings.customEventTypes &&
-      this.plugin.settings.customEvents
-    ) {
-      for (const eventType of this.plugin.settings.customEventTypes) {
-        if (this.plugin.settings.customEvents[eventType.name]) {
-          customEventCount +=
-            this.plugin.settings.customEvents[eventType.name].length;
-        }
-      }
-    }
+    const decadeTitle = document.createElement("h4");
+    decadeTitle.className = "chronos-section-title";
+    decadeTitle.textContent = "Decade Insights";
+    decadeSection.appendChild(decadeTitle);
     
-    const totalEvents =
-      majorLifeEvents +
-      travelEvents +
-      relationshipEvents +
-      educationCareerEvents +
-      customEventCount;
+    this.createStatRow(decadeSection, "Decades Completed", decadesLived.toString());
+    this.createStatRow(
+      decadeSection,
+      "Current Decade",
+      `${decadesLived * 10}-${decadesLived * 10 + 9}`
+    );
     
-    if (totalEvents > 0) {
-      // Create events section
-      const eventsSection = contentEl.createEl("div", {
-        cls: "chronos-stats-section"
-      });
-      
-      eventsSection.createEl("h4", {
-        text: "Events Summary",
-        cls: "chronos-section-title"
-      });
-      
-      this.createStatRow(eventsSection, "Total Events", totalEvents.toString());
-      
-      if (majorLifeEvents > 0) {
-        this.createStatRow(eventsSection, "Major Life Events", majorLifeEvents.toString());
-      }
-      
-      if (travelEvents > 0) {
-        this.createStatRow(eventsSection, "Travel Events", travelEvents.toString());
-      }
-      
-      if (relationshipEvents > 0) {
-        this.createStatRow(eventsSection, "Relationship Events", relationshipEvents.toString());
-      }
-      
-      if (educationCareerEvents > 0) {
-        this.createStatRow(eventsSection, "Education/Career", educationCareerEvents.toString());
-      }
-      
-      // Add custom event types
-      if (customEventCount > 0) {
-        for (const eventType of this.plugin.settings.customEventTypes) {
-          const count =
-            this.plugin.settings.customEvents[eventType.name]?.length || 0;
-          if (count > 0) {
-            this.createStatRow(eventsSection, eventType.name, count.toString());
-          }
-        }
+    // Calculate decade progress
+    const decadeProgress = ((yearsLived % 10) / 10) * 100;
+    
+    // Add decade progress with visualization
+    const decadeProgressRow = document.createElement("div");
+    decadeProgressRow.className = "chronos-stat-row chronos-progress-row";
+    
+    const decadeProgressLabel = document.createElement("span");
+    decadeProgressLabel.className = "chronos-stat-label";
+    decadeProgressLabel.textContent = "Decade Progress";
+    decadeProgressRow.appendChild(decadeProgressLabel);
+    
+    const decadeProgressValue = document.createElement("span");
+    decadeProgressValue.className = "chronos-stat-value";
+    decadeProgressValue.textContent = `${decadeProgress.toFixed(1)}%`;
+    decadeProgressRow.appendChild(decadeProgressValue);
+    
+    const decadeProgressBar = document.createElement("div");
+    decadeProgressBar.className = "chronos-progress-bar-container";
+    
+    const decadeProgressFill = document.createElement("div");
+    decadeProgressFill.className = "chronos-progress-fill";
+    decadeProgressFill.style.width = `${decadeProgress}%`;
+    
+    decadeProgressBar.appendChild(decadeProgressFill);
+    decadeProgressRow.appendChild(decadeProgressBar);
+    decadeSection.appendChild(decadeProgressRow);
+    
+    contentEl.appendChild(decadeSection);
+  }
+
+  // Count events
+  const majorLifeEvents = this.plugin.settings.greenEvents.length;
+  const travelEvents = this.plugin.settings.blueEvents.length;
+  const relationshipEvents = this.plugin.settings.pinkEvents.length;
+  const educationCareerEvents = this.plugin.settings.purpleEvents.length;
+  
+  // Calculate custom event counts
+  let customEventCount = 0;
+  if (
+    this.plugin.settings.customEventTypes &&
+    this.plugin.settings.customEvents
+  ) {
+    for (const eventType of this.plugin.settings.customEventTypes) {
+      if (this.plugin.settings.customEvents[eventType.name]) {
+        customEventCount +=
+          this.plugin.settings.customEvents[eventType.name].length;
       }
     }
   }
+  
+  const totalEvents =
+    majorLifeEvents +
+    travelEvents +
+    relationshipEvents +
+    educationCareerEvents +
+    customEventCount;
+  
+  if (totalEvents > 0) {
+    // Create events section
+    const eventsSection = document.createElement("div");
+    eventsSection.className = "chronos-stats-section";
+    
+    const eventsTitle = document.createElement("h4");
+    eventsTitle.className = "chronos-section-title";
+    eventsTitle.textContent = "Events Summary";
+    eventsSection.appendChild(eventsTitle);
+    
+    this.createStatRow(eventsSection, "Total Events", totalEvents.toString());
+    
+    if (majorLifeEvents > 0) {
+      this.createStatRow(eventsSection, "Major Life Events", majorLifeEvents.toString());
+    }
+    
+    if (travelEvents > 0) {
+      this.createStatRow(eventsSection, "Travel Events", travelEvents.toString());
+    }
+    
+    if (relationshipEvents > 0) {
+      this.createStatRow(eventsSection, "Relationship Events", relationshipEvents.toString());
+    }
+    
+    if (educationCareerEvents > 0) {
+      this.createStatRow(eventsSection, "Education/Career", educationCareerEvents.toString());
+    }
+    
+    // Add custom event types
+    if (customEventCount > 0) {
+      for (const eventType of this.plugin.settings.customEventTypes) {
+        const count =
+          this.plugin.settings.customEvents[eventType.name]?.length || 0;
+        if (count > 0) {
+          this.createStatRow(eventsSection, eventType.name, count.toString());
+        }
+      }
+    }
+    
+    contentEl.appendChild(eventsSection);
+  }
+  
+  // Add the sections to the panel
+  statsPanel.appendChild(headerEl);
+  statsPanel.appendChild(contentEl);
+  
+  // Add the panel to the document body instead of the view
+  document.body.appendChild(statsPanel);
+
+
+  // Add the panel to the document body instead of the view
+  document.body.appendChild(statsPanel);
+
+  // Add a console log to confirm panel was created
+  console.log("Statistics panel created and added to document body");
+}
   
 /**
  * Helper method to create a statistic row
  */
 private createStatRow(container: HTMLElement, label: string, value: string): void {
-  const row = container.createEl("div", {
-    cls: "chronos-stat-row"
-  });
+  const row = document.createElement("div");
+  row.className = "chronos-stat-row";
   
-  row.createEl("span", {
-    text: label,
-    cls: "chronos-stat-label"
-  });
+  const labelEl = document.createElement("span");
+  labelEl.className = "chronos-stat-label";
+  labelEl.textContent = label;
   
-  row.createEl("span", {
-    text: value,
-    cls: "chronos-stat-value"
-  });
+  const valueEl = document.createElement("span");
+  valueEl.className = "chronos-stat-value";
+  valueEl.textContent = value;
+  
+  row.appendChild(labelEl);
+  row.appendChild(valueEl);
+  container.appendChild(row);
 }
 
   /**
@@ -3681,6 +3697,217 @@ class MarkerSettingsModal extends Modal {
 // -----------------------------------------------------------------------
 // EVENT TYPES MODAL CLASS
 // -----------------------------------------------------------------------
+
+
+/**
+ * Modal for displaying timeline statistics
+ */
+class StatisticsModal extends Modal {
+  /** Reference to the main plugin */
+  plugin: ChronosTimelinePlugin;
+
+  /**
+   * Create a new statistics modal
+   * @param app - Obsidian App instance
+   * @param plugin - ChronosTimelinePlugin instance
+   */
+  constructor(app: App, plugin: ChronosTimelinePlugin) {
+    super(app);
+    this.plugin = plugin;
+  }
+
+  /**
+   * Build the modal UI when opened
+   */
+  onOpen(): void {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.addClass("chronos-stats-modal");
+    contentEl.createEl("h2", { text: "Life Statistics" });
+
+    // Calculate basic statistics
+    const now = new Date();
+    const birthdayDate = new Date(this.plugin.settings.birthday);
+    const ageInWeeks = this.plugin.getFullWeekAge(birthdayDate, now);
+    const totalWeeks = this.plugin.settings.lifespan * 52;
+    const livedPercentage = ((ageInWeeks / totalWeeks) * 100).toFixed(1);
+    const remainingWeeks = totalWeeks - ageInWeeks;
+    
+    // Create basic stats section
+    const basicSection = contentEl.createDiv({ cls: "chronos-stats-section" });
+    
+    this.createStatRow(basicSection, "Weeks Lived", ageInWeeks.toString());
+    this.createStatRow(basicSection, "Weeks Remaining", remainingWeeks.toString());
+    
+    // Add life progress with bar visualization
+    const progressRow = basicSection.createDiv({ cls: "chronos-stat-row chronos-progress-row" });
+    
+    progressRow.createSpan({ 
+      cls: "chronos-stat-label",
+      text: "Life Progress"
+    });
+    
+    progressRow.createSpan({ 
+      cls: "chronos-stat-value",
+      text: `${livedPercentage}%`
+    });
+    
+    const progressBar = progressRow.createDiv({ cls: "chronos-progress-bar-container" });
+    const progressFill = progressBar.createDiv({ cls: "chronos-progress-fill" });
+    progressFill.style.width = `${livedPercentage}%`;
+    
+    // Calculate decades lived
+    const yearsLived = ageInWeeks / 52;
+    const decadesLived = Math.floor(yearsLived / 10);
+
+    if (decadesLived > 0) {
+      // Create decade section
+      const decadeSection = contentEl.createDiv({ cls: "chronos-stats-section" });
+      
+      decadeSection.createEl("h3", { 
+        cls: "chronos-section-title",
+        text: "Decade Insights"
+      });
+      
+      this.createStatRow(decadeSection, "Decades Completed", decadesLived.toString());
+      this.createStatRow(
+        decadeSection,
+        "Current Decade",
+        `${decadesLived * 10}-${decadesLived * 10 + 9}`
+      );
+      
+      // Calculate decade progress
+      const decadeProgress = ((yearsLived % 10) / 10) * 100;
+      
+      // Add decade progress with visualization
+      const decadeProgressRow = decadeSection.createDiv({ 
+        cls: "chronos-stat-row chronos-progress-row"
+      });
+      
+      decadeProgressRow.createSpan({ 
+        cls: "chronos-stat-label",
+        text: "Decade Progress"
+      });
+      
+      decadeProgressRow.createSpan({ 
+        cls: "chronos-stat-value",
+        text: `${decadeProgress.toFixed(1)}%`
+      });
+      
+      const decadeProgressBar = decadeProgressRow.createDiv({ 
+        cls: "chronos-progress-bar-container"
+      });
+      
+      const decadeProgressFill = decadeProgressBar.createDiv({ 
+        cls: "chronos-progress-fill"
+      });
+      
+      decadeProgressFill.style.width = `${decadeProgress}%`;
+    }
+
+    // Count events
+    const majorLifeEvents = this.plugin.settings.greenEvents.length;
+    const travelEvents = this.plugin.settings.blueEvents.length;
+    const relationshipEvents = this.plugin.settings.pinkEvents.length;
+    const educationCareerEvents = this.plugin.settings.purpleEvents.length;
+    
+    // Calculate custom event counts
+    let customEventCount = 0;
+    if (
+      this.plugin.settings.customEventTypes &&
+      this.plugin.settings.customEvents
+    ) {
+      for (const eventType of this.plugin.settings.customEventTypes) {
+        if (this.plugin.settings.customEvents[eventType.name]) {
+          customEventCount +=
+            this.plugin.settings.customEvents[eventType.name].length;
+        }
+      }
+    }
+    
+    const totalEvents =
+      majorLifeEvents +
+      travelEvents +
+      relationshipEvents +
+      educationCareerEvents +
+      customEventCount;
+    
+    if (totalEvents > 0) {
+      // Create events section
+      const eventsSection = contentEl.createDiv({ cls: "chronos-stats-section" });
+      
+      eventsSection.createEl("h3", {
+        cls: "chronos-section-title",
+        text: "Events Summary"
+      });
+      
+      this.createStatRow(eventsSection, "Total Events", totalEvents.toString());
+      
+      if (majorLifeEvents > 0) {
+        this.createStatRow(eventsSection, "Major Life Events", majorLifeEvents.toString());
+      }
+      
+      if (travelEvents > 0) {
+        this.createStatRow(eventsSection, "Travel Events", travelEvents.toString());
+      }
+      
+      if (relationshipEvents > 0) {
+        this.createStatRow(eventsSection, "Relationship Events", relationshipEvents.toString());
+      }
+      
+      if (educationCareerEvents > 0) {
+        this.createStatRow(eventsSection, "Education/Career", educationCareerEvents.toString());
+      }
+      
+      // Add custom event types
+      if (customEventCount > 0) {
+        for (const eventType of this.plugin.settings.customEventTypes) {
+          const count =
+            this.plugin.settings.customEvents[eventType.name]?.length || 0;
+          if (count > 0) {
+            this.createStatRow(eventsSection, eventType.name, count.toString());
+          }
+        }
+      }
+    }
+    
+    // Add close button
+    const footerEl = contentEl.createDiv({ cls: "chronos-stats-footer" });
+    const closeBtn = footerEl.createEl("button", {
+      cls: "chronos-btn",
+      text: "Close"
+    });
+    
+    closeBtn.addEventListener("click", () => {
+      this.close();
+    });
+  }
+
+  /**
+   * Helper method to create a statistic row
+   */
+  private createStatRow(container: HTMLElement, label: string, value: string): void {
+    const row = container.createDiv({ cls: "chronos-stat-row" });
+    
+    row.createSpan({ 
+      cls: "chronos-stat-label",
+      text: label
+    });
+    
+    row.createSpan({ 
+      cls: "chronos-stat-value",
+      text: value
+    });
+  }
+
+  /**
+   * Clean up on modal close
+   */
+  onClose(): void {
+    const { contentEl } = this;
+    contentEl.empty();
+  }
+}
 
 /**
  * Modal for managing custom event types
