@@ -1504,10 +1504,12 @@ class ChronosTimelineView extends obsidian.ItemView {
     plugin;
     /** Track sidebar open/closed state */
     isSidebarOpen;
+    isStatsOpen;
     constructor(leaf, plugin) {
         super(leaf);
         this.plugin = plugin;
         this.isSidebarOpen = this.plugin.settings.isSidebarOpen;
+        this.isStatsOpen = this.plugin.settings.isStatsOpen;
     }
     /**
      * Get the unique view type
@@ -2384,17 +2386,20 @@ class ChronosTimelineView extends obsidian.ItemView {
         });
         // Add icon and text to the handle
         statsHandle.innerHTML = `
-    <svg class="chronos-stats-handle-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M18 20V10M12 20V4M6 20v-6"></path>
-    </svg>
-    <span>Statistics</span>
-  `;
-        // Create stats panel container
+      <svg class="chronos-stats-handle-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M18 20V10M12 20V4M6 20v-6"></path>
+      </svg>
+      <span>Statistics</span>
+    `;
+        // Create stats panel container with appropriate classes
         const statsPanel = container.createEl("div", {
-            cls: `chronos-stats-panel ${this.plugin.settings.isStatsOpen ? "" : "closed"}`,
+            cls: `chronos-stats-panel ${this.isStatsOpen ? "expanded" : "collapsed"}`,
         });
         // Set the panel height from settings
-        statsPanel.style.height = `${this.plugin.settings.statsPanelHeight}px`;
+        if (this.isStatsOpen) {
+            statsPanel.style.height = `${this.plugin.settings.statsPanelHeight}px`;
+            statsPanel.style.minHeight = `${this.plugin.settings.statsPanelHeight}px`;
+        }
         // Create header with drag handle and tabs
         const statsHeader = statsPanel.createEl("div", { cls: "chronos-stats-header" });
         // Add drag handle for resizing
@@ -2466,22 +2471,33 @@ class ChronosTimelineView extends obsidian.ItemView {
      * Toggle the stats panel open/closed
      */
     toggleStatsPanel() {
-        this.plugin.settings.isStatsOpen = !this.plugin.settings.isStatsOpen;
+        this.isStatsOpen = !this.isStatsOpen;
+        // Save state to plugin settings
+        this.plugin.settings.isStatsOpen = this.isStatsOpen;
         this.plugin.saveSettings();
+        // Update UI
         const statsPanel = this.containerEl.querySelector(".chronos-stats-panel");
         if (statsPanel) {
-            statsPanel.classList.toggle("closed", !this.plugin.settings.isStatsOpen);
+            statsPanel.classList.toggle("collapsed", !this.isStatsOpen);
+            statsPanel.classList.toggle("expanded", this.isStatsOpen);
+        }
+        // Update handle text/icon if needed
+        const statsHandle = this.containerEl.querySelector(".chronos-stats-handle");
+        if (statsHandle) {
+            statsHandle.setAttribute("title", this.isStatsOpen ? "Hide Statistics" : "Show Statistics");
         }
     }
     /**
      * Close the stats panel
      */
     closeStatsPanel() {
+        this.isStatsOpen = false;
         this.plugin.settings.isStatsOpen = false;
         this.plugin.saveSettings();
         const statsPanel = this.containerEl.querySelector(".chronos-stats-panel");
         if (statsPanel) {
-            statsPanel.classList.add("closed");
+            statsPanel.classList.add("collapsed");
+            statsPanel.classList.remove("expanded");
         }
     }
     /**
@@ -2511,6 +2527,9 @@ class ChronosTimelineView extends obsidian.ItemView {
         let startY = 0;
         let startHeight = 0;
         const onMouseDown = (e) => {
+            // Only respond to left mouse button
+            if (e.button !== 0)
+                return;
             startY = e.clientY;
             startHeight = parseInt(statsPanel.style.height);
             document.addEventListener("mousemove", onMouseMove);
@@ -2519,8 +2538,9 @@ class ChronosTimelineView extends obsidian.ItemView {
         };
         const onMouseMove = (e) => {
             const deltaY = startY - e.clientY;
-            const newHeight = Math.max(150, Math.min(600, startHeight + deltaY));
+            const newHeight = Math.max(parseInt(getComputedStyle(document.documentElement).getPropertyValue('--stats-panel-min-height')), Math.min(parseInt(getComputedStyle(document.documentElement).getPropertyValue('--stats-panel-max-height')), startHeight + deltaY));
             statsPanel.style.height = `${newHeight}px`;
+            statsPanel.style.minHeight = `${newHeight}px`;
             this.plugin.settings.statsPanelHeight = newHeight;
         };
         const onMouseUp = () => {

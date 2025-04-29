@@ -28,6 +28,9 @@
   --travel-color: #2196F3; 
   --education-career-color: #9C27B0;
   --major-life-color: #4CAF50;
+  --stats-panel-height: 200px;
+  --stats-panel-min-height: 150px;
+  --stats-panel-max-height: 600px;
   
   
 }
@@ -894,17 +897,30 @@
     border-top: 1px solid var(--background-modifier-border);
     border-radius: 6px 6px 0 0;
     box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
-    transition: transform 0.3s ease;
-    z-index: 15;
+    transition: transform 0.3s ease, height 0.3s ease, min-height 0.3s ease;
+    z-index: 20; /* Match sidebar z-index */
     overflow: hidden;
     display: flex;
     flex-direction: column;
+  }
+
+  .chronos-stats-panel.expanded {
+    transform: translateY(0);
+    height: var(--stats-panel-height);
+    min-height: var(--stats-panel-height);
   }
   
   .chronos-stats-panel.closed {
     transform: translateY(100%);
   }
   
+  .chronos-stats-panel.collapsed {
+    transform: translateY(100%);
+    height: 0;
+    min-height: 0;
+    overflow: hidden;
+  }
+
   .chronos-stats-header {
     display: flex;
     align-items: center;
@@ -1045,6 +1061,28 @@
     font-size: 12px;
     color: var(--text-muted);
     margin-top: 5px;
+  }
+
+  @media (max-width: 768px) {
+    .chronos-stats-panel:not(.collapsed) {
+      max-height: 200px;
+      height: auto !important;
+    }
+    
+    .chronos-stats-handle {
+      width: 80px;
+      height: 20px;
+    }
+    
+    .chronos-stats-tabs {
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    
+    .chronos-stats-tab {
+      padding: 3px 6px;
+      font-size: 12px;
+    }
   }
 
 }

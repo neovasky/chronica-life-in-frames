@@ -115,14 +115,14 @@ interface ChronosSettings {
   // Add to the class properties at the top of ChronosTimelineView
   isSidebarOpen: boolean;
 
-/** Whether the stats panel is open */
-isStatsOpen: boolean;
-  
-/** Active tab in the stats panel */
-activeStatsTab: string;
-  
-/** Height of the stats panel in pixels */
-statsPanelHeight: number;
+  /** Whether the stats panel is open */
+  isStatsOpen: boolean;
+    
+  /** Active tab in the stats panel */
+  activeStatsTab: string;
+    
+  /** Height of the stats panel in pixels */
+  statsPanelHeight: number;
 
 }
 
@@ -1980,12 +1980,13 @@ class ChronosTimelineView extends ItemView {
 
   /** Track sidebar open/closed state */
   isSidebarOpen: boolean;
-
+  isStatsOpen: boolean;
 
   constructor(leaf: WorkspaceLeaf, plugin: ChronosTimelinePlugin) {
     super(leaf);
     this.plugin = plugin;
     this.isSidebarOpen = this.plugin.settings.isSidebarOpen;
+    this.isStatsOpen = this.plugin.settings.isStatsOpen;
   }
 
   /**
@@ -3068,28 +3069,31 @@ for (let year = 0; year < this.plugin.settings.lifespan; year++) {
  * Render the statistics panel
  * @param container - Container to render panel in
  */
-renderStatsPanel(container: HTMLElement): void {
-  // Create the stats handle (always visible)
-  const statsHandle = container.createEl("div", {
-    cls: "chronos-stats-handle",
-  });
-  
-  // Add icon and text to the handle
-  statsHandle.innerHTML = `
-    <svg class="chronos-stats-handle-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M18 20V10M12 20V4M6 20v-6"></path>
-    </svg>
-    <span>Statistics</span>
-  `;
-  
-  // Create stats panel container
-  const statsPanel = container.createEl("div", {
-    cls: `chronos-stats-panel ${this.plugin.settings.isStatsOpen ? "" : "closed"}`,
-  });
-  
-  // Set the panel height from settings
-  statsPanel.style.height = `${this.plugin.settings.statsPanelHeight}px`;
-  
+  renderStatsPanel(container: HTMLElement): void {
+    // Create the stats handle (always visible)
+    const statsHandle = container.createEl("div", {
+      cls: "chronos-stats-handle",
+    });
+    
+    // Add icon and text to the handle
+    statsHandle.innerHTML = `
+      <svg class="chronos-stats-handle-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M18 20V10M12 20V4M6 20v-6"></path>
+      </svg>
+      <span>Statistics</span>
+    `;
+    
+    // Create stats panel container with appropriate classes
+    const statsPanel = container.createEl("div", {
+      cls: `chronos-stats-panel ${this.isStatsOpen ? "expanded" : "collapsed"}`,
+    });
+    
+    // Set the panel height from settings
+    if (this.isStatsOpen) {
+      statsPanel.style.height = `${this.plugin.settings.statsPanelHeight}px`;
+      statsPanel.style.minHeight = `${this.plugin.settings.statsPanelHeight}px`;
+    }
+    
   // Create header with drag handle and tabs
   const statsHeader = statsPanel.createEl("div", { cls: "chronos-stats-header" });
   
@@ -3174,12 +3178,26 @@ renderStatsPanel(container: HTMLElement): void {
  * Toggle the stats panel open/closed
  */
 toggleStatsPanel(): void {
-  this.plugin.settings.isStatsOpen = !this.plugin.settings.isStatsOpen;
+  this.isStatsOpen = !this.isStatsOpen;
+  
+  // Save state to plugin settings
+  this.plugin.settings.isStatsOpen = this.isStatsOpen;
   this.plugin.saveSettings();
   
+  // Update UI
   const statsPanel = this.containerEl.querySelector(".chronos-stats-panel");
   if (statsPanel) {
-    statsPanel.classList.toggle("closed", !this.plugin.settings.isStatsOpen);
+    statsPanel.classList.toggle("collapsed", !this.isStatsOpen);
+    statsPanel.classList.toggle("expanded", this.isStatsOpen);
+  }
+
+  // Update handle text/icon if needed
+  const statsHandle = this.containerEl.querySelector(".chronos-stats-handle");
+  if (statsHandle) {
+    statsHandle.setAttribute(
+      "title",
+      this.isStatsOpen ? "Hide Statistics" : "Show Statistics"
+    );
   }
 }
 
@@ -3187,12 +3205,14 @@ toggleStatsPanel(): void {
  * Close the stats panel
  */
 closeStatsPanel(): void {
+  this.isStatsOpen = false;
   this.plugin.settings.isStatsOpen = false;
   this.plugin.saveSettings();
   
   const statsPanel = this.containerEl.querySelector(".chronos-stats-panel");
   if (statsPanel) {
-    statsPanel.classList.add("closed");
+    statsPanel.classList.add("collapsed");
+    statsPanel.classList.remove("expanded");
   }
 }
 
@@ -3227,6 +3247,9 @@ setupStatsPanelResize(dragHandle: HTMLElement, statsPanel: HTMLElement): void {
   let startHeight = 0;
   
   const onMouseDown = (e: MouseEvent) => {
+    // Only respond to left mouse button
+    if (e.button !== 0) return;
+    
     startY = e.clientY;
     startHeight = parseInt(statsPanel.style.height);
     
@@ -3238,9 +3261,16 @@ setupStatsPanelResize(dragHandle: HTMLElement, statsPanel: HTMLElement): void {
   
   const onMouseMove = (e: MouseEvent) => {
     const deltaY = startY - e.clientY;
-    const newHeight = Math.max(150, Math.min(600, startHeight + deltaY));
+    const newHeight = Math.max(
+      parseInt(getComputedStyle(document.documentElement).getPropertyValue('--stats-panel-min-height')), 
+      Math.min(
+        parseInt(getComputedStyle(document.documentElement).getPropertyValue('--stats-panel-max-height')), 
+        startHeight + deltaY
+      )
+    );
     
     statsPanel.style.height = `${newHeight}px`;
+    statsPanel.style.minHeight = `${newHeight}px`;
     this.plugin.settings.statsPanelHeight = newHeight;
   };
   
