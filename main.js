@@ -82,6 +82,9 @@ const DEFAULT_SETTINGS = {
     isSidebarOpen: false,
     cellShape: 'square',
     gridOrientation: 'landscape',
+    isStatsOpen: false,
+    activeStatsTab: "overview",
+    statsPanelHeight: 200,
 };
 /** SVG icon for the ChronOS Timeline */
 const CHRONOS_ICON = `<svg viewBox="0 0 100 100" width="100" height="100" xmlns="http://www.w3.org/2000/svg">
@@ -1845,6 +1848,7 @@ class ChronosTimelineView extends obsidian.ItemView {
         const viewEl = contentAreaEl.createEl("div", { cls: "chronos-view" });
         // Render the weeks grid
         this.renderWeeksGrid(viewEl);
+        this.renderStatsPanel(viewEl);
     }
     /**
      * Show modal for adding an event
@@ -2368,6 +2372,302 @@ class ChronosTimelineView extends obsidian.ItemView {
                 });
             }
         }
+    }
+    /**
+   * Render the statistics panel
+   * @param container - Container to render panel in
+   */
+    renderStatsPanel(container) {
+        // Create the stats handle (always visible)
+        const statsHandle = container.createEl("div", {
+            cls: "chronos-stats-handle",
+        });
+        // Add icon and text to the handle
+        statsHandle.innerHTML = `
+    <svg class="chronos-stats-handle-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M18 20V10M12 20V4M6 20v-6"></path>
+    </svg>
+    <span>Statistics</span>
+  `;
+        // Create stats panel container
+        const statsPanel = container.createEl("div", {
+            cls: `chronos-stats-panel ${this.plugin.settings.isStatsOpen ? "" : "closed"}`,
+        });
+        // Set the panel height from settings
+        statsPanel.style.height = `${this.plugin.settings.statsPanelHeight}px`;
+        // Create header with drag handle and tabs
+        const statsHeader = statsPanel.createEl("div", { cls: "chronos-stats-header" });
+        // Add drag handle for resizing
+        const dragHandle = statsHeader.createEl("div", { cls: "chronos-stats-drag-handle" });
+        // Create tabs container
+        const tabsContainer = statsHeader.createEl("div", { cls: "chronos-stats-tabs" });
+        // Define tabs
+        const tabs = [
+            { id: "overview", label: "Overview" },
+            { id: "events", label: "Events" },
+            { id: "timeline", label: "Timeline" },
+            { id: "charts", label: "Charts" }
+        ];
+        // Add tab buttons
+        tabs.forEach(tab => {
+            const tabButton = tabsContainer.createEl("button", {
+                cls: `chronos-stats-tab ${this.plugin.settings.activeStatsTab === tab.id ? "active" : ""}`,
+                text: tab.label
+            });
+            tabButton.dataset.tabId = tab.id;
+            // Add click event to switch tabs
+            tabButton.addEventListener("click", () => {
+                this.switchStatsTab(tab.id);
+            });
+        });
+        // Add close button
+        const closeButton = statsHeader.createEl("button", {
+            cls: "chronos-stats-close",
+            attr: { "aria-label": "Close statistics panel" }
+        });
+        closeButton.innerHTML = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M18 6L6 18M6 6l12 12"></path>
+    </svg>
+  `;
+        // Add content container
+        const contentContainer = statsPanel.createEl("div", { cls: "chronos-stats-content" });
+        // Create tab content areas
+        tabs.forEach(tab => {
+            const tabContent = contentContainer.createEl("div", {
+                cls: `chronos-stats-tab-content ${this.plugin.settings.activeStatsTab === tab.id ? "active" : ""}`,
+            });
+            tabContent.id = `tab-content-${tab.id}`;
+            // Add tab-specific content
+            if (tab.id === "overview") {
+                this.renderOverviewTab(tabContent);
+            }
+            else if (tab.id === "events") {
+                this.renderEventsTab(tabContent);
+            }
+            else if (tab.id === "timeline") {
+                this.renderTimelineTab(tabContent);
+            }
+            else if (tab.id === "charts") {
+                this.renderChartsTab(tabContent);
+            }
+        });
+        // Add event listeners
+        statsHandle.addEventListener("click", () => {
+            this.toggleStatsPanel();
+        });
+        closeButton.addEventListener("click", () => {
+            this.closeStatsPanel();
+        });
+        // Setup drag to resize
+        this.setupStatsPanelResize(dragHandle, statsPanel);
+    }
+    /**
+     * Toggle the stats panel open/closed
+     */
+    toggleStatsPanel() {
+        this.plugin.settings.isStatsOpen = !this.plugin.settings.isStatsOpen;
+        this.plugin.saveSettings();
+        const statsPanel = this.containerEl.querySelector(".chronos-stats-panel");
+        if (statsPanel) {
+            statsPanel.classList.toggle("closed", !this.plugin.settings.isStatsOpen);
+        }
+    }
+    /**
+     * Close the stats panel
+     */
+    closeStatsPanel() {
+        this.plugin.settings.isStatsOpen = false;
+        this.plugin.saveSettings();
+        const statsPanel = this.containerEl.querySelector(".chronos-stats-panel");
+        if (statsPanel) {
+            statsPanel.classList.add("closed");
+        }
+    }
+    /**
+     * Switch between stats tabs
+     * @param tabId - ID of the tab to switch to
+     */
+    switchStatsTab(tabId) {
+        this.plugin.settings.activeStatsTab = tabId;
+        this.plugin.saveSettings();
+        // Update tab buttons
+        const tabButtons = this.containerEl.querySelectorAll(".chronos-stats-tab");
+        tabButtons.forEach(button => {
+            button.classList.toggle("active", button.dataset.tabId === tabId);
+        });
+        // Update tab content
+        const tabContents = this.containerEl.querySelectorAll(".chronos-stats-tab-content");
+        tabContents.forEach(content => {
+            content.classList.toggle("active", content.id === `tab-content-${tabId}`);
+        });
+    }
+    /**
+     * Setup the resize functionality for the stats panel
+     * @param dragHandle - Handle element for dragging
+     * @param statsPanel - Panel to resize
+     */
+    setupStatsPanelResize(dragHandle, statsPanel) {
+        let startY = 0;
+        let startHeight = 0;
+        const onMouseDown = (e) => {
+            startY = e.clientY;
+            startHeight = parseInt(statsPanel.style.height);
+            document.addEventListener("mousemove", onMouseMove);
+            document.addEventListener("mouseup", onMouseUp);
+            e.preventDefault(); // Prevent text selection
+        };
+        const onMouseMove = (e) => {
+            const deltaY = startY - e.clientY;
+            const newHeight = Math.max(150, Math.min(600, startHeight + deltaY));
+            statsPanel.style.height = `${newHeight}px`;
+            this.plugin.settings.statsPanelHeight = newHeight;
+        };
+        const onMouseUp = () => {
+            document.removeEventListener("mousemove", onMouseMove);
+            document.removeEventListener("mouseup", onMouseUp);
+            this.plugin.saveSettings();
+        };
+        dragHandle.addEventListener("mousedown", onMouseDown);
+    }
+    /**
+     * Render the Overview tab content
+     * @param container - Container to render tab content in
+     */
+    renderOverviewTab(container) {
+        // Calculate statistics
+        const now = new Date();
+        const birthdayDate = new Date(this.plugin.settings.birthday);
+        const ageInWeeks = this.plugin.getFullWeekAge(birthdayDate, now);
+        const totalWeeks = this.plugin.settings.lifespan * 52;
+        const livedPercentage = Math.min(100, Math.max(0, (ageInWeeks / totalWeeks) * 100));
+        const remainingWeeks = Math.max(0, totalWeeks - ageInWeeks);
+        // Count events
+        const majorLifeEvents = this.plugin.settings.greenEvents.length;
+        const travelEvents = this.plugin.settings.blueEvents.length;
+        const relationshipEvents = this.plugin.settings.pinkEvents.length;
+        const educationCareerEvents = this.plugin.settings.purpleEvents.length;
+        // Calculate custom event counts
+        let customEventCount = 0;
+        if (this.plugin.settings.customEventTypes && this.plugin.settings.customEvents) {
+            for (const eventType of this.plugin.settings.customEventTypes) {
+                if (this.plugin.settings.customEvents[eventType.name]) {
+                    customEventCount += this.plugin.settings.customEvents[eventType.name].length;
+                }
+            }
+        }
+        const totalEvents = majorLifeEvents + travelEvents + relationshipEvents + educationCareerEvents + customEventCount;
+        // Create life progress circular indicator
+        const progressContainer = container.createEl("div", {
+            cls: "chronos-circular-progress",
+        });
+        const progressValue = Math.round(livedPercentage);
+        progressContainer.innerHTML = `
+    <svg width="80" height="80" viewBox="0 0 80 80">
+      <circle cx="40" cy="40" r="35" fill="none" stroke="var(--background-modifier-border)" stroke-width="5"></circle>
+      <circle cx="40" cy="40" r="35" fill="none" stroke="var(--interactive-accent)" stroke-width="5"
+        stroke-dasharray="220" stroke-dashoffset="${220 - (220 * livedPercentage / 100)}"
+        transform="rotate(-90 40 40)"></circle>
+    </svg>
+    <div class="chronos-circular-progress-text">${progressValue}%</div>
+  `;
+        // Add life progress bar
+        const lifeSummary = container.createEl("div", {
+            cls: "chronos-stat-card",
+        });
+        lifeSummary.createEl("div", {
+            cls: "chronos-stat-title",
+            text: "Life Progress",
+        });
+        const progressBar = lifeSummary.createEl("div", {
+            cls: "chronos-progress-bar",
+        });
+        const progressFill = progressBar.createEl("div", {
+            cls: "chronos-progress-bar-fill",
+        });
+        progressFill.style.width = `${livedPercentage}%`;
+        lifeSummary.createEl("div", {
+            cls: "chronos-stat-subtitle",
+            text: `${ageInWeeks} weeks lived, ${remainingWeeks} weeks remaining`,
+        });
+        // Create stats grid
+        const statsGrid = container.createEl("div", {
+            cls: "chronos-stats-grid",
+        });
+        // Events count card
+        const eventsCard = statsGrid.createEl("div", {
+            cls: "chronos-stat-card",
+        });
+        eventsCard.createEl("div", {
+            cls: "chronos-stat-title",
+            text: "Total Events",
+        });
+        eventsCard.createEl("div", {
+            cls: "chronos-stat-value",
+            text: totalEvents.toString(),
+        });
+        let eventBreakdown = "";
+        if (majorLifeEvents > 0)
+            eventBreakdown += `${majorLifeEvents} major, `;
+        if (travelEvents > 0)
+            eventBreakdown += `${travelEvents} travel, `;
+        if (relationshipEvents > 0)
+            eventBreakdown += `${relationshipEvents} relationship, `;
+        if (educationCareerEvents > 0)
+            eventBreakdown += `${educationCareerEvents} career, `;
+        if (customEventCount > 0)
+            eventBreakdown += `${customEventCount} custom`;
+        // Remove trailing comma and space
+        eventBreakdown = eventBreakdown.replace(/,\s*$/, "");
+        eventsCard.createEl("div", {
+            cls: "chronos-stat-subtitle",
+            text: eventBreakdown || "No events added yet",
+        });
+        // Current age card
+        const ageCard = statsGrid.createEl("div", {
+            cls: "chronos-stat-card",
+        });
+        ageCard.createEl("div", {
+            cls: "chronos-stat-title",
+            text: "Current Age",
+        });
+        const yearsLived = Math.floor(ageInWeeks / 52);
+        const remainingWeeksInYear = ageInWeeks % 52;
+        ageCard.createEl("div", {
+            cls: "chronos-stat-value",
+            text: `${yearsLived} years, ${remainingWeeksInYear} weeks`,
+        });
+        // Calculate decades lived
+        const decadesLived = Math.floor(yearsLived / 10);
+        const yearsIntoCurrentDecade = yearsLived % 10;
+        ageCard.createEl("div", {
+            cls: "chronos-stat-subtitle",
+            text: `${decadesLived} decades + ${yearsIntoCurrentDecade} years`,
+        });
+    }
+    /**
+     * Render the Events tab content (placeholder for now)
+     * @param container - Container to render tab content in
+     */
+    renderEventsTab(container) {
+        container.createEl("h3", { text: "Event Statistics" });
+        container.createEl("p", { text: "This tab will show detailed event statistics and distributions." });
+    }
+    /**
+     * Render the Timeline tab content (placeholder for now)
+     * @param container - Container to render tab content in
+     */
+    renderTimelineTab(container) {
+        container.createEl("h3", { text: "Timeline Statistics" });
+        container.createEl("p", { text: "This tab will show statistics about your timeline and important milestones." });
+    }
+    /**
+     * Render the Charts tab content (placeholder for now)
+     * @param container - Container to render tab content in
+     */
+    renderChartsTab(container) {
+        container.createEl("h3", { text: "Charts & Visualizations" });
+        container.createEl("p", { text: "This tab will show various charts and visualizations of your timeline data." });
     }
     /**
      * Apply styling for events to a cell
@@ -3265,6 +3565,46 @@ class ChronosSettingTab extends obsidian.PluginSettingTab {
                     const view = leaf.view;
                     view.updateZoomLevel();
                 });
+            }));
+            // Statistics Panel Settings
+            containerEl.createEl("h3", { text: "Statistics Panel" });
+            new obsidian.Setting(containerEl)
+                .setName("Default Panel State")
+                .setDesc("Whether the statistics panel should be open by default")
+                .addToggle((toggle) => toggle
+                .setValue(this.plugin.settings.isStatsOpen)
+                .onChange(async (value) => {
+                this.plugin.settings.isStatsOpen = value;
+                await this.plugin.saveSettings();
+                this.refreshAllViews();
+            }));
+            new obsidian.Setting(containerEl)
+                .setName("Default Tab")
+                .setDesc("Which tab should be selected by default")
+                .addDropdown((dropdown) => {
+                dropdown
+                    .addOption("overview", "Overview")
+                    .addOption("events", "Events")
+                    .addOption("timeline", "Timeline")
+                    .addOption("charts", "Charts")
+                    .setValue(this.plugin.settings.activeStatsTab)
+                    .onChange(async (value) => {
+                    this.plugin.settings.activeStatsTab = value;
+                    await this.plugin.saveSettings();
+                    this.refreshAllViews();
+                });
+            });
+            new obsidian.Setting(containerEl)
+                .setName("Panel Height")
+                .setDesc("Default height of the statistics panel in pixels")
+                .addSlider((slider) => slider
+                .setLimits(150, 600, 50)
+                .setValue(this.plugin.settings.statsPanelHeight)
+                .setDynamicTooltip()
+                .onChange(async (value) => {
+                this.plugin.settings.statsPanelHeight = value;
+                await this.plugin.saveSettings();
+                this.refreshAllViews();
             }));
         }
         // Help tips section
