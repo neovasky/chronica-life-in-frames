@@ -82,7 +82,7 @@ const DEFAULT_SETTINGS = {
     isSidebarOpen: false,
     cellShape: 'square',
     gridOrientation: 'landscape',
-    isStatsOpen: false,
+    isStatsOpen: true,
     activeStatsTab: "overview",
     statsPanelHeight: 200,
 };
@@ -1510,6 +1510,8 @@ class ChronosTimelineView extends obsidian.ItemView {
         this.plugin = plugin;
         this.isSidebarOpen = this.plugin.settings.isSidebarOpen;
         this.isStatsOpen = this.plugin.settings.isStatsOpen;
+        // Initialize CSS variables for stats panel
+        document.documentElement.style.setProperty('--stats-panel-height', `${this.plugin.settings.statsPanelHeight}px`);
     }
     /**
      * Get the unique view type
@@ -1536,6 +1538,8 @@ class ChronosTimelineView extends obsidian.ItemView {
         const contentEl = this.containerEl.children[1];
         contentEl.empty();
         contentEl.addClass("chronos-timeline-container");
+        // Set initial CSS variables
+        document.documentElement.style.setProperty('--stats-panel-height', `${this.plugin.settings.statsPanelHeight}px`);
         this.renderView();
     }
     /**
@@ -1800,9 +1804,6 @@ class ChronosTimelineView extends obsidian.ItemView {
         const contentAreaEl = mainContainer.createEl("div", {
             cls: "chronos-content-area",
         });
-        if (this.isStatsOpen) {
-            contentAreaEl.addClass("stats-expanded");
-        }
         // Calculate basic statistics
         const now = new Date();
         const birthdayDate = new Date(this.plugin.settings.birthday);
@@ -1853,7 +1854,7 @@ class ChronosTimelineView extends obsidian.ItemView {
         const viewEl = contentAreaEl.createEl("div", { cls: "chronos-view" });
         // Render the weeks grid
         this.renderWeeksGrid(viewEl);
-        this.renderStatsPanel(viewEl);
+        this.renderStatsPanel(contentAreaEl);
     }
     /**
      * Show modal for adding an event
@@ -2474,22 +2475,19 @@ class ChronosTimelineView extends obsidian.ItemView {
                 this.renderChartsTab(tabContent);
             }
         });
-        // Toggle handler - match sidebar pattern
         statsHandle.addEventListener("click", () => {
-            // Toggle state
+            // 1. flip state
             this.isStatsOpen = !this.isStatsOpen;
-            // Save state to plugin settings
             this.plugin.settings.isStatsOpen = this.isStatsOpen;
             this.plugin.saveSettings();
-            // Update UI classes
-            statsPanel.classList.toggle("collapsed", !this.isStatsOpen);
+            // 2. update classes exactly like the sidebar does
             statsPanel.classList.toggle("expanded", this.isStatsOpen);
-            // Update content padding
+            statsPanel.classList.toggle("collapsed", !this.isStatsOpen);
             const contentArea = this.containerEl.querySelector(".chronos-content-area");
             if (contentArea) {
                 contentArea.classList.toggle("stats-expanded", this.isStatsOpen);
             }
-            // Update handle attributes
+            // 3. update tooltip text
             statsHandle.setAttribute("title", this.isStatsOpen ? "Hide Statistics" : "Show Statistics");
         });
         // Close button handler
@@ -2523,34 +2521,44 @@ class ChronosTimelineView extends obsidian.ItemView {
                 return;
             e.preventDefault(); // Prevent text selection
             // Get the current height from CSS variables rather than inline styles
-            const computed = getComputedStyle(statsPanel);
-            startHeight = parseInt(computed.height);
+            const computed = getComputedStyle(document.documentElement);
+            startHeight = parseInt(computed.getPropertyValue('--stats-panel-height'));
             startY = e.clientY;
-            // Use event delegation rather than direct references
+            // Add event listeners - consistent approach with sidebar
             document.addEventListener("mousemove", onMouseMove);
             document.addEventListener("mouseup", onMouseUp);
         };
         const onMouseMove = (e) => {
             const deltaY = startY - e.clientY;
             const newHeight = Math.max(parseInt(getComputedStyle(document.documentElement).getPropertyValue('--stats-panel-min-height')), Math.min(parseInt(getComputedStyle(document.documentElement).getPropertyValue('--stats-panel-max-height')), startHeight + deltaY));
-            // Update CSS variable instead of inline style
-            document.documentElement.style.setProperty('--stats-panel-height', `${newHeight}px`);
-            // Update settings
+            // Update the container's padding to match new height
+            const contentArea = this.containerEl.querySelector(".chronos-content-area");
+            if (contentArea && this.isStatsOpen) ;
+            // Update settings (but don't save yet to avoid performance issues)
             this.plugin.settings.statsPanelHeight = newHeight;
         };
         const onMouseUp = () => {
             // Remove event listeners
             document.removeEventListener("mousemove", onMouseMove);
             document.removeEventListener("mouseup", onMouseUp);
-            // Save settings
+            // Save settings only once at the end of resize
             this.plugin.saveSettings();
-            // Make sure expanded state is preserved
+            // Apply final updates to all elements
             if (this.isStatsOpen) {
                 const contentArea = this.containerEl.querySelector(".chronos-content-area");
                 if (contentArea) {
                     contentArea.classList.add("stats-expanded");
+                    // Set the final explicit height
+                    contentArea.style.paddingBottom = `${this.plugin.settings.statsPanelHeight}px`;
+                }
+                // Update view content if needed
+                const viewEl = this.containerEl.querySelector(".chronos-view");
+                if (viewEl) {
+                    viewEl.classList.add("stats-expanded");
                 }
             }
+            // Re-render the view to ensure everything is sized correctly
+            this.renderView();
         };
         // Add initial event listener
         dragHandle.addEventListener("mousedown", onMouseDown);

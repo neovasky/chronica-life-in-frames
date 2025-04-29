@@ -221,7 +221,7 @@ const DEFAULT_SETTINGS: ChronosSettings = {
   isSidebarOpen: false,
   cellShape: 'square',
   gridOrientation: 'landscape',
-  isStatsOpen: false,
+  isStatsOpen: true,
   activeStatsTab: "overview",
   statsPanelHeight: 200,
 };
@@ -1987,6 +1987,12 @@ class ChronosTimelineView extends ItemView {
     this.plugin = plugin;
     this.isSidebarOpen = this.plugin.settings.isSidebarOpen;
     this.isStatsOpen = this.plugin.settings.isStatsOpen;
+    
+    // Initialize CSS variables for stats panel
+    document.documentElement.style.setProperty(
+      '--stats-panel-height', 
+      `${this.plugin.settings.statsPanelHeight}px`
+    );
   }
 
   /**
@@ -2017,6 +2023,13 @@ class ChronosTimelineView extends ItemView {
     const contentEl = this.containerEl.children[1];
     contentEl.empty();
     contentEl.addClass("chronos-timeline-container");
+    
+    // Set initial CSS variables
+    document.documentElement.style.setProperty(
+      '--stats-panel-height', 
+      `${this.plugin.settings.statsPanelHeight}px`
+    );
+    
     this.renderView();
   }
 
@@ -2325,8 +2338,6 @@ class ChronosTimelineView extends ItemView {
       cls: "chronos-content-area",
     });
 
-    if (this.isStatsOpen) { contentAreaEl.addClass("stats-expanded"); }
-
 
 // Calculate basic statistics
 const now = new Date();
@@ -2403,8 +2414,7 @@ const totalEvents =
 
     // Render the weeks grid
     this.renderWeeksGrid(viewEl);
-    this.renderStatsPanel(viewEl);
-
+    this.renderStatsPanel(contentAreaEl);
   }
 
   /**
@@ -3183,31 +3193,28 @@ renderStatsPanel(container: HTMLElement): void {
     }
   });
   
-  // Toggle handler - match sidebar pattern
   statsHandle.addEventListener("click", () => {
-    // Toggle state
+    // 1. flip state
     this.isStatsOpen = !this.isStatsOpen;
-    
-    // Save state to plugin settings
     this.plugin.settings.isStatsOpen = this.isStatsOpen;
     this.plugin.saveSettings();
-    
-    // Update UI classes
-    statsPanel.classList.toggle("collapsed", !this.isStatsOpen);
+  
+    // 2. update classes exactly like the sidebar does
     statsPanel.classList.toggle("expanded", this.isStatsOpen);
-    
-    // Update content padding
+    statsPanel.classList.toggle("collapsed", !this.isStatsOpen);
+  
     const contentArea = this.containerEl.querySelector(".chronos-content-area");
     if (contentArea) {
       contentArea.classList.toggle("stats-expanded", this.isStatsOpen);
     }
-    
-    // Update handle attributes
+  
+    // 3. update tooltip text
     statsHandle.setAttribute(
       "title",
       this.isStatsOpen ? "Hide Statistics" : "Show Statistics"
     );
   });
+  
   
   // Close button handler
   closeButton.addEventListener("click", () => {
@@ -3247,11 +3254,11 @@ setupStatsPanelResize(dragHandle: HTMLElement, statsPanel: HTMLElement): void {
     e.preventDefault(); // Prevent text selection
     
     // Get the current height from CSS variables rather than inline styles
-    const computed = getComputedStyle(statsPanel);
-    startHeight = parseInt(computed.height);
+    const computed = getComputedStyle(document.documentElement);
+    startHeight = parseInt(computed.getPropertyValue('--stats-panel-height'));
     startY = e.clientY;
     
-    // Use event delegation rather than direct references
+    // Add event listeners - consistent approach with sidebar
     document.addEventListener("mousemove", onMouseMove);
     document.addEventListener("mouseup", onMouseUp);
   };
@@ -3265,11 +3272,13 @@ setupStatsPanelResize(dragHandle: HTMLElement, statsPanel: HTMLElement): void {
         startHeight + deltaY
       )
     );
+    // Update the container's padding to match new height
+    const contentArea = this.containerEl.querySelector(".chronos-content-area");
+    if (contentArea && this.isStatsOpen) {
+      // Force repaint to ensure smooth resizing
+    }
     
-    // Update CSS variable instead of inline style
-    document.documentElement.style.setProperty('--stats-panel-height', `${newHeight}px`);
-    
-    // Update settings
+    // Update settings (but don't save yet to avoid performance issues)
     this.plugin.settings.statsPanelHeight = newHeight;
   };
   
@@ -3278,16 +3287,27 @@ setupStatsPanelResize(dragHandle: HTMLElement, statsPanel: HTMLElement): void {
     document.removeEventListener("mousemove", onMouseMove);
     document.removeEventListener("mouseup", onMouseUp);
     
-    // Save settings
+    // Save settings only once at the end of resize
     this.plugin.saveSettings();
     
-    // Make sure expanded state is preserved
+    // Apply final updates to all elements
     if (this.isStatsOpen) {
       const contentArea = this.containerEl.querySelector(".chronos-content-area");
       if (contentArea) {
         contentArea.classList.add("stats-expanded");
+        // Set the final explicit height
+        (contentArea as HTMLElement).style.paddingBottom = `${this.plugin.settings.statsPanelHeight}px`;
+      }
+      
+      // Update view content if needed
+      const viewEl = this.containerEl.querySelector(".chronos-view");
+      if (viewEl) {
+        viewEl.classList.add("stats-expanded");
       }
     }
+    
+    // Re-render the view to ensure everything is sized correctly
+    this.renderView();
   };
   
   // Add initial event listener

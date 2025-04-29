@@ -162,6 +162,7 @@
   display: flex;
   flex-direction: column;
   position: relative;
+  transition: padding-bottom 0.3s ease;
 }
 
 /* Sidebar sections */
@@ -872,7 +873,7 @@
     cursor: pointer;
     color: var(--text-muted);
     font-size: 12px;
-    transition: background-color 0.2s ease, color 0.2s ease;
+    transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
     z-index: 100;
     box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.1);
   }
@@ -880,6 +881,7 @@
   .chronos-stats-handle:hover {
     background-color: var(--interactive-accent);
     color: var(--text-on-accent);
+    transform: translateX(-50%) translateY(-2px);
   }
   
   .chronos-stats-handle-icon {
@@ -903,8 +905,8 @@
     border-top: 1px solid var(--background-modifier-border-hover);
     border-radius: 6px 6px 0 0;
     box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.1);
-    transition: height 0.3s ease, min-height 0.3s ease;
-    position: absolute;
+    transition: height 0.3s ease, min-height 0.3s ease, transform 0.3s ease;
+    position: fixed;
     bottom: 0;
     left: 0;
     z-index: 20;
@@ -966,14 +968,18 @@
     color: var(--text-on-accent);
   }
   
-  .chronos-stats-close {
-    background-color: transparent;
-    border: none;
-    color: var(--text-muted);
-    cursor: pointer;
-    padding: 5px;
-    border-radius: 4px;
-  }
+.chronos-stats-close {
+  background-color: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
   
   .chronos-stats-close:hover {
     background-color: var(--background-modifier-hover);
@@ -1070,11 +1076,6 @@
       height: auto !important;
     }
     
-    .chronos-stats-handle {
-      width: 80px;
-      height: 20px;
-    }
-    
     .chronos-stats-tabs {
       flex-wrap: wrap;
       justify-content: center;
@@ -1090,12 +1091,5 @@
     /* Ensure grid view adjusts when stats panel is open */
     transition: padding-bottom 0.3s ease;
   }
-  
-  .chronos-content-area.stats-expanded .chronos-view {
-    /* Add padding to make room for stats panel */
-    padding-bottom: var(--stats-panel-height);
-    transition: padding-bottom 0.3s ease;
-  }
-
 
 }
