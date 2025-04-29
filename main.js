@@ -2395,12 +2395,12 @@ class ChronosTimelineView extends obsidian.ItemView {
         const statsPanel = container.createEl("div", {
             cls: `chronos-stats-panel ${this.isStatsOpen ? "expanded" : "collapsed"}`,
         });
-        // Set the panel height from settings
+        // Set the panel height from settings - DIRECT DOM MANIPULATION LIKE SIDEBAR
         if (this.isStatsOpen) {
             statsPanel.style.height = `${this.plugin.settings.statsPanelHeight}px`;
             statsPanel.style.minHeight = `${this.plugin.settings.statsPanelHeight}px`;
         }
-        // Create header with drag handle and tabs
+        // Create header
         const statsHeader = statsPanel.createEl("div", { cls: "chronos-stats-header" });
         // Add drag handle for resizing
         const dragHandle = statsHeader.createEl("div", { cls: "chronos-stats-drag-handle" });
@@ -2420,9 +2420,27 @@ class ChronosTimelineView extends obsidian.ItemView {
                 text: tab.label
             });
             tabButton.dataset.tabId = tab.id;
-            // Add click event to switch tabs
+            // Add direct click event handler - INLINE LIKE SIDEBAR
             tabButton.addEventListener("click", () => {
-                this.switchStatsTab(tab.id);
+                // Store previous state
+                const previousTabId = this.plugin.settings.activeStatsTab;
+                // Update state
+                this.plugin.settings.activeStatsTab = tab.id;
+                this.plugin.saveSettings();
+                // Update tab buttons - DIRECT DOM UPDATES LIKE SIDEBAR
+                tabsContainer.querySelectorAll(".chronos-stats-tab").forEach(btn => {
+                    btn.classList.toggle("active", btn.getAttribute("data-tab-id") === tab.id);
+                });
+                // Update tab content - DIRECT DOM UPDATES LIKE SIDEBAR
+                const contentContainer = statsPanel.querySelector(".chronos-stats-content");
+                if (contentContainer) {
+                    const previousContent = contentContainer.querySelector(`#tab-content-${previousTabId}`);
+                    const newContent = contentContainer.querySelector(`#tab-content-${tab.id}`);
+                    if (previousContent)
+                        previousContent.classList.remove("active");
+                    if (newContent)
+                        newContent.classList.add("active");
+                }
             });
         });
         // Add close button
@@ -2431,10 +2449,10 @@ class ChronosTimelineView extends obsidian.ItemView {
             attr: { "aria-label": "Close statistics panel" }
         });
         closeButton.innerHTML = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M18 6L6 18M6 6l12 12"></path>
-    </svg>
-  `;
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M18 6L6 18M6 6l12 12"></path>
+      </svg>
+    `;
         // Add content container
         const contentContainer = statsPanel.createEl("div", { cls: "chronos-stats-content" });
         // Create tab content areas
@@ -2457,66 +2475,32 @@ class ChronosTimelineView extends obsidian.ItemView {
                 this.renderChartsTab(tabContent);
             }
         });
-        // Add event listeners
+        // Add event handlers using the SIDEBAR PATTERN - direct DOM references and inline logic
+        // Toggle handler - FOLLOWS SIDEBAR PATTERN
         statsHandle.addEventListener("click", () => {
-            this.toggleStatsPanel();
-        });
-        closeButton.addEventListener("click", () => {
-            this.closeStatsPanel();
-        });
-        // Setup drag to resize
-        this.setupStatsPanelResize(dragHandle, statsPanel);
-    }
-    /**
-     * Toggle the stats panel open/closed
-     */
-    toggleStatsPanel() {
-        this.isStatsOpen = !this.isStatsOpen;
-        // Save state to plugin settings
-        this.plugin.settings.isStatsOpen = this.isStatsOpen;
-        this.plugin.saveSettings();
-        // Update UI
-        const statsPanel = this.containerEl.querySelector(".chronos-stats-panel");
-        if (statsPanel) {
+            // Toggle state - JUST LIKE SIDEBAR
+            this.isStatsOpen = !this.isStatsOpen;
+            // Save state to plugin settings - JUST LIKE SIDEBAR
+            this.plugin.settings.isStatsOpen = this.isStatsOpen;
+            this.plugin.saveSettings();
+            // Update UI directly - JUST LIKE SIDEBAR
             statsPanel.classList.toggle("collapsed", !this.isStatsOpen);
             statsPanel.classList.toggle("expanded", this.isStatsOpen);
-        }
-        // Update handle text/icon if needed
-        const statsHandle = this.containerEl.querySelector(".chronos-stats-handle");
-        if (statsHandle) {
+            // Update handle attributes (similar to sidebar toggle)
             statsHandle.setAttribute("title", this.isStatsOpen ? "Hide Statistics" : "Show Statistics");
-        }
-    }
-    /**
-     * Close the stats panel
-     */
-    closeStatsPanel() {
-        this.isStatsOpen = false;
-        this.plugin.settings.isStatsOpen = false;
-        this.plugin.saveSettings();
-        const statsPanel = this.containerEl.querySelector(".chronos-stats-panel");
-        if (statsPanel) {
-            statsPanel.classList.add("collapsed");
+        });
+        // Close button handler - FOLLOWS SIDEBAR PATTERN
+        closeButton.addEventListener("click", () => {
+            // Direct state update - JUST LIKE SIDEBAR
+            this.isStatsOpen = false;
+            this.plugin.settings.isStatsOpen = false;
+            this.plugin.saveSettings();
+            // Direct DOM update - JUST LIKE SIDEBAR
             statsPanel.classList.remove("expanded");
-        }
-    }
-    /**
-     * Switch between stats tabs
-     * @param tabId - ID of the tab to switch to
-     */
-    switchStatsTab(tabId) {
-        this.plugin.settings.activeStatsTab = tabId;
-        this.plugin.saveSettings();
-        // Update tab buttons
-        const tabButtons = this.containerEl.querySelectorAll(".chronos-stats-tab");
-        tabButtons.forEach(button => {
-            button.classList.toggle("active", button.dataset.tabId === tabId);
+            statsPanel.classList.add("collapsed");
         });
-        // Update tab content
-        const tabContents = this.containerEl.querySelectorAll(".chronos-stats-tab-content");
-        tabContents.forEach(content => {
-            content.classList.toggle("active", content.id === `tab-content-${tabId}`);
-        });
+        // Setup resize functionality (unique to stats panel, but follows sidebar patterns)
+        this.setupStatsPanelResize(dragHandle, statsPanel);
     }
     /**
      * Setup the resize functionality for the stats panel
@@ -2526,12 +2510,14 @@ class ChronosTimelineView extends obsidian.ItemView {
     setupStatsPanelResize(dragHandle, statsPanel) {
         let startY = 0;
         let startHeight = 0;
+        // SIMPLIFIED to match sidebar patterns
         const onMouseDown = (e) => {
             // Only respond to left mouse button
             if (e.button !== 0)
                 return;
             startY = e.clientY;
-            startHeight = parseInt(statsPanel.style.height);
+            startHeight = parseInt(statsPanel.style.height || this.plugin.settings.statsPanelHeight.toString());
+            // Add event listeners to document - DIRECT DOM REFERENCES
             document.addEventListener("mousemove", onMouseMove);
             document.addEventListener("mouseup", onMouseUp);
             e.preventDefault(); // Prevent text selection
@@ -2539,15 +2525,19 @@ class ChronosTimelineView extends obsidian.ItemView {
         const onMouseMove = (e) => {
             const deltaY = startY - e.clientY;
             const newHeight = Math.max(parseInt(getComputedStyle(document.documentElement).getPropertyValue('--stats-panel-min-height')), Math.min(parseInt(getComputedStyle(document.documentElement).getPropertyValue('--stats-panel-max-height')), startHeight + deltaY));
+            // DIRECT DOM UPDATE - like sidebar patterns
             statsPanel.style.height = `${newHeight}px`;
             statsPanel.style.minHeight = `${newHeight}px`;
             this.plugin.settings.statsPanelHeight = newHeight;
         };
         const onMouseUp = () => {
+            // Remove event listeners - CLEANUP
             document.removeEventListener("mousemove", onMouseMove);
             document.removeEventListener("mouseup", onMouseUp);
+            // Save settings
             this.plugin.saveSettings();
         };
+        // Add initial event listener - DIRECT DOM
         dragHandle.addEventListener("mousedown", onMouseDown);
     }
     /**

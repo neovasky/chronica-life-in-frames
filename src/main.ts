@@ -3088,154 +3088,137 @@ for (let year = 0; year < this.plugin.settings.lifespan; year++) {
       cls: `chronos-stats-panel ${this.isStatsOpen ? "expanded" : "collapsed"}`,
     });
     
-    // Set the panel height from settings
+    // Set the panel height from settings - DIRECT DOM MANIPULATION LIKE SIDEBAR
     if (this.isStatsOpen) {
       statsPanel.style.height = `${this.plugin.settings.statsPanelHeight}px`;
       statsPanel.style.minHeight = `${this.plugin.settings.statsPanelHeight}px`;
     }
     
-  // Create header with drag handle and tabs
-  const statsHeader = statsPanel.createEl("div", { cls: "chronos-stats-header" });
-  
-  // Add drag handle for resizing
-  const dragHandle = statsHeader.createEl("div", { cls: "chronos-stats-drag-handle" });
-  
-  // Create tabs container
-  const tabsContainer = statsHeader.createEl("div", { cls: "chronos-stats-tabs" });
-  
-  // Define tabs
-  const tabs = [
-    { id: "overview", label: "Overview" },
-    { id: "events", label: "Events" },
-    { id: "timeline", label: "Timeline" },
-    { id: "charts", label: "Charts" }
-  ];
-  
-  // Add tab buttons
-  tabs.forEach(tab => {
-    const tabButton = tabsContainer.createEl("button", {
-      cls: `chronos-stats-tab ${this.plugin.settings.activeStatsTab === tab.id ? "active" : ""}`,
-      text: tab.label
+    // Create header
+    const statsHeader = statsPanel.createEl("div", { cls: "chronos-stats-header" });
+    
+    // Add drag handle for resizing
+    const dragHandle = statsHeader.createEl("div", { cls: "chronos-stats-drag-handle" });
+    
+    // Create tabs container
+    const tabsContainer = statsHeader.createEl("div", { cls: "chronos-stats-tabs" });
+    
+    // Define tabs
+    const tabs = [
+      { id: "overview", label: "Overview" },
+      { id: "events", label: "Events" },
+      { id: "timeline", label: "Timeline" },
+      { id: "charts", label: "Charts" }
+    ];
+    
+    // Add tab buttons
+    tabs.forEach(tab => {
+      const tabButton = tabsContainer.createEl("button", {
+        cls: `chronos-stats-tab ${this.plugin.settings.activeStatsTab === tab.id ? "active" : ""}`,
+        text: tab.label
+      });
+      
+      tabButton.dataset.tabId = tab.id;
+      
+      // Add direct click event handler - INLINE LIKE SIDEBAR
+      tabButton.addEventListener("click", () => {
+        // Store previous state
+        const previousTabId = this.plugin.settings.activeStatsTab;
+        
+        // Update state
+        this.plugin.settings.activeStatsTab = tab.id;
+        this.plugin.saveSettings();
+        
+        // Update tab buttons - DIRECT DOM UPDATES LIKE SIDEBAR
+        tabsContainer.querySelectorAll(".chronos-stats-tab").forEach(btn => {
+          btn.classList.toggle("active", btn.getAttribute("data-tab-id") === tab.id);
+        });
+        
+        // Update tab content - DIRECT DOM UPDATES LIKE SIDEBAR
+        const contentContainer = statsPanel.querySelector(".chronos-stats-content");
+        if (contentContainer) {
+          const previousContent = contentContainer.querySelector(`#tab-content-${previousTabId}`);
+          const newContent = contentContainer.querySelector(`#tab-content-${tab.id}`);
+          
+          if (previousContent) previousContent.classList.remove("active");
+          if (newContent) newContent.classList.add("active");
+        }
+      });
     });
     
-    tabButton.dataset.tabId = tab.id;
-    
-    // Add click event to switch tabs
-    tabButton.addEventListener("click", () => {
-      this.switchStatsTab(tab.id);
-    });
-  });
-  
-  // Add close button
-  const closeButton = statsHeader.createEl("button", {
-    cls: "chronos-stats-close",
-    attr: { "aria-label": "Close statistics panel" }
-  });
-  
-  closeButton.innerHTML = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M18 6L6 18M6 6l12 12"></path>
-    </svg>
-  `;
-  
-  // Add content container
-  const contentContainer = statsPanel.createEl("div", { cls: "chronos-stats-content" });
-  
-  // Create tab content areas
-  tabs.forEach(tab => {
-    const tabContent = contentContainer.createEl("div", {
-      cls: `chronos-stats-tab-content ${this.plugin.settings.activeStatsTab === tab.id ? "active" : ""}`,
+    // Add close button
+    const closeButton = statsHeader.createEl("button", {
+      cls: "chronos-stats-close",
+      attr: { "aria-label": "Close statistics panel" }
     });
     
-    tabContent.id = `tab-content-${tab.id}`;
+    closeButton.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M18 6L6 18M6 6l12 12"></path>
+      </svg>
+    `;
     
-    // Add tab-specific content
-    if (tab.id === "overview") {
-      this.renderOverviewTab(tabContent);
-    } else if (tab.id === "events") {
-      this.renderEventsTab(tabContent);
-    } else if (tab.id === "timeline") {
-      this.renderTimelineTab(tabContent);
-    } else if (tab.id === "charts") {
-      this.renderChartsTab(tabContent);
-    }
-  });
-  
-  // Add event listeners
-  statsHandle.addEventListener("click", () => {
-    this.toggleStatsPanel();
-  });
-  
-  closeButton.addEventListener("click", () => {
-    this.closeStatsPanel();
-  });
-  
-  // Setup drag to resize
-  this.setupStatsPanelResize(dragHandle, statsPanel);
-}
-
-/**
- * Toggle the stats panel open/closed
- */
-toggleStatsPanel(): void {
-  this.isStatsOpen = !this.isStatsOpen;
-  
-  // Save state to plugin settings
-  this.plugin.settings.isStatsOpen = this.isStatsOpen;
-  this.plugin.saveSettings();
-  
-  // Update UI
-  const statsPanel = this.containerEl.querySelector(".chronos-stats-panel");
-  if (statsPanel) {
-    statsPanel.classList.toggle("collapsed", !this.isStatsOpen);
-    statsPanel.classList.toggle("expanded", this.isStatsOpen);
+    // Add content container
+    const contentContainer = statsPanel.createEl("div", { cls: "chronos-stats-content" });
+    
+    // Create tab content areas
+    tabs.forEach(tab => {
+      const tabContent = contentContainer.createEl("div", {
+        cls: `chronos-stats-tab-content ${this.plugin.settings.activeStatsTab === tab.id ? "active" : ""}`,
+      });
+      
+      tabContent.id = `tab-content-${tab.id}`;
+      
+      // Add tab-specific content
+      if (tab.id === "overview") {
+        this.renderOverviewTab(tabContent);
+      } else if (tab.id === "events") {
+        this.renderEventsTab(tabContent);
+      } else if (tab.id === "timeline") {
+        this.renderTimelineTab(tabContent);
+      } else if (tab.id === "charts") {
+        this.renderChartsTab(tabContent);
+      }
+    });
+    
+    // Add event handlers using the SIDEBAR PATTERN - direct DOM references and inline logic
+    
+    // Toggle handler - FOLLOWS SIDEBAR PATTERN
+    statsHandle.addEventListener("click", () => {
+      // Toggle state - JUST LIKE SIDEBAR
+      this.isStatsOpen = !this.isStatsOpen;
+      
+      // Save state to plugin settings - JUST LIKE SIDEBAR
+      this.plugin.settings.isStatsOpen = this.isStatsOpen;
+      this.plugin.saveSettings();
+      
+      // Update UI directly - JUST LIKE SIDEBAR
+      statsPanel.classList.toggle("collapsed", !this.isStatsOpen);
+      statsPanel.classList.toggle("expanded", this.isStatsOpen);
+      
+      // Update handle attributes (similar to sidebar toggle)
+      statsHandle.setAttribute(
+        "title",
+        this.isStatsOpen ? "Hide Statistics" : "Show Statistics"
+      );
+    });
+    
+    // Close button handler - FOLLOWS SIDEBAR PATTERN
+    closeButton.addEventListener("click", () => {
+      // Direct state update - JUST LIKE SIDEBAR
+      this.isStatsOpen = false;
+      this.plugin.settings.isStatsOpen = false;
+      this.plugin.saveSettings();
+      
+      // Direct DOM update - JUST LIKE SIDEBAR
+      statsPanel.classList.remove("expanded");
+      statsPanel.classList.add("collapsed");
+    });
+    
+    // Setup resize functionality (unique to stats panel, but follows sidebar patterns)
+    this.setupStatsPanelResize(dragHandle, statsPanel);
   }
 
-  // Update handle text/icon if needed
-  const statsHandle = this.containerEl.querySelector(".chronos-stats-handle");
-  if (statsHandle) {
-    statsHandle.setAttribute(
-      "title",
-      this.isStatsOpen ? "Hide Statistics" : "Show Statistics"
-    );
-  }
-}
-
-/**
- * Close the stats panel
- */
-closeStatsPanel(): void {
-  this.isStatsOpen = false;
-  this.plugin.settings.isStatsOpen = false;
-  this.plugin.saveSettings();
-  
-  const statsPanel = this.containerEl.querySelector(".chronos-stats-panel");
-  if (statsPanel) {
-    statsPanel.classList.add("collapsed");
-    statsPanel.classList.remove("expanded");
-  }
-}
-
-/**
- * Switch between stats tabs
- * @param tabId - ID of the tab to switch to
- */
-switchStatsTab(tabId: string): void {
-  this.plugin.settings.activeStatsTab = tabId;
-  this.plugin.saveSettings();
-  
-  // Update tab buttons
-  const tabButtons = this.containerEl.querySelectorAll(".chronos-stats-tab");
-  tabButtons.forEach(button => {
-    button.classList.toggle("active", (button as HTMLElement).dataset.tabId === tabId);
-  });
-  
-  // Update tab content
-  const tabContents = this.containerEl.querySelectorAll(".chronos-stats-tab-content");
-  tabContents.forEach(content => {
-    content.classList.toggle("active", content.id === `tab-content-${tabId}`);
-  });
-}
 
 /**
  * Setup the resize functionality for the stats panel
@@ -3246,13 +3229,15 @@ setupStatsPanelResize(dragHandle: HTMLElement, statsPanel: HTMLElement): void {
   let startY = 0;
   let startHeight = 0;
   
+  // SIMPLIFIED to match sidebar patterns
   const onMouseDown = (e: MouseEvent) => {
     // Only respond to left mouse button
     if (e.button !== 0) return;
     
     startY = e.clientY;
-    startHeight = parseInt(statsPanel.style.height);
+    startHeight = parseInt(statsPanel.style.height || this.plugin.settings.statsPanelHeight.toString());
     
+    // Add event listeners to document - DIRECT DOM REFERENCES
     document.addEventListener("mousemove", onMouseMove);
     document.addEventListener("mouseup", onMouseUp);
     
@@ -3269,18 +3254,22 @@ setupStatsPanelResize(dragHandle: HTMLElement, statsPanel: HTMLElement): void {
       )
     );
     
+    // DIRECT DOM UPDATE - like sidebar patterns
     statsPanel.style.height = `${newHeight}px`;
     statsPanel.style.minHeight = `${newHeight}px`;
     this.plugin.settings.statsPanelHeight = newHeight;
   };
   
   const onMouseUp = () => {
+    // Remove event listeners - CLEANUP
     document.removeEventListener("mousemove", onMouseMove);
     document.removeEventListener("mouseup", onMouseUp);
     
+    // Save settings
     this.plugin.saveSettings();
   };
   
+  // Add initial event listener - DIRECT DOM
   dragHandle.addEventListener("mousedown", onMouseDown);
 }
 
