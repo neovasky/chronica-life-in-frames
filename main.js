@@ -80,7 +80,6 @@ const DEFAULT_SETTINGS = {
     startWeekOnMonday: true,
     zoomLevel: 1.0,
     isSidebarOpen: false,
-    isStatsBarOpen: false,
     cellShape: 'square',
     gridOrientation: 'landscape',
 };
@@ -1502,12 +1501,10 @@ class ChronosTimelineView extends obsidian.ItemView {
     plugin;
     /** Track sidebar open/closed state */
     isSidebarOpen;
-    isStatsBarOpen;
     constructor(leaf, plugin) {
         super(leaf);
         this.plugin = plugin;
         this.isSidebarOpen = this.plugin.settings.isSidebarOpen;
-        this.isStatsBarOpen = this.plugin.settings.isStatsBarOpen;
     }
     /**
      * Get the unique view type
@@ -1659,9 +1656,6 @@ class ChronosTimelineView extends obsidian.ItemView {
                 value: `${Math.round(this.plugin.settings.zoomLevel * 100)}`,
                 title: "Enter zoom % and press ↵",
             },
-        });
-        mainContainer.createEl("div", {
-            cls: `chronos-stats-bar ${this.isStatsBarOpen ? "expanded" : "collapsed"}`
         });
         zoomInput.addEventListener("change", async (e) => {
             const input = e.target;

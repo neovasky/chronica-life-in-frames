@@ -114,8 +114,6 @@ interface ChronosSettings {
 
   // Add to the class properties at the top of ChronosTimelineView
   isSidebarOpen: boolean;
-
-  isStatsBarOpen: boolean; 
 }
 
 /** Interface for custom event types */
@@ -211,7 +209,6 @@ const DEFAULT_SETTINGS: ChronosSettings = {
   startWeekOnMonday: true,
   zoomLevel: 1.0,
   isSidebarOpen: false,
-  isStatsBarOpen: false,
   cellShape: 'square',
   gridOrientation: 'landscape',
 };
@@ -1970,14 +1967,12 @@ class ChronosTimelineView extends ItemView {
 
   /** Track sidebar open/closed state */
   isSidebarOpen: boolean;
-  isStatsBarOpen: boolean; 
 
 
   constructor(leaf: WorkspaceLeaf, plugin: ChronosTimelinePlugin) {
     super(leaf);
     this.plugin = plugin;
     this.isSidebarOpen = this.plugin.settings.isSidebarOpen;
-    this.isStatsBarOpen = this.plugin.settings.isStatsBarOpen; 
   }
 
   /**
@@ -2161,10 +2156,6 @@ class ChronosTimelineView extends ItemView {
       },
     });
 
-    const statsBarEl = mainContainer.createEl("div", {
-      cls: `chronos-stats-bar ${this.isStatsBarOpen ? "expanded" : "collapsed"}`
-    });
-    
     zoomInput.addEventListener("change", async (e) => {
       const input = e.target as HTMLInputElement;
       let val = parseInt(input.value, 10);
