@@ -1800,6 +1800,9 @@ class ChronosTimelineView extends obsidian.ItemView {
         const contentAreaEl = mainContainer.createEl("div", {
             cls: "chronos-content-area",
         });
+        if (this.isStatsOpen) {
+            contentAreaEl.addClass("stats-expanded");
+        }
         // Calculate basic statistics
         const now = new Date();
         const birthdayDate = new Date(this.plugin.settings.birthday);
@@ -2379,26 +2382,30 @@ class ChronosTimelineView extends obsidian.ItemView {
    * Render the statistics panel
    * @param container - Container to render panel in
    */
+    // REPLACE the renderStatsPanel method in ChronosTimelineView class
     renderStatsPanel(container) {
         // Create the stats handle (always visible)
         const statsHandle = container.createEl("div", {
             cls: "chronos-stats-handle",
         });
-        // Add icon and text to the handle
         statsHandle.innerHTML = `
-      <svg class="chronos-stats-handle-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M18 20V10M12 20V4M6 20v-6"></path>
-      </svg>
-      <span>Statistics</span>
-    `;
+    <svg class="chronos-stats-handle-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M18 20V10M12 20V4M6 20v-6"></path>
+    </svg>
+    <span>Statistics</span>
+  `;
+        statsHandle.setAttribute("title", this.isStatsOpen ? "Hide Statistics" : "Show Statistics");
         // Create stats panel container with appropriate classes
         const statsPanel = container.createEl("div", {
             cls: `chronos-stats-panel ${this.isStatsOpen ? "expanded" : "collapsed"}`,
         });
-        // Set the panel height from settings - DIRECT DOM MANIPULATION LIKE SIDEBAR
+        // Use CSS variables for height, don't set inline styles
         if (this.isStatsOpen) {
-            statsPanel.style.height = `${this.plugin.settings.statsPanelHeight}px`;
-            statsPanel.style.minHeight = `${this.plugin.settings.statsPanelHeight}px`;
+            // Update the content area's class to add padding
+            const contentArea = this.containerEl.querySelector(".chronos-content-area");
+            if (contentArea) {
+                contentArea.classList.add("stats-expanded");
+            }
         }
         // Create header
         const statsHeader = statsPanel.createEl("div", { cls: "chronos-stats-header" });
@@ -2420,27 +2427,19 @@ class ChronosTimelineView extends obsidian.ItemView {
                 text: tab.label
             });
             tabButton.dataset.tabId = tab.id;
-            // Add direct click event handler - INLINE LIKE SIDEBAR
+            // Add click event handler
             tabButton.addEventListener("click", () => {
-                // Store previous state
-                const previousTabId = this.plugin.settings.activeStatsTab;
-                // Update state
+                // Store active tab
                 this.plugin.settings.activeStatsTab = tab.id;
                 this.plugin.saveSettings();
-                // Update tab buttons - DIRECT DOM UPDATES LIKE SIDEBAR
+                // Update UI (use class-based approach like sidebar)
                 tabsContainer.querySelectorAll(".chronos-stats-tab").forEach(btn => {
                     btn.classList.toggle("active", btn.getAttribute("data-tab-id") === tab.id);
                 });
-                // Update tab content - DIRECT DOM UPDATES LIKE SIDEBAR
-                const contentContainer = statsPanel.querySelector(".chronos-stats-content");
-                if (contentContainer) {
-                    const previousContent = contentContainer.querySelector(`#tab-content-${previousTabId}`);
-                    const newContent = contentContainer.querySelector(`#tab-content-${tab.id}`);
-                    if (previousContent)
-                        previousContent.classList.remove("active");
-                    if (newContent)
-                        newContent.classList.add("active");
-                }
+                // Update content
+                statsPanel.querySelectorAll(".chronos-stats-tab-content").forEach(content => {
+                    content.classList.toggle("active", content.id === `tab-content-${tab.id}`);
+                });
             });
         });
         // Add close button
@@ -2449,18 +2448,18 @@ class ChronosTimelineView extends obsidian.ItemView {
             attr: { "aria-label": "Close statistics panel" }
         });
         closeButton.innerHTML = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M18 6L6 18M6 6l12 12"></path>
-      </svg>
-    `;
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M18 6L6 18M6 6l12 12"></path>
+    </svg>
+  `;
         // Add content container
         const contentContainer = statsPanel.createEl("div", { cls: "chronos-stats-content" });
         // Create tab content areas
         tabs.forEach(tab => {
             const tabContent = contentContainer.createEl("div", {
                 cls: `chronos-stats-tab-content ${this.plugin.settings.activeStatsTab === tab.id ? "active" : ""}`,
+                attr: { id: `tab-content-${tab.id}` }
             });
-            tabContent.id = `tab-content-${tab.id}`;
             // Add tab-specific content
             if (tab.id === "overview") {
                 this.renderOverviewTab(tabContent);
@@ -2475,31 +2474,39 @@ class ChronosTimelineView extends obsidian.ItemView {
                 this.renderChartsTab(tabContent);
             }
         });
-        // Add event handlers using the SIDEBAR PATTERN - direct DOM references and inline logic
-        // Toggle handler - FOLLOWS SIDEBAR PATTERN
+        // Toggle handler - match sidebar pattern
         statsHandle.addEventListener("click", () => {
-            // Toggle state - JUST LIKE SIDEBAR
+            // Toggle state
             this.isStatsOpen = !this.isStatsOpen;
-            // Save state to plugin settings - JUST LIKE SIDEBAR
+            // Save state to plugin settings
             this.plugin.settings.isStatsOpen = this.isStatsOpen;
             this.plugin.saveSettings();
-            // Update UI directly - JUST LIKE SIDEBAR
+            // Update UI classes
             statsPanel.classList.toggle("collapsed", !this.isStatsOpen);
             statsPanel.classList.toggle("expanded", this.isStatsOpen);
-            // Update handle attributes (similar to sidebar toggle)
+            // Update content padding
+            const contentArea = this.containerEl.querySelector(".chronos-content-area");
+            if (contentArea) {
+                contentArea.classList.toggle("stats-expanded", this.isStatsOpen);
+            }
+            // Update handle attributes
             statsHandle.setAttribute("title", this.isStatsOpen ? "Hide Statistics" : "Show Statistics");
         });
-        // Close button handler - FOLLOWS SIDEBAR PATTERN
+        // Close button handler
         closeButton.addEventListener("click", () => {
-            // Direct state update - JUST LIKE SIDEBAR
             this.isStatsOpen = false;
             this.plugin.settings.isStatsOpen = false;
             this.plugin.saveSettings();
-            // Direct DOM update - JUST LIKE SIDEBAR
+            // Update UI
             statsPanel.classList.remove("expanded");
             statsPanel.classList.add("collapsed");
+            // Update content padding
+            const contentArea = this.containerEl.querySelector(".chronos-content-area");
+            if (contentArea) {
+                contentArea.classList.remove("stats-expanded");
+            }
         });
-        // Setup resize functionality (unique to stats panel, but follows sidebar patterns)
+        // Setup resize functionality with simplified approach
         this.setupStatsPanelResize(dragHandle, statsPanel);
     }
     /**
@@ -2510,34 +2517,42 @@ class ChronosTimelineView extends obsidian.ItemView {
     setupStatsPanelResize(dragHandle, statsPanel) {
         let startY = 0;
         let startHeight = 0;
-        // SIMPLIFIED to match sidebar patterns
         const onMouseDown = (e) => {
             // Only respond to left mouse button
             if (e.button !== 0)
                 return;
+            e.preventDefault(); // Prevent text selection
+            // Get the current height from CSS variables rather than inline styles
+            const computed = getComputedStyle(statsPanel);
+            startHeight = parseInt(computed.height);
             startY = e.clientY;
-            startHeight = parseInt(statsPanel.style.height || this.plugin.settings.statsPanelHeight.toString());
-            // Add event listeners to document - DIRECT DOM REFERENCES
+            // Use event delegation rather than direct references
             document.addEventListener("mousemove", onMouseMove);
             document.addEventListener("mouseup", onMouseUp);
-            e.preventDefault(); // Prevent text selection
         };
         const onMouseMove = (e) => {
             const deltaY = startY - e.clientY;
             const newHeight = Math.max(parseInt(getComputedStyle(document.documentElement).getPropertyValue('--stats-panel-min-height')), Math.min(parseInt(getComputedStyle(document.documentElement).getPropertyValue('--stats-panel-max-height')), startHeight + deltaY));
-            // DIRECT DOM UPDATE - like sidebar patterns
-            statsPanel.style.height = `${newHeight}px`;
-            statsPanel.style.minHeight = `${newHeight}px`;
+            // Update CSS variable instead of inline style
+            document.documentElement.style.setProperty('--stats-panel-height', `${newHeight}px`);
+            // Update settings
             this.plugin.settings.statsPanelHeight = newHeight;
         };
         const onMouseUp = () => {
-            // Remove event listeners - CLEANUP
+            // Remove event listeners
             document.removeEventListener("mousemove", onMouseMove);
             document.removeEventListener("mouseup", onMouseUp);
             // Save settings
             this.plugin.saveSettings();
+            // Make sure expanded state is preserved
+            if (this.isStatsOpen) {
+                const contentArea = this.containerEl.querySelector(".chronos-content-area");
+                if (contentArea) {
+                    contentArea.classList.add("stats-expanded");
+                }
+            }
         };
-        // Add initial event listener - DIRECT DOM
+        // Add initial event listener
         dragHandle.addEventListener("mousedown", onMouseDown);
     }
     /**
