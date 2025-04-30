@@ -759,6 +759,12 @@
          RESPONSIVE DESIGN
          ----------------------------------------------------------------------------- */
 
+  @media (max-width: 768px) {
+    .chronos-main-container {
+      flex-direction: column;
+        }
+      
+        
 
   .chronos-sidebar:not(.collapsed) {
     width: 100%;
@@ -797,6 +803,7 @@
   .chronos-week-marker {
     font-size: 10px;
   }
+}
 
 /* -----------------------------------------------------------------------------
          PORTRAIT MODE STYLES
