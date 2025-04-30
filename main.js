@@ -30,7 +30,6 @@ class FolderSuggest extends obsidian.AbstractInputSuggest {
         this.inputEl = inputEl;
         this.plugin = plugin;
     }
-    // Gather & filter all folder paths
     getSuggestions(query) {
         const results = [];
         const traverse = (folder) => {
@@ -44,19 +43,18 @@ class FolderSuggest extends obsidian.AbstractInputSuggest {
         traverse(this.app.vault.getRoot());
         return results.filter((f) => f.toLowerCase().includes(query.toLowerCase()));
     }
-    // How each suggestion is rendered in the dropdown
     renderSuggestion(item, el) {
         el.createEl('div', { text: item });
+        el.addEventListener('click', (evt) => {
+            this.onChooseSuggestion(item, evt);
+        });
     }
-    // What happens when the user picks one
-    onChooseSuggestion(item) {
+    onChooseSuggestion(item, evt) {
         this.inputEl.value = item;
-        // Directly update plugin settings
         this.plugin.settings.notesFolder = item;
         this.plugin.saveSettings();
-        // Also trigger events for UI update
         this.inputEl.dispatchEvent(new Event('input', { bubbles: true }));
-        this.inputEl.dispatchEvent(new Event('change', { bubbles: true }));
+        this.close();
     }
 }
 /** Default plugin settings */

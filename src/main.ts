@@ -143,17 +143,14 @@ interface CustomEventType {
  */
 class FolderSuggest extends AbstractInputSuggest<string> {
   public inputEl: HTMLInputElement;
-  plugin: ChronosTimelinePlugin;
+  private plugin: ChronosTimelinePlugin;
 
   constructor(app: App, inputEl: HTMLInputElement, plugin: ChronosTimelinePlugin) {
     super(app, inputEl);
     this.inputEl = inputEl;
     this.plugin = plugin;
   }
-  
-  
 
-  // Gather & filter all folder paths
   getSuggestions(query: string): string[] {
     const results: string[] = [];
     const traverse = (folder: TFolder) => {
@@ -170,24 +167,22 @@ class FolderSuggest extends AbstractInputSuggest<string> {
     );
   }
 
-  // How each suggestion is rendered in the dropdown
   renderSuggestion(item: string, el: HTMLElement): void {
     el.createEl('div', { text: item });
+    el.addEventListener('click', (evt: MouseEvent) => {
+      this.onChooseSuggestion(item, evt);
+    });
   }
 
-  // What happens when the user picks one
-  onChooseSuggestion(item: string): void {
+  onChooseSuggestion(item: string, evt: MouseEvent | KeyboardEvent): void {
     this.inputEl.value = item;
-    
-    // Directly update plugin settings
     this.plugin.settings.notesFolder = item;
     this.plugin.saveSettings();
-    
-    // Also trigger events for UI update
     this.inputEl.dispatchEvent(new Event('input', { bubbles: true }));
-    this.inputEl.dispatchEvent(new Event('change', { bubbles: true }));
+    this.close();
   }
 }
+
 
 
 /** Month marker information */
