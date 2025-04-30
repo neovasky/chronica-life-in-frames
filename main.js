@@ -2412,7 +2412,6 @@ class ChronosTimelineView extends obsidian.ItemView {
    * Render the statistics panel
    * @param container - Container to render panel in
    */
-    // REPLACE the renderStatsPanel method in ChronosTimelineView class
     renderStatsPanel(container) {
         // Create the stats handle (always visible)
         const statsHandle = container.createEl("div", {
