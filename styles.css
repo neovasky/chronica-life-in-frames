@@ -758,10 +758,7 @@
 /* -----------------------------------------------------------------------------
          RESPONSIVE DESIGN
          ----------------------------------------------------------------------------- */
-@media (max-width: 768px) {
-  .chronos-main-container {
-    flex-direction: column;
-  }
+
 
   .chronos-sidebar:not(.collapsed) {
     width: 100%;
@@ -911,7 +908,6 @@
     left: 0;
     right: 0;
     z-index: 20;
-    /* Force hardware acceleration to prevent rendering issues */
     transform: translateZ(0);
     will-change: height;
   }
@@ -920,7 +916,7 @@
     height: var(--stats-panel-height);
     min-height: var(--stats-panel-min-height);
   }
-  
+
   .chronos-stats-panel.collapsed {
     height: 0;
     min-height: 0;
@@ -972,18 +968,18 @@
     color: var(--text-on-accent);
   }
   
-.chronos-stats-close {
-  background-color: transparent;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: 5px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background-color 0.2s ease, color 0.2s ease;
-}
+  .chronos-stats-close {
+    background-color: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
   
   .chronos-stats-close:hover {
     background-color: var(--background-modifier-hover);
@@ -1074,11 +1070,10 @@
     margin-top: 5px;
   }
 
-  @media (max-width: 768px) {
-    .chronos-stats-panel:not(.collapsed) {
-      max-height: 200px;
-      height: auto !important;
-    }
+  .chronos-view {
+    /* Ensure grid view adjusts when stats panel is open */
+    transition: padding-bottom 0.3s ease;
+  }
     
     .chronos-stats-tabs {
       flex-wrap: wrap;
@@ -1089,11 +1084,3 @@
       padding: 3px 6px;
       font-size: 12px;
     }
-  }
-
-  .chronos-view {
-    /* Ensure grid view adjusts when stats panel is open */
-    transition: padding-bottom 0.3s ease;
-  }
-
-}

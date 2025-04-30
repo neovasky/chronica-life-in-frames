@@ -2497,11 +2497,28 @@ class ChronosTimelineView extends obsidian.ItemView {
             this.isStatsOpen = !this.isStatsOpen;
             this.plugin.settings.isStatsOpen = this.isStatsOpen;
             this.plugin.saveSettings();
-            // Update classes (always do this)
+            // Update classes
             statsPanel.classList.toggle("expanded", this.isStatsOpen);
             statsPanel.classList.toggle("collapsed", !this.isStatsOpen);
-            // Update styles based on current state
-            this.updateStatsPanelLayout();
+            // Important: Set explicit panel height when expanding
+            if (this.isStatsOpen) {
+                statsPanel.style.height = `${this.plugin.settings.statsPanelHeight}px`;
+                document.documentElement.style.setProperty('--stats-panel-height', `${this.plugin.settings.statsPanelHeight}px`);
+            }
+            else {
+                statsPanel.style.height = '0';
+            }
+            // Update content area padding
+            const contentArea = this.containerEl.querySelector(".chronos-content-area");
+            if (contentArea) {
+                contentArea.classList.toggle("stats-expanded", this.isStatsOpen);
+                if (this.isStatsOpen) {
+                    contentArea.style.paddingBottom = `${this.plugin.settings.statsPanelHeight}px`;
+                }
+                else {
+                    contentArea.style.paddingBottom = '0';
+                }
+            }
             // Update tooltip text
             statsHandle.setAttribute("title", this.isStatsOpen ? "Hide Statistics" : "Show Statistics");
         });
@@ -2527,36 +2544,44 @@ class ChronosTimelineView extends obsidian.ItemView {
      * @param dragHandle - Handle element for dragging
      * @param statsPanel - Panel to resize
      */
-    // In src/main.ts - Replace the entire setupStatsPanelResize method
     setupStatsPanelResize(dragHandle, statsPanel) {
         let startY = 0;
         let startHeight = 0;
         const onMouseDown = (e) => {
-            // Skip resize in narrow viewport mode
-            if (this.isNarrowViewport())
-                return;
             // Only respond to left mouse button
             if (e.button !== 0)
                 return;
-            e.preventDefault();
+            e.preventDefault(); // Prevent text selection
+            // Get the current height from CSS variables
             startHeight = this.plugin.settings.statsPanelHeight;
             startY = e.clientY;
+            // Add event listeners
             document.addEventListener("mousemove", onMouseMove);
             document.addEventListener("mouseup", onMouseUp);
         };
         const onMouseMove = (e) => {
             const deltaY = startY - e.clientY;
             const newHeight = Math.max(150, Math.min(600, startHeight + deltaY));
-            // Update settings value
+            // Update CSS variable immediately
+            document.documentElement.style.setProperty('--stats-panel-height', `${newHeight}px`);
+            // Update panel height directly
+            statsPanel.style.height = `${newHeight}px`;
+            // Update the container's padding to match new height
+            const contentArea = this.containerEl.querySelector(".chronos-content-area");
+            if (contentArea && this.isStatsOpen) {
+                contentArea.style.paddingBottom = `${newHeight}px`;
+            }
+            // Update settings (but don't save yet to avoid performance issues)
             this.plugin.settings.statsPanelHeight = newHeight;
-            // Apply new value using our consolidated method
-            this.updateStatsPanelLayout();
         };
         const onMouseUp = () => {
+            // Remove event listeners
             document.removeEventListener("mousemove", onMouseMove);
             document.removeEventListener("mouseup", onMouseUp);
+            // Save settings once at the end of resize
             this.plugin.saveSettings();
         };
+        // Add initial event listener
         dragHandle.addEventListener("mousedown", onMouseDown);
     }
     updateStatsPanelLayout() {
