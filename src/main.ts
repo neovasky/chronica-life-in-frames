@@ -1,5 +1,5 @@
 /**
- * ChronOS Timeline Plugin for Obsidian
+ * Chronica - Life in Frames Plugin for Obsidian
  *
  * A powerful visualization tool to track your life in weeks, inspired by
  * the "Life in Weeks" concept. Allows tracking of major life events,
@@ -27,7 +27,7 @@ import {
 // -----------------------------------------------------------------------
 
 /** Unique identifier for the timeline view */
-const TIMELINE_VIEW_TYPE = "chronos-timeline-view";
+const TIMELINE_VIEW_TYPE = "chronica-timeline-view";
 
 /** Interface for plugin settings */
 interface ChronosSettings {
@@ -230,7 +230,7 @@ const DEFAULT_SETTINGS: ChronosSettings = {
   statsPanelHeight: 200,
 };
 
-/** SVG icon for the ChronOS Timeline */
+/** SVG icon for the Chronica Timeline */
 const CHRONOS_ICON = `<svg viewBox="0 0 100 100" width="100" height="100" xmlns="http://www.w3.org/2000/svg">
   <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" stroke-width="4"/>
   <line x1="50" y1="15" x2="50" y2="50" stroke="currentColor" stroke-width="4"/>
@@ -277,7 +277,7 @@ export default class ChronosTimelinePlugin extends Plugin {
    * Plugin initialization on load
    */
   async onload(): Promise<void> {
-    console.log("Loading ChronOS Timeline Plugin");
+    console.log("Loading Chronica Timeline Plugin");
   
     // 1) Register the timeline view exactly once
     try {
@@ -329,16 +329,16 @@ export default class ChronosTimelinePlugin extends Plugin {
     
   
     // 4) Now your regular setup
-    addIcon("chronos-icon", CHRONOS_ICON);
+    addIcon("chronica-icon", CHRONOS_ICON);
     await this.loadSettings();
-    this.addRibbonIcon("chronos-icon", "Open ChronOS Timeline", () => {
+    this.addRibbonIcon("chronica-icon", "Open Chronica Timeline", () => {
       this.activateView();
     });
 
     // Add command to open timeline
     this.addCommand({
-      id: "open-chronos-timeline",
-      name: "Open ChronOS Timeline",
+      id: "open-chronica-timeline",
+      name: "Open Chronica Timeline",
       callback: () => {
         this.activateView();
       },
@@ -1429,7 +1429,7 @@ class ChronosEventModal extends Modal {
 
     // Date picker section
     const dateContainer = contentEl.createDiv({
-      cls: "chronos-date-picker-container",
+      cls: "chronica-date-picker-container",
     });
 
     dateContainer.createEl("h3", { text: "Select Date" });
@@ -1557,7 +1557,7 @@ class ChronosEventModal extends Modal {
 
     contentEl.createEl("small", {
       text: "Select the date(s) of your event. The system determines the week(s) automatically.",
-      cls: "chronos-helper-text",
+      cls: "chronica-helper-text",
     });
     
     if (this.selectedDate) {
@@ -1606,13 +1606,13 @@ class ChronosEventModal extends Modal {
       .setDesc("Choose a preset type or create your own");
 
     const radioContainer = typeSettingContainer.controlEl.createDiv({
-      cls: "chronos-radio-container",
+      cls: "chronica-radio-container",
     });
 
     // Create radio buttons for preset event types
     for (const type of presetTypes) {
       const radioLabel = radioContainer.createEl("label", {
-        cls: "chronos-radio-label",
+        cls: "chronica-radio-label",
       });
 
       const radioBtn = radioLabel.createEl("input");
@@ -1625,7 +1625,7 @@ class ChronosEventModal extends Modal {
       }
 
       const colorBox = radioLabel.createEl("span", {
-        cls: "chronos-color-box",
+        cls: "chronica-color-box",
       });
 
       colorBox.style.backgroundColor = type.color;
@@ -1643,7 +1643,7 @@ class ChronosEventModal extends Modal {
 
     // Custom event type option
     const customLabel = radioContainer.createEl("label", {
-      cls: "chronos-radio-label",
+      cls: "chronica-radio-label",
     });
 
     const customRadio = customLabel.createEl("input");
@@ -1661,7 +1661,7 @@ class ChronosEventModal extends Modal {
 
     // Custom type settings (initially hidden)
     const customTypeSettings = contentEl.createDiv({
-      cls: "chronos-custom-type-settings",
+      cls: "chronica-custom-type-settings",
     });
 
     customTypeSettings.style.display = "none";
@@ -1706,7 +1706,7 @@ class ChronosEventModal extends Modal {
    */
   updateCustomTypeVisibility(contentEl: HTMLElement, show: boolean): void {
     const customSettings = contentEl.querySelector(
-      ".chronos-custom-type-settings"
+      ".chronica-custom-type-settings"
     );
 
     if (customSettings) {
@@ -2018,7 +2018,7 @@ class ChronosTimelineView extends ItemView {
    * Get display name for the view
    */
   getDisplayText(): string {
-    return "ChronOS Timeline";
+    return "Chronica - Life in Frames";
   }
 
   /**
@@ -2034,7 +2034,7 @@ class ChronosTimelineView extends ItemView {
   async onOpen(): Promise<void> {
     const contentEl = this.containerEl.children[1];
     contentEl.empty();
-    contentEl.addClass("chronos-timeline-container");
+    contentEl.addClass("chronica-timeline-container");
     
     // Set initial CSS variables - this should be done regardless of panel state
     document.documentElement.style.setProperty(
@@ -2045,7 +2045,7 @@ class ChronosTimelineView extends ItemView {
     // Additional setup only if stats panel is open
     if (this.isStatsOpen) {
       // Force content area padding update
-      const contentArea = this.containerEl.querySelector(".chronos-content-area");
+      const contentArea = this.containerEl.querySelector(".chronica-content-area");
       if (contentArea) {
         contentArea.classList.add("stats-expanded");
         (contentArea as HTMLElement).style.paddingBottom = 
@@ -2082,28 +2082,28 @@ class ChronosTimelineView extends ItemView {
 
     // Create main container with flexbox layout
     const mainContainer = contentEl.createEl("div", {
-      cls: "chronos-main-container",
+      cls: "chronica-main-container",
     });
 
     // Create sidebar
     const sidebarEl = mainContainer.createEl("div", {
-      cls: `chronos-sidebar ${this.isSidebarOpen ? "expanded" : "collapsed"}`,
+      cls: `chronica-sidebar ${this.isSidebarOpen ? "expanded" : "collapsed"}`,
     });
 
     // Add sidebar header with title and toggle
     const sidebarHeader = sidebarEl.createEl("div", {
-      cls: "chronos-sidebar-header",
+      cls: "chronica-sidebar-header",
     });
 
     // Create title in sidebar header
     sidebarHeader.createEl("div", {
-      cls: "chronos-title",
-      text: "life in weeks",
+      cls: "chronica-title",
+      text: "life in frames",
     });
 
     // Create sidebar toggle as part of the sidebar itself
     const sidebarToggle = sidebarHeader.createEl("button", {
-      cls: "chronos-sidebar-toggle",
+      cls: "chronica-sidebar-toggle",
       attr: {
         title: this.isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar",
       },
@@ -2142,17 +2142,17 @@ class ChronosTimelineView extends ItemView {
 
     // Controls section
     const controlsSection = sidebarEl.createEl("div", {
-      cls: "chronos-sidebar-section",
+      cls: "chronica-sidebar-section",
     });
     controlsSection.createEl("h3", { text: "CONTROLS", cls: "section-header" });
     const controlsContainer = controlsSection.createEl("div", {
-      cls: "chronos-controls",
+      cls: "chronica-controls",
     });
 
     // Plan future event button
     const planEventBtn = controlsContainer.createEl("button", {
       text: "Plan Event",
-      cls: "chronos-btn chronos-btn-primary",
+      cls: "chronica-btn chronica-btn-primary",
     });
     planEventBtn.addEventListener("click", () => {
       this.showAddEventModal();
@@ -2161,7 +2161,7 @@ class ChronosTimelineView extends ItemView {
     // Manage event types button
     const manageTypesBtn = controlsContainer.createEl("button", {
       text: "Manage Event Types",
-      cls: "chronos-btn chronos-btn-primary", // Same styling as Plan Event
+      cls: "chronica-btn chronica-btn-primary", // Same styling as Plan Event
     });
     manageTypesBtn.addEventListener("click", () => {
       const modal = new ManageEventTypesModal(this.app, this.plugin);
@@ -2170,7 +2170,7 @@ class ChronosTimelineView extends ItemView {
 
     // Visualization controls section
     const visualSection = sidebarEl.createEl("div", {
-      cls: "chronos-sidebar-section",
+      cls: "chronica-sidebar-section",
     });
     visualSection.createEl("h3", {
       text: "VIEW OPTIONS",
@@ -2178,17 +2178,17 @@ class ChronosTimelineView extends ItemView {
     });
 
     const visualContainer = visualSection.createEl("div", {
-      cls: "chronos-visual-controls",
+      cls: "chronica-visual-controls",
     });
 
     // Zoom controls with 3-button layout
     const zoomControlsDiv = visualContainer.createEl("div", {
-      cls: "chronos-zoom-controls",
+      cls: "chronica-zoom-controls",
     });
 
     // Zoom out button with SVG icon
     const zoomOutBtn = zoomControlsDiv.createEl("button", {
-      cls: "chronos-btn chronos-zoom-button",
+      cls: "chronica-btn chronica-zoom-button",
       attr: { title: "Zoom Out" },
     });
     zoomOutBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -2202,7 +2202,7 @@ class ChronosTimelineView extends ItemView {
 
     // Add zoom level indicator
     const zoomInput = zoomControlsDiv.createEl("input", {
-      cls: "chronos-zoom-input",
+      cls: "chronica-zoom-input",
       attr: {
         type:   "number",
         min:    "10",
@@ -2227,7 +2227,7 @@ class ChronosTimelineView extends ItemView {
 
     // Zoom in button with SVG icon
     const zoomInBtn = zoomControlsDiv.createEl("button", {
-      cls: "chronos-btn chronos-zoom-button",
+      cls: "chronica-btn chronica-zoom-button",
       attr: { title: "Zoom In" },
     });
     zoomInBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -2242,7 +2242,7 @@ class ChronosTimelineView extends ItemView {
 
     // Fit to screen button
     const fitToScreenBtn = visualContainer.createEl("button", {
-      cls: "chronos-btn chronos-fit-to-screen",
+      cls: "chronica-btn chronica-fit-to-screen",
       text: "Fit to Screen",
       attr: { title: "Automatically adjust zoom to fit entire grid on screen" },
     });
@@ -2258,7 +2258,7 @@ class ChronosTimelineView extends ItemView {
     
     // Select
     const shapeSelect = visualContainer.createEl("select", {
-      cls: "chronos-select"
+      cls: "chronica-select"
     });
     ["square", "circle", "diamond"].forEach((opt) => {
       const option = shapeSelect.createEl("option", {
@@ -2284,7 +2284,7 @@ class ChronosTimelineView extends ItemView {
     
     // Orientation toggle button
     const orientationBtn = visualContainer.createEl("button", {
-      cls: "chronos-btn chronos-orientation-button",
+      cls: "chronica-btn chronica-orientation-button",
       text: this.plugin.settings.gridOrientation === 'landscape' 
         ? "Switch to Portrait" 
         : "Switch to Landscape",
@@ -2318,10 +2318,10 @@ class ChronosTimelineView extends ItemView {
 
     // Legend section (vertical)
     const legendSection = sidebarEl.createEl("div", {
-      cls: "chronos-sidebar-section",
+      cls: "chronica-sidebar-section",
     });
     legendSection.createEl("h3", { text: "LEGEND", cls: "section-header" });
-    const legendEl = legendSection.createEl("div", { cls: "chronos-legend" });
+    const legendEl = legendSection.createEl("div", { cls: "chronica-legend" });
 
     // Standard event types for legend
     const legendItems = [
@@ -2337,8 +2337,8 @@ class ChronosTimelineView extends ItemView {
 
     // Add standard legend items
     legendItems.forEach((item) => {
-      const itemEl = legendEl.createEl("div", { cls: "chronos-legend-item" });
-      const colorEl = itemEl.createEl("div", { cls: "chronos-legend-color" });
+      const itemEl = legendEl.createEl("div", { cls: "chronica-legend-item" });
+      const colorEl = itemEl.createEl("div", { cls: "chronica-legend-color" });
       colorEl.style.backgroundColor = item.color;
       itemEl.createEl("span", { text: item.text });
     });
@@ -2347,10 +2347,10 @@ class ChronosTimelineView extends ItemView {
     if (this.plugin.settings.customEventTypes) {
       this.plugin.settings.customEventTypes.forEach((customType) => {
         const customLegendEl = legendEl.createEl("div", {
-          cls: "chronos-legend-item",
+          cls: "chronica-legend-item",
         });
         const customColorEl = customLegendEl.createEl("div", {
-          cls: "chronos-legend-color",
+          cls: "chronica-legend-color",
         });
         customColorEl.style.backgroundColor = customType.color;
         customLegendEl.createEl("span", { text: customType.name });
@@ -2359,13 +2359,13 @@ class ChronosTimelineView extends ItemView {
 
     // Footer in sidebar
     sidebarEl.createEl("div", {
-      cls: "chronos-footer",
+      cls: "chronica-footer",
       text: this.plugin.settings.quote,
     });
 
     // Create content area
     const contentAreaEl = mainContainer.createEl("div", {
-      cls: "chronos-content-area",
+      cls: "chronica-content-area",
     });
 
 
@@ -2412,7 +2412,7 @@ const totalEvents =
 
     // Always create collapsed sidebar indicator/toggle (but hide it when sidebar is open)
     const collapsedToggle = contentAreaEl.createEl("button", {
-      cls: "chronos-collapsed-toggle",
+      cls: "chronica-collapsed-toggle",
       attr: { title: "Expand Sidebar" },
     });
     collapsedToggle.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>`;
@@ -2429,7 +2429,7 @@ const totalEvents =
       collapsedToggle.style.display = "none";
 
       // Update sidebar toggle icon
-      const sidebarToggle = sidebarEl.querySelector(".chronos-sidebar-toggle");
+      const sidebarToggle = sidebarEl.querySelector(".chronica-sidebar-toggle");
       if (sidebarToggle) {
         sidebarToggle.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>`;
         sidebarToggle.setAttribute("title", "Collapse Sidebar");
@@ -2440,7 +2440,7 @@ const totalEvents =
     collapsedToggle.style.display = this.isSidebarOpen ? "none" : "block";
 
     // Create the view container
-    const viewEl = contentAreaEl.createEl("div", { cls: "chronos-view" });
+    const viewEl = contentAreaEl.createEl("div", { cls: "chronica-view" });
 
     // Render the weeks grid
     this.renderWeeksGrid(viewEl);
@@ -2512,9 +2512,9 @@ zoomOut() {
   isGridFitToScreen(): boolean {
     const contentEl = this.containerEl.children[1];
     const contentArea = contentEl.querySelector(
-      ".chronos-content-area"
+      ".chronica-content-area"
     ) as HTMLElement;
-    const viewEl = contentArea.querySelector(".chronos-view") as HTMLElement;
+    const viewEl = contentArea.querySelector(".chronica-view") as HTMLElement;
     if (!viewEl || !contentArea) return false;
 
     // Same math as fitToScreen()
@@ -2549,9 +2549,9 @@ zoomOut() {
     // Get relevant containers
     const contentEl = this.containerEl.children[1];
     const contentArea = contentEl.querySelector(
-      ".chronos-content-area"
+      ".chronica-content-area"
     ) as HTMLElement;
-    const viewEl = contentArea.querySelector(".chronos-view") as HTMLElement;
+    const viewEl = contentArea.querySelector(".chronica-view") as HTMLElement;
     if (!viewEl || !contentArea) return;
 
     // Get available space (accounting for sidebar and markers)
@@ -2599,9 +2599,9 @@ zoomOut() {
     this.updateZoomLevel();
 
     // Reset transforms
-    const gridEl = viewEl.querySelector(".chronos-grid") as HTMLElement;
+    const gridEl = viewEl.querySelector(".chronica-grid") as HTMLElement;
     const decadeMarkers = viewEl.querySelector(
-      ".chronos-decade-markers"
+      ".chronica-decade-markers"
     ) as HTMLElement;
 
     if (gridEl) gridEl.style.transform = "";
@@ -2616,7 +2616,7 @@ zoomOut() {
     const contentEl = this.containerEl.children[1];
   
     // Use a more robust selector to find the zoom level indicator anywhere in the container
-    const zoomInput = this.containerEl.querySelector(".chronos-zoom-input") as HTMLInputElement;
+    const zoomInput = this.containerEl.querySelector(".chronica-zoom-input") as HTMLInputElement;
     if (zoomInput) {
       zoomInput.value = `${Math.round(this.plugin.settings.zoomLevel * 100)}`;
     }
@@ -2630,11 +2630,11 @@ zoomOut() {
     root.style.setProperty("--cell-size", `${cellSize}px`);
 
     // Reset transforms before rerendering
-    const viewEl = contentEl.querySelector(".chronos-view");
+    const viewEl = contentEl.querySelector(".chronica-view");
     if (viewEl instanceof HTMLElement) {
-      const gridEl = viewEl.querySelector(".chronos-grid");
-      const decadeMarkers = viewEl.querySelector(".chronos-decade-markers");
-      const verticalMarkers = viewEl.querySelector(".chronos-vertical-markers");
+      const gridEl = viewEl.querySelector(".chronica-grid");
+      const decadeMarkers = viewEl.querySelector(".chronica-decade-markers");
+      const verticalMarkers = viewEl.querySelector(".chronica-vertical-markers");
 
       if (gridEl) (gridEl as HTMLElement).style.transform = "";
       if (decadeMarkers) (decadeMarkers as HTMLElement).style.transform = "";
@@ -2677,7 +2677,7 @@ zoomOut() {
 if (this.plugin.settings.showDecadeMarkers) {
   const isPortrait = this.plugin.settings.gridOrientation === 'portrait';
   const decadeMarkersContainer = container.createEl("div", {
-    cls: `chronos-decade-markers ${isPortrait ? 'portrait-mode' : ''}`,
+    cls: `chronica-decade-markers ${isPortrait ? 'portrait-mode' : ''}`,
   });
   
   if (!isPortrait) {
@@ -2689,7 +2689,7 @@ if (this.plugin.settings.showDecadeMarkers) {
 if (this.plugin.settings.showDecadeMarkers) {
   const isPortrait = this.plugin.settings.gridOrientation === 'portrait';
   const decadeMarkersContainer = container.createEl("div", {
-    cls: `chronos-decade-markers ${isPortrait ? 'portrait-mode' : ''}`,
+    cls: `chronica-decade-markers ${isPortrait ? 'portrait-mode' : ''}`,
   });
   
   if (!isPortrait) {
@@ -2699,7 +2699,7 @@ if (this.plugin.settings.showDecadeMarkers) {
 // Add decade markers starting from 10 (skipping 0)
 for (let decade = 10; decade <= this.plugin.settings.lifespan; decade += 10) {
   const marker = decadeMarkersContainer.createEl("div", {
-    cls: `chronos-decade-marker ${isPortrait ? 'portrait-mode' : ''}`, 
+    cls: `chronica-decade-marker ${isPortrait ? 'portrait-mode' : ''}`, 
     text: decade.toString(),
   });
 
@@ -2740,7 +2740,7 @@ for (let decade = 10; decade <= this.plugin.settings.lifespan; decade += 10) {
       const birthMonthName = MONTH_NAMES[birthMonth];
 
       const birthdayMarkerContainer = container.createEl("div", {
-        cls: "chronos-birthday-marker-container",
+        cls: "chronica-birthday-marker-container",
       });
 
       // Position the container near the grid
@@ -2764,16 +2764,16 @@ for (let decade = 10; decade <= this.plugin.settings.lifespan; decade += 10) {
       // Create markers container with structured layout
       const isPortrait = this.plugin.settings.gridOrientation === 'portrait';
       const markersContainer = container.createEl("div", {
-        cls: `chronos-vertical-markers ${isPortrait ? 'portrait-mode' : ''}`,
+        cls: `chronica-vertical-markers ${isPortrait ? 'portrait-mode' : ''}`,
       });
 
       // First, create the separate containers for week and month markers
       const weekMarkersContainer = markersContainer.createEl("div", {
-        cls: "chronos-week-markers",
+        cls: "chronica-week-markers",
       });
 
       const monthMarkersContainer = markersContainer.createEl("div", {
-        cls: "chronos-month-markers",
+        cls: "chronica-month-markers",
       });
 
 // Add week markers (10, 20, 30, 40, 50) if enabled
@@ -2782,7 +2782,7 @@ if (this.plugin.settings.showWeekMarkers) {
     if (week === 0) continue; // Skip 0 to start with 10
 
     const marker = weekMarkersContainer.createEl("div", {
-      cls: `chronos-week-marker ${isPortrait ? 'portrait-mode' : ''}`,
+      cls: `chronica-week-marker ${isPortrait ? 'portrait-mode' : ''}`,
       text: week.toString(),
     });
 
@@ -2881,7 +2881,7 @@ if (this.plugin.settings.showWeekMarkers) {
 for (const [monthIndex, marker] of monthMarkersMap.entries()) {
   // Create marker element
   const markerEl = monthMarkersContainer.createEl("div", {
-    cls: `chronos-month-marker ${marker.isFirstOfYear ? "first-of-year" : ""} ${monthIndex === birthMonth ? "birth-month" : ""} ${isPortrait ? 'portrait-mode' : ''}`,
+    cls: `chronica-month-marker ${marker.isFirstOfYear ? "first-of-year" : ""} ${monthIndex === birthMonth ? "birth-month" : ""} ${isPortrait ? 'portrait-mode' : ''}`,
   });
   
   // Add the month name
@@ -2917,7 +2917,7 @@ for (const [monthIndex, marker] of monthMarkersMap.entries()) {
     }
 
     // Create the grid container
-    const gridEl = container.createEl("div", { cls: "chronos-grid" });
+    const gridEl = container.createEl("div", { cls: "chronica-grid" });
     gridEl.toggleClass('shape-circle', this.plugin.settings.cellShape === 'circle');
     gridEl.toggleClass('shape-diamond', this.plugin.settings.cellShape === 'diamond');
 
@@ -2945,7 +2945,7 @@ for (let year = 0; year < this.plugin.settings.lifespan; year++) {
   // For each week in this year
   for (let week = 0; week < 52; week++) {
     const weekIndex = year * 52 + week;
-    const cell = gridEl.createEl("div", { cls: "chronos-grid-cell" });
+    const cell = gridEl.createEl("div", { cls: "chronica-grid-cell" });
     
     // Calculate the date for this week relative to the birthday week start
     const cellDate = new Date(birthdayWeekInfo.weekStart);
@@ -3113,11 +3113,11 @@ for (let year = 0; year < this.plugin.settings.lifespan; year++) {
 renderStatsPanel(container: HTMLElement): void {
   // Create the stats handle (always visible)
   const statsHandle = container.createEl("div", {
-    cls: "chronos-stats-handle",
+    cls: "chronica-stats-handle",
   });
   
   statsHandle.innerHTML = `
-    <svg class="chronos-stats-handle-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <svg class="chronica-stats-handle-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path d="M18 20V10M12 20V4M6 20v-6"></path>
     </svg>
     <span>Statistics</span>
@@ -3130,26 +3130,26 @@ renderStatsPanel(container: HTMLElement): void {
   
   // Create stats panel container with appropriate classes
   const statsPanel = container.createEl("div", {
-    cls: `chronos-stats-panel ${this.isStatsOpen ? "expanded" : "collapsed"}`,
+    cls: `chronica-stats-panel ${this.isStatsOpen ? "expanded" : "collapsed"}`,
   });
   
   // Use CSS variables for height, don't set inline styles
   if (this.isStatsOpen) {
     // Update the content area's class to add padding
-    const contentArea = this.containerEl.querySelector(".chronos-content-area");
+    const contentArea = this.containerEl.querySelector(".chronica-content-area");
     if (contentArea) {
       contentArea.classList.add("stats-expanded");
     }
   }
   
   // Create header
-  const statsHeader = statsPanel.createEl("div", { cls: "chronos-stats-header" });
+  const statsHeader = statsPanel.createEl("div", { cls: "chronica-stats-header" });
   
   // Add drag handle for resizing
-  const dragHandle = statsHeader.createEl("div", { cls: "chronos-stats-drag-handle" });
+  const dragHandle = statsHeader.createEl("div", { cls: "chronica-stats-drag-handle" });
   
   // Create tabs container
-  const tabsContainer = statsHeader.createEl("div", { cls: "chronos-stats-tabs" });
+  const tabsContainer = statsHeader.createEl("div", { cls: "chronica-stats-tabs" });
   
   // Define tabs
   const tabs = [
@@ -3162,7 +3162,7 @@ renderStatsPanel(container: HTMLElement): void {
   // Add tab buttons
   tabs.forEach(tab => {
     const tabButton = tabsContainer.createEl("button", {
-      cls: `chronos-stats-tab ${this.plugin.settings.activeStatsTab === tab.id ? "active" : ""}`,
+      cls: `chronica-stats-tab ${this.plugin.settings.activeStatsTab === tab.id ? "active" : ""}`,
       text: tab.label
     });
     
@@ -3175,12 +3175,12 @@ renderStatsPanel(container: HTMLElement): void {
       this.plugin.saveSettings();
       
       // Update UI (use class-based approach like sidebar)
-      tabsContainer.querySelectorAll(".chronos-stats-tab").forEach(btn => {
+      tabsContainer.querySelectorAll(".chronica-stats-tab").forEach(btn => {
         btn.classList.toggle("active", btn.getAttribute("data-tab-id") === tab.id);
       });
       
       // Update content
-      statsPanel.querySelectorAll(".chronos-stats-tab-content").forEach(content => {
+      statsPanel.querySelectorAll(".chronica-stats-tab-content").forEach(content => {
         content.classList.toggle("active", content.id === `tab-content-${tab.id}`);
       });
     });
@@ -3188,7 +3188,7 @@ renderStatsPanel(container: HTMLElement): void {
   
   // Add close button
   const closeButton = statsHeader.createEl("button", {
-    cls: "chronos-stats-close",
+    cls: "chronica-stats-close",
     attr: { "aria-label": "Close statistics panel" }
   });
   
@@ -3199,12 +3199,12 @@ renderStatsPanel(container: HTMLElement): void {
   `;
   
   // Add content container
-  const contentContainer = statsPanel.createEl("div", { cls: "chronos-stats-content" });
+  const contentContainer = statsPanel.createEl("div", { cls: "chronica-stats-content" });
   
   // Create tab content areas
   tabs.forEach(tab => {
     const tabContent = contentContainer.createEl("div", {
-      cls: `chronos-stats-tab-content ${this.plugin.settings.activeStatsTab === tab.id ? "active" : ""}`,
+      cls: `chronica-stats-tab-content ${this.plugin.settings.activeStatsTab === tab.id ? "active" : ""}`,
       attr: { id: `tab-content-${tab.id}` }
     });
     
@@ -3243,7 +3243,7 @@ statsHandle.addEventListener("click", () => {
   }
 
   // Update content area padding
-  const contentArea = this.containerEl.querySelector(".chronos-content-area");
+  const contentArea = this.containerEl.querySelector(".chronica-content-area");
   if (contentArea) {
     contentArea.classList.toggle("stats-expanded", this.isStatsOpen);
     if (this.isStatsOpen) {
@@ -3274,7 +3274,7 @@ statsHandle.addEventListener("click", () => {
     statsPanel.classList.add("collapsed");
     
     // Update content padding
-    const contentArea = this.containerEl.querySelector(".chronos-content-area");
+    const contentArea = this.containerEl.querySelector(".chronica-content-area");
     if (contentArea) {
       contentArea.classList.remove("stats-expanded");
     }
@@ -3320,7 +3320,7 @@ setupStatsPanelResize(dragHandle: HTMLElement, statsPanel: HTMLElement): void {
     statsPanel.style.height = `${newHeight}px`;
     
     // Update the container's padding to match new height
-    const contentArea = this.containerEl.querySelector(".chronos-content-area");
+    const contentArea = this.containerEl.querySelector(".chronica-content-area");
     if (contentArea && this.isStatsOpen) {
       (contentArea as HTMLElement).style.paddingBottom = `${newHeight}px`;
     }
@@ -3344,8 +3344,8 @@ setupStatsPanelResize(dragHandle: HTMLElement, statsPanel: HTMLElement): void {
 
 
 updateStatsPanelLayout(): void {
-  const statsPanel = this.containerEl.querySelector(".chronos-stats-panel");
-  const contentArea = this.containerEl.querySelector(".chronos-content-area");
+  const statsPanel = this.containerEl.querySelector(".chronica-stats-panel");
+  const contentArea = this.containerEl.querySelector(".chronica-content-area");
   
   if (!statsPanel || !contentArea) return;
   
@@ -3404,7 +3404,7 @@ renderOverviewTab(container: HTMLElement): void {
   
   // Create life progress circular indicator
   const progressContainer = container.createEl("div", {
-    cls: "chronos-circular-progress",
+    cls: "chronica-circular-progress",
   });
   
   const progressValue = Math.round(livedPercentage);
@@ -3416,51 +3416,51 @@ renderOverviewTab(container: HTMLElement): void {
         stroke-dasharray="220" stroke-dashoffset="${220 - (220 * livedPercentage / 100)}"
         transform="rotate(-90 40 40)"></circle>
     </svg>
-    <div class="chronos-circular-progress-text">${progressValue}%</div>
+    <div class="chronica-circular-progress-text">${progressValue}%</div>
   `;
   
   // Add life progress bar
   const lifeSummary = container.createEl("div", {
-    cls: "chronos-stat-card",
+    cls: "chronica-stat-card",
   });
   
   lifeSummary.createEl("div", {
-    cls: "chronos-stat-title",
+    cls: "chronica-stat-title",
     text: "Life Progress",
   });
   
   const progressBar = lifeSummary.createEl("div", {
-    cls: "chronos-progress-bar",
+    cls: "chronica-progress-bar",
   });
   
   const progressFill = progressBar.createEl("div", {
-    cls: "chronos-progress-bar-fill",
+    cls: "chronica-progress-bar-fill",
   });
   
   progressFill.style.width = `${livedPercentage}%`;
   
   lifeSummary.createEl("div", {
-    cls: "chronos-stat-subtitle",
+    cls: "chronica-stat-subtitle",
     text: `${ageInWeeks} weeks lived, ${remainingWeeks} weeks remaining`,
   });
   
   // Create stats grid
   const statsGrid = container.createEl("div", {
-    cls: "chronos-stats-grid",
+    cls: "chronica-stats-grid",
   });
   
   // Events count card
   const eventsCard = statsGrid.createEl("div", {
-    cls: "chronos-stat-card",
+    cls: "chronica-stat-card",
   });
   
   eventsCard.createEl("div", {
-    cls: "chronos-stat-title",
+    cls: "chronica-stat-title",
     text: "Total Events",
   });
   
   eventsCard.createEl("div", {
-    cls: "chronos-stat-value",
+    cls: "chronica-stat-value",
     text: totalEvents.toString(),
   });
   
@@ -3475,17 +3475,17 @@ renderOverviewTab(container: HTMLElement): void {
   eventBreakdown = eventBreakdown.replace(/,\s*$/, "");
   
   eventsCard.createEl("div", {
-    cls: "chronos-stat-subtitle",
+    cls: "chronica-stat-subtitle",
     text: eventBreakdown || "No events added yet",
   });
   
   // Current age card
   const ageCard = statsGrid.createEl("div", {
-    cls: "chronos-stat-card",
+    cls: "chronica-stat-card",
   });
   
   ageCard.createEl("div", {
-    cls: "chronos-stat-title",
+    cls: "chronica-stat-title",
     text: "Current Age",
   });
   
@@ -3493,7 +3493,7 @@ renderOverviewTab(container: HTMLElement): void {
   const remainingWeeksInYear = ageInWeeks % 52;
   
   ageCard.createEl("div", {
-    cls: "chronos-stat-value",
+    cls: "chronica-stat-value",
     text: `${yearsLived} years, ${remainingWeeksInYear} weeks`,
   });
   
@@ -3502,7 +3502,7 @@ renderOverviewTab(container: HTMLElement): void {
   const yearsIntoCurrentDecade = yearsLived % 10;
   
   ageCard.createEl("div", {
-    cls: "chronos-stat-subtitle",
+    cls: "chronica-stat-subtitle",
     text: `${decadesLived} decades + ${yearsIntoCurrentDecade} years`,
   });
 }
@@ -4270,7 +4270,7 @@ class ChronosSettingTab extends PluginSettingTab {
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
-    containerEl.createEl("h1", { text: "ChronOS Timeline Settings" });
+    containerEl.createEl("h1", { text: "Chronica Timeline Settings" });
     containerEl.createEl("p", {
       text: "Customize your life timeline visualization.",
     });
@@ -4813,7 +4813,7 @@ class ChronosSettingTab extends PluginSettingTab {
              .onChange(async (value) => {
                  this.plugin.settings.cellShape = value as 'square' | 'circle' | 'diamond';
                  await this.plugin.saveSettings();
-                 // Re-render each open ChronOS Timeline view so the new shape takes effect
+                 // Re-render each open Chronica Timeline view so the new shape takes effect
                  this.plugin.app.workspace
                    .getLeavesOfType(TIMELINE_VIEW_TYPE)
                    .forEach((leaf) => {

@@ -39,7 +39,7 @@
          LAYOUT CONTAINERS
          ----------------------------------------------------------------------------- */
 /* Main container */
-.chronos-timeline-container {
+.chronica-timeline-container {
   font-family: var(--font-ui), -apple-system, BlinkMacSystemFont, sans-serif;
   padding: 0;
   display: flex;
@@ -50,7 +50,7 @@
 }
 
 /* Main container with flexbox layout */
-.chronos-main-container {
+.chronica-main-container {
   display: flex;
   height: 100%;
   width: 100%;
@@ -59,7 +59,7 @@
 }
 
 /* Sidebar */
-.chronos-sidebar {
+.chronica-sidebar {
   height: 100%;
   padding: 0;
   overflow-y: auto;
@@ -74,13 +74,13 @@
 }
 
 /* Expanded sidebar */
-.chronos-sidebar.expanded {
+.chronica-sidebar.expanded {
   width: var(--sidebar-width);
   min-width: var(--sidebar-width);
 }
 
 /* Collapsed sidebar */
-.chronos-sidebar.collapsed {
+.chronica-sidebar.collapsed {
   width: 0;
   min-width: 0;
   overflow: hidden;
@@ -88,7 +88,7 @@
 }
 
 /* Sidebar header */
-.chronos-sidebar-header {
+.chronica-sidebar-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -97,7 +97,7 @@
 }
 
 /* Collapsed sidebar toggle button */
-.chronos-collapsed-toggle {
+.chronica-collapsed-toggle {
   position: fixed; /* Change to fixed position to avoid scrolling issues */
   left: 0;
   width: 28px;
@@ -115,7 +115,7 @@
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
-.chronos-collapsed-toggle svg {
+.chronica-collapsed-toggle svg {
   margin: 0;
   width: 18px;
   height: 18px;
@@ -125,7 +125,7 @@
   transform: translate(-50%, -50%);
 }
 
-.chronos-collapsed-toggle:hover {
+.chronica-collapsed-toggle:hover {
   width: 30px;
   background-color: var(--interactive-accent);
   color: var(--text-on-accent);
@@ -133,7 +133,7 @@
 }
 
 /* Sidebar toggle button in header */
-.chronos-sidebar-toggle {
+.chronica-sidebar-toggle {
   background-color: transparent;
   border: none;
   width: 30px;
@@ -149,13 +149,13 @@
   z-index: 25;
 }
 
-.chronos-sidebar-toggle:hover {
+.chronica-sidebar-toggle:hover {
   background-color: var(--background-modifier-hover);
   color: var(--text-normal);
 }
 
 /* Content area */
-.chronos-content-area {
+.chronica-content-area {
   flex: 1;
   height: 100%;
   overflow: auto;
@@ -166,7 +166,7 @@
 }
 
 /* Sidebar sections */
-.chronos-sidebar-section {
+.chronica-sidebar-section {
   padding: 20px;
   margin-bottom: 16px;
   border-bottom: 1px solid var(--background-modifier-border);
@@ -183,7 +183,7 @@
 }
 
 /* Title styling */
-.chronos-title {
+.chronica-title {
   font-size: 20px;
   font-weight: 300;
   font-style: italic;
@@ -193,7 +193,7 @@
 }
 
 /* Main view container */
-.chronos-view {
+.chronica-view {
   position: relative;
   overflow: auto;
   flex-grow: 1;
@@ -207,7 +207,7 @@
 }
 
 /* Markers container with proper structure */
-.chronos-vertical-markers {
+.chronica-vertical-markers {
   position: absolute;
   top: var(--top-offset);
   left: 0;
@@ -221,14 +221,14 @@
 }
 
 /* Week markers container */
-.chronos-week-markers {
+.chronica-week-markers {
   position: relative;
   width: var(--marker-week-column);
   height: 100%;
 }
 
 /* Month markers container */
-.chronos-month-markers {
+.chronica-month-markers {
   position: relative;
   width: var(--marker-month-column);
   flex-grow: 1;
@@ -239,8 +239,8 @@
          CONTROL ELEMENTS
          ----------------------------------------------------------------------------- */
 /* Controls styling */
-.chronos-controls,
-.chronos-visual-controls {
+.chronica-controls,
+.chronica-visual-controls {
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -248,7 +248,7 @@
 }
 
 /* Button styling */
-.chronos-btn {
+.chronica-btn {
   background-color: var(--background-modifier-border);
   color: var(--text-normal);
   border: none;
@@ -264,24 +264,24 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.chronos-btn:hover {
+.chronica-btn:hover {
   background-color: var(--interactive-accent);
   color: var(--text-on-accent);
   transform: translateY(-1px);
   box-shadow: var(--hover-shadow);
 }
 
-.chronos-btn-primary {
+.chronica-btn-primary {
   background-color: var(--interactive-accent);
   color: var(--text-on-accent);
 }
 
-.chronos-btn-primary:hover {
+.chronica-btn-primary:hover {
   background-color: var(--interactive-accent-hover);
 }
 
 /* Zoom controls styling */
-.chronos-zoom-controls {
+.chronica-zoom-controls {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -290,7 +290,7 @@
 }
 
 /* Button styling */
-.chronos-zoom-button {
+.chronica-zoom-button {
   background-color: var(--background-modifier-border);
   border: none;
   width: 28px;
@@ -307,7 +307,7 @@
 }
 
 /* Icon styling */
-.chronos-zoom-button svg {
+.chronica-zoom-button svg {
   width: 14px;
   height: 14px;
   position: absolute;
@@ -316,7 +316,7 @@
   transform: translate(-50%, -50%);
 }
 
-.chronos-zoom-level {
+.chronica-zoom-level {
   min-width: 50px;
   text-align: center;
   font-size: 14px;
@@ -326,7 +326,7 @@
 }
 
 /* ► type your own zoom % */
-.chronos-zoom-input {
+.chronica-zoom-input {
   width: 60px;
   font-size: 16px;
   text-align: center;
@@ -337,18 +337,18 @@
   padding: 4px 6px;
   margin: 0 8px;
 }
-.chronos-zoom-input:focus {
+.chronica-zoom-input:focus {
   outline: none;
   border-color: var(--interactive-accent);
 }
 
 /* Fit to screen button */
-.chronos-fit-to-screen {
+.chronica-fit-to-screen {
   margin-top: 5px;
   width: 100%;
 }
 
-.chronos-fit-to-screen.active {
+.chronica-fit-to-screen.active {
   background-color: var(--interactive-accent);
   color: var(--text-on-accent);
 }
@@ -357,7 +357,7 @@
          MARKERS & GRID LAYOUT
          ----------------------------------------------------------------------------- */
 /* Decade markers (horizontal, top) */
-.chronos-decade-markers {
+.chronica-decade-markers {
   position: absolute;
   top: 0;
   left: 0;
@@ -368,7 +368,7 @@
   transition: transform 0.2s ease;
 }
 
-.chronos-decade-marker {
+.chronica-decade-marker {
   position: absolute;
   font-size: 12px;
   color: var(--text-muted);
@@ -378,7 +378,7 @@
 }
 
 /* Week markers (vertical) */
-.chronos-week-marker {
+.chronica-week-marker {
   position: absolute;
   font-size: 12px;
   color: var(--text-muted);
@@ -392,13 +392,13 @@
   width: 25px; /* Reduced from 30px */
 }
 
-.chronos-week-marker:hover {
+.chronica-week-marker:hover {
   opacity: 1;
   color: var(--text-normal);
 }
 
 /* Month markers */
-.chronos-month-marker {
+.chronica-month-marker {
   position: absolute;
   font-size: 10px;
   color: var(--text-muted);
@@ -413,29 +413,29 @@
 }
 
 /* Highlight month markers on hover for better discoverability */
-.chronos-month-marker:hover {
+.chronica-month-marker:hover {
   opacity: 1;
 }
 
 /* Special styling for January months */
-.chronos-month-marker.first-of-year {
+.chronica-month-marker.first-of-year {
   font-weight: 500;
   opacity: 0.9;
   color: var(--text-accent);
 }
 
 /* Special styling for birth month */
-.chronos-month-marker.birth-month {
+.chronica-month-marker.birth-month {
   right: auto;
   left: 5px;
 }
 
-.chronos-month-marker.birth-month svg {
+.chronica-month-marker.birth-month svg {
   color: #e91e63; /* Pink color for cake icon */
 }
 
 /* Timeline grid container */
-.chronos-grid {
+.chronica-grid {
   display: grid;
   grid-gap: var(--cell-gap);
   position: absolute;
@@ -448,10 +448,10 @@
 }
 
 /* Remove default content generation */
-.chronos-grid::before,
-.chronos-grid::after,
-.chronos-grid-cell::before,
-.chronos-grid-cell::after {
+.chronica-grid::before,
+.chronica-grid::after,
+.chronica-grid-cell::before,
+.chronica-grid-cell::after {
   display: none !important;
   content: none !important;
 }
@@ -460,7 +460,7 @@
          GRID CELLS
          ----------------------------------------------------------------------------- */
 /* Individual cells */
-.chronos-grid-cell {
+.chronica-grid-cell {
   width: var(--cell-size);
   height: var(--cell-size);
   border-radius: var(--cell-border-radius);
@@ -472,66 +472,66 @@
 }
 
 /* ── Shape Variants ── */
-.chronos-grid.shape-circle .chronos-grid-cell {
+.chronica-grid.shape-circle .chronica-grid-cell {
   border-radius: 50%;
   clip-path: none;
 }
 
-.chronos-grid.shape-diamond .chronos-grid-cell {
+.chronica-grid.shape-diamond .chronica-grid-cell {
   border-radius: 0;
   clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
 }
 
-.chronos-grid-cell:hover {
+.chronica-grid-cell:hover {
   transform: scale(1.15);
   box-shadow: var(--hover-shadow);
   z-index: 10;
 }
 
 /* Special cell states */
-.chronos-grid-cell.present {
+.chronica-grid-cell.present {
   z-index: 5;
   box-shadow: 0 0 8px var(--present-color);
   border-color: var(--present-color);
 }
 
 
-.chronos-grid-cell.past.event {
+.chronica-grid-cell.past.event {
   border-width: 2px !important;
 }
 
-.chronos-grid-cell.future.event {
+.chronica-grid-cell.future.event {
   border-width: 2px !important;
 }
 
-.chronos-grid-cell.event {
+.chronica-grid-cell.event {
   border-width: 2px !important;
   box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
 }
 
-.chronos-grid-cell.major-life-event {
+.chronica-grid-cell.major-life-event {
   border-color: var(--major-life-color) !important;
 }
 
-.chronos-grid-cell.travel-event {
+.chronica-grid-cell.travel-event {
   border-color: var(--travel-color) !important;
 }
 
-.chronos-grid-cell.relationship-event {
+.chronica-grid-cell.relationship-event {
   border-color: var(--relationship-color) !important;
 }
 
-.chronos-grid-cell.education-career-event {
+.chronica-grid-cell.education-career-event {
   border-color: var(--education-career-color) !important;
 }
 
 /* Future event highlight - subtle indicator */
-.chronos-grid-cell.future-event-highlight {
+.chronica-grid-cell.future-event-highlight {
   border: 1px solid var(--future-event-color);
   position: relative;
 }
 
-.chronos-grid-cell.future-event-highlight:hover {
+.chronica-grid-cell.future-event-highlight:hover {
   box-shadow: 0 0 5px var(--future-event-color);
   animation: subtle-pulse 1.5s infinite;
 }
@@ -551,21 +551,21 @@
 /* -----------------------------------------------------------------------------
          LEGEND
          ----------------------------------------------------------------------------- */
-.chronos-legend {
+.chronica-legend {
   display: flex;
   flex-direction: column;
   gap: 10px;
   margin-bottom: 15px;
 }
 
-.chronos-legend-item {
+.chronica-legend-item {
   display: flex;
   align-items: center;
   font-size: 14px;
   color: var(--text-normal);
 }
 
-.chronos-legend-color {
+.chronica-legend-color {
   width: 16px;
   height: 16px;
   border-radius: 2px;
@@ -576,7 +576,7 @@
 /* -----------------------------------------------------------------------------
          FOOTER
          ----------------------------------------------------------------------------- */
-.chronos-footer {
+.chronica-footer {
   text-align: center;
   font-style: italic;
   font-size: 14px;
@@ -595,11 +595,11 @@
 }
 
 /* Date picker enhancements */
-.chronos-date-picker-container {
+.chronica-date-picker-container {
   margin-bottom: 20px;
 }
 
-.chronos-helper-text {
+.chronica-helper-text {
   display: block;
   margin-top: 5px;
   margin-bottom: 15px;
@@ -669,14 +669,14 @@
 }
 
 /* Radio button controls */
-.chronos-radio-container {
+.chronica-radio-container {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
   margin-top: 5px;
 }
 
-.chronos-radio-label {
+.chronica-radio-label {
   display: flex;
   align-items: center;
   cursor: pointer;
@@ -685,7 +685,7 @@
   background-color: var(--background-secondary);
 }
 
-.chronos-color-box {
+.chronica-color-box {
   width: 12px;
   height: 12px;
   margin: 0 5px;
@@ -707,7 +707,7 @@
 }
 
 /* Birthday cake marker */
-.chronos-birthday-marker-container {
+.chronica-birthday-marker-container {
   pointer-events: none;
   position: absolute;
   top: var(--top-offset); /* same vertical offset as the grid */
@@ -738,15 +738,15 @@
 }
 
 /* Filled week styling */
-.chronos-grid-cell.filled-week {
+.chronica-grid-cell.filled-week {
   border: 2px solid #8bc34a;
 }
 
-.chronos-grid-cell.filled-week:not(.event) {
+.chronica-grid-cell.filled-week:not(.event) {
   background-color: #8bc34a;
 }
 
-.chronos-grid-cell.filled-week.event {
+.chronica-grid-cell.filled-week.event {
   border: 2px solid #8bc34a;
 }
 
@@ -760,13 +760,13 @@
          ----------------------------------------------------------------------------- */
 
   @media (max-width: 768px) {
-    .chronos-main-container {
+    .chronica-main-container {
       flex-direction: column;
         }
       
         
 
-  .chronos-sidebar:not(.collapsed) {
+  .chronica-sidebar:not(.collapsed) {
     width: 100%;
     min-width: 0;
     height: auto;
@@ -777,30 +777,30 @@
     padding: 10px;
   }
 
-  .chronos-sidebar.collapsed {
+  .chronica-sidebar.collapsed {
     max-height: 0;
     padding: 0;
   }
 
-  .chronos-sidebar-toggle {
+  .chronica-sidebar-toggle {
     top: 0 !important;
     transform: none;
     border-radius: 0 0 4px 4px;
   }
 
-  .chronos-legend {
+  .chronica-legend {
     flex-direction: row;
     flex-wrap: wrap;
   }
 
   /* Adjust container padding */
-  .chronos-view {
+  .chronica-view {
     padding: 45px 15px 15px 45px;
   }
 
   /* Adjust markers */
-  .chronos-decade-marker,
-  .chronos-week-marker {
+  .chronica-decade-marker,
+  .chronica-week-marker {
     font-size: 10px;
   }
 }
@@ -810,7 +810,7 @@
          ----------------------------------------------------------------------------- */
 
 /* Portrait mode style adjustments */
-.chronos-vertical-markers.portrait-mode {
+.chronica-vertical-markers.portrait-mode {
   transform: none; /* Remove rotation */
   width: calc(100% - var(--top-offset));
   height: var(--left-offset);
@@ -819,7 +819,7 @@
   flex-direction: column;
 }
 
-.chronos-decade-markers.portrait-mode {
+.chronica-decade-markers.portrait-mode {
   top: auto;
   left: 0;
   width: var(--left-offset);
@@ -827,12 +827,12 @@
   flex-direction: column;
 }
 
-.chronos-decade-marker.portrait-mode {
+.chronica-decade-marker.portrait-mode {
   top: auto;
   left: 50% !important;
 }
 
-.chronos-week-marker.portrait-mode {
+.chronica-week-marker.portrait-mode {
   transform: none;
   text-align: right;
   right: auto;
@@ -840,7 +840,7 @@
   transform-origin: left center;
 }
 
-.chronos-month-marker.portrait-mode {
+.chronica-month-marker.portrait-mode {
   text-align: center;
   font-size: 10px;
   position: absolute;
@@ -848,7 +848,7 @@
 }
 
 /* Make month markers more visible in portrait mode */
-.chronos-month-markers.portrait-mode {
+.chronica-month-markers.portrait-mode {
   position: absolute;
   top: 0;
   left: var(--left-offset);
@@ -862,7 +862,7 @@
 /* -----------------------------------------------------------------------------
    STATISTICS PANEL
    ----------------------------------------------------------------------------- */
-   .chronos-stats-handle {
+   .chronica-stats-handle {
     position: fixed;
     bottom: 0;
     left: 50%;
@@ -882,24 +882,24 @@
     box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.1);
   }
   
-  .chronos-stats-handle:hover {
+  .chronica-stats-handle:hover {
     background-color: var(--interactive-accent);
     color: var(--text-on-accent);
     transform: translateX(-50%) translateY(-2px);
   }
   
-  .chronos-stats-handle-icon {
+  .chronica-stats-handle-icon {
     margin-right: 4px;
     width: 14px;
     height: 14px;
   }
 
-  .chronos-content-area.stats-expanded {
+  .chronica-content-area.stats-expanded {
     padding-bottom: var(--stats-panel-height);
     transition: padding-bottom 0.3s ease;
   }
   
-  .chronos-stats-panel {
+  .chronica-stats-panel {
     width: 100%;
     padding: 0;
     overflow-y: auto;
@@ -919,19 +919,19 @@
     will-change: height;
   }
 
-  .chronos-stats-panel.expanded {
+  .chronica-stats-panel.expanded {
     height: var(--stats-panel-height);
     min-height: var(--stats-panel-min-height);
   }
 
-  .chronos-stats-panel.collapsed {
+  .chronica-stats-panel.collapsed {
     height: 0;
     min-height: 0;
     overflow: hidden;
     border-top: none;
   }
 
-  .chronos-stats-header {
+  .chronica-stats-header {
     display: flex;
     align-items: center;
     padding: 10px 15px;
@@ -939,7 +939,7 @@
     background-color: var(--background-secondary-alt);
   }
   
-  .chronos-stats-drag-handle {
+  .chronica-stats-drag-handle {
     width: 40px;
     height: 4px;
     background-color: var(--background-modifier-border);
@@ -948,13 +948,13 @@
     cursor: ns-resize;
   }
   
-  .chronos-stats-tabs {
+  .chronica-stats-tabs {
     display: flex;
     gap: 5px;
     flex-grow: 1;
   }
   
-  .chronos-stats-tab {
+  .chronica-stats-tab {
     padding: 5px 10px;
     border-radius: 4px;
     cursor: pointer;
@@ -965,17 +965,17 @@
     transition: background-color 0.2s ease, color 0.2s ease;
   }
   
-  .chronos-stats-tab:hover {
+  .chronica-stats-tab:hover {
     background-color: var(--background-modifier-hover);
     color: var(--text-normal);
   }
   
-  .chronos-stats-tab.active {
+  .chronica-stats-tab.active {
     background-color: var(--interactive-accent);
     color: var(--text-on-accent);
   }
   
-  .chronos-stats-close {
+  .chronica-stats-close {
     background-color: transparent;
     border: none;
     color: var(--text-muted);
@@ -988,27 +988,27 @@
     transition: background-color 0.2s ease, color 0.2s ease;
   }
   
-  .chronos-stats-close:hover {
+  .chronica-stats-close:hover {
     background-color: var(--background-modifier-hover);
     color: var(--text-normal);
   }
   
-  .chronos-stats-content {
+  .chronica-stats-content {
     padding: 15px;
     overflow-y: auto;
     flex-grow: 1;
   }
   
-  .chronos-stats-tab-content {
+  .chronica-stats-tab-content {
     display: none;
   }
   
-  .chronos-stats-tab-content.active {
+  .chronica-stats-tab-content.active {
     display: block;
   }
   
   /* Progress indicators */
-  .chronos-progress-bar {
+  .chronica-progress-bar {
     width: 100%;
     height: 10px;
     background-color: var(--background-modifier-border);
@@ -1017,13 +1017,13 @@
     overflow: hidden;
   }
   
-  .chronos-progress-bar-fill {
+  .chronica-progress-bar-fill {
     height: 100%;
     background-color: var(--interactive-accent);
     border-radius: 5px;
   }
   
-  .chronos-circular-progress {
+  .chronica-circular-progress {
     width: 80px;
     height: 80px;
     position: relative;
@@ -1033,61 +1033,61 @@
     margin: 0 auto;
   }
   
-  .chronos-circular-progress svg {
+  .chronica-circular-progress svg {
     position: absolute;
     top: 0;
     left: 0;
   }
   
-  .chronos-circular-progress-text {
+  .chronica-circular-progress-text {
     font-size: 18px;
     font-weight: 600;
   }
   
   /* Stat cards and layout */
-  .chronos-stats-grid {
+  .chronica-stats-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 15px;
     margin-top: 15px;
   }
   
-  .chronos-stat-card {
+  .chronica-stat-card {
     background-color: var(--background-secondary);
     border-radius: 6px;
     padding: 15px;
     box-shadow: var(--card-shadow);
   }
   
-  .chronos-stat-title {
+  .chronica-stat-title {
     font-size: 14px;
     color: var(--text-muted);
     margin-bottom: 5px;
   }
   
-  .chronos-stat-value {
+  .chronica-stat-value {
     font-size: 20px;
     font-weight: 600;
     color: var(--text-normal);
   }
   
-  .chronos-stat-subtitle {
+  .chronica-stat-subtitle {
     font-size: 12px;
     color: var(--text-muted);
     margin-top: 5px;
   }
 
-  .chronos-view {
+  .chronica-view {
     /* Ensure grid view adjusts when stats panel is open */
     transition: padding-bottom 0.3s ease;
   }
     
-    .chronos-stats-tabs {
+    .chronica-stats-tabs {
       flex-wrap: wrap;
       justify-content: center;
     }
     
-    .chronos-stats-tab {
+    .chronica-stats-tab {
       padding: 3px 6px;
       font-size: 12px;
     }
