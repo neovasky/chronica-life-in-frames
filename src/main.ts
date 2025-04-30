@@ -233,7 +233,7 @@ const DEFAULT_SETTINGS: ChronosSettings = {
   gridOrientation: 'landscape',
   isStatsOpen: false,
   activeStatsTab: "overview",
-  statsPanelHeight: 200,
+  statsPanelHeight: 170,
 };
 
 /** SVG icon for the Chronica Timeline */
@@ -2144,6 +2144,9 @@ class ChronosTimelineView extends ItemView {
       if (collapsedToggle) {
         collapsedToggle.style.display = this.isSidebarOpen ? "none" : "block";
       }
+
+      this.updateStatsPanelLayout();
+
     });
 
     // Controls section
@@ -2440,6 +2443,9 @@ const totalEvents =
         sidebarToggle.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>`;
         sidebarToggle.setAttribute("title", "Collapse Sidebar");
       }
+
+      this.updateStatsPanelLayout();
+
     });
 
     // Show/hide the toggle button based on sidebar state
@@ -3350,29 +3356,39 @@ setupStatsPanelResize(dragHandle: HTMLElement, statsPanel: HTMLElement): void {
 
 
 updateStatsPanelLayout(): void {
-  const statsPanel = this.containerEl.querySelector(".chronica-stats-panel");
-  const contentArea = this.containerEl.querySelector(".chronica-content-area");
+  const statsPanel = this.containerEl.querySelector(".chronica-stats-panel") as HTMLElement;
+  const statsHandle = this.containerEl.querySelector(".chronica-stats-handle") as HTMLElement;
+  const contentArea = this.containerEl.querySelector(".chronica-content-area") as HTMLElement;
+  const sidebar = this.containerEl.querySelector(".chronica-sidebar") as HTMLElement;
   
-  if (!statsPanel || !contentArea) return;
+  if (!statsPanel || !contentArea || !statsHandle) return;
   
+  // Default height for the panel
+  const panelHeight = this.plugin.settings.statsPanelHeight;
+  document.documentElement.style.setProperty('--stats-panel-height', `${panelHeight}px`);
+  
+  // Calculate offset based on sidebar state
+  const sidebarWidth = this.isSidebarOpen && sidebar ? sidebar.getBoundingClientRect().width : 0;
+  const centerOffset = sidebarWidth > 0 ? sidebarWidth / 2 : 0;
+  
+  // Position the handle and panel
+  if (centerOffset > 0) {
+    statsPanel.style.left = `calc(50% + ${centerOffset}px)`;
+    statsHandle.style.left = `calc(50% + ${centerOffset}px)`;
+  } else {
+    statsPanel.style.left = '50%';
+    statsHandle.style.left = '50%';
+  }
+  
+  // Set height based on panel state
   if (this.isStatsOpen) {
     contentArea.classList.add("stats-expanded");
-    
-    // Only set inline styles for desktop view
-    if (!this.isNarrowViewport()) {
-      (statsPanel as HTMLElement).style.height = `${this.plugin.settings.statsPanelHeight}px`;
-      (contentArea as HTMLElement).style.paddingBottom = 
-        `${this.plugin.settings.statsPanelHeight}px`;
-    } else {
-      // Let CSS handle mobile layout
-      (statsPanel as HTMLElement).style.height = '';
-      (contentArea as HTMLElement).style.paddingBottom = '';
-    }
+    statsPanel.style.height = `${panelHeight}px`;
+    contentArea.style.paddingBottom = `${panelHeight}px`;
   } else {
-    // Always collapse when closed
     contentArea.classList.remove("stats-expanded");
-    (statsPanel as HTMLElement).style.height = '0';
-    (contentArea as HTMLElement).style.paddingBottom = '0';
+    statsPanel.style.height = '0';
+    contentArea.style.paddingBottom = '0';
   }
 }
 

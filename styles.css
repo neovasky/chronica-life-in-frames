@@ -28,7 +28,7 @@
   --travel-color: #2196F3; 
   --education-career-color: #9C27B0;
   --major-life-color: #4CAF50;
-  --stats-panel-height: 200px;
+  --stats-panel-height: 170px;
   --stats-panel-min-height: 150px;
   --stats-panel-max-height: 600px;
   
@@ -877,7 +877,7 @@
     cursor: pointer;
     color: var(--text-muted);
     font-size: 12px;
-    transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+    transition: all 0.2s ease;
     z-index: 100;
     box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.1);
   }
@@ -900,7 +900,9 @@
   }
   
   .chronica-stats-panel {
-    width: 100%;
+    width: 70%;
+    max-width: 900px;
+    min-width: 500px;
     padding: 0;
     overflow-y: auto;
     display: flex;
@@ -909,14 +911,13 @@
     border-top: 1px solid var(--background-modifier-border-hover);
     border-radius: 6px 6px 0 0;
     box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.1);
-    transition: height 0.3s ease, min-height 0.3s ease, transform 0.3s ease;
+    transition: height 0.3s ease, min-height 0.3s ease, transform 0.3s ease, left 0.3s ease;
     position: fixed;
     bottom: 0;
-    left: 0;
-    right: 0;
+    left: 50%;
+    transform: translateX(-50%);
     z-index: 20;
-    transform: translateZ(0);
-    will-change: height;
+    will-change: height, left, transform;
   }
 
   .chronica-stats-panel.expanded {
@@ -940,12 +941,35 @@
   }
   
   .chronica-stats-drag-handle {
-    width: 40px;
+    width: 60px;
     height: 4px;
     background-color: var(--background-modifier-border);
-    border-radius: 2px;
-    margin: 0 auto 10px auto;
+    border-radius: 4px;
+    margin: 6px auto 10px auto;
     cursor: ns-resize;
+    position: relative;
+    transition: background-color 0.2s ease;
+  }
+  
+  .chronica-stats-drag-handle:hover {
+    background-color: var(--interactive-accent);
+  }
+  
+  .chronica-stats-drag-handle::after {
+    content: "drag to resize";
+    position: absolute;
+    top: -15px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 9px;
+    color: var(--text-muted);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+  }
+
+  .chronica-stats-drag-handle:hover::after {
+    opacity: 1;
   }
   
   .chronica-stats-tabs {
