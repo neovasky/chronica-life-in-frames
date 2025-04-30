@@ -9,6 +9,10 @@
     "watch": "rollup -c --watch",
     "version": "node version-bump.mjs && git add manifest.json versions.json"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/neovasky/chronica-life-in-frames.git"
+  },
   "keywords": [
     "obsidian-plugin",
     "timeline",

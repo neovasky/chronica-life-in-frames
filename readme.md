@@ -68,7 +68,7 @@ This plugin is built with TypeScript for type safety and documentation. It depen
 ## ⚙️ How to Use
 
 Clone the repo:
-  git clone https://github.com/neovasky/chronica-life-in-frames.git
+    git clone https://github.com/neovasky/chronica-life-in-frames.git
 Install & build:
   npm install
   npm run dev
