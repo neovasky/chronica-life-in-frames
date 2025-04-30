@@ -943,33 +943,22 @@
   .chronica-stats-drag-handle {
     width: 60px;
     height: 4px;
-    background-color: var(--background-modifier-border);
-    border-radius: 4px;
+    background-color: var(--text-muted) !important; /* Use text-muted for more visibility */
+    border-radius: 10px;
     margin: 6px auto 10px auto;
     cursor: ns-resize;
     position: relative;
-    transition: background-color 0.2s ease;
+    opacity: 0.2 !important; /* Ensure it's visible */
   }
   
   .chronica-stats-drag-handle:hover {
-    background-color: var(--interactive-accent);
+    background-color: var(--text-muted); 
+    opacity: 0.5 !important;
   }
   
   .chronica-stats-drag-handle::after {
-    content: "drag to resize";
-    position: absolute;
-    top: -15px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 9px;
-    color: var(--text-muted);
-    opacity: 0;
-    transition: opacity 0.2s ease;
-    pointer-events: none;
-  }
-
-  .chronica-stats-drag-handle:hover::after {
-    opacity: 1;
+    content: none;
+    display: none;
   }
   
   .chronica-stats-tabs {

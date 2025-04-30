@@ -2606,18 +2606,21 @@ class ChronosTimelineView extends obsidian.ItemView {
         // Default height for the panel
         const panelHeight = this.plugin.settings.statsPanelHeight;
         document.documentElement.style.setProperty('--stats-panel-height', `${panelHeight}px`);
-        // Calculate offset based on sidebar state
+        // Get the total window width and calculate the available width
+        const totalWidth = this.containerEl.clientWidth;
         const sidebarWidth = this.isSidebarOpen && sidebar ? sidebar.getBoundingClientRect().width : 0;
-        const centerOffset = sidebarWidth > 0 ? sidebarWidth / 2 : 0;
+        const availableWidth = totalWidth - sidebarWidth;
+        // Calculate the center of the available space
+        // When sidebar is open, the center is shifted right by half the sidebar width
+        const offsetX = this.isSidebarOpen ? sidebarWidth / 2 : 0;
         // Position the handle and panel
-        if (centerOffset > 0) {
-            statsPanel.style.left = `calc(50% + ${centerOffset}px)`;
-            statsHandle.style.left = `calc(50% + ${centerOffset}px)`;
-        }
-        else {
-            statsPanel.style.left = '50%';
-            statsHandle.style.left = '50%';
-        }
+        statsPanel.style.left = `calc(50% + ${offsetX}px)`;
+        statsHandle.style.left = `calc(50% + ${offsetX}px)`;
+        // Make sure the panel width is appropriate to avoid overlapping the sidebar
+        // Use 70% of available width instead of fixed percentage
+        const panelWidth = Math.min(900, Math.max(500, availableWidth * 0.7));
+        statsPanel.style.width = `${panelWidth}px`;
+        statsPanel.style.maxWidth = `${panelWidth}px`;
         // Set height based on panel state
         if (this.isStatsOpen) {
             contentArea.classList.add("stats-expanded");
