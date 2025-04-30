@@ -1981,6 +1981,9 @@ class ChronosTimelineView extends ItemView {
   /** Track sidebar open/closed state */
   isSidebarOpen: boolean;
   isStatsOpen: boolean;
+  isNarrowViewport(): boolean {
+    return window.innerWidth <= 768;
+  }
 
   constructor(leaf: WorkspaceLeaf, plugin: ChronosTimelinePlugin) {
     super(leaf);
@@ -1993,6 +1996,11 @@ class ChronosTimelineView extends ItemView {
       '--stats-panel-height', 
       `${this.plugin.settings.statsPanelHeight}px`
     );
+
+    this.registerDomEvent(window, 'resize', () => {
+      // Reapply layout rules whenever window size changes
+      this.updateStatsPanelLayout();
+    });
   }
 
   /**
@@ -3203,6 +3211,7 @@ renderStatsPanel(container: HTMLElement): void {
       this.renderChartsTab(tabContent);
     }
   });
+
   
   statsHandle.addEventListener("click", () => {
     // Flip state
@@ -3210,31 +3219,12 @@ renderStatsPanel(container: HTMLElement): void {
     this.plugin.settings.isStatsOpen = this.isStatsOpen;
     this.plugin.saveSettings();
   
-    // Update classes
+    // Update classes (always do this)
     statsPanel.classList.toggle("expanded", this.isStatsOpen);
     statsPanel.classList.toggle("collapsed", !this.isStatsOpen);
   
-    // Important: Set explicit panel height when expanding
-    if (this.isStatsOpen) {
-      statsPanel.style.height = `${this.plugin.settings.statsPanelHeight}px`;
-      document.documentElement.style.setProperty(
-        '--stats-panel-height', 
-        `${this.plugin.settings.statsPanelHeight}px`
-      );
-    } else {
-      statsPanel.style.height = '0';
-    }
-  
-    // Update content area padding
-    const contentArea = this.containerEl.querySelector(".chronos-content-area");
-    if (contentArea) {
-      contentArea.classList.toggle("stats-expanded", this.isStatsOpen);
-      if (this.isStatsOpen) {
-        (contentArea as HTMLElement).style.paddingBottom = `${this.plugin.settings.statsPanelHeight}px`;
-      } else {
-        (contentArea as HTMLElement).style.paddingBottom = '0';
-      }
-    }
+    // Update styles based on current state
+    this.updateStatsPanelLayout();
   
     // Update tooltip text
     statsHandle.setAttribute(
@@ -3242,6 +3232,7 @@ renderStatsPanel(container: HTMLElement): void {
       this.isStatsOpen ? "Hide Statistics" : "Show Statistics"
     );
   });
+  
   
   
   
@@ -3278,16 +3269,17 @@ setupStatsPanelResize(dragHandle: HTMLElement, statsPanel: HTMLElement): void {
   let startHeight = 0;
   
   const onMouseDown = (e: MouseEvent) => {
+    // Skip resize in narrow viewport mode
+    if (this.isNarrowViewport()) return;
+    
     // Only respond to left mouse button
     if (e.button !== 0) return;
     
-    e.preventDefault(); // Prevent text selection
+    e.preventDefault();
     
-    // Get the current height from CSS variables
     startHeight = this.plugin.settings.statsPanelHeight;
     startY = e.clientY;
     
-    // Add event listeners
     document.addEventListener("mousemove", onMouseMove);
     document.addEventListener("mouseup", onMouseUp);
   };
@@ -3296,34 +3288,50 @@ setupStatsPanelResize(dragHandle: HTMLElement, statsPanel: HTMLElement): void {
     const deltaY = startY - e.clientY;
     const newHeight = Math.max(150, Math.min(600, startHeight + deltaY));
     
-    // Update CSS variable immediately
-    document.documentElement.style.setProperty('--stats-panel-height', `${newHeight}px`);
-    
-    // Update panel height directly
-    statsPanel.style.height = `${newHeight}px`;
-    
-    // Update the container's padding to match new height
-    const contentArea = this.containerEl.querySelector(".chronos-content-area");
-    if (contentArea && this.isStatsOpen) {
-      (contentArea as HTMLElement).style.paddingBottom = `${newHeight}px`;
-    }
-    
-    // Update settings (but don't save yet to avoid performance issues)
+    // Update settings value
     this.plugin.settings.statsPanelHeight = newHeight;
+    
+    // Apply new value using our consolidated method
+    this.updateStatsPanelLayout();
   };
   
   const onMouseUp = () => {
-    // Remove event listeners
     document.removeEventListener("mousemove", onMouseMove);
     document.removeEventListener("mouseup", onMouseUp);
-    
-    // Save settings once at the end of resize
     this.plugin.saveSettings();
   };
   
-  // Add initial event listener
   dragHandle.addEventListener("mousedown", onMouseDown);
 }
+
+
+updateStatsPanelLayout(): void {
+  const statsPanel = this.containerEl.querySelector(".chronos-stats-panel");
+  const contentArea = this.containerEl.querySelector(".chronos-content-area");
+  
+  if (!statsPanel || !contentArea) return;
+  
+  if (this.isStatsOpen) {
+    contentArea.classList.add("stats-expanded");
+    
+    // Only set inline styles for desktop view
+    if (!this.isNarrowViewport()) {
+      (statsPanel as HTMLElement).style.height = `${this.plugin.settings.statsPanelHeight}px`;
+      (contentArea as HTMLElement).style.paddingBottom = 
+        `${this.plugin.settings.statsPanelHeight}px`;
+    } else {
+      // Let CSS handle mobile layout
+      (statsPanel as HTMLElement).style.height = '';
+      (contentArea as HTMLElement).style.paddingBottom = '';
+    }
+  } else {
+    // Always collapse when closed
+    contentArea.classList.remove("stats-expanded");
+    (statsPanel as HTMLElement).style.height = '0';
+    (contentArea as HTMLElement).style.paddingBottom = '0';
+  }
+}
+
 
 /**
  * Render the Overview tab content
@@ -3796,6 +3804,8 @@ class MarkerSettingsModal extends Modal {
       text: "Choose which timeline markers are visible",
     });
 
+
+
     // Decade markers setting
     new Setting(contentEl)
       .setName("Decade Markers")
@@ -3890,6 +3900,7 @@ class MarkerSettingsModal extends Modal {
         })
     );
   }
+
 
   /**
    * Clean up on modal close
