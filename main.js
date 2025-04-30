@@ -79,6 +79,7 @@ const DEFAULT_SETTINGS = {
     filledWeeks: [],
     startWeekOnMonday: true,
     zoomLevel: 1.0,
+    defaultFitToScreen: true,
     isSidebarOpen: false,
     cellShape: 'square',
     gridOrientation: 'landscape',
@@ -1558,6 +1559,12 @@ class ChronosTimelineView extends obsidian.ItemView {
             }
         }
         this.renderView();
+        if (this.plugin.settings.defaultFitToScreen) {
+            // Use setTimeout to ensure the grid is fully rendered before fitting
+            setTimeout(() => {
+                this.fitToScreen();
+            }, 100);
+        }
     }
     /**
      * Clean up when view is closed
@@ -2088,7 +2095,7 @@ class ChronosTimelineView extends obsidian.ItemView {
                     const leftPosition = decadePosition + cellSize / 2;
                     if (isPortrait) {
                         marker.style.top = `${leftPosition}px`;
-                        marker.style.left = `${topOffset}-10px`;
+                        marker.style.left = `${topOffset}px`;
                         marker.style.transform = "translate(-50%, -50%)"; // Keep centered
                     }
                     else {
@@ -3600,10 +3607,26 @@ class ChronosSettingTab extends obsidian.PluginSettingTab {
                     new obsidian.Notice("Cleared all filled weeks");
                 });
             });
-            // Zoom level setting
+            // Default to fit to screen setting
             new obsidian.Setting(containerEl)
+                .setName("Default to Fit to Screen")
+                .setDesc("Automatically fit the timeline to the screen when opening the view")
+                .addToggle((toggle) => toggle
+                .setValue(this.plugin.settings.defaultFitToScreen)
+                .onChange(async (value) => {
+                this.plugin.settings.defaultFitToScreen = value;
+                await this.plugin.saveSettings();
+                // Show/hide the zoom level setting based on this value
+                const zoomSetting = containerEl.querySelector(".zoom-level-setting");
+                if (zoomSetting) {
+                    zoomSetting.style.display = value ? "none" : "flex";
+                }
+            }));
+            // Zoom level setting
+            const zoomSetting = new obsidian.Setting(containerEl)
                 .setName("Default Zoom Level")
-                .setDesc("Set the default zoom level for the timeline view (1.0 = 100%)")
+                .setDesc("Set the default zoom level when 'Fit to Screen' is disabled (1.0 = 100%)")
+                .setClass("zoom-level-setting")
                 .addSlider((slider) => slider
                 .setLimits(0.5, 3.0, 0.25)
                 .setValue(this.plugin.settings.zoomLevel)
@@ -3613,6 +3636,10 @@ class ChronosSettingTab extends obsidian.PluginSettingTab {
                 await this.plugin.saveSettings();
                 this.refreshAllViews();
             }));
+            // Hide zoom setting if fit to screen is enabled
+            if (this.plugin.settings.defaultFitToScreen) {
+                zoomSetting.settingEl.style.display = "none";
+            }
             new obsidian.Setting(containerEl)
                 .setName('Grid Orientation')
                 .setDesc('Display years as columns/weeks as rows (landscape) or years as rows/weeks as columns (portrait)')

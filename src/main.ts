@@ -64,6 +64,9 @@ interface ChronosSettings {
   /** Current zoom level (1.0 is default, higher values = larger cells) */
   zoomLevel: number;
 
+  /** Whether to automatically fit the grid to the screen when opening the view */
+  defaultFitToScreen: boolean;
+
   /** Relationship events */
   pinkEvents: string[];
 
@@ -218,6 +221,7 @@ const DEFAULT_SETTINGS: ChronosSettings = {
   filledWeeks: [],
   startWeekOnMonday: true,
   zoomLevel: 1.0,
+  defaultFitToScreen: true,
   isSidebarOpen: false,
   cellShape: 'square',
   gridOrientation: 'landscape',
@@ -2050,6 +2054,13 @@ class ChronosTimelineView extends ItemView {
     }
     
     this.renderView();
+
+    if (this.plugin.settings.defaultFitToScreen) {
+      // Use setTimeout to ensure the grid is fully rendered before fitting
+      setTimeout(() => {
+        this.fitToScreen();
+      }, 100);
+    }
   }
 
 
@@ -4734,12 +4745,30 @@ class ChronosSettingTab extends PluginSettingTab {
           });
         });
 
-      // Zoom level setting
+      // Default to fit to screen setting
       new Setting(containerEl)
+        .setName("Default to Fit to Screen")
+        .setDesc("Automatically fit the timeline to the screen when opening the view")
+        .addToggle((toggle) =>
+          toggle
+            .setValue(this.plugin.settings.defaultFitToScreen)
+            .onChange(async (value) => {
+              this.plugin.settings.defaultFitToScreen = value;
+              await this.plugin.saveSettings();
+              
+              // Show/hide the zoom level setting based on this value
+              const zoomSetting = containerEl.querySelector(".zoom-level-setting");
+              if (zoomSetting) {
+                (zoomSetting as HTMLElement).style.display = value ? "none" : "flex";
+              }
+            })
+        );
+
+      // Zoom level setting
+      const zoomSetting = new Setting(containerEl)
         .setName("Default Zoom Level")
-        .setDesc(
-          "Set the default zoom level for the timeline view (1.0 = 100%)"
-        )
+        .setDesc("Set the default zoom level when 'Fit to Screen' is disabled (1.0 = 100%)")
+        .setClass("zoom-level-setting")
         .addSlider((slider) =>
           slider
             .setLimits(0.5, 3.0, 0.25)
@@ -4751,6 +4780,11 @@ class ChronosSettingTab extends PluginSettingTab {
               this.refreshAllViews();
             })
         );
+
+      // Hide zoom setting if fit to screen is enabled
+      if (this.plugin.settings.defaultFitToScreen) {
+        zoomSetting.settingEl.style.display = "none";
+      }
 
         new Setting(containerEl)
       .setName('Grid Orientation')
