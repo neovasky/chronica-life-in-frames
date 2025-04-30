@@ -1,11 +1,11 @@
 {
-  "id": "chronos-timeline",
-  "name": "ChronOS Timeline",
+  "id": "chronica-life-in-frames",
+  "name": "Chronica: Life in Frames",
   "version": "1.0.0",
   "minAppVersion": "0.15.0",
-  "description": "Visualize, navigate, and reflect on your life across multiple time scales, inspired by the 'Life in Weeks' concept.",
-  "author": "Your Name",
-  "authorUrl": "https://github.com/yourusername",
+  "description": "Chronica: Life in Frames — visualize, navigate, and reflect on your life across multiple time scales",
+  "author": "Neovasky Labs",
+  "authorUrl": "https://github.com/neovasky",
   "isDesktopOnly": false,
   "main": "main.js"
 }
