@@ -46,7 +46,7 @@ This plugin is built with TypeScript for type safety and documentation. It depen
 
 1. **Bump version** in `manifest.json` and `package.json` (e.g., to 1.0.1).
 2. **Update** `versions.json` with an entry like:
-   "1.0.1": "0.15.0"
+   "1.0.1": "1.8.5"
 3. **Create GitHub Release**:
    - Tag: 1.0.1 (no “v” prefix)
    - Attach: `manifest.json`, `main.js`, `styles.css`
