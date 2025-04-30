@@ -82,7 +82,7 @@ const DEFAULT_SETTINGS = {
     isSidebarOpen: false,
     cellShape: 'square',
     gridOrientation: 'landscape',
-    isStatsOpen: true,
+    isStatsOpen: false,
     activeStatsTab: "overview",
     statsPanelHeight: 200,
 };
@@ -2087,8 +2087,8 @@ class ChronosTimelineView extends obsidian.ItemView {
                     // Position marker at the CENTER of the column, not past it
                     const leftPosition = decadePosition + cellSize / 2;
                     if (isPortrait) {
-                        marker.style.top = `${leftPosition + 40}px`;
-                        marker.style.left = `${topOffset * 0.85}px`;
+                        marker.style.top = `${leftPosition}px`;
+                        marker.style.left = `${topOffset}-10px`;
                         marker.style.transform = "translate(-50%, -50%)"; // Keep centered
                     }
                     else {
@@ -2142,13 +2142,11 @@ class ChronosTimelineView extends obsidian.ItemView {
                     text: week.toString(),
                 });
                 // Calculate the exact position - align to grid
-                const position = week * (cellSize + cellGap) + cellSize / 2 - (cellSize + cellGap);
+                const position = (week * (cellSize + cellGap) + cellSize / 2 - (cellSize + cellGap)) - (cellSize + cellGap);
                 if (isPortrait) {
-                    marker.style.left = `${position + 10}px`;
-                    marker.style.top = "- 50px"; // Change this value to move markers down (larger number) or up (smaller number)
-                    marker.style.right = "auto"; // Adjust right position for portrait mode
-                    marker.style.transform = "translateY(-110%)";
-                    marker.style.transformOrigin = "left center";
+                    marker.style.left = `${position + 6.5}px`;
+                    marker.style.top = "10px"; // Fixed position from the top
+                    marker.style.transform = "none"; // Remove any transforms
                 }
                 else {
                     marker.style.top = `${position}px`;

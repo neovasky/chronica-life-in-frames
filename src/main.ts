@@ -221,7 +221,7 @@ const DEFAULT_SETTINGS: ChronosSettings = {
   isSidebarOpen: false,
   cellShape: 'square',
   gridOrientation: 'landscape',
-  isStatsOpen: true,
+  isStatsOpen: false,
   activeStatsTab: "overview",
   statsPanelHeight: 200,
 };
@@ -2709,8 +2709,8 @@ for (let decade = 10; decade <= this.plugin.settings.lifespan; decade += 10) {
   const leftPosition = decadePosition + cellSize/2;
 
       if (isPortrait) {
-        marker.style.top = `${leftPosition + 40}px`;
-        marker.style.left = `${topOffset * 0.85}px`; 
+        marker.style.top = `${leftPosition}px`;
+        marker.style.left = `${topOffset}px`; 
         marker.style.transform = "translate(-50%, -50%)"; // Keep centered
       } else {
         marker.style.left = `${leftPosition}px`;
@@ -2776,21 +2776,18 @@ if (this.plugin.settings.showWeekMarkers) {
     });
 
     // Calculate the exact position - align to grid
-    const position = week * (cellSize + cellGap) + cellSize / 2 - (cellSize + cellGap);
+    const position = (week * (cellSize + cellGap) + cellSize / 2 - (cellSize + cellGap))-(cellSize+cellGap);
     if (isPortrait) {
-      marker.style.left = `${position + 10}px`;
-      marker.style.top = "- 50px"; // Change this value to move markers down (larger number) or up (smaller number)
-      marker.style.right = "auto"; // Adjust right position for portrait mode
-      marker.style.transform = "translateY(-110%)";
-      marker.style.transformOrigin = "left center";
+      marker.style.left = `${position + 6.5}px`;
+      marker.style.top = "10px"; // Fixed position from the top
+      marker.style.transform = "none"; // Remove any transforms
     } else {
       marker.style.top = `${position}px`;
       marker.style.left = "auto";
       marker.style.right = "4px";
     }
   }
-
-      }
+}
 
     // Add month markers if enabled
     if (this.plugin.settings.showMonthMarkers) {
