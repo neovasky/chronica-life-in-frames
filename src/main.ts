@@ -2054,8 +2054,6 @@ class ChronosTimelineView extends ItemView {
       const contentArea = this.containerEl.querySelector(".chronica-content-area");
       if (contentArea) {
         contentArea.classList.add("stats-expanded");
-        (contentArea as HTMLElement).style.paddingBottom = 
-          `${this.plugin.settings.statsPanelHeight}px`;
       }
     }
     
@@ -3257,11 +3255,6 @@ statsHandle.addEventListener("click", () => {
   const contentArea = this.containerEl.querySelector(".chronica-content-area");
   if (contentArea) {
     contentArea.classList.toggle("stats-expanded", this.isStatsOpen);
-    if (this.isStatsOpen) {
-      (contentArea as HTMLElement).style.paddingBottom = `${this.plugin.settings.statsPanelHeight}px`;
-    } else {
-      (contentArea as HTMLElement).style.paddingBottom = '0';
-    }
   }
 
   // Update tooltip text
@@ -3333,7 +3326,6 @@ setupStatsPanelResize(dragHandle: HTMLElement, statsPanel: HTMLElement): void {
     // Update the container's padding to match new height
     const contentArea = this.containerEl.querySelector(".chronica-content-area");
     if (contentArea && this.isStatsOpen) {
-      (contentArea as HTMLElement).style.paddingBottom = `${newHeight}px`;
     }
     
     // Update settings (but don't save yet to avoid performance issues)
@@ -3379,21 +3371,14 @@ updateStatsPanelLayout(): void {
   statsPanel.style.left = `calc(50% + ${offsetX}px)`;
   statsHandle.style.left = `calc(50% + ${offsetX}px)`;
   
-  // Make sure the panel width is appropriate to avoid overlapping the sidebar
-  // Use 70% of available width instead of fixed percentage
-  const panelWidth = Math.min(900, Math.max(500, availableWidth * 0.7));
-  statsPanel.style.width = `${panelWidth}px`;
-  statsPanel.style.maxWidth = `${panelWidth}px`;
-  
+
   // Set height based on panel state
   if (this.isStatsOpen) {
     contentArea.classList.add("stats-expanded");
     statsPanel.style.height = `${panelHeight}px`;
-    contentArea.style.paddingBottom = `${panelHeight}px`;
   } else {
     contentArea.classList.remove("stats-expanded");
     statsPanel.style.height = '0';
-    contentArea.style.paddingBottom = '0';
   }
 }
 

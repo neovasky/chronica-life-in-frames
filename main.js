@@ -1559,8 +1559,6 @@ class ChronosTimelineView extends obsidian.ItemView {
             const contentArea = this.containerEl.querySelector(".chronica-content-area");
             if (contentArea) {
                 contentArea.classList.add("stats-expanded");
-                contentArea.style.paddingBottom =
-                    `${this.plugin.settings.statsPanelHeight}px`;
             }
         }
         this.renderView();
@@ -2523,12 +2521,6 @@ class ChronosTimelineView extends obsidian.ItemView {
             const contentArea = this.containerEl.querySelector(".chronica-content-area");
             if (contentArea) {
                 contentArea.classList.toggle("stats-expanded", this.isStatsOpen);
-                if (this.isStatsOpen) {
-                    contentArea.style.paddingBottom = `${this.plugin.settings.statsPanelHeight}px`;
-                }
-                else {
-                    contentArea.style.paddingBottom = '0';
-                }
             }
             // Update tooltip text
             statsHandle.setAttribute("title", this.isStatsOpen ? "Hide Statistics" : "Show Statistics");
@@ -2579,9 +2571,7 @@ class ChronosTimelineView extends obsidian.ItemView {
             statsPanel.style.height = `${newHeight}px`;
             // Update the container's padding to match new height
             const contentArea = this.containerEl.querySelector(".chronica-content-area");
-            if (contentArea && this.isStatsOpen) {
-                contentArea.style.paddingBottom = `${newHeight}px`;
-            }
+            if (contentArea && this.isStatsOpen) ;
             // Update settings (but don't save yet to avoid performance issues)
             this.plugin.settings.statsPanelHeight = newHeight;
         };
@@ -2606,30 +2596,22 @@ class ChronosTimelineView extends obsidian.ItemView {
         const panelHeight = this.plugin.settings.statsPanelHeight;
         document.documentElement.style.setProperty('--stats-panel-height', `${panelHeight}px`);
         // Get the total window width and calculate the available width
-        const totalWidth = this.containerEl.clientWidth;
+        this.containerEl.clientWidth;
         const sidebarWidth = this.isSidebarOpen && sidebar ? sidebar.getBoundingClientRect().width : 0;
-        const availableWidth = totalWidth - sidebarWidth;
         // Calculate the center of the available space
         // When sidebar is open, the center is shifted right by half the sidebar width
         const offsetX = this.isSidebarOpen ? sidebarWidth / 2 : 0;
         // Position the handle and panel
         statsPanel.style.left = `calc(50% + ${offsetX}px)`;
         statsHandle.style.left = `calc(50% + ${offsetX}px)`;
-        // Make sure the panel width is appropriate to avoid overlapping the sidebar
-        // Use 70% of available width instead of fixed percentage
-        const panelWidth = Math.min(900, Math.max(500, availableWidth * 0.7));
-        statsPanel.style.width = `${panelWidth}px`;
-        statsPanel.style.maxWidth = `${panelWidth}px`;
         // Set height based on panel state
         if (this.isStatsOpen) {
             contentArea.classList.add("stats-expanded");
             statsPanel.style.height = `${panelHeight}px`;
-            contentArea.style.paddingBottom = `${panelHeight}px`;
         }
         else {
             contentArea.classList.remove("stats-expanded");
             statsPanel.style.height = '0';
-            contentArea.style.paddingBottom = '0';
         }
     }
     /**
