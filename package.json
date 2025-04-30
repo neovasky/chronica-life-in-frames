@@ -1,7 +1,7 @@
 {
-  "name": "chronos-timeline",
+  "name": "chronica-life-in-frames",
   "version": "1.0.0",
-  "description": "A powerful Obsidian plugin to visualize, navigate, and reflect on your life across multiple time scales, inspired by the 'Life in Weeks' concept.",
+  "description": "Chronica: Life in Frames — visualize, navigate, and reflect on your life across multiple time scales",
   "main": "main.js",
   "scripts": {
     "dev": "rollup -c -w",
@@ -12,10 +12,23 @@
   "keywords": [
     "obsidian-plugin",
     "timeline",
-    "life-in-weeks",
-    "chronos"
+    "life-in-frames",
+    "chronica",
+    "life-calendar",
+    "life-timeline",
+    "week-tracker",
+    "personal-timeline",
+    "life-visualization",
+    "time-visualization",
+    "calendar",
+    "planner",
+    "productivity",
+    "reflection",
+    "time-management",
+    "journaling",
+    "personal-growth"
   ],
-  "author": "Your Name",
+  "author": "Neovasky Labs",
   "license": "MIT",
   "devDependencies": {
     "@rollup/plugin-commonjs": "^22.0.0",
