@@ -227,7 +227,7 @@ const DEFAULT_SETTINGS: ChronosSettings = {
   filledWeeks: [],
   startWeekOnMonday: true,
   zoomLevel: 1.0,
-  defaultFitToScreen: true,
+  defaultFitToScreen: false,
   isSidebarOpen: false,
   cellShape: 'square',
   gridOrientation: 'landscape',
