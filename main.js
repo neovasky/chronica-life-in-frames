@@ -24,9 +24,11 @@ const TIMELINE_VIEW_TYPE = "chronica-timeline-view";
  */
 class FolderSuggest extends obsidian.AbstractInputSuggest {
     inputEl;
-    constructor(app, inputEl) {
+    plugin;
+    constructor(app, inputEl, plugin) {
         super(app, inputEl);
         this.inputEl = inputEl;
+        this.plugin = plugin;
     }
     // Gather & filter all folder paths
     getSuggestions(query) {
@@ -49,7 +51,12 @@ class FolderSuggest extends obsidian.AbstractInputSuggest {
     // What happens when the user picks one
     onChooseSuggestion(item) {
         this.inputEl.value = item;
-        this.inputEl.trigger('input');
+        // Directly update plugin settings
+        this.plugin.settings.notesFolder = item;
+        this.plugin.saveSettings();
+        // Also trigger events for UI update
+        this.inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+        this.inputEl.dispatchEvent(new Event('change', { bubbles: true }));
     }
 }
 /** Default plugin settings */
@@ -3257,7 +3264,8 @@ class ChronosSettingTab extends obsidian.PluginSettingTab {
                 this.plugin.settings.notesFolder = value;
                 await this.plugin.saveSettings();
             });
-            new FolderSuggest(this.app, search.inputEl);
+            // Pass the plugin instance to FolderSuggest
+            new FolderSuggest(this.app, search.inputEl, this.plugin);
         });
         // Quote setting
         new obsidian.Setting(containerEl)

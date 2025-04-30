@@ -143,10 +143,14 @@ interface CustomEventType {
  */
 class FolderSuggest extends AbstractInputSuggest<string> {
   public inputEl: HTMLInputElement;
-  constructor(app: App, inputEl: HTMLInputElement) {
+  plugin: ChronosTimelinePlugin;
+
+  constructor(app: App, inputEl: HTMLInputElement, plugin: ChronosTimelinePlugin) {
     super(app, inputEl);
     this.inputEl = inputEl;
+    this.plugin = plugin;
   }
+  
   
 
   // Gather & filter all folder paths
@@ -174,7 +178,14 @@ class FolderSuggest extends AbstractInputSuggest<string> {
   // What happens when the user picks one
   onChooseSuggestion(item: string): void {
     this.inputEl.value = item;
-    this.inputEl.trigger('input');
+    
+    // Directly update plugin settings
+    this.plugin.settings.notesFolder = item;
+    this.plugin.saveSettings();
+    
+    // Also trigger events for UI update
+    this.inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+    this.inputEl.dispatchEvent(new Event('change', { bubbles: true }));
   }
 }
 
@@ -4318,7 +4329,8 @@ class ChronosSettingTab extends PluginSettingTab {
           this.plugin.settings.notesFolder = value;
           await this.plugin.saveSettings();
         });
-      new FolderSuggest(this.app, search.inputEl);
+      // Pass the plugin instance to FolderSuggest
+      new FolderSuggest(this.app, search.inputEl, this.plugin);
     });
 
     // Quote setting
@@ -4540,6 +4552,9 @@ class ChronosSettingTab extends PluginSettingTab {
             this.plugin.settings.autoFillDay = parseInt(value);
             await this.plugin.saveSettings();
           });
+
+
+
       });
 
     // Hide day selector if auto-fill is disabled
