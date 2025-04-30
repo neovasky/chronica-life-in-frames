@@ -2024,11 +2024,22 @@ class ChronosTimelineView extends ItemView {
     contentEl.empty();
     contentEl.addClass("chronos-timeline-container");
     
-    // Set initial CSS variables
+    // Set initial CSS variables - this should be done regardless of panel state
     document.documentElement.style.setProperty(
       '--stats-panel-height', 
       `${this.plugin.settings.statsPanelHeight}px`
     );
+    
+    // Additional setup only if stats panel is open
+    if (this.isStatsOpen) {
+      // Force content area padding update
+      const contentArea = this.containerEl.querySelector(".chronos-content-area");
+      if (contentArea) {
+        contentArea.classList.add("stats-expanded");
+        (contentArea as HTMLElement).style.paddingBottom = 
+          `${this.plugin.settings.statsPanelHeight}px`;
+      }
+    }
     
     this.renderView();
   }
@@ -3194,26 +3205,44 @@ renderStatsPanel(container: HTMLElement): void {
   });
   
   statsHandle.addEventListener("click", () => {
-    // 1. flip state
+    // Flip state
     this.isStatsOpen = !this.isStatsOpen;
     this.plugin.settings.isStatsOpen = this.isStatsOpen;
     this.plugin.saveSettings();
   
-    // 2. update classes exactly like the sidebar does
+    // Update classes
     statsPanel.classList.toggle("expanded", this.isStatsOpen);
     statsPanel.classList.toggle("collapsed", !this.isStatsOpen);
   
+    // Important: Set explicit panel height when expanding
+    if (this.isStatsOpen) {
+      statsPanel.style.height = `${this.plugin.settings.statsPanelHeight}px`;
+      document.documentElement.style.setProperty(
+        '--stats-panel-height', 
+        `${this.plugin.settings.statsPanelHeight}px`
+      );
+    } else {
+      statsPanel.style.height = '0';
+    }
+  
+    // Update content area padding
     const contentArea = this.containerEl.querySelector(".chronos-content-area");
     if (contentArea) {
       contentArea.classList.toggle("stats-expanded", this.isStatsOpen);
+      if (this.isStatsOpen) {
+        (contentArea as HTMLElement).style.paddingBottom = `${this.plugin.settings.statsPanelHeight}px`;
+      } else {
+        (contentArea as HTMLElement).style.paddingBottom = '0';
+      }
     }
   
-    // 3. update tooltip text
+    // Update tooltip text
     statsHandle.setAttribute(
       "title",
       this.isStatsOpen ? "Hide Statistics" : "Show Statistics"
     );
   });
+  
   
   
   // Close button handler
@@ -3243,6 +3272,7 @@ renderStatsPanel(container: HTMLElement): void {
  * @param dragHandle - Handle element for dragging
  * @param statsPanel - Panel to resize
  */
+// In src/main.ts - Replace the entire setupStatsPanelResize method
 setupStatsPanelResize(dragHandle: HTMLElement, statsPanel: HTMLElement): void {
   let startY = 0;
   let startHeight = 0;
@@ -3253,29 +3283,29 @@ setupStatsPanelResize(dragHandle: HTMLElement, statsPanel: HTMLElement): void {
     
     e.preventDefault(); // Prevent text selection
     
-    // Get the current height from CSS variables rather than inline styles
-    const computed = getComputedStyle(document.documentElement);
-    startHeight = parseInt(computed.getPropertyValue('--stats-panel-height'));
+    // Get the current height from CSS variables
+    startHeight = this.plugin.settings.statsPanelHeight;
     startY = e.clientY;
     
-    // Add event listeners - consistent approach with sidebar
+    // Add event listeners
     document.addEventListener("mousemove", onMouseMove);
     document.addEventListener("mouseup", onMouseUp);
   };
   
   const onMouseMove = (e: MouseEvent) => {
     const deltaY = startY - e.clientY;
-    const newHeight = Math.max(
-      parseInt(getComputedStyle(document.documentElement).getPropertyValue('--stats-panel-min-height')), 
-      Math.min(
-        parseInt(getComputedStyle(document.documentElement).getPropertyValue('--stats-panel-max-height')), 
-        startHeight + deltaY
-      )
-    );
+    const newHeight = Math.max(150, Math.min(600, startHeight + deltaY));
+    
+    // Update CSS variable immediately
+    document.documentElement.style.setProperty('--stats-panel-height', `${newHeight}px`);
+    
+    // Update panel height directly
+    statsPanel.style.height = `${newHeight}px`;
+    
     // Update the container's padding to match new height
     const contentArea = this.containerEl.querySelector(".chronos-content-area");
     if (contentArea && this.isStatsOpen) {
-      // Force repaint to ensure smooth resizing
+      (contentArea as HTMLElement).style.paddingBottom = `${newHeight}px`;
     }
     
     // Update settings (but don't save yet to avoid performance issues)
@@ -3287,27 +3317,8 @@ setupStatsPanelResize(dragHandle: HTMLElement, statsPanel: HTMLElement): void {
     document.removeEventListener("mousemove", onMouseMove);
     document.removeEventListener("mouseup", onMouseUp);
     
-    // Save settings only once at the end of resize
+    // Save settings once at the end of resize
     this.plugin.saveSettings();
-    
-    // Apply final updates to all elements
-    if (this.isStatsOpen) {
-      const contentArea = this.containerEl.querySelector(".chronos-content-area");
-      if (contentArea) {
-        contentArea.classList.add("stats-expanded");
-        // Set the final explicit height
-        (contentArea as HTMLElement).style.paddingBottom = `${this.plugin.settings.statsPanelHeight}px`;
-      }
-      
-      // Update view content if needed
-      const viewEl = this.containerEl.querySelector(".chronos-view");
-      if (viewEl) {
-        viewEl.classList.add("stats-expanded");
-      }
-    }
-    
-    // Re-render the view to ensure everything is sized correctly
-    this.renderView();
   };
   
   // Add initial event listener

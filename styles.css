@@ -909,7 +909,11 @@
     position: fixed;
     bottom: 0;
     left: 0;
+    right: 0;
     z-index: 20;
+    /* Force hardware acceleration to prevent rendering issues */
+    transform: translateZ(0);
+    will-change: height;
   }
 
   .chronos-stats-panel.expanded {
