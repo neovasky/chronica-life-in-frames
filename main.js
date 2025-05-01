@@ -2487,7 +2487,9 @@ class ChronosTimelineView extends obsidian.ItemView {
                     const fullPath = this.plugin.getFullPath(fileName);
                     const existingFile = this.app.vault.getAbstractFileByPath(fullPath);
                     if (existingFile instanceof obsidian.TFile) {
-                        // Open existing file
+                        // Replace this line:
+                        // await this.app.workspace.getLeaf().openFile(existingFile);
+                        // With this line:
                         await this.plugin.safelyOpenFile(existingFile);
                     }
                     else {
@@ -2506,6 +2508,9 @@ class ChronosTimelineView extends obsidian.ItemView {
                         }
                         const content = `# Week ${cellWeek}, ${cellYear}\n\n## Reflections\n\n## Tasks\n\n## Notes\n`;
                         const newFile = await this.app.vault.create(fullPath, content);
+                        // Replace this line:
+                        // await this.app.workspace.getLeaf().openFile(newFile);
+                        // With this line:
                         await this.plugin.safelyOpenFile(newFile);
                     }
                 });
@@ -2601,16 +2606,6 @@ class ChronosTimelineView extends obsidian.ItemView {
                 });
             });
         });
-        // Add close button
-        const closeButton = statsHeader.createEl("button", {
-            cls: "chronica-stats-close",
-            attr: { "aria-label": "Close statistics panel" }
-        });
-        closeButton.innerHTML = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M18 6L6 18M6 6l12 12"></path>
-    </svg>
-  `;
         // Add content container
         const contentContainer = statsPanel.createEl("div", { cls: "chronica-stats-content" });
         // Create tab content areas
@@ -2656,20 +2651,6 @@ class ChronosTimelineView extends obsidian.ItemView {
             }
             // Update tooltip text
             statsHandle.setAttribute("title", this.isStatsOpen ? "Hide Statistics" : "Show Statistics");
-        });
-        // Close button handler
-        closeButton.addEventListener("click", () => {
-            this.isStatsOpen = false;
-            this.plugin.settings.isStatsOpen = false;
-            this.plugin.saveSettings();
-            // Update UI
-            statsPanel.classList.remove("expanded");
-            statsPanel.classList.add("collapsed");
-            // Update content padding
-            const contentArea = this.containerEl.querySelector(".chronica-content-area");
-            if (contentArea) {
-                contentArea.classList.remove("stats-expanded");
-            }
         });
         // Setup resize functionality with simplified approach
         this.setupStatsPanelResize(dragHandle, statsPanel);

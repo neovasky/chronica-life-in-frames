@@ -3394,18 +3394,6 @@ renderStatsPanel(container: HTMLElement): void {
     });
   });
   
-  // Add close button
-  const closeButton = statsHeader.createEl("button", {
-    cls: "chronica-stats-close",
-    attr: { "aria-label": "Close statistics panel" }
-  });
-  
-  closeButton.innerHTML = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M18 6L6 18M6 6l12 12"></path>
-    </svg>
-  `;
-  
   // Add content container
   const contentContainer = statsPanel.createEl("div", { cls: "chronica-stats-content" });
   
@@ -3462,26 +3450,6 @@ statsHandle.addEventListener("click", () => {
     this.isStatsOpen ? "Hide Statistics" : "Show Statistics"
   );
 });
-  
-  
-  
-  
-  // Close button handler
-  closeButton.addEventListener("click", () => {
-    this.isStatsOpen = false;
-    this.plugin.settings.isStatsOpen = false;
-    this.plugin.saveSettings();
-    
-    // Update UI
-    statsPanel.classList.remove("expanded");
-    statsPanel.classList.add("collapsed");
-    
-    // Update content padding
-    const contentArea = this.containerEl.querySelector(".chronica-content-area");
-    if (contentArea) {
-      contentArea.classList.remove("stats-expanded");
-    }
-  });
   
   // Setup resize functionality with simplified approach
   this.setupStatsPanelResize(dragHandle, statsPanel);
