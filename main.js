@@ -1991,7 +1991,8 @@ class ChronosTimelineView extends obsidian.ItemView {
         });
         // Calculate basic statistics
         const now = new Date();
-        const birthdayDate = new Date(this.plugin.settings.birthday);
+        const [year, month, day] = this.plugin.settings.birthday.split('-').map(Number);
+        const birthdayDate = new Date(year, month - 1, day);
         const ageInWeeks = this.plugin.getFullWeekAge(birthdayDate, now);
         const totalWeeks = this.plugin.settings.lifespan * 52;
         ((ageInWeeks / totalWeeks) * 100).toFixed(1);
@@ -2270,7 +2271,8 @@ class ChronosTimelineView extends obsidian.ItemView {
         }
         // Add birthday cake marker (independent of month markers)
         if (this.plugin.settings.showBirthdayMarker) {
-            const birthdayDate = new Date(this.plugin.settings.birthday);
+            const [year, month, day] = this.plugin.settings.birthday.split('-').map(Number);
+            const birthdayDate = new Date(year, month - 1, day); // Month is 0-indexed in JavaScript
             const birthMonth = birthdayDate.getMonth();
             const birthDay = birthdayDate.getDate();
             const birthYear = birthdayDate.getFullYear();
@@ -2326,7 +2328,8 @@ class ChronosTimelineView extends obsidian.ItemView {
         }
         // Add month markers if enabled
         if (this.plugin.settings.showMonthMarkers) {
-            const birthdayDate = new Date(this.plugin.settings.birthday);
+            const [year, month, day] = this.plugin.settings.birthday.split('-').map(Number);
+            const birthdayDate = new Date(year, month - 1, day); // Month is 0-indexed in JavaScript
             const birthMonth = birthdayDate.getMonth();
             birthdayDate.getDate();
             const birthYear = birthdayDate.getFullYear();
@@ -2421,7 +2424,8 @@ class ChronosTimelineView extends obsidian.ItemView {
         gridEl.style.top = `${topOffset}px`;
         gridEl.style.left = `${leftOffset}px`;
         const now = new Date();
-        const birthdayDate = new Date(this.plugin.settings.birthday);
+        const [year, month, day] = this.plugin.settings.birthday.split('-').map(Number);
+        const birthdayDate = new Date(year, month - 1, day); // Month is 0-indexed in JavaScript
         const ageInWeeks = this.plugin.getFullWeekAge(birthdayDate, now);
         const currentWeekKey = this.plugin.getWeekKeyFromDate(now);
         // For each year of life (column)

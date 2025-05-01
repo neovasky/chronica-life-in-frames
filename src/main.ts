@@ -2585,8 +2585,8 @@ setupStatsPanelWidthResize(statsPanel: HTMLElement): void {
 
 // Calculate basic statistics
 const now = new Date();
-const birthdayDate = new Date(this.plugin.settings.birthday);
-const ageInWeeks = this.plugin.getFullWeekAge(birthdayDate, now);
+const [year, month, day] = this.plugin.settings.birthday.split('-').map(Number);
+const birthdayDate = new Date(year, month - 1, day);const ageInWeeks = this.plugin.getFullWeekAge(birthdayDate, now);
 const totalWeeks = this.plugin.settings.lifespan * 52;
 const livedPercentage = ((ageInWeeks / totalWeeks) * 100).toFixed(1);
 const remainingWeeks = totalWeeks - ageInWeeks;
@@ -2950,7 +2950,8 @@ for (let decade = 10; decade <= this.plugin.settings.lifespan; decade += 10) {
 }
     // Add birthday cake marker (independent of month markers)
     if (this.plugin.settings.showBirthdayMarker) {
-      const birthdayDate = new Date(this.plugin.settings.birthday);
+      const [year, month, day] = this.plugin.settings.birthday.split('-').map(Number);
+      const birthdayDate = new Date(year, month - 1, day); // Month is 0-indexed in JavaScript
       const birthMonth = birthdayDate.getMonth();
       const birthDay = birthdayDate.getDate();
       const birthYear = birthdayDate.getFullYear();
@@ -3019,7 +3020,8 @@ if (this.plugin.settings.showWeekMarkers) {
 
     // Add month markers if enabled
     if (this.plugin.settings.showMonthMarkers) {
-      const birthdayDate = new Date(this.plugin.settings.birthday);
+      const [year, month, day] = this.plugin.settings.birthday.split('-').map(Number);
+      const birthdayDate = new Date(year, month - 1, day); // Month is 0-indexed in JavaScript
       const birthMonth = birthdayDate.getMonth();
       const birthDay = birthdayDate.getDate();
       const birthYear = birthdayDate.getFullYear();
@@ -3146,7 +3148,8 @@ for (const [monthIndex, marker] of monthMarkersMap.entries()) {
     gridEl.style.left = `${leftOffset}px`;
 
     const now = new Date();
-    const birthdayDate = new Date(this.plugin.settings.birthday);
+    const [year, month, day] = this.plugin.settings.birthday.split('-').map(Number);
+    const birthdayDate = new Date(year, month - 1, day); // Month is 0-indexed in JavaScript
     const ageInWeeks = this.plugin.getFullWeekAge(birthdayDate, now);
     const currentWeekKey = this.plugin.getWeekKeyFromDate(now);
 
