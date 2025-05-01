@@ -91,6 +91,7 @@ const DEFAULT_SETTINGS = {
     isStatsOpen: false,
     activeStatsTab: "overview",
     statsPanelHeight: 170,
+    statsPanelHorizontalOffset: 0,
 };
 /** SVG icon for the Chronica Timeline */
 const CHRONOS_ICON = `<svg viewBox="0 0 100 100" width="100" height="100" xmlns="http://www.w3.org/2000/svg">
@@ -1526,6 +1527,51 @@ class ChronosTimelineView extends obsidian.ItemView {
             this.updateStatsPanelLayout();
         });
     }
+    setupStatsPanelHorizontalDrag(headerEl, statsPanel, statsHandle) {
+        let startX = 0;
+        let startOffset = 0;
+        const onMouseDown = (e) => {
+            // Only respond to left mouse button
+            if (e.button !== 0)
+                return;
+            // Skip if clicked on a button or other control
+            if (e.target.tagName === 'BUTTON' ||
+                e.target.closest('.chronica-stats-tab') ||
+                e.target.closest('.chronica-stats-close')) {
+                return;
+            }
+            e.preventDefault();
+            // Get current horizontal offset
+            startOffset = this.plugin.settings.statsPanelHorizontalOffset || 0;
+            startX = e.clientX;
+            // Add event listeners
+            document.addEventListener("mousemove", onMouseMove);
+            document.addEventListener("mouseup", onMouseUp);
+        };
+        const onMouseMove = (e) => {
+            // Calculate horizontal change
+            const deltaX = e.clientX - startX;
+            // Calculate boundaries
+            const windowWidth = window.innerWidth;
+            const panelWidth = statsPanel.getBoundingClientRect().width;
+            const maxOffset = (windowWidth - panelWidth) / 2;
+            const newOffset = Math.max(-maxOffset, Math.min(maxOffset, startOffset + deltaX));
+            // Apply horizontal offset to panel and handle
+            statsPanel.style.transform = `translateX(calc(-50% + ${newOffset}px))`;
+            statsHandle.style.transform = `translateX(calc(-50% + ${newOffset}px))`;
+            // Update setting (but don't save yet)
+            this.plugin.settings.statsPanelHorizontalOffset = newOffset;
+        };
+        const onMouseUp = () => {
+            // Remove event listeners
+            document.removeEventListener("mousemove", onMouseMove);
+            document.removeEventListener("mouseup", onMouseUp);
+            // Save settings
+            this.plugin.saveSettings();
+        };
+        // Add initial event listener
+        headerEl.addEventListener("mousedown", onMouseDown);
+    }
     /**
      * Get the unique view type
      */
@@ -2436,6 +2482,8 @@ class ChronosTimelineView extends obsidian.ItemView {
         }
         // Create header
         const statsHeader = statsPanel.createEl("div", { cls: "chronica-stats-header" });
+        // Set up horizontal dragging via header
+        this.setupStatsPanelHorizontalDrag(statsHeader, statsPanel, statsHandle);
         // Add drag handle for resizing
         const dragHandle = statsHeader.createEl("div", { cls: "chronica-stats-drag-handle" });
         // Create tabs container
@@ -2549,31 +2597,50 @@ class ChronosTimelineView extends obsidian.ItemView {
      */
     setupStatsPanelResize(dragHandle, statsPanel) {
         let startY = 0;
+        let startX = 0;
         let startHeight = 0;
+        let startOffset = 0;
         const onMouseDown = (e) => {
             // Only respond to left mouse button
             if (e.button !== 0)
                 return;
             e.preventDefault(); // Prevent text selection
-            // Get the current height from CSS variables
+            // Get the current height and horizontal offset
             startHeight = this.plugin.settings.statsPanelHeight;
+            startOffset = this.plugin.settings.statsPanelHorizontalOffset || 0;
+            startX = e.clientX;
             startY = e.clientY;
             // Add event listeners
             document.addEventListener("mousemove", onMouseMove);
             document.addEventListener("mouseup", onMouseUp);
         };
         const onMouseMove = (e) => {
+            // Calculate vertical change (dragging up/down)
             const deltaY = startY - e.clientY;
             const newHeight = Math.max(150, Math.min(600, startHeight + deltaY));
-            // Update CSS variable immediately
+            // Calculate horizontal change (dragging left/right)
+            const deltaX = e.clientX - startX;
+            // Calculate boundaries to keep panel visible
+            const windowWidth = window.innerWidth;
+            const panelWidth = statsPanel.getBoundingClientRect().width;
+            const maxOffset = (windowWidth - panelWidth) / 2;
+            const newOffset = Math.max(-maxOffset, Math.min(maxOffset, startOffset + deltaX));
+            // Update CSS variable for height
             document.documentElement.style.setProperty('--stats-panel-height', `${newHeight}px`);
-            // Update panel height directly
+            // Update panel height and position
             statsPanel.style.height = `${newHeight}px`;
-            // Update the container's padding to match new height
+            statsPanel.style.transform = `translateX(calc(-50% + ${newOffset}px))`;
+            // Update the handle position to match
+            const statsHandle = this.containerEl.querySelector(".chronica-stats-handle");
+            if (statsHandle) {
+                statsHandle.style.transform = `translateX(calc(-50% + ${newOffset}px))`;
+            }
+            // Update content area padding for height
             const contentArea = this.containerEl.querySelector(".chronica-content-area");
             if (contentArea && this.isStatsOpen) ;
             // Update settings (but don't save yet to avoid performance issues)
             this.plugin.settings.statsPanelHeight = newHeight;
+            this.plugin.settings.statsPanelHorizontalOffset = newOffset;
         };
         const onMouseUp = () => {
             // Remove event listeners
@@ -2592,18 +2659,27 @@ class ChronosTimelineView extends obsidian.ItemView {
         const sidebar = this.containerEl.querySelector(".chronica-sidebar");
         if (!statsPanel || !contentArea || !statsHandle)
             return;
-        // Default height for the panel
+        // Set panel height
         const panelHeight = this.plugin.settings.statsPanelHeight;
         document.documentElement.style.setProperty('--stats-panel-height', `${panelHeight}px`);
+        // Get horizontal offset
+        const horizontalOffset = this.plugin.settings.statsPanelHorizontalOffset || 0;
         // Get the total window width and calculate the available width
-        this.containerEl.clientWidth;
+        const totalWidth = this.containerEl.clientWidth;
         const sidebarWidth = this.isSidebarOpen && sidebar ? sidebar.getBoundingClientRect().width : 0;
+        const availableWidth = totalWidth - sidebarWidth;
         // Calculate the center of the available space
-        // When sidebar is open, the center is shifted right by half the sidebar width
         const offsetX = this.isSidebarOpen ? sidebarWidth / 2 : 0;
-        // Position the handle and panel
+        // Position the handle and panel base positions (before transform)
         statsPanel.style.left = `calc(50% + ${offsetX}px)`;
         statsHandle.style.left = `calc(50% + ${offsetX}px)`;
+        // Apply horizontal offset via transform
+        statsPanel.style.transform = `translateX(calc(-50% + ${horizontalOffset}px))`;
+        statsHandle.style.transform = `translateX(calc(-50% + ${horizontalOffset}px))`;
+        // Make sure the panel width is appropriate
+        const panelWidth = Math.min(900, Math.max(500, availableWidth * 0.7));
+        statsPanel.style.width = `${panelWidth}px`;
+        statsPanel.style.maxWidth = `${panelWidth}px`;
         // Set height based on panel state
         if (this.isStatsOpen) {
             contentArea.classList.add("stats-expanded");
@@ -2612,6 +2688,7 @@ class ChronosTimelineView extends obsidian.ItemView {
         else {
             contentArea.classList.remove("stats-expanded");
             statsPanel.style.height = '0';
+            contentArea.style.paddingBottom = '0';
         }
     }
     /**

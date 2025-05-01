@@ -878,7 +878,7 @@
     cursor: pointer;
     color: var(--text-muted);
     font-size: 12px;
-    transition: all 0.2s ease;
+    transition: transform 0.3s ease, background-color 0.2s ease, left 0.3s ease;
     z-index: 100;
     box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.1);
   }
@@ -899,7 +899,7 @@
     padding-bottom: 0; 
    }
   
-  .chronica-stats-panel {
+   .chronica-stats-panel {
     width: 70%;
     max-width: 900px;
     min-width: 500px;
@@ -938,6 +938,12 @@
     padding: 10px 15px;
     border-bottom: 1px solid var(--background-modifier-border);
     background-color: var(--background-secondary-alt);
+    cursor: move; /* Indicate draggable */
+    cursor: grab; /* Modern grab cursor */
+  }
+
+  .chronica-stats-header:active {
+    cursor: grabbing; /* Change when actively dragging */
   }
   
   .chronica-stats-drag-handle {

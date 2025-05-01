@@ -127,6 +127,8 @@ interface ChronosSettings {
   /** Height of the stats panel in pixels */
   statsPanelHeight: number;
 
+  /** Horizontal offset of the stats panel from center (in pixels) */
+  statsPanelHorizontalOffset: number;
 }
 
 /** Interface for custom event types */
@@ -234,6 +236,7 @@ const DEFAULT_SETTINGS: ChronosSettings = {
   isStatsOpen: false,
   activeStatsTab: "overview",
   statsPanelHeight: 170,
+  statsPanelHorizontalOffset: 0,
 };
 
 /** SVG icon for the Chronica Timeline */
@@ -2013,6 +2016,63 @@ class ChronosTimelineView extends ItemView {
     });
   }
 
+  setupStatsPanelHorizontalDrag(headerEl: HTMLElement, statsPanel: HTMLElement, statsHandle: HTMLElement): void {
+    let startX = 0;
+    let startOffset = 0;
+    
+    const onMouseDown = (e: MouseEvent) => {
+      // Only respond to left mouse button
+      if (e.button !== 0) return;
+      
+      // Skip if clicked on a button or other control
+      if ((e.target as HTMLElement).tagName === 'BUTTON' || 
+          (e.target as HTMLElement).closest('.chronica-stats-tab') || 
+          (e.target as HTMLElement).closest('.chronica-stats-close')) {
+        return;
+      }
+      
+      e.preventDefault();
+      
+      // Get current horizontal offset
+      startOffset = this.plugin.settings.statsPanelHorizontalOffset || 0;
+      startX = e.clientX;
+      
+      // Add event listeners
+      document.addEventListener("mousemove", onMouseMove);
+      document.addEventListener("mouseup", onMouseUp);
+    };
+    
+    const onMouseMove = (e: MouseEvent) => {
+      // Calculate horizontal change
+      const deltaX = e.clientX - startX;
+      
+      // Calculate boundaries
+      const windowWidth = window.innerWidth;
+      const panelWidth = statsPanel.getBoundingClientRect().width;
+      const maxOffset = (windowWidth - panelWidth) / 2;
+      const newOffset = Math.max(-maxOffset, Math.min(maxOffset, startOffset + deltaX));
+      
+      // Apply horizontal offset to panel and handle
+      statsPanel.style.transform = `translateX(calc(-50% + ${newOffset}px))`;
+      statsHandle.style.transform = `translateX(calc(-50% + ${newOffset}px))`;
+      
+      // Update setting (but don't save yet)
+      this.plugin.settings.statsPanelHorizontalOffset = newOffset;
+    };
+    
+    const onMouseUp = () => {
+      // Remove event listeners
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+      
+      // Save settings
+      this.plugin.saveSettings();
+    };
+    
+    // Add initial event listener
+    headerEl.addEventListener("mousedown", onMouseDown);
+  }
+
   /**
    * Get the unique view type
    */
@@ -3153,6 +3213,9 @@ renderStatsPanel(container: HTMLElement): void {
   
   // Create header
   const statsHeader = statsPanel.createEl("div", { cls: "chronica-stats-header" });
+
+  // Set up horizontal dragging via header
+  this.setupStatsPanelHorizontalDrag(statsHeader, statsPanel, statsHandle);
   
   // Add drag handle for resizing
   const dragHandle = statsHeader.createEl("div", { cls: "chronica-stats-drag-handle" });
@@ -3296,7 +3359,9 @@ statsHandle.addEventListener("click", () => {
  */
 setupStatsPanelResize(dragHandle: HTMLElement, statsPanel: HTMLElement): void {
   let startY = 0;
+  let startX = 0;
   let startHeight = 0;
+  let startOffset = 0;
   
   const onMouseDown = (e: MouseEvent) => {
     // Only respond to left mouse button
@@ -3304,8 +3369,10 @@ setupStatsPanelResize(dragHandle: HTMLElement, statsPanel: HTMLElement): void {
     
     e.preventDefault(); // Prevent text selection
     
-    // Get the current height from CSS variables
+    // Get the current height and horizontal offset
     startHeight = this.plugin.settings.statsPanelHeight;
+    startOffset = this.plugin.settings.statsPanelHorizontalOffset || 0;
+    startX = e.clientX;
     startY = e.clientY;
     
     // Add event listeners
@@ -3314,22 +3381,40 @@ setupStatsPanelResize(dragHandle: HTMLElement, statsPanel: HTMLElement): void {
   };
   
   const onMouseMove = (e: MouseEvent) => {
+    // Calculate vertical change (dragging up/down)
     const deltaY = startY - e.clientY;
     const newHeight = Math.max(150, Math.min(600, startHeight + deltaY));
     
-    // Update CSS variable immediately
+    // Calculate horizontal change (dragging left/right)
+    const deltaX = e.clientX - startX;
+    
+    // Calculate boundaries to keep panel visible
+    const windowWidth = window.innerWidth;
+    const panelWidth = statsPanel.getBoundingClientRect().width;
+    const maxOffset = (windowWidth - panelWidth) / 2;
+    const newOffset = Math.max(-maxOffset, Math.min(maxOffset, startOffset + deltaX));
+    
+    // Update CSS variable for height
     document.documentElement.style.setProperty('--stats-panel-height', `${newHeight}px`);
     
-    // Update panel height directly
+    // Update panel height and position
     statsPanel.style.height = `${newHeight}px`;
+    statsPanel.style.transform = `translateX(calc(-50% + ${newOffset}px))`;
     
-    // Update the container's padding to match new height
+    // Update the handle position to match
+    const statsHandle = this.containerEl.querySelector(".chronica-stats-handle") as HTMLElement;
+    if (statsHandle) {
+      statsHandle.style.transform = `translateX(calc(-50% + ${newOffset}px))`;
+    }
+    
+    // Update content area padding for height
     const contentArea = this.containerEl.querySelector(".chronica-content-area");
     if (contentArea && this.isStatsOpen) {
     }
     
     // Update settings (but don't save yet to avoid performance issues)
     this.plugin.settings.statsPanelHeight = newHeight;
+    this.plugin.settings.statsPanelHorizontalOffset = newOffset;
   };
   
   const onMouseUp = () => {
@@ -3354,9 +3439,12 @@ updateStatsPanelLayout(): void {
   
   if (!statsPanel || !contentArea || !statsHandle) return;
   
-  // Default height for the panel
+  // Set panel height
   const panelHeight = this.plugin.settings.statsPanelHeight;
   document.documentElement.style.setProperty('--stats-panel-height', `${panelHeight}px`);
+  
+  // Get horizontal offset
+  const horizontalOffset = this.plugin.settings.statsPanelHorizontalOffset || 0;
   
   // Get the total window width and calculate the available width
   const totalWidth = this.containerEl.clientWidth;
@@ -3364,14 +3452,17 @@ updateStatsPanelLayout(): void {
   const availableWidth = totalWidth - sidebarWidth;
   
   // Calculate the center of the available space
-  // When sidebar is open, the center is shifted right by half the sidebar width
   const offsetX = this.isSidebarOpen ? sidebarWidth / 2 : 0;
   
-  // Position the handle and panel
+  // Position the handle and panel base positions (before transform)
   statsPanel.style.left = `calc(50% + ${offsetX}px)`;
   statsHandle.style.left = `calc(50% + ${offsetX}px)`;
   
-
+  // Apply horizontal offset via transform
+  statsPanel.style.transform = `translateX(calc(-50% + ${horizontalOffset}px))`;
+  statsHandle.style.transform = `translateX(calc(-50% + ${horizontalOffset}px))`;
+  
+  
   // Set height based on panel state
   if (this.isStatsOpen) {
     contentArea.classList.add("stats-expanded");
@@ -3379,6 +3470,7 @@ updateStatsPanelLayout(): void {
   } else {
     contentArea.classList.remove("stats-expanded");
     statsPanel.style.height = '0';
+    contentArea.style.paddingBottom = '0';
   }
 }
 
