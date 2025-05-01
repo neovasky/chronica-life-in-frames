@@ -1661,6 +1661,76 @@
   color: var(--text-muted);
 }
 
+/* Event Density Tile Grid */
+.chronica-year-tile-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 0;
+  justify-content: center;
+  margin: 15px 0;
+}
+
+.chronica-year-tile {
+  width: 56px;
+  height: 56px;
+  border-radius: 6px;
+  background-color: var(--background-primary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--background-modifier-border);
+  transition: all 0.2s ease;
+  position: relative;
+  cursor: pointer;
+}
+
+.chronica-year-tile.has-events {
+  border-color: var(--interactive-accent);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.chronica-year-tile:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  z-index: 2;
+}
+
+.chronica-year-tile-year {
+  font-size: 12px;
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+.chronica-year-tile-count {
+  font-size: 18px;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.chronica-current-year {
+  border: 2px solid var(--text-accent) !important;
+  box-shadow: 0 0 8px rgba(var(--interactive-accent-rgb), 0.4) !important;
+}
+
+/* Responsive adjustments for tiny screens */
+@media (max-width: 400px) {
+  .chronica-year-tile {
+    width: 42px;
+    height: 42px;
+  }
+  
+  .chronica-year-tile-year {
+    font-size: 10px;
+  }
+  
+  .chronica-year-tile-count {
+    font-size: 14px;
+  }
+}
+
+
 /* Monthly chart */
 .chronica-monthly-chart-container {
   display: flex;
