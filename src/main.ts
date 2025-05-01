@@ -5093,136 +5093,204 @@ class ChronosTimelineView extends ItemView {
       cls: "chronica-seasonal-chart-container",
     });
 
-    // Create SVG for circular chart - Use existing svgNS rather than redeclaring
+    // Create SVG for radar chart
     const seasonalSvg = document.createElementNS(svgNS, "svg");
-    seasonalSvg.setAttribute("viewBox", "0 0 200 200");
+    seasonalSvg.setAttribute("viewBox", "0 0 240 240");
     seasonalSvg.setAttribute("class", "chronica-seasonal-chart");
     seasonalChartContainer.appendChild(seasonalSvg);
 
-    // Find total for percentages
+    // Find maximum count for scaling
+    const maxSeasonCount = Math.max(...seasonCounts.map((s) => s.count), 1);
     const totalSeasonEvents = seasonCounts.reduce((sum, s) => sum + s.count, 0);
 
     if (totalSeasonEvents > 0) {
-      // Calculate arc angles
-      let startAngle = 0;
-      const anglePerSeason = 360 / 4; // 4 seasons
+      // Create background circle
+      const bgCircle = document.createElementNS(svgNS, "circle");
+      bgCircle.setAttribute("cx", "120");
+      bgCircle.setAttribute("cy", "120");
+      bgCircle.setAttribute("r", "100");
+      bgCircle.setAttribute("fill", "none");
+      bgCircle.setAttribute("stroke", "var(--background-modifier-border)");
+      bgCircle.setAttribute("stroke-width", "1");
+      bgCircle.setAttribute("opacity", "0.5");
+      seasonalSvg.appendChild(bgCircle);
 
-      // Create season segments
-      seasonCounts.forEach((season) => {
-        const percentage = (season.count / totalSeasonEvents) * 100;
+      // Create mid-level circle
+      const midCircle = document.createElementNS(svgNS, "circle");
+      midCircle.setAttribute("cx", "120");
+      midCircle.setAttribute("cy", "120");
+      midCircle.setAttribute("r", "50");
+      midCircle.setAttribute("fill", "none");
+      midCircle.setAttribute("stroke", "var(--background-modifier-border)");
+      midCircle.setAttribute("stroke-width", "1");
+      midCircle.setAttribute("opacity", "0.3");
+      seasonalSvg.appendChild(midCircle);
 
-        // Convert angles to radians
-        const endAngle = startAngle + anglePerSeason;
-        const startRad = ((startAngle - 90) * Math.PI) / 180;
-        const endRad = ((endAngle - 90) * Math.PI) / 180;
+      // Create center point
+      const centerPoint = document.createElementNS(svgNS, "circle");
+      centerPoint.setAttribute("cx", "120");
+      centerPoint.setAttribute("cy", "120");
+      centerPoint.setAttribute("r", "3");
+      centerPoint.setAttribute("fill", "var(--background-modifier-border)");
+      seasonalSvg.appendChild(centerPoint);
 
-        // Calculate coordinates for inner and outer arc
-        const innerRadius = 40;
-        const outerRadius = 80;
+      // Draw axis lines
+      const axisPoints = [
+        { x: 120, y: 20 }, // North - Winter
+        { x: 220, y: 120 }, // East - Spring
+        { x: 120, y: 220 }, // South - Summer
+        { x: 20, y: 120 }, // West - Fall
+      ];
 
-        const x1i = innerRadius * Math.cos(startRad) + 100;
-        const y1i = innerRadius * Math.sin(startRad) + 100;
-        const x2i = innerRadius * Math.cos(endRad) + 100;
-        const y2i = innerRadius * Math.sin(endRad) + 100;
+      // Create axes
+      for (let i = 0; i < 4; i++) {
+        const axis = document.createElementNS(svgNS, "line");
+        axis.setAttribute("x1", "120");
+        axis.setAttribute("y1", "120");
+        axis.setAttribute("x2", axisPoints[i].x.toString());
+        axis.setAttribute("y2", axisPoints[i].y.toString());
+        axis.setAttribute("stroke", "var(--background-modifier-border)");
+        axis.setAttribute("stroke-width", "1");
+        axis.setAttribute("opacity", "0.5");
+        seasonalSvg.appendChild(axis);
+      }
 
-        const x1o = outerRadius * Math.cos(startRad) + 100;
-        const y1o = outerRadius * Math.sin(startRad) + 100;
-        const x2o = outerRadius * Math.cos(endRad) + 100;
-        const y2o = outerRadius * Math.sin(endRad) + 100;
+      // Create season labels with better positioning
+      const seasonLabels = ["Winter", "Spring", "Summer", "Fall"];
+      const labelPoints = [
+        { x: 120, y: 10 }, // Winter (top) - further up
+        { x: 230, y: 120 }, // Spring (right) - further right
+        { x: 120, y: 230 }, // Summer (bottom) - further down
+        { x: 10, y: 120 }, // Fall (left) - further left
+      ];
 
-        // Create path for segment
-        const path = document.createElementNS(svgNS, "path");
+      for (let i = 0; i < 4; i++) {
+        const label = document.createElementNS(svgNS, "text");
+        label.setAttribute("x", labelPoints[i].x.toString());
+        label.setAttribute("y", labelPoints[i].y.toString());
+        label.setAttribute("text-anchor", "middle");
+        label.setAttribute("dominant-baseline", "middle");
+        label.setAttribute("fill", "var(--text-normal)");
+        label.setAttribute("font-size", "12");
+        label.textContent = seasonLabels[i];
+        seasonalSvg.appendChild(label);
+      }
 
-        // SVG path for a segment
-        const largeArcFlag = 0; // anglePerSeason is always 90 degrees, which is < 180
+      // Calculate radar points
+      const radarPoints = seasonCounts.map((season, i) => {
+        const normalizedValue = season.count / maxSeasonCount;
+        const radius = normalizedValue * 100;
 
-        const d = [
-          `M ${x1i},${y1i}`, // Move to inner start
-          `L ${x1o},${y1o}`, // Line to outer start
-          `A ${outerRadius},${outerRadius} 0 ${largeArcFlag},1 ${x2o},${y2o}`, // Outer arc
-          `L ${x2i},${y2i}`, // Line to inner end
-          `A ${innerRadius},${innerRadius} 0 ${largeArcFlag},0 ${x1i},${y1i}`, // Inner arc (counter-clockwise)
-          `Z`, // Close path
-        ].join(" ");
+        // Calculate position based on angle
+        const angle = Math.PI / 2 - (i * Math.PI) / 2; // Start from top, go clockwise
+        const x = 120 + radius * Math.cos(angle);
+        const y = 120 - radius * Math.sin(angle);
 
-        path.setAttribute("d", d);
-        path.setAttribute("fill", season.color);
-
-        // Add opacity based on percentage
-        const opacity = 0.3 + (percentage / 100) * 0.7;
-        path.setAttribute("opacity", Math.max(opacity, 0.3).toString());
-
-        seasonalSvg.appendChild(path);
-
-        // Add season label
-        const angle = startAngle + anglePerSeason / 2;
-        const labelRad = (angle * Math.PI) / 180;
-        const labelRadius = 100;
-        const labelX = labelRadius * Math.cos(labelRad - Math.PI / 2) + 100;
-        const labelY = labelRadius * Math.sin(labelRad - Math.PI / 2) + 100;
-
-        const text = document.createElementNS(svgNS, "text");
-        text.setAttribute("x", labelX.toString());
-        text.setAttribute("y", labelY.toString());
-        text.setAttribute("text-anchor", "middle");
-        text.setAttribute("dominant-baseline", "middle");
-        text.setAttribute("fill", "var(--text-normal)");
-        text.setAttribute("font-size", "12");
-        text.setAttribute("font-weight", "bold");
-        text.textContent = season.name;
-        seasonalSvg.appendChild(text);
-
-        // Add count label if non-zero
-        if (season.count > 0) {
-          const countAngle = angle;
-          const countRad = (countAngle * Math.PI) / 180;
-          const countRadius = 65;
-          const countX = countRadius * Math.cos(countRad - Math.PI / 2) + 100;
-          const countY = countRadius * Math.sin(countRad - Math.PI / 2) + 100;
-
-          const countText = document.createElementNS(svgNS, "text");
-          countText.setAttribute("x", countX.toString());
-          countText.setAttribute("y", countY.toString());
-          countText.setAttribute("text-anchor", "middle");
-          countText.setAttribute("dominant-baseline", "middle");
-          countText.setAttribute("fill", "var(--text-normal)");
-          countText.setAttribute("font-size", "14");
-          countText.setAttribute("font-weight", "bold");
-          countText.textContent = season.count.toString();
-          seasonalSvg.appendChild(countText);
-
-          // Add percentage
-          const pctText = document.createElementNS(svgNS, "text");
-          const pctRadius = 52;
-          const pctX = pctRadius * Math.cos(countRad - Math.PI / 2) + 100;
-          const pctY = pctRadius * Math.sin(countRad - Math.PI / 2) + 100;
-
-          pctText.setAttribute("x", pctX.toString());
-          pctText.setAttribute("y", pctY.toString());
-          pctText.setAttribute("text-anchor", "middle");
-          pctText.setAttribute("dominant-baseline", "middle");
-          pctText.setAttribute("fill", "var(--text-muted)");
-          pctText.setAttribute("font-size", "10");
-          pctText.textContent = `${Math.round(percentage)}%`;
-          seasonalSvg.appendChild(pctText);
-        }
-
-        // Update angle for next segment
-        startAngle = endAngle;
+        return {
+          x,
+          y,
+          value: season.count,
+          percentage: (season.count / totalSeasonEvents) * 100,
+        };
       });
 
-      // Add center circle
-      const centerCircle = document.createElementNS(svgNS, "circle");
-      centerCircle.setAttribute("cx", "100");
-      centerCircle.setAttribute("cy", "100");
-      centerCircle.setAttribute("r", "30");
-      centerCircle.setAttribute("fill", "var(--background-secondary)");
-      seasonalSvg.appendChild(centerCircle);
+      // Create radar polygon
+      if (radarPoints.some((p) => p.value > 0)) {
+        const polygon = document.createElementNS(svgNS, "polygon");
 
-      // Add total count in center
+        // Build points string
+        const pointsStr = radarPoints.map((p) => `${p.x},${p.y}`).join(" ");
+
+        polygon.setAttribute("points", pointsStr);
+        polygon.setAttribute("fill", "rgba(102, 126, 234, 0.5)");
+        polygon.setAttribute("stroke", "var(--interactive-accent)");
+        polygon.setAttribute("stroke-width", "2");
+        seasonalSvg.appendChild(polygon);
+
+        // Add data points and labels
+        radarPoints.forEach((point, i) => {
+          // Only add visible points
+          if (point.value > 0) {
+            // Add dot
+            const dot = document.createElementNS(svgNS, "circle");
+            dot.setAttribute("cx", point.x.toString());
+            dot.setAttribute("cy", point.y.toString());
+            dot.setAttribute("r", "6");
+            dot.setAttribute("fill", seasons[i].color);
+            dot.setAttribute("stroke", "var(--background-primary)");
+            dot.setAttribute("stroke-width", "1");
+            seasonalSvg.appendChild(dot);
+
+            // Calculate better positions for labels based on season
+            let labelX = 0;
+            let labelY = 0;
+            let pctX = 0;
+            let pctY = 0;
+
+            switch (i) {
+              case 0: // Winter (top)
+                labelX = point.x;
+                labelY = point.y - 20;
+                pctX = labelX;
+                pctY = labelY - 14;
+                break;
+              case 1: // Spring (right)
+                labelX = point.x + 20;
+                labelY = point.y;
+                pctX = labelX;
+                pctY = labelY + 14;
+                break;
+              case 2: // Summer (bottom)
+                labelX = point.x;
+                labelY = point.y + 20;
+                pctX = labelX;
+                pctY = labelY + 14;
+                break;
+              case 3: // Fall (left)
+                labelX = point.x - 20;
+                labelY = point.y;
+                pctX = labelX;
+                pctY = labelY + 14;
+                break;
+            }
+
+            // Add value label
+            const valueLabel = document.createElementNS(svgNS, "text");
+            valueLabel.setAttribute("x", labelX.toString());
+            valueLabel.setAttribute("y", labelY.toString());
+            valueLabel.setAttribute("text-anchor", "middle");
+            valueLabel.setAttribute("dominant-baseline", "middle");
+            valueLabel.setAttribute("fill", "var(--text-normal)");
+            valueLabel.setAttribute("font-size", "14");
+            valueLabel.setAttribute("font-weight", "bold");
+            valueLabel.textContent = point.value.toString();
+            seasonalSvg.appendChild(valueLabel);
+
+            // Add percentage
+            const pctLabel = document.createElementNS(svgNS, "text");
+            pctLabel.setAttribute("x", pctX.toString());
+            pctLabel.setAttribute("y", pctY.toString());
+            pctLabel.setAttribute("text-anchor", "middle");
+            pctLabel.setAttribute("dominant-baseline", "middle");
+            pctLabel.setAttribute("fill", "var(--text-muted)");
+            pctLabel.setAttribute("font-size", "10");
+            pctLabel.textContent = `${Math.round(point.percentage)}%`;
+            seasonalSvg.appendChild(pctLabel);
+          }
+        });
+      }
+
+      // Add total in center
+      const totalContainer = document.createElementNS(svgNS, "circle");
+      totalContainer.setAttribute("cx", "120");
+      totalContainer.setAttribute("cy", "120");
+      totalContainer.setAttribute("r", "25");
+      totalContainer.setAttribute("fill", "var(--background-secondary)");
+      seasonalSvg.appendChild(totalContainer);
+
       const totalText = document.createElementNS(svgNS, "text");
-      totalText.setAttribute("x", "100");
-      totalText.setAttribute("y", "95");
+      totalText.setAttribute("x", "120");
+      totalText.setAttribute("y", "115");
       totalText.setAttribute("text-anchor", "middle");
       totalText.setAttribute("dominant-baseline", "middle");
       totalText.setAttribute("fill", "var(--text-normal)");
@@ -5232,8 +5300,8 @@ class ChronosTimelineView extends ItemView {
       seasonalSvg.appendChild(totalText);
 
       const eventsLabel = document.createElementNS(svgNS, "text");
-      eventsLabel.setAttribute("x", "100");
-      eventsLabel.setAttribute("y", "110");
+      eventsLabel.setAttribute("x", "120");
+      eventsLabel.setAttribute("y", "130");
       eventsLabel.setAttribute("text-anchor", "middle");
       eventsLabel.setAttribute("dominant-baseline", "middle");
       eventsLabel.setAttribute("fill", "var(--text-muted)");
@@ -5243,8 +5311,8 @@ class ChronosTimelineView extends ItemView {
     } else {
       // Show empty state
       const emptyText = document.createElementNS(svgNS, "text");
-      emptyText.setAttribute("x", "100");
-      emptyText.setAttribute("y", "100");
+      emptyText.setAttribute("x", "120");
+      emptyText.setAttribute("y", "120");
       emptyText.setAttribute("text-anchor", "middle");
       emptyText.setAttribute("dominant-baseline", "middle");
       emptyText.setAttribute("fill", "var(--text-muted)");
@@ -5252,133 +5320,6 @@ class ChronosTimelineView extends ItemView {
       emptyText.textContent = "No events to analyze";
       seasonalSvg.appendChild(emptyText);
     }
-    // ======== EVENT TYPES BY YEAR CHART ========
-    const stackedChartCard = chartsGridContainer.createEl("div", {
-      cls: "chronica-chart-card chronica-full-width",
-    });
-
-    stackedChartCard.createEl("h3", {
-      cls: "chronica-chart-title",
-      text: "Event Types by Year",
-    });
-
-    // Count events by year and type
-    const eventsByYearAndType: Record<number, Record<string, number>> = {};
-    const eventTypes = new Set<string>();
-
-    allEvents.forEach((event) => {
-      const year = parseWeekKey(event.weekKey).year;
-      if (year > 0) {
-        if (!eventsByYearAndType[year]) {
-          eventsByYearAndType[year] = {};
-        }
-
-        eventsByYearAndType[year][event.type] =
-          (eventsByYearAndType[year][event.type] || 0) + 1;
-        eventTypes.add(event.type);
-      }
-    });
-
-    // Get color map
-    const colorMap: Record<string, string> = {
-      "Major Life": "#4CAF50",
-      Travel: "#2196F3",
-      Relationship: "#E91E63",
-      "Education/Career": "#9C27B0",
-    };
-
-    // Add custom event colors
-    if (this.plugin.settings.customEventTypes) {
-      this.plugin.settings.customEventTypes.forEach((type) => {
-        colorMap[type.name] = type.color;
-      });
-    }
-
-    // Create stacked chart container
-    const stackedChartContainer = stackedChartCard.createEl("div", {
-      cls: "chronica-stacked-chart-container",
-    });
-
-    // Create legend for stacked chart
-    const stackedLegend = stackedChartCard.createEl("div", {
-      cls: "chronica-chart-legend",
-    });
-
-    // Add legend items for all event types
-    Array.from(eventTypes).forEach((type) => {
-      const legendItem = stackedLegend.createEl("div", {
-        cls: "chronica-legend-item",
-      });
-
-      const colorSwatch = legendItem.createEl("div", {
-        cls: "chronica-legend-swatch",
-      });
-      colorSwatch.style.backgroundColor = colorMap[type] || "#999";
-
-      legendItem.createEl("div", {
-        cls: "chronica-legend-text",
-        text: type,
-      });
-    });
-
-    // Create stacked bars
-    const allSortedYears = Array.from(
-      new Set(allEvents.map((evt) => parseWeekKey(evt.weekKey).year))
-    ).sort((a, b) => a - b);
-
-    for (const year of allSortedYears) {
-      const barContainer = stackedChartContainer.createEl("div", {
-        cls: "chronica-stacked-bar-container",
-      });
-
-      // Year label below bar
-      barContainer.createEl("div", {
-        cls: "chronica-stacked-bar-label",
-        text: year.toString(),
-      });
-
-      // Create the stacked bar
-      const stackedBar = barContainer.createEl("div", {
-        cls: "chronica-stacked-bar",
-      });
-
-      // Add segments for each event type
-      let totalForYear = 0;
-
-      // First, calculate total for this year
-      Array.from(eventTypes).forEach((type) => {
-        totalForYear += eventsByYearAndType[year]?.[type] || 0;
-      });
-
-      // Then add segments for each type
-      Array.from(eventTypes).forEach((type) => {
-        const count = eventsByYearAndType[year]?.[type] || 0;
-
-        if (count > 0) {
-          const segment = stackedBar.createEl("div", {
-            cls: "chronica-stacked-segment",
-          });
-
-          const heightPercentage = (count / totalForYear) * 100;
-          segment.style.height = `${heightPercentage}%`;
-          segment.style.backgroundColor = colorMap[type] || "#999";
-          segment.setAttribute("title", `${type}: ${count} events`);
-        }
-      });
-
-      // Add count above bar
-      barContainer.createEl("div", {
-        cls: "chronica-stacked-bar-count",
-        text: totalForYear.toString(),
-      });
-
-      // Highlight current year
-      if (year === now.getFullYear()) {
-        barContainer.addClass("chronica-current-period");
-        stackedBar.addClass("chronica-current-bar");
-      }
-    }
-
     // ======== FUTURE PLANNING HORIZON CHART ========
     const futurePlanningCard = chartsGridContainer.createEl("div", {
       cls: "chronica-chart-card chronica-full-width",
