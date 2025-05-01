@@ -238,7 +238,7 @@ const DEFAULT_SETTINGS: ChronosSettings = {
   gridOrientation: 'landscape',
   isStatsOpen: false,
   activeStatsTab: "overview",
-  statsPanelHeight: 170,
+  statsPanelHeight: 470,
   statsPanelHorizontalOffset: 0,
   statsPanelWidth: 700,
 };
@@ -4096,21 +4096,605 @@ renderEventsTab(container: HTMLElement): void {
 }
 
 /**
- * Render the Timeline tab content (placeholder for now)
+ * Render the Timeline tab content with life phases and milestone analysis
  * @param container - Container to render tab content in
  */
 renderTimelineTab(container: HTMLElement): void {
-  container.createEl("h3", { text: "Timeline Statistics" });
-  container.createEl("p", { text: "This tab will show statistics about your timeline and important milestones." });
+  // Calculate statistics
+  const now = new Date();
+  const [birthYear, birthMonth, birthDay] = this.plugin.settings.birthday.split('-').map(Number);
+  const birthdayDate = new Date(birthYear, birthMonth - 1, birthDay);
+  const ageInWeeks = this.plugin.getFullWeekAge(birthdayDate, now);
+  const totalWeeks = this.plugin.settings.lifespan * 52;
+  
+  // Create main container with grid layout
+  const timelineGrid = container.createEl("div", {
+    cls: "chronica-stats-grid",
+  });
+  
+  // Create life phases card
+  const phasesCard = timelineGrid.createEl("div", {
+    cls: "chronica-stat-card chronica-stat-card-full",
+  });
+  
+  phasesCard.createEl("div", {
+    cls: "chronica-stat-title",
+    text: "Life Phases",
+  });
+  
+  // Calculate current phase
+  const ageInYears = ageInWeeks / 52;
+  let currentPhase = "";
+  let phaseColor = "";
+  
+  if (ageInYears < 5) {
+    currentPhase = "Early Childhood";
+    phaseColor = "#8BC34A"; // Light green
+  } else if (ageInYears < 13) {
+    currentPhase = "Childhood";
+    phaseColor = "#4CAF50"; // Green
+  } else if (ageInYears < 18) {
+    currentPhase = "Adolescence";
+    phaseColor = "#009688"; // Teal
+  } else if (ageInYears < 25) {
+    currentPhase = "Young Adult";
+    phaseColor = "#00BCD4"; // Cyan
+  } else if (ageInYears < 40) {
+    currentPhase = "Early Adulthood";
+    phaseColor = "#03A9F4"; // Light blue
+  } else if (ageInYears < 60) {
+    currentPhase = "Middle Adulthood";
+    phaseColor = "#3F51B5"; // Indigo
+  } else {
+    currentPhase = "Late Adulthood";
+    phaseColor = "#9C27B0"; // Purple
+  }
+  
+  // Create phase visualization
+  const phaseBar = phasesCard.createEl("div", {
+    cls: "chronica-phase-bar",
+  });
+  
+  // Define life phases - customize as needed
+  const phases = [
+    { name: "Childhood", end: 18, color: "#4CAF50" },
+    { name: "Young Adult", end: 25, color: "#00BCD4" },
+    { name: "Early Adult", end: 40, color: "#03A9F4" },
+    { name: "Middle Adult", end: 60, color: "#3F51B5" },
+    { name: "Late Adult", end: this.plugin.settings.lifespan, color: "#9C27B0" }
+  ];
+  
+  // Calculate total width for all phases
+  let totalWidth = 0;
+  phases.forEach(phase => {
+    let phaseWidth;
+    if (phase.name === "Childhood") {
+      phaseWidth = phase.end;
+    } else {
+      const prevPhase = phases[phases.indexOf(phase) - 1];
+      phaseWidth = phase.end - prevPhase.end;
+    }
+    totalWidth += phaseWidth;
+  });
+  
+  // Calculate relative width for each phase
+  let start = 0;
+  phases.forEach(phase => {
+    let phaseWidth;
+    if (phase.name === "Childhood") {
+      phaseWidth = phase.end;
+    } else {
+      const prevPhase = phases[phases.indexOf(phase) - 1];
+      phaseWidth = phase.end - prevPhase.end;
+    }
+    
+    const relativeWidth = (phaseWidth / totalWidth) * 100;
+    
+    const phaseSegment = phaseBar.createEl("div", {
+      cls: "chronica-phase-segment",
+    });
+    
+    phaseSegment.style.width = `${relativeWidth}%`;
+    phaseSegment.style.backgroundColor = phase.color;
+    
+    // Add label
+    const label = phaseSegment.createEl("div", {
+      cls: "chronica-phase-label",
+      text: phase.name,
+    });
+    
+    // Add age marker
+    phaseSegment.createEl("div", {
+      cls: "chronica-phase-age",
+      text: phase.end.toString(),
+    });
+    
+    // Add current position marker if in this phase
+    if (ageInYears <= phase.end && (phase.name === "Childhood" || ageInYears > phases[phases.indexOf(phase) - 1].end)) {
+      const markerPosition = phase.name === "Childhood" 
+        ? (ageInYears / phase.end) * 100 
+        : ((ageInYears - phases[phases.indexOf(phase) - 1].end) / phaseWidth) * 100;
+      
+      const currentMarker = phaseSegment.createEl("div", {
+        cls: "chronica-current-marker",
+      });
+      
+      currentMarker.style.left = `${markerPosition}%`;
+    }
+    
+    start += relativeWidth;
+  });
+  
+  // Current phase information
+  phasesCard.createEl("div", {
+    cls: "chronica-current-phase",
+    text: `Current phase: ${currentPhase} (${Math.floor(ageInYears)} years old)`,
+  }).style.color = phaseColor;
+  
+  // Milestones card
+  const milestonesCard = timelineGrid.createEl("div", {
+    cls: "chronica-stat-card chronica-stat-card-full",
+  });
+  
+  milestonesCard.createEl("div", {
+    cls: "chronica-stat-title",
+    text: "Life Milestones",
+  });
+  
+  // Create milestone table
+  const milestoneTable = milestonesCard.createEl("table", {
+    cls: "chronica-milestone-table",
+  });
+  
+  // Header row
+  const headerRow = milestoneTable.createEl("tr");
+  headerRow.createEl("th", { text: "Milestone" });
+  headerRow.createEl("th", { text: "Age" });
+  headerRow.createEl("th", { text: "Date" });
+  headerRow.createEl("th", { text: "Status" });
+  
+  // Add milestone rows
+  const addMilestone = (name: string, age: number) => {
+    const milestoneDate = new Date(birthdayDate);
+    milestoneDate.setFullYear(birthdayDate.getFullYear() + age);
+    
+    const row = milestoneTable.createEl("tr");
+    row.createEl("td", { text: name });
+    row.createEl("td", { text: age.toString() });
+    
+    // Format date
+    const formatDate = (date: Date): string => {
+      const months = [
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+      ];
+      return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
+    };
+    
+    row.createEl("td", { text: formatDate(milestoneDate) });
+    
+    const isPast = milestoneDate < now;
+    const statusCell = row.createEl("td");
+    statusCell.addClass(isPast ? "milestone-past" : "milestone-future");
+    statusCell.textContent = isPast ? "Passed" : "Upcoming";
+  };
+  
+  // Add standard milestones - customize these as needed
+  addMilestone("Childhood End", 18);
+  addMilestone("Quarter Life", Math.round(this.plugin.settings.lifespan / 4));
+  addMilestone("Half Life", Math.round(this.plugin.settings.lifespan / 2));
+  addMilestone("Retirement Age", 65);
+  addMilestone("Three-Quarter Life", Math.round(this.plugin.settings.lifespan * 0.75));
+  
+  // Week completion card
+  const completionCard = timelineGrid.createEl("div", {
+    cls: "chronica-stat-card chronica-stat-card-full",
+  });
+  
+  completionCard.createEl("div", {
+    cls: "chronica-stat-title",
+    text: "Week Completion",
+  });
+  
+  // Calculate week completion statistics
+  const filledWeeks = this.plugin.settings.filledWeeks.length;
+  const pastWeeks = ageInWeeks;
+  const completionRate = pastWeeks > 0 ? (filledWeeks / pastWeeks) * 100 : 0;
+  
+  completionCard.createEl("div", {
+    cls: "chronica-completion-stat",
+    text: `${filledWeeks} weeks filled out of ${Math.round(pastWeeks)} past weeks (${completionRate.toFixed(1)}%)`,
+  });
+  
+  // Week completion progress bar
+  const completionBar = completionCard.createEl("div", {
+    cls: "chronica-progress-bar",
+  });
+  
+  const completionFill = completionBar.createEl("div", {
+    cls: "chronica-progress-bar-fill",
+  });
+  
+  completionFill.style.width = `${completionRate}%`;
+  
+  // Get events for analysis
+  const greenEvents = this.plugin.settings.greenEvents.length;
+  const blueEvents = this.plugin.settings.blueEvents.length;
+  const pinkEvents = this.plugin.settings.pinkEvents.length;
+  const purpleEvents = this.plugin.settings.purpleEvents.length;
+  
+  // Calculate custom event counts
+  let customEventCount = 0;
+  if (this.plugin.settings.customEventTypes && this.plugin.settings.customEvents) {
+    for (const eventType of this.plugin.settings.customEventTypes) {
+      if (this.plugin.settings.customEvents[eventType.name]) {
+        customEventCount += this.plugin.settings.customEvents[eventType.name].length;
+      }
+    }
+  }
+  
+  const totalEvents = greenEvents + blueEvents + pinkEvents + purpleEvents + customEventCount;
+  const eventsPerWeek = pastWeeks > 0 ? (totalEvents / pastWeeks) : 0;
+  
+  completionCard.createEl("div", {
+    cls: "chronica-completion-stat",
+    text: `${totalEvents} events recorded (${eventsPerWeek.toFixed(3)} events/week)`,
+  });
 }
 
 /**
- * Render the Charts tab content (placeholder for now)
+ * Render the Charts tab content with visualizations
  * @param container - Container to render tab content in
  */
 renderChartsTab(container: HTMLElement): void {
-  container.createEl("h3", { text: "Charts & Visualizations" });
-  container.createEl("p", { text: "This tab will show various charts and visualizations of your timeline data." });
+  // Calculate statistics
+  const now = new Date();
+  const [birthYear, birthMonth, birthDay] = this.plugin.settings.birthday.split('-').map(Number);
+  const birthdayDate = new Date(birthYear, birthMonth - 1, birthDay);
+  const ageInWeeks = this.plugin.getFullWeekAge(birthdayDate, now);
+  
+  // Create main container
+  const chartsContainer = container.createEl("div", {
+    cls: "chronica-charts-container",
+  });
+  
+  // Create event density chart
+  const densityCard = chartsContainer.createEl("div", {
+    cls: "chronica-chart-card",
+  });
+  
+  densityCard.createEl("div", {
+    cls: "chronica-chart-title",
+    text: "Event Density by Year",
+  });
+  
+  // Function to parse week key
+  const parseWeekKey = (key: string): { year: number, week: number } => {
+    const parts = key.split("-W");
+    return {
+      year: parseInt(parts[0]),
+      week: parseInt(parts[1])
+    };
+  };
+  
+  // Collect all events
+  let allEvents: {
+    weekKey: string,
+    description: string,
+    type: string,
+    color: string,
+    isRange?: boolean,
+    endWeekKey?: string
+  }[] = [];
+  
+  // Add standard events
+  const addEvents = (events: string[], type: string, color: string) => {
+    events.forEach(eventData => {
+      const parts = eventData.split(':');
+      if (parts.length === 2) {
+        // Single event
+        allEvents.push({
+          weekKey: parts[0],
+          description: parts[1],
+          type: type,
+          color: color
+        });
+      } else if (parts.length === 3) {
+        // Range event
+        allEvents.push({
+          weekKey: parts[0],
+          endWeekKey: parts[1],
+          description: parts[2],
+          type: type,
+          color: color,
+          isRange: true
+        });
+      }
+    });
+  };
+  
+  // Add all event types
+  addEvents(this.plugin.settings.greenEvents, "Major Life", "#4CAF50");
+  addEvents(this.plugin.settings.blueEvents, "Travel", "#2196F3");
+  addEvents(this.plugin.settings.pinkEvents, "Relationship", "#E91E63");
+  addEvents(this.plugin.settings.purpleEvents, "Education/Career", "#9C27B0");
+  
+  // Add custom events
+  if (this.plugin.settings.customEventTypes && this.plugin.settings.customEvents) {
+    for (const eventType of this.plugin.settings.customEventTypes) {
+      if (this.plugin.settings.customEvents[eventType.name]) {
+        addEvents(
+          this.plugin.settings.customEvents[eventType.name],
+          eventType.name,
+          eventType.color
+        );
+      }
+    }
+  }
+  
+  // If no events, show a message
+  if (allEvents.length === 0) {
+    chartsContainer.empty();
+    chartsContainer.createEl("div", { 
+      cls: "chronica-empty-chart-state",
+      text: "No events added yet. Add events to see charts and visualizations."
+    });
+    return;
+  }
+  
+  // Count events by year
+  const eventsByYear: Record<number, number> = {};
+  
+  allEvents.forEach(event => {
+    const year = parseWeekKey(event.weekKey).year;
+    eventsByYear[year] = (eventsByYear[year] || 0) + 1;
+  });
+  
+  // Get years range
+  const years = Object.keys(eventsByYear).map(Number);
+  const minYear = Math.min(...years);
+  const maxYear = Math.max(...years);
+  
+  // Create a bar for each year
+  const densityChart = densityCard.createEl("div", {
+    cls: "chronica-density-chart",
+  });
+  
+  // Calculate maximum events for scaling
+  const maxEvents = Math.max(...Object.values(eventsByYear));
+  
+  // Fill in missing years
+  for (let year = minYear; year <= maxYear; year++) {
+    if (!eventsByYear[year]) {
+      eventsByYear[year] = 0;
+    }
+  }
+  
+  // Sort years
+  const sortedYears = Object.keys(eventsByYear).map(Number).sort((a, b) => a - b);
+  
+  // Create bars
+  sortedYears.forEach(year => {
+    const barContainer = densityChart.createEl("div", {
+      cls: "chronica-density-bar-container",
+    });
+    
+    const yearLabel = barContainer.createEl("div", {
+      cls: "chronica-year-label",
+      text: year.toString(),
+    });
+    
+    const bar = barContainer.createEl("div", {
+      cls: "chronica-density-bar",
+    });
+    
+    const eventCount = eventsByYear[year];
+    const height = maxEvents > 0 ? (eventCount / maxEvents) * 100 : 0;
+    
+    bar.style.height = `${height}%`;
+    
+    // Add count label
+    const countLabel = bar.createEl("div", {
+      cls: "chronica-density-count",
+      text: eventCount.toString(),
+    });
+    
+    // Add year to hover information
+    barContainer.setAttribute("title", `${year}: ${eventCount} events`);
+    
+    // Highlight current year
+    if (year === now.getFullYear()) {
+      barContainer.addClass("current-year");
+    }
+  });
+  
+  // Create category comparison chart
+  const categoryCard = chartsContainer.createEl("div", {
+    cls: "chronica-chart-card",
+  });
+  
+  categoryCard.createEl("div", {
+    cls: "chronica-chart-title",
+    text: "Event Types by Year",
+  });
+  
+  // Count events by year and type
+  const eventsByYearAndType: Record<number, Record<string, number>> = {};
+  
+  allEvents.forEach(event => {
+    const year = parseWeekKey(event.weekKey).year;
+    
+    if (!eventsByYearAndType[year]) {
+      eventsByYearAndType[year] = {};
+    }
+    
+    eventsByYearAndType[year][event.type] = (eventsByYearAndType[year][event.type] || 0) + 1;
+  });
+  
+  // Get all unique event types
+  const eventTypes = new Set<string>();
+  allEvents.forEach(event => eventTypes.add(event.type));
+  
+  // Get color map
+  const colorMap: Record<string, string> = {
+    "Major Life": "#4CAF50",
+    "Travel": "#2196F3",
+    "Relationship": "#E91E63",
+    "Education/Career": "#9C27B0"
+  };
+  
+  // Add custom event colors
+  if (this.plugin.settings.customEventTypes) {
+    this.plugin.settings.customEventTypes.forEach(type => {
+      colorMap[type.name] = type.color;
+    });
+  }
+  
+  // Create stacked bar chart
+  const categoryChart = categoryCard.createEl("div", {
+    cls: "chronica-category-chart",
+  });
+  
+  // Create a stacked bar for each year
+  sortedYears.forEach(year => {
+    const barContainer = categoryChart.createEl("div", {
+      cls: "chronica-category-bar-container",
+    });
+    
+    const yearLabel = barContainer.createEl("div", {
+      cls: "chronica-year-label",
+      text: year.toString(),
+    });
+    
+    const bar = barContainer.createEl("div", {
+      cls: "chronica-category-bar",
+    });
+    
+    // Add segments for each event type
+    Array.from(eventTypes).forEach(type => {
+      const count = eventsByYearAndType[year]?.[type] || 0;
+      
+      if (count > 0) {
+        const segment = bar.createEl("div", {
+          cls: "chronica-category-segment",
+        });
+        
+        segment.style.backgroundColor = colorMap[type] || "#999";
+        segment.style.flex = count.toString();
+        segment.setAttribute("title", `${type}: ${count} events`);
+      }
+    });
+    
+    // Add count label if there are any events
+    const totalCount = Object.values(eventsByYearAndType[year] || {}).reduce((a, b) => a + b, 0);
+    
+    if (totalCount > 0) {
+      const countLabel = bar.createEl("div", {
+        cls: "chronica-category-count",
+        text: totalCount.toString(),
+      });
+    }
+    
+    // Highlight current year
+    if (year === now.getFullYear()) {
+      barContainer.addClass("current-year");
+    }
+  });
+  
+  // Create legend
+  const legend = categoryCard.createEl("div", {
+    cls: "chronica-chart-legend",
+  });
+  
+  Array.from(eventTypes).forEach(type => {
+    const legendItem = legend.createEl("div", {
+      cls: "chronica-legend-item",
+    });
+    
+    const colorSwatch = legendItem.createEl("div", {
+      cls: "chronica-legend-color",
+    });
+    
+    colorSwatch.style.backgroundColor = colorMap[type] || "#999";
+    
+    legendItem.createEl("div", {
+      cls: "chronica-legend-label",
+      text: type,
+    });
+  });
+  
+  // Create seasonal analysis chart
+  const seasonalCard = chartsContainer.createEl("div", {
+    cls: "chronica-chart-card",
+  });
+  
+  seasonalCard.createEl("div", {
+    cls: "chronica-chart-title",
+    text: "Event Distribution by Month",
+  });
+  
+  // Count events by month
+  const eventsByMonth: number[] = Array(12).fill(0);
+  
+  allEvents.forEach(event => {
+    const weekKey = event.weekKey;
+    const { year, week } = parseWeekKey(weekKey);
+    
+    // Approximate month from week number
+    // This is a simple approximation; for more accuracy, you'd need to convert week to actual date
+    const month = Math.floor((week - 1) / 4.34); // 52 weeks / 12 months ≈ 4.34 weeks per month
+    
+    if (month >= 0 && month < 12) {
+      eventsByMonth[month]++;
+    }
+  });
+  
+  // Create month distribution chart
+  const seasonalChart = seasonalCard.createEl("div", {
+    cls: "chronica-seasonal-chart",
+  });
+  
+  const monthNames = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun", 
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+  ];
+  
+  const maxMonthlyEvents = Math.max(...eventsByMonth);
+  
+  // Create bars for each month
+  monthNames.forEach((month, index) => {
+    const barContainer = seasonalChart.createEl("div", {
+      cls: "chronica-month-bar-container",
+    });
+    
+    const monthLabel = barContainer.createEl("div", {
+      cls: "chronica-month-label",
+      text: month,
+    });
+    
+    const bar = barContainer.createEl("div", {
+      cls: "chronica-month-bar",
+    });
+    
+    const eventCount = eventsByMonth[index];
+    const height = maxMonthlyEvents > 0 ? (eventCount / maxMonthlyEvents) * 100 : 0;
+    
+    bar.style.height = `${height}%`;
+    
+    // Add count label
+    const countLabel = bar.createEl("div", {
+      cls: "chronica-month-count",
+      text: eventCount > 0 ? eventCount.toString() : "",
+    });
+    
+    // Add month to hover information
+    barContainer.setAttribute("title", `${month}: ${eventCount} events`);
+    
+    // Highlight current month
+    if (index === now.getMonth()) {
+      barContainer.addClass("current-month");
+    }
+  });
 }
 
 /**

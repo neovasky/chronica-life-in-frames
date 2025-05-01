@@ -1324,3 +1324,319 @@
   text-align: right;
 }
 
+/* Timeline Tab Styles */
+.chronica-phase-bar {
+  display: flex;
+  width: 100%;
+  height: 40px;
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 20px 0;
+  position: relative;
+}
+
+.chronica-phase-segment {
+  height: 100%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 500;
+  font-size: 12px;
+}
+
+.chronica-phase-label {
+  position: absolute;
+  top: 5px;
+  left: 0;
+  width: 100%;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 500;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.chronica-phase-age {
+  position: absolute;
+  bottom: 2px;
+  right: 4px;
+  font-size: 10px;
+  font-weight: 400;
+  opacity: 0.9;
+}
+
+.chronica-current-marker {
+  position: absolute;
+  width: 2px;
+  height: 100%;
+  background-color: white;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+  z-index: 5;
+}
+
+.chronica-current-phase {
+  text-align: center;
+  font-weight: 500;
+  margin-top: 10px;
+  font-size: 15px;
+}
+
+.chronica-milestone-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+}
+
+.chronica-milestone-table th,
+.chronica-milestone-table td {
+  padding: 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.chronica-milestone-table tr:last-child td {
+  border-bottom: none;
+}
+
+.chronica-milestone-table th {
+  font-weight: 600;
+  color: var(--text-normal);
+  border-bottom: 2px solid var(--background-modifier-border);
+}
+
+.milestone-past {
+  color: var(--text-success);
+}
+
+.milestone-future {
+  color: var(--text-muted);
+}
+
+.chronica-completion-stat {
+  margin: 10px 0;
+  font-size: 14px;
+}
+
+/* Charts Tab Styles */
+.chronica-charts-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.chronica-chart-card {
+  background-color: var(--background-secondary);
+  border-radius: 6px;
+  padding: 15px;
+  box-shadow: var(--card-shadow);
+}
+
+.chronica-chart-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 15px;
+  color: var(--text-normal);
+}
+
+.chronica-empty-chart-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Density Chart */
+.chronica-density-chart {
+  display: flex;
+  align-items: flex-end;
+  height: 160px;
+  gap: 4px;
+  padding-bottom: 25px;
+  margin: 10px 0;
+  position: relative;
+}
+
+.chronica-density-bar-container {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  position: relative;
+}
+
+.chronica-density-bar {
+  width: 100%;
+  background-color: var(--interactive-accent);
+  border-radius: 3px 3px 0 0;
+  position: relative;
+  min-height: 2px;
+}
+
+.chronica-density-count {
+  position: absolute;
+  top: -20px;
+  left: 0;
+  width: 100%;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.chronica-year-label {
+  position: absolute;
+  bottom: -22px;
+  left: 0;
+  width: 100%;
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-muted);
+  transform: rotate(-45deg);
+  transform-origin: top left;
+  white-space: nowrap;
+}
+
+/* Category Chart */
+.chronica-category-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 15px 0;
+}
+
+.chronica-category-bar-container {
+  display: flex;
+  align-items: center;
+  height: 30px;
+}
+
+.chronica-category-bar {
+  flex-grow: 1;
+  height: 100%;
+  display: flex;
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+  margin-left: 10px;
+  background-color: var(--background-primary);
+}
+
+.chronica-category-segment {
+  height: 100%;
+}
+
+.chronica-category-count {
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-on-accent);
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+}
+
+.chronica-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.chronica-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.chronica-legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.chronica-legend-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Seasonal Chart */
+.chronica-seasonal-chart {
+  display: flex;
+  align-items: flex-end;
+  height: 160px;
+  gap: 4px;
+  padding-bottom: 25px;
+  margin: 10px 0;
+  position: relative;
+}
+
+.chronica-month-bar-container {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  position: relative;
+}
+
+.chronica-month-bar {
+  width: 100%;
+  background-color: var(--interactive-accent);
+  border-radius: 3px 3px 0 0;
+  position: relative;
+  min-height: 2px;
+}
+
+.chronica-month-count {
+  position: absolute;
+  top: -20px;
+  left: 0;
+  width: 100%;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.chronica-month-label {
+  position: absolute;
+  bottom: -22px;
+  left: 0;
+  width: 100%;
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Highlight current period */
+.current-year,
+.current-month {
+  position: relative;
+}
+
+.current-year::after,
+.current-month::after {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background-color: var(--text-accent);
+}
+
+/* Responsive adjustments */
+@media (max-width: 450px) {
+  .chronica-phase-label,
+  .chronica-year-label,
+  .chronica-month-label {
+    font-size: 9px;
+  }
+}
+
