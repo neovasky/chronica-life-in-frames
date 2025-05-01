@@ -140,7 +140,16 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
             // already registered on hot-reload—ignore
         }
         // 2) Re-draw whenever a new weekly note appears
-        this.registerEvent(this.app.vault.on("create", () => this.refreshAllViews()));
+        this.registerEvent(this.app.vault.on("create", () => {
+            this.registerPotentialSyncOperation();
+            // Only refresh if not during a likely sync operation
+            if (!this.isSyncOperation) {
+                this.refreshAllViews();
+            }
+        }));
+        this.registerEvent(this.app.vault.on("modify", () => {
+            this.registerPotentialSyncOperation();
+        }));
         // 3) On deletion, remove from settings AND re-draw
         this.registerEvent(this.app.vault.on("delete", async (file) => {
             if (!(file instanceof obsidian.TFile))
@@ -197,6 +206,11 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
         this.registerInterval(window.setInterval(() => this.checkAndAutoFill(), 1000 * 60 * 60));
     }
     refreshAllViews() {
+        // Skip refreshing during likely sync operations
+        if (this.isSyncOperation) {
+            console.log("Skipping refresh during potential sync operation");
+            return;
+        }
         this.app.workspace
             .getLeavesOfType(TIMELINE_VIEW_TYPE)
             .forEach((leaf) => {
@@ -346,8 +360,8 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
             const weekKey = `${year}-W${weekNum.toString().padStart(2, "0")}`;
             const existingFile = this.app.vault.getAbstractFileByPath(fullPath);
             if (existingFile instanceof obsidian.TFile) {
-                // Open existing file
-                await this.app.workspace.getLeaf().openFile(existingFile);
+                // Use our safe method instead of directly opening in active leaf
+                await this.safelyOpenFile(existingFile);
             }
             else {
                 // Create folder if needed
@@ -373,106 +387,9 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
                     { events: this.settings.pinkEvents, type: "Relationship", color: "#E91E63" },
                     { events: this.settings.purpleEvents, type: "Education/Career", color: "#9C27B0" }
                 ];
-                // Check for single events
-                for (const { events, type, color } of eventTypes) {
-                    for (const eventData of events) {
-                        const parts = eventData.split(':');
-                        // Check single events (2 parts)
-                        if (parts.length === 2 && parts[0] === weekKey) {
-                            eventMeta = {
-                                event: parts[1],
-                                description: parts[1],
-                                type: type,
-                                color: color,
-                                startDate: date.toISOString().split('T')[0]
-                            };
-                            break;
-                        }
-                        // Check range events (3 parts)
-                        if (parts.length === 3) {
-                            const [startWeekKey, endWeekKey, description] = parts;
-                            // Parse week numbers
-                            const startYear = parseInt(startWeekKey.split('-W')[0]);
-                            const startWeek = parseInt(startWeekKey.split('-W')[1]);
-                            const endYear = parseInt(endWeekKey.split('-W')[0]);
-                            const endWeek = parseInt(endWeekKey.split('-W')[1]);
-                            // Create dates to compare
-                            const startDate = new Date(startYear, 0, 1);
-                            startDate.setDate(startDate.getDate() + (startWeek - 1) * 7);
-                            const endDate = new Date(endYear, 0, 1);
-                            endDate.setDate(endDate.getDate() + (endWeek - 1) * 7 + 6);
-                            // Check if current week falls within range
-                            if (year >= startYear && year <= endYear &&
-                                ((year === startYear && weekNum >= startWeek) || year > startYear) &&
-                                ((year === endYear && weekNum <= endWeek) || year < endYear)) {
-                                eventMeta = {
-                                    event: description,
-                                    description: description,
-                                    type: type,
-                                    color: color,
-                                    startDate: startDate.toISOString().split('T')[0],
-                                    endDate: endDate.toISOString().split('T')[0]
-                                };
-                                break;
-                            }
-                        }
-                    }
-                    if (eventMeta)
-                        break;
-                }
-                // Check custom events if no built-in event found
-                if (!eventMeta && this.settings.customEventTypes) {
-                    for (const customType of this.settings.customEventTypes) {
-                        const events = this.settings.customEvents[customType.name] || [];
-                        for (const eventData of events) {
-                            const parts = eventData.split(':');
-                            // Check single events
-                            if (parts.length === 2 && parts[0] === weekKey) {
-                                eventMeta = {
-                                    event: parts[1],
-                                    description: parts[1],
-                                    type: customType.name,
-                                    color: customType.color,
-                                    startDate: date.toISOString().split('T')[0]
-                                };
-                                break;
-                            }
-                            // Check range events
-                            if (parts.length === 3) {
-                                const [startWeekKey, endWeekKey, description] = parts;
-                                // Parse week numbers
-                                const startYear = parseInt(startWeekKey.split('-W')[0]);
-                                const startWeek = parseInt(startWeekKey.split('-W')[1]);
-                                const endYear = parseInt(endWeekKey.split('-W')[0]);
-                                const endWeek = parseInt(endWeekKey.split('-W')[1]);
-                                // Check if current week falls within range
-                                if (year >= startYear && year <= endYear &&
-                                    ((year === startYear && weekNum >= startWeek) || year > startYear) &&
-                                    ((year === endYear && weekNum <= endWeek) || year < endYear)) {
-                                    const startDate = new Date(startYear, 0, 1);
-                                    startDate.setDate(startDate.getDate() + (startWeek - 1) * 7);
-                                    const endDate = new Date(endYear, 0, 1);
-                                    endDate.setDate(endDate.getDate() + (endWeek - 1) * 7 + 6);
-                                    eventMeta = {
-                                        event: description,
-                                        description: description,
-                                        type: customType.name,
-                                        color: customType.color,
-                                        startDate: startDate.toISOString().split('T')[0],
-                                        endDate: endDate.toISOString().split('T')[0]
-                                    };
-                                    break;
-                                }
-                            }
-                        }
-                        if (eventMeta)
-                            break;
-                    }
-                }
+                // [KEEP THE REST OF THE EXISTING EVENT DETECTION LOGIC]
                 // Add frontmatter if event exists
-                if (eventMeta) {
-                    content = this.formatFrontmatter(eventMeta);
-                }
+                if (eventMeta) ;
                 else {
                     // Add empty frontmatter
                     content = this.formatFrontmatter({});
@@ -480,7 +397,8 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
                 // Add note template
                 content += `# Week ${weekNum}, ${year}\n\n## Reflections\n\n## Tasks\n\n## Notes\n`;
                 const newFile = await this.app.vault.create(fullPath, content);
-                await this.app.workspace.getLeaf().openFile(newFile);
+                // Use our safe method instead of directly opening in active leaf
+                await this.safelyOpenFile(newFile);
             }
         }
         catch (error) {
@@ -981,6 +899,57 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
                 view.renderView();
             });
         }
+    }
+    /**
+   * Get a dedicated leaf for Chronica operations
+   * @param createIfNeeded - Whether to create a new leaf if none exists
+   * @returns A workspace leaf specifically for Chronica
+   */
+    getChronicaLeaf(createIfNeeded = true) {
+        // First, check for existing Chronica views
+        const leaves = this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE);
+        if (leaves.length > 0) {
+            // Use an existing Chronica leaf
+            return leaves[0];
+        }
+        // If no leaf exists and we're asked to create one
+        if (createIfNeeded) {
+            // Create a new leaf in a split
+            return this.app.workspace.getLeaf('split', 'vertical');
+        }
+        return null;
+    }
+    /**
+     * Safely open a file in a Chronica-specific leaf
+     * @param file - File to open
+     */
+    async safelyOpenFile(file) {
+        const leaf = this.getChronicaLeaf();
+        if (leaf) {
+            await leaf.openFile(file);
+            this.app.workspace.revealLeaf(leaf);
+        }
+    }
+    /**
+     * Track potential sync operations to prevent interference
+     */
+    isSyncOperation = false;
+    syncOperationTimer = null;
+    /**
+     * Register a file event as a potential sync operation
+     */
+    registerPotentialSyncOperation() {
+        // Clear existing timer
+        if (this.syncOperationTimer) {
+            clearTimeout(this.syncOperationTimer);
+        }
+        // Mark as being in a sync operation
+        this.isSyncOperation = true;
+        // Reset after 5 seconds of no file events
+        this.syncOperationTimer = setTimeout(() => {
+            this.isSyncOperation = false;
+            this.syncOperationTimer = null;
+        }, 5000);
     }
 }
 // -----------------------------------------------------------------------
@@ -2519,7 +2488,7 @@ class ChronosTimelineView extends obsidian.ItemView {
                     const existingFile = this.app.vault.getAbstractFileByPath(fullPath);
                     if (existingFile instanceof obsidian.TFile) {
                         // Open existing file
-                        await this.app.workspace.getLeaf().openFile(existingFile);
+                        await this.plugin.safelyOpenFile(existingFile);
                     }
                     else {
                         // Create new file with template
@@ -2537,7 +2506,7 @@ class ChronosTimelineView extends obsidian.ItemView {
                         }
                         const content = `# Week ${cellWeek}, ${cellYear}\n\n## Reflections\n\n## Tasks\n\n## Notes\n`;
                         const newFile = await this.app.vault.create(fullPath, content);
-                        await this.app.workspace.getLeaf().openFile(newFile);
+                        await this.plugin.safelyOpenFile(newFile);
                     }
                 });
                 // Add context menu (right-click) event for manual fill
