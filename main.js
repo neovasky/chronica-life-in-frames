@@ -3503,12 +3503,22 @@ class ChronosTimelineView extends obsidian.ItemView {
         }
         // Sort years
         const sortedYears = Object.keys(eventsByYear).map(Number).sort((a, b) => a - b);
-        // Create bar chart container
+        // Create chart container with tooltip support
         const densityChartContainer = densityChartCard.createEl("div", {
             cls: "chronica-bar-chart-container",
         });
         // Calculate maximum events for scaling
         const maxEvents = Math.max(...Object.values(eventsByYear), 1); // Ensure non-zero
+        // Determine label frequency based on year span
+        const yearSpan = maxYear - minYear + 1;
+        let labelFrequency = 1; // Show every year by default
+        // Adjust label frequency based on how many years we have
+        if (yearSpan > 15) {
+            labelFrequency = 5; // Every 5 years
+        }
+        else if (yearSpan > 10) {
+            labelFrequency = 2; // Every 2 years
+        }
         // Create bars
         for (const year of sortedYears) {
             const count = eventsByYear[year];
@@ -3525,9 +3535,13 @@ class ChronosTimelineView extends obsidian.ItemView {
                 cls: "chronica-bar-value",
                 text: count.toString(),
             });
+            // Only show labels based on frequency or for years with events
+            const shouldShowLabel = year % labelFrequency === 0 || // Show based on frequency
+                count > 0 || // Always show years with events
+                year === minYear || year === maxYear; // Always show first and last year
             // Add label below bar
             barContainer.createEl("div", {
-                cls: "chronica-bar-label",
+                cls: shouldShowLabel ? "chronica-bar-label" : "chronica-bar-label-hidden",
                 text: year.toString(),
             });
             // Highlight current year
@@ -3535,8 +3549,30 @@ class ChronosTimelineView extends obsidian.ItemView {
                 barContainer.addClass("chronica-current-period");
                 bar.addClass("chronica-current-bar");
             }
-            // Set tooltip
-            barContainer.setAttribute("title", `${year}: ${count} events`);
+            // Create a hover card for this year
+            barContainer.setAttribute("data-tooltip", `${year}: ${count} events`);
+            barContainer.setAttribute("aria-label", `${year}: ${count} events`);
+            // Add hover interaction
+            barContainer.addEventListener("mouseenter", (e) => {
+                // Create and position tooltip
+                const tooltip = document.createElement("div");
+                tooltip.className = "chronica-chart-tooltip";
+                tooltip.textContent = `${year}: ${count} events`;
+                // Position near the cursor
+                const rect = barContainer.getBoundingClientRect();
+                tooltip.style.left = `${rect.left + rect.width / 2}px`;
+                tooltip.style.top = `${rect.top - 30}px`;
+                document.body.appendChild(tooltip);
+                barContainer.setAttribute("data-has-tooltip", "true");
+            });
+            barContainer.addEventListener("mouseleave", () => {
+                // Remove any existing tooltips
+                const tooltip = document.querySelector(".chronica-chart-tooltip");
+                if (tooltip) {
+                    tooltip.remove();
+                }
+                barContainer.removeAttribute("data-has-tooltip");
+            });
         }
         // ======== EVENT DISTRIBUTION BY TYPE CHART ========
         const pieChartCard = chartsGridContainer.createEl("div", {
