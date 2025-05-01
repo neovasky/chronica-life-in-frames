@@ -350,12 +350,11 @@ export default class ChronosTimelinePlugin extends Plugin {
         this.refreshAllViews();
       })
     );
-    
-    
   
     // 4) Now your regular setup
     addIcon("chronica-icon", CHRONOS_ICON);
     await this.loadSettings();
+    await this.scanVaultForEvents();
     this.addRibbonIcon("chronica-icon", "Open Chronica Timeline", () => {
       this.activateView();
     });
@@ -390,6 +389,138 @@ export default class ChronosTimelinePlugin extends Plugin {
     );
 
   }
+
+  /**
+ * Scan vault for notes with event metadata and populate plugin settings
+ */
+async scanVaultForEvents(): Promise<void> {
+  console.log("Scanning vault for event metadata...");
+  
+  // Get all markdown files in the vault
+  const files = this.app.vault.getMarkdownFiles();
+  
+  // Track how many event notes we find
+  let eventCount = 0;
+  
+  // Process each file
+  for (const file of files) {
+    try {
+      // Check if the filename matches our weekly note pattern
+      const weekPattern = /(\d{4}-W\d{2})\.md$/;
+      const rangePattern = /(\d{4}-W\d{2})_to_(\d{4}-W\d{2})\.md$/;
+      
+      let weekKey: string | null = null;
+      let endWeekKey: string | null = null;
+      let isRange = false;
+      
+      // Check for single week pattern
+      const weekMatch = file.basename.match(weekPattern);
+      if (weekMatch) {
+        weekKey = weekMatch[1];
+      }
+      
+      // Check for range pattern
+      const rangeMatch = file.basename.match(rangePattern);
+      if (rangeMatch) {
+        weekKey = rangeMatch[1];
+        endWeekKey = rangeMatch[2];
+        isRange = true;
+      }
+      
+      // If it's neither a week nor a range, skip
+      if (!weekKey) continue;
+      
+      // Read file content
+      const content = await this.app.vault.read(file);
+      
+      // Check for YAML frontmatter
+      const frontmatterMatch = content.match(/^---\s+([\s\S]*?)\s+---/);
+      if (!frontmatterMatch) continue;
+      
+      // Parse frontmatter
+      const frontmatter = frontmatterMatch[1];
+      const metadata: Record<string, any> = {};
+      
+      frontmatter.split('\n').forEach(line => {
+        const match = line.match(/^([^:]+):\s*(.+)$/);
+        if (match) {
+          const [_, key, value] = match;
+          metadata[key.trim()] = value.trim().replace(/^"(.*)"$/, '$1');
+        }
+      });
+      
+      // If no event or type, skip
+      if (!metadata.event && !metadata.name) continue;
+      
+      const eventName = metadata.event || metadata.name;
+      const eventType = metadata.type || "Major Life";
+      const description = metadata.description || eventName;
+      
+      // Format event string based on whether it's a range
+      let eventString = "";
+      if (isRange && endWeekKey) {
+        eventString = `${weekKey}:${endWeekKey}:${description}`;
+      } else {
+        eventString = `${weekKey}:${description}`;
+      }
+      
+      // Add to appropriate collection if not already present
+      let added = false;
+      switch (eventType) {
+        case "Major Life":
+          if (!this.settings.greenEvents.includes(eventString)) {
+            this.settings.greenEvents.push(eventString);
+            added = true;
+          }
+          break;
+        case "Travel":
+          if (!this.settings.blueEvents.includes(eventString)) {
+            this.settings.blueEvents.push(eventString);
+            added = true;
+          }
+          break;
+        case "Relationship":
+          if (!this.settings.pinkEvents.includes(eventString)) {
+            this.settings.pinkEvents.push(eventString);
+            added = true;
+          }
+          break;
+        case "Education/Career":
+          if (!this.settings.purpleEvents.includes(eventString)) {
+            this.settings.purpleEvents.push(eventString);
+            added = true;
+          }
+          break;
+        default:
+          // Handle custom event types
+          if (this.settings.customEventTypes) {
+            const customType = this.settings.customEventTypes.find(t => t.name === eventType);
+            if (customType) {
+              if (!this.settings.customEvents[eventType]) {
+                this.settings.customEvents[eventType] = [];
+              }
+              if (!this.settings.customEvents[eventType].includes(eventString)) {
+                this.settings.customEvents[eventType].push(eventString);
+                added = true;
+              }
+            }
+          }
+          break;
+      }
+      
+      if (added) {
+        eventCount++;
+      }
+    } catch (error) {
+      console.error("Error processing file:", file.path, error);
+    }
+  }
+  
+  if (eventCount > 0) {
+    console.log(`Found ${eventCount} events from note metadata`);
+    await this.saveSettings();
+  }
+}
 
   public refreshAllViews(): void {
     // Skip refreshing during likely sync operations
@@ -4990,6 +5121,68 @@ applyEventStyling(cell: HTMLElement, weekKey: string): boolean {
       const parts = e.split(":");
       return parts.length >= 3 && parts[0].includes("W") && parts[1].includes("W");
     });
+
+    for (const rangeEvent of rangeEvents) {
+      const [startWeekKey, endWeekKey, description] = rangeEvent.split(":");
+      
+      // Skip if the format is invalid
+      if (!startWeekKey || !endWeekKey) continue;
+      
+      try {
+        // Parse the week numbers
+        const startYear = parseInt(startWeekKey.split("-W")[0], 10);
+        const startWeek = parseInt(startWeekKey.split("-W")[1], 10);
+        const endYear = parseInt(endWeekKey.split("-W")[0], 10);
+        const endWeek = parseInt(endWeekKey.split("-W")[1], 10);
+        
+        // Parse current cell week
+        const cellYear = parseInt(weekKey.split("-W")[0], 10);
+        const cellWeek = parseInt(weekKey.split("-W")[1], 10);
+        
+        // Create actual dates to compare
+        const startDate = new Date(startYear, 0, 1);
+        startDate.setDate(startDate.getDate() + (startWeek - 1) * 7);
+        
+        const endDate = new Date(endYear, 0, 1);
+        endDate.setDate(endDate.getDate() + (endWeek - 1) * 7 + 6); // Add 6 to include full end week
+        
+        const cellDate = new Date(cellYear, 0, 1);
+        cellDate.setDate(cellDate.getDate() + (cellWeek - 1) * 7);
+        
+        // Check if current week falls within the range using actual dates
+        const isInRange = cellDate >= startDate && cellDate <= endDate;
+        
+        if (isInRange) {
+          // Apply styles
+          cell.addClass("event");
+          cell.style.backgroundColor = defaultColor;
+          cell.style.borderColor = defaultColor;
+          cell.style.borderWidth = "2px";
+          cell.style.borderStyle = "solid";
+          
+          // Add specific event type class based on color
+          if (defaultColor === "#4CAF50") {
+            cell.addClass("major-life-event");
+          } else if (defaultColor === "#2196F3") {
+            cell.addClass("travel-event");
+          } else if (defaultColor === "#E91E63") {
+            cell.addClass("relationship-event");
+          } else if (defaultColor === "#9C27B0") {
+            cell.addClass("education-career-event");
+          }
+          
+          const eventDesc = description || defaultDesc;
+          const currentTitle = cell.getAttribute("title") || "";
+          cell.setAttribute(
+            "title",
+            `${eventDesc} (${startWeekKey} to ${endWeekKey})\n${currentTitle}`
+          );
+          return true;
+        }
+      } catch (error) {
+        console.error("Error processing range event:", rangeEvent, error);
+      }
+    }
     
     for (const rangeEvent of rangeEvents) {
       const [startWeekKey, endWeekKey, description] = rangeEvent.split(":");
