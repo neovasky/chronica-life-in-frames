@@ -24,15 +24,14 @@
   --transition-speed: 0.2s;
   --present-color: var(--text-accent);
   --future-event-color: rgba(255, 215, 0, 0.5);
-  --relationship-color: #E91E63;
-  --travel-color: #2196F3; 
-  --education-career-color: #9C27B0;
-  --major-life-color: #4CAF50;
+  --relationship-color: #e91e63;
+  --travel-color: #2196f3;
+  --education-career-color: #9c27b0;
+  --major-life-color: #4caf50;
   --stats-panel-height: 170px;
   --stats-panel-min-height: 150px;
   --stats-panel-max-height: 600px;
   --stats-panel-width: 700px;
-  
 }
 
 /* -----------------------------------------------------------------------------
@@ -67,7 +66,8 @@
   flex-direction: column;
   background-color: var(--background-primary-alt);
   border-right: 1px solid var(--background-modifier-border-hover);
-  border-radius: var(--container-border-radius) 0 0 var(--container-border-radius);
+  border-radius: var(--container-border-radius) 0 0
+    var(--container-border-radius);
   transition: width 0.3s ease, min-width 0.3s ease, transform 0.3s ease;
   position: relative;
   z-index: 20;
@@ -466,9 +466,9 @@
   height: var(--cell-size);
   border-radius: var(--cell-border-radius);
   cursor: pointer;
-  transition: transform var(--transition-speed) ease, 
-              box-shadow var(--transition-speed) ease,
-              background-color var(--transition-speed) ease;
+  transition: transform var(--transition-speed) ease,
+    box-shadow var(--transition-speed) ease,
+    background-color var(--transition-speed) ease;
   position: relative;
 }
 
@@ -495,7 +495,6 @@
   box-shadow: 0 0 8px var(--present-color);
   border-color: var(--present-color);
 }
-
 
 .chronica-grid-cell.past.event {
   border-width: 2px !important;
@@ -760,12 +759,10 @@
          RESPONSIVE DESIGN
          ----------------------------------------------------------------------------- */
 
-  @media (max-width: 768px) {
-    .chronica-main-container {
-      flex-direction: column;
-        }
-      
-        
+@media (max-width: 768px) {
+  .chronica-main-container {
+    flex-direction: column;
+  }
 
   .chronica-sidebar:not(.collapsed) {
     width: 100%;
@@ -859,68 +856,68 @@
   padding-top: 5px;
 }
 
-
 /* -----------------------------------------------------------------------------
    STATISTICS PANEL
    ----------------------------------------------------------------------------- */
-   .chronica-stats-handle {
-    position: fixed;
-    bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 120px;
-    height: 24px;
-    background-color: var(--background-secondary-alt);
-    border-radius: 6px 6px 0 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    color: var(--text-muted);
-    font-size: 12px;
-    transition: transform 0.3s ease, background-color 0.2s ease, left 0.3s ease;
-    z-index: 100;
-    box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.1);
-  }
-  
-  .chronica-stats-handle:hover {
-    background-color: var(--interactive-accent);
-    color: var(--text-on-accent);
-    transform: translateX(-50%) translateY(-2px);
-  }
-  
-  .chronica-stats-handle-icon {
-    margin-right: 4px;
-    width: 14px;
-    height: 14px;
-  }
+.chronica-stats-handle {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 120px;
+  height: 24px;
+  background-color: var(--background-secondary-alt);
+  border-radius: 6px 6px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 12px;
+  transition: transform 0.3s ease, background-color 0.2s ease, left 0.3s ease;
+  z-index: 100;
+  box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.1);
+}
 
-  .chronica-content-area.stats-expanded {
-    padding-bottom: 0; 
-   }
-  
-   .chronica-stats-panel {
-    width: var(--stats-panel-width);
-    max-width: 1500px;
-    min-width: 200px;
-    padding: 0;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    background-color: var(--background-primary-alt);
-    border-top: 1px solid var(--background-modifier-border-hover);
-    border-radius: 6px 6px 0 0;
-    box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.1);
-    transition: height 0.3s ease, min-height 0.3s ease, transform 0.3s ease, left 0.3s ease;
-    position: fixed;
-    bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 20;
-    will-change: height, left, transform;
-  }
+.chronica-stats-handle:hover {
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+  transform: translateX(-50%) translateY(-2px);
+}
 
-  .chronica-stats-left-handle,
+.chronica-stats-handle-icon {
+  margin-right: 4px;
+  width: 14px;
+  height: 14px;
+}
+
+.chronica-content-area.stats-expanded {
+  padding-bottom: 0;
+}
+
+.chronica-stats-panel {
+  width: var(--stats-panel-width);
+  max-width: 1500px;
+  min-width: 200px;
+  padding: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--background-primary-alt);
+  border-top: 1px solid var(--background-modifier-border-hover);
+  border-radius: 6px 6px 0 0;
+  box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.1);
+  transition: height 0.3s ease, min-height 0.3s ease, transform 0.3s ease,
+    left 0.3s ease;
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  will-change: height, left, transform;
+}
+
+.chronica-stats-left-handle,
 .chronica-stats-right-handle {
   position: absolute;
   width: 8px;
@@ -944,199 +941,200 @@
   background-color: rgba(var(--interactive-accent-rgb), 0.1);
 }
 
+.chronica-stats-panel.expanded {
+  height: var(--stats-panel-height);
+  min-height: var(--stats-panel-min-height);
+}
 
-  .chronica-stats-panel.expanded {
-    height: var(--stats-panel-height);
-    min-height: var(--stats-panel-min-height);
-  }
+.chronica-stats-panel.collapsed {
+  height: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-top: none;
+}
 
-  .chronica-stats-panel.collapsed {
-    height: 0;
-    min-height: 0;
-    overflow: hidden;
-    border-top: none;
-  }
+.chronica-stats-header {
+  display: flex;
+  align-items: center;
+  padding: 10px 15px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  background-color: var(--background-secondary-alt);
+  cursor: move; /* Indicate draggable */
+  cursor: grab; /* Modern grab cursor */
+}
 
-  .chronica-stats-header {
-    display: flex;
-    align-items: center;
-    padding: 10px 15px;
-    border-bottom: 1px solid var(--background-modifier-border);
-    background-color: var(--background-secondary-alt);
-    cursor: move; /* Indicate draggable */
-    cursor: grab; /* Modern grab cursor */
-  }
+.chronica-stats-header:active {
+  cursor: grabbing; /* Change when actively dragging */
+}
 
-  .chronica-stats-header:active {
-    cursor: grabbing; /* Change when actively dragging */
-  }
-  
-  .chronica-stats-drag-handle {
-    width: 60px;
-    height: 4px;
-    background-color: var(--text-muted) !important; /* Use text-muted for more visibility */
-    border-radius: 10px;
-    margin: 6px auto 10px auto;
-    cursor: ns-resize;
-    position: relative;
-    opacity: 0.2 !important; /* Ensure it's visible */
-  }
-  
-  .chronica-stats-drag-handle:hover {
-    background-color: var(--text-muted); 
-    opacity: 0.5 !important;
-  }
-  
-  .chronica-stats-drag-handle::after {
-    content: none;
-    display: none;
-  }
-  
-  .chronica-stats-tabs {
-    display: flex;
-    gap: 5px;
-    flex-grow: 1;
-  }
-  
-  .chronica-stats-tab {
-    padding: 5px 10px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 14px;
-    color: var(--text-muted);
-    background-color: transparent;
-    border: none;
-    transition: background-color 0.2s ease, color 0.2s ease;
-  }
-  
-  .chronica-stats-tab:hover {
-    background-color: var(--background-modifier-hover);
-    color: var(--text-normal);
-  }
-  
-  .chronica-stats-tab.active {
-    background-color: var(--interactive-accent);
-    color: var(--text-on-accent);
-  }
-  
-  .chronica-stats-close {
-    background-color: transparent;
-    border: none;
-    color: var(--text-muted);
-    cursor: pointer;
-    padding: 5px;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background-color 0.2s ease, color 0.2s ease;
-  }
-  
-  .chronica-stats-close:hover {
-    background-color: var(--background-modifier-hover);
-    color: var(--text-normal);
-  }
-  
-  .chronica-stats-content {
-    padding: 15px;
-    overflow-y: auto;
-    flex-grow: 1;
-  }
-  
-  .chronica-stats-tab-content {
-    display: none;
-  }
-  
-  .chronica-stats-tab-content.active {
-    display: block;
-  }
-  
-  /* Progress indicators */
-  .chronica-progress-bar {
-    width: 100%;
-    height: 10px;
-    background-color: var(--background-modifier-border);
-    border-radius: 5px;
-    margin: 10px 0;
-    overflow: hidden;
-  }
-  
-  .chronica-progress-bar-fill {
-    height: 100%;
-    background-color: var(--interactive-accent);
-    border-radius: 5px;
-  }
-  
-  .chronica-circular-progress {
-    width: 80px;
-    height: 80px;
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto;
-  }
-  
-  .chronica-circular-progress svg {
-    position: absolute;
-    top: 0;
-    left: 0;
-  }
-  
-  .chronica-circular-progress-text {
-    font-size: 18px;
-    font-weight: 600;
-  }
-  
-  /* Stat cards and layout */
-  .chronica-stats-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 15px;
-    margin-top: 15px;
-  }
-  
-  .chronica-stat-card {
-    background-color: var(--background-secondary);
-    border-radius: 6px;
-    padding: 15px;
-    box-shadow: var(--card-shadow);
-  }
-  
-  .chronica-stat-title {
-    font-size: 14px;
-    color: var(--text-muted);
-    margin-bottom: 5px;
-  }
-  
-  .chronica-stat-value {
-    font-size: 20px;
-    font-weight: 600;
-    color: var(--text-normal);
-  }
-  
-  .chronica-stat-subtitle {
-    font-size: 12px;
-    color: var(--text-muted);
-    margin-top: 5px;
-  }
+.chronica-stats-drag-handle {
+  width: 60px;
+  height: 4px;
+  background-color: var(
+    --text-muted
+  ) !important; /* Use text-muted for more visibility */
+  border-radius: 10px;
+  margin: 6px auto 10px auto;
+  cursor: ns-resize;
+  position: relative;
+  opacity: 0.2 !important; /* Ensure it's visible */
+}
 
-  .chronica-view {
-    /* Ensure grid view adjusts when stats panel is open */
-    transition: padding-bottom 0.3s ease;
-  }
-    
-  .chronica-stats-tabs {
-    flex-wrap: wrap;
-    justify-content: center;
-   }
-    
-  .chronica-stats-tab {
-    padding: 3px 6px;
-    font-size: 12px;
-   }
+.chronica-stats-drag-handle:hover {
+  background-color: var(--text-muted);
+  opacity: 0.5 !important;
+}
 
-   /* Improved stats layout */
+.chronica-stats-drag-handle::after {
+  content: none;
+  display: none;
+}
+
+.chronica-stats-tabs {
+  display: flex;
+  gap: 5px;
+  flex-grow: 1;
+}
+
+.chronica-stats-tab {
+  padding: 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text-muted);
+  background-color: transparent;
+  border: none;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.chronica-stats-tab:hover {
+  background-color: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.chronica-stats-tab.active {
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.chronica-stats-close {
+  background-color: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.chronica-stats-close:hover {
+  background-color: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.chronica-stats-content {
+  padding: 15px;
+  overflow-y: auto;
+  flex-grow: 1;
+}
+
+.chronica-stats-tab-content {
+  display: none;
+}
+
+.chronica-stats-tab-content.active {
+  display: block;
+}
+
+/* Progress indicators */
+.chronica-progress-bar {
+  width: 100%;
+  height: 10px;
+  background-color: var(--background-modifier-border);
+  border-radius: 5px;
+  margin: 10px 0;
+  overflow: hidden;
+}
+
+.chronica-progress-bar-fill {
+  height: 100%;
+  background-color: var(--interactive-accent);
+  border-radius: 5px;
+}
+
+.chronica-circular-progress {
+  width: 80px;
+  height: 80px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+}
+
+.chronica-circular-progress svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.chronica-circular-progress-text {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* Stat cards and layout */
+.chronica-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.chronica-stat-card {
+  background-color: var(--background-secondary);
+  border-radius: 6px;
+  padding: 15px;
+  box-shadow: var(--card-shadow);
+}
+
+.chronica-stat-title {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-bottom: 5px;
+}
+
+.chronica-stat-value {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.chronica-stat-subtitle {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 5px;
+}
+
+.chronica-view {
+  /* Ensure grid view adjusts when stats panel is open */
+  transition: padding-bottom 0.3s ease;
+}
+
+.chronica-stats-tabs {
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.chronica-stats-tab {
+  padding: 3px 6px;
+  font-size: 12px;
+}
+
+/* Improved stats layout */
 .chronica-progress-container {
   display: flex;
   align-items: center;
@@ -1197,8 +1195,8 @@
   .chronica-stats-grid {
     grid-template-columns: 1fr;
   }
-  
-  .chronica-stat-section, 
+
+  .chronica-stat-section,
   .chronica-stat-card-full {
     grid-column: span 1;
   }
@@ -1540,7 +1538,6 @@
   display: none;
 }
 
-
 /* Donut chart styling */
 .chronica-donut-container {
   display: flex;
@@ -1720,16 +1717,15 @@
     width: 42px;
     height: 42px;
   }
-  
+
   .chronica-year-tile-year {
     font-size: 10px;
   }
-  
+
   .chronica-year-tile-count {
     font-size: 14px;
   }
 }
-
 
 /* Monthly chart */
 .chronica-monthly-chart-container {
@@ -1764,13 +1760,84 @@
   .chronica-charts-grid-container {
     grid-template-columns: 1fr;
   }
-  
+
   .chronica-donut-container {
     flex-direction: column;
     align-items: center;
   }
-  
+
   .chronica-chart-legend {
     width: 100%;
   }
+}
+
+/* Future Planning Horizon styles */
+.chronica-horizons-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 20px 0;
+}
+
+.chronica-horizon-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.chronica-horizon-label {
+  width: 120px;
+  text-align: right;
+  font-size: 14px;
+  margin-right: 10px;
+  color: var(--text-muted);
+}
+
+.chronica-horizon-bar-container {
+  flex-grow: 1;
+  height: 24px;
+  position: relative;
+  background-color: var(--background-primary);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.chronica-horizon-bar {
+  height: 100%;
+  background-color: var(--interactive-accent);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.chronica-horizon-count {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-weight: 600;
+  color: var(--text-normal);
+  font-size: 14px;
+}
+
+.chronica-horizon-summary {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 10px;
+  font-style: italic;
+}
+
+/* Seasonal Pattern Analysis styles */
+.chronica-seasonal-chart-container {
+  width: 100%;
+  height: 200px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 10px 0;
+}
+
+.chronica-seasonal-chart {
+  width: 200px;
+  height: 200px;
 }

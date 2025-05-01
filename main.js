@@ -44,8 +44,8 @@ class FolderSuggest extends obsidian.AbstractInputSuggest {
         return results.filter((f) => f.toLowerCase().includes(query.toLowerCase()));
     }
     renderSuggestion(item, el) {
-        el.createEl('div', { text: item });
-        el.addEventListener('click', (evt) => {
+        el.createEl("div", { text: item });
+        el.addEventListener("click", (evt) => {
             this.onChooseSuggestion(item, evt);
         });
     }
@@ -53,7 +53,7 @@ class FolderSuggest extends obsidian.AbstractInputSuggest {
         this.inputEl.value = item;
         this.plugin.settings.notesFolder = item;
         this.plugin.saveSettings();
-        this.inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+        this.inputEl.dispatchEvent(new Event("input", { bubbles: true }));
         this.close();
     }
 }
@@ -86,8 +86,8 @@ const DEFAULT_SETTINGS = {
     zoomLevel: 1.0,
     defaultFitToScreen: false,
     isSidebarOpen: false,
-    cellShape: 'square',
-    gridOrientation: 'landscape',
+    cellShape: "square",
+    gridOrientation: "landscape",
     isStatsOpen: false,
     activeStatsTab: "overview",
     statsPanelHeight: 470,
@@ -172,7 +172,7 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
                     this.settings.customEvents[t.name] = purge(list);
                 }
             }
-            // 4) Save & redraw  
+            // 4) Save & redraw
             await this.saveSettings();
             this.refreshAllViews();
         }));
@@ -207,8 +207,8 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
         this.registerInterval(window.setInterval(() => this.checkAndAutoFill(), 1000 * 60 * 60));
     }
     /**
-   * Scan vault for notes with event metadata and populate plugin settings
-   */
+     * Scan vault for notes with event metadata and populate plugin settings
+     */
     async scanVaultForEvents() {
         console.log("Scanning vault for event metadata...");
         // Get all markdown files in the vault
@@ -255,11 +255,11 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
                 // Parse frontmatter
                 const frontmatter = frontmatterMatch[1];
                 const metadata = {};
-                frontmatter.split('\n').forEach(line => {
+                frontmatter.split("\n").forEach((line) => {
                     const match = line.match(/^([^:]+):\s*(.+)$/);
                     if (match) {
                         const [_, key, value] = match;
-                        metadata[key.trim()] = value.trim().replace(/^"(.*)"$/, '$1');
+                        metadata[key.trim()] = value.trim().replace(/^"(.*)"$/, "$1");
                     }
                 });
                 // If no event or type, skip
@@ -285,7 +285,7 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
                             endWeek,
                             description,
                             type: eventType,
-                            color: metadata.color || ""
+                            color: metadata.color || "",
                         });
                     }
                     // We'll process this note as part of a range later
@@ -329,7 +329,7 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
                     default:
                         // Handle custom event types
                         if (this.settings.customEventTypes) {
-                            const customType = this.settings.customEventTypes.find(t => t.name === eventType);
+                            const customType = this.settings.customEventTypes.find((t) => t.name === eventType);
                             if (customType) {
                                 if (!this.settings.customEvents[eventType]) {
                                     this.settings.customEvents[eventType] = [];
@@ -383,7 +383,7 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
                 default:
                     // Handle custom event types
                     if (this.settings.customEventTypes) {
-                        const customType = this.settings.customEventTypes.find(t => t.name === rangeEvent.type);
+                        const customType = this.settings.customEventTypes.find((t) => t.name === rangeEvent.type);
                         if (customType) {
                             if (!this.settings.customEvents[rangeEvent.type]) {
                                 this.settings.customEvents[rangeEvent.type] = [];
@@ -411,9 +411,7 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
             console.log("Skipping refresh during potential sync operation");
             return;
         }
-        this.app.workspace
-            .getLeavesOfType(TIMELINE_VIEW_TYPE)
-            .forEach((leaf) => {
+        this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE).forEach((leaf) => {
             leaf.view.renderView();
         });
     }
@@ -582,10 +580,26 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
                 let eventMeta = null;
                 // Check built-in event types
                 const eventTypes = [
-                    { events: this.settings.greenEvents, type: "Major Life", color: "#4CAF50" },
-                    { events: this.settings.blueEvents, type: "Travel", color: "#2196F3" },
-                    { events: this.settings.pinkEvents, type: "Relationship", color: "#E91E63" },
-                    { events: this.settings.purpleEvents, type: "Education/Career", color: "#9C27B0" }
+                    {
+                        events: this.settings.greenEvents,
+                        type: "Major Life",
+                        color: "#4CAF50",
+                    },
+                    {
+                        events: this.settings.blueEvents,
+                        type: "Travel",
+                        color: "#2196F3",
+                    },
+                    {
+                        events: this.settings.pinkEvents,
+                        type: "Relationship",
+                        color: "#E91E63",
+                    },
+                    {
+                        events: this.settings.purpleEvents,
+                        type: "Education/Career",
+                        color: "#9C27B0",
+                    },
                 ];
                 // [KEEP THE REST OF THE EXISTING EVENT DETECTION LOGIC]
                 // Add frontmatter if event exists
@@ -748,7 +762,7 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
                     isFirstOfYear: currentMonth === 0,
                     isBirthMonth: currentMonth === birthMonth && currentYear === birthYear,
                     fullLabel: `${MONTH_NAMES[currentMonth]} ${currentYear}`,
-                    monthNumber: currentMonth + (currentYear - birthYear) * 12 // Add this line
+                    monthNumber: currentMonth + (currentYear - birthYear) * 12, // Add this line
                 });
                 // Update last marked month/year
                 lastMarkedMonth = currentMonth;
@@ -801,11 +815,11 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
         return `${formatDate(firstDayOfWeek)} - ${formatDate(lastDayOfWeek)}`;
     }
     /**
-   * Calculate the birthday date for a specific age year
-   * @param birthDate - Original birth date
-   * @param ageYear - Age year to calculate for (0-based, 0 = birth year)
-   * @returns Date object representing the birthday in that age year
-   */
+     * Calculate the birthday date for a specific age year
+     * @param birthDate - Original birth date
+     * @param ageYear - Age year to calculate for (0-based, 0 = birth year)
+     * @returns Date object representing the birthday in that age year
+     */
     calculateBirthdayInYear(birthDate, ageYear) {
         const targetDate = new Date(birthDate);
         targetDate.setFullYear(birthDate.getFullYear() + ageYear);
@@ -841,19 +855,19 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
             correctedDate.setHours(0, 0, 0, 0);
             return {
                 weekNumber: weekNumber,
-                weekStart: correctedDate
+                weekStart: correctedDate,
             };
         }
         return {
             weekNumber: weekNumber,
-            weekStart: tempDate
+            weekStart: tempDate,
         };
     }
     /**
-   * Get the start date (Monday) of the ISO week containing the given date
-   * @param date - Date to find the containing week for
-   * @returns Date object representing the start of the week (Monday)
-   */
+     * Get the start date (Monday) of the ISO week containing the given date
+     * @param date - Date to find the containing week for
+     * @returns Date object representing the start of the week (Monday)
+     */
     getStartOfISOWeek(date) {
         const tempDate = new Date(date.getTime());
         const dayOfWeek = tempDate.getDay() || 7; // Convert Sunday (0) to 7
@@ -890,11 +904,11 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
             const frontmatter = frontmatterMatch[1];
             const metadata = {};
             // Simple YAML parsing (not using an external parser for simplicity)
-            frontmatter.split('\n').forEach(line => {
+            frontmatter.split("\n").forEach((line) => {
                 const match = line.match(/^([^:]+):\s*(.+)$/);
                 if (match) {
                     const [_, key, value] = match;
-                    metadata[key.trim()] = value.trim().replace(/^"(.*)"$/, '$1');
+                    metadata[key.trim()] = value.trim().replace(/^"(.*)"$/, "$1");
                 }
             });
             return {
@@ -904,7 +918,7 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
                 type: metadata.type,
                 color: metadata.color,
                 startDate: metadata.startDate,
-                endDate: metadata.endDate
+                endDate: metadata.endDate,
             };
         }
         catch (error) {
@@ -944,11 +958,12 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
             // Create new file with frontmatter and basic template
             content = this.formatFrontmatter(metadata);
             // Add basic template
-            const weekNum = parseInt(weekKey.split('-W')[1]);
-            const year = parseInt(weekKey.split('-')[0]);
+            const weekNum = parseInt(weekKey.split("-W")[1]);
+            const year = parseInt(weekKey.split("-")[0]);
             content += `# Week ${weekNum}, ${year}\n\n## Reflections\n\n## Tasks\n\n## Notes\n\n`;
             // Create folder if needed
-            if (this.settings.notesFolder && this.settings.notesFolder.trim() !== "") {
+            if (this.settings.notesFolder &&
+                this.settings.notesFolder.trim() !== "") {
                 try {
                     const folderExists = this.app.vault.getAbstractFileByPath(this.settings.notesFolder);
                     if (!folderExists) {
@@ -978,7 +993,7 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
         }
         // Add each metadata field
         Object.entries(metadata).forEach(([key, value]) => {
-            if (value !== undefined && value !== null && value !== '') {
+            if (value !== undefined && value !== null && value !== "") {
                 // If value contains special characters, wrap in quotes
                 const needsQuotes = /[:#\[\]{}|>*&!%@,]/.test(String(value));
                 const formattedValue = needsQuotes ? `"${value}"` : value;
@@ -989,9 +1004,9 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
         return frontmatter;
     }
     /**
- * Handle file deletion and remove any associated events
- * @param file - File that was deleted
- */
+     * Handle file deletion and remove any associated events
+     * @param file - File that was deleted
+     */
     async handleFileDelete(file) {
         // Check if the file is a week or event note
         const filePath = file.path;
@@ -1073,7 +1088,8 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
             for (const type of this.settings.customEventTypes) {
                 if (this.settings.customEvents[type.name]) {
                     const newCustomEvents = filterEvents(this.settings.customEvents[type.name]);
-                    if (newCustomEvents.length !== this.settings.customEvents[type.name].length) {
+                    if (newCustomEvents.length !==
+                        this.settings.customEvents[type.name].length) {
                         this.settings.customEvents[type.name] = newCustomEvents;
                         needsSave = true;
                     }
@@ -1084,9 +1100,7 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
         if (needsSave) {
             await this.saveSettings();
             // Refresh all timeline views
-            this.app.workspace
-                .getLeavesOfType(TIMELINE_VIEW_TYPE)
-                .forEach((leaf) => {
+            this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE).forEach((leaf) => {
                 const view = leaf.view;
                 view.renderView();
             });
@@ -1101,10 +1115,10 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
         }
     }
     /**
-   * Get a dedicated leaf for Chronica operations
-   * @param createIfNeeded - Whether to create a new leaf if none exists
-   * @returns A workspace leaf specifically for Chronica
-   */
+     * Get a dedicated leaf for Chronica operations
+     * @param createIfNeeded - Whether to create a new leaf if none exists
+     * @returns A workspace leaf specifically for Chronica
+     */
     getChronicaLeaf(createIfNeeded = true) {
         // First, check for existing Chronica views
         const leaves = this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE);
@@ -1115,7 +1129,7 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
         // If no leaf exists and we're asked to create one
         if (createIfNeeded) {
             // Create a new leaf in a split
-            return this.app.workspace.getLeaf('split', 'vertical');
+            return this.app.workspace.getLeaf("split", "vertical");
         }
         return null;
     }
@@ -1518,8 +1532,8 @@ class ChronosEventModal extends obsidian.Modal {
                 description: this.eventDescription,
                 type: this.selectedEventType,
                 color: this.selectedColor,
-                startDate: startDate.toISOString().split('T')[0],
-                endDate: endDate.toISOString().split('T')[0]
+                startDate: startDate.toISOString().split("T")[0],
+                endDate: endDate.toISOString().split("T")[0],
             };
             await this.plugin.updateEventInNote(startWeekKey, metadata);
             // Save settings
@@ -1546,7 +1560,7 @@ class ChronosEventModal extends obsidian.Modal {
                 description: this.eventDescription,
                 type: this.selectedEventType,
                 color: this.selectedColor,
-                startDate: eventDate.toISOString().split('T')[0]
+                startDate: eventDate.toISOString().split("T")[0],
             };
             await this.plugin.updateEventInNote(weekKey, metadata);
             this.plugin.saveSettings().then(() => {
@@ -1624,7 +1638,7 @@ class ChronosEventModal extends obsidian.Modal {
                     type: this.selectedEventType,
                     color: this.selectedColor,
                     startDate: startDateStr,
-                    endDate: endDateStr
+                    endDate: endDateStr,
                 };
                 content = this.plugin.formatFrontmatter(metadata);
                 // Add note content with updated title
@@ -1643,7 +1657,7 @@ class ChronosEventModal extends obsidian.Modal {
                     description: this.eventDescription,
                     type: this.selectedEventType,
                     color: this.selectedColor,
-                    startDate: dateStr
+                    startDate: dateStr,
                 };
                 content = this.plugin.formatFrontmatter(metadata);
                 // Add note content with updated title
@@ -1691,19 +1705,19 @@ class ChronosTimelineView extends obsidian.ItemView {
         this.isSidebarOpen = this.plugin.settings.isSidebarOpen;
         this.isStatsOpen = this.plugin.settings.isStatsOpen;
         // Initialize CSS variables for stats panel
-        document.documentElement.style.setProperty('--stats-panel-height', `${this.plugin.settings.statsPanelHeight}px`);
-        document.documentElement.style.setProperty('--stats-panel-width', `${this.plugin.settings.statsPanelWidth}px`);
-        this.registerDomEvent(window, 'resize', () => {
+        document.documentElement.style.setProperty("--stats-panel-height", `${this.plugin.settings.statsPanelHeight}px`);
+        document.documentElement.style.setProperty("--stats-panel-width", `${this.plugin.settings.statsPanelWidth}px`);
+        this.registerDomEvent(window, "resize", () => {
             // Reapply layout rules whenever window size changes
             this.updateStatsPanelLayout();
         });
     }
     /**
-   * Setup the horizontal resize functionality for the stats panel
-   * @param leftHandle - Left handle element for dragging
-   * @param rightHandle - Right handle element for dragging
-   * @param statsPanel - Panel to resize
-   */
+     * Setup the horizontal resize functionality for the stats panel
+     * @param leftHandle - Left handle element for dragging
+     * @param rightHandle - Right handle element for dragging
+     * @param statsPanel - Panel to resize
+     */
     setupStatsPanelHorizontalResize(leftHandle, rightHandle, statsPanel) {
         let startX = 0;
         let startWidth = 0;
@@ -1720,7 +1734,7 @@ class ChronosTimelineView extends obsidian.ItemView {
         const onLeftMouseMove = (e) => {
             const deltaX = startX - e.clientX;
             const newWidth = Math.max(400, Math.min(1200, startWidth + deltaX));
-            document.documentElement.style.setProperty('--stats-panel-width', `${newWidth}px`);
+            document.documentElement.style.setProperty("--stats-panel-width", `${newWidth}px`);
             statsPanel.style.width = `${newWidth}px`;
             statsPanel.style.minWidth = `${newWidth}px`;
             statsPanel.style.maxWidth = `${newWidth}px`;
@@ -1739,7 +1753,7 @@ class ChronosTimelineView extends obsidian.ItemView {
         const onRightMouseMove = (e) => {
             const deltaX = e.clientX - startX;
             const newWidth = Math.max(400, Math.min(1200, startWidth + deltaX));
-            document.documentElement.style.setProperty('--stats-panel-width', `${newWidth}px`);
+            document.documentElement.style.setProperty("--stats-panel-width", `${newWidth}px`);
             statsPanel.style.width = `${newWidth}px`;
             statsPanel.style.minWidth = `${newWidth}px`;
             statsPanel.style.maxWidth = `${newWidth}px`;
@@ -1762,9 +1776,9 @@ class ChronosTimelineView extends obsidian.ItemView {
             if (e.button !== 0)
                 return;
             // Skip if clicked on a button or other control
-            if (e.target.tagName === 'BUTTON' ||
-                e.target.closest('.chronica-stats-tab') ||
-                e.target.closest('.chronica-stats-close')) {
+            if (e.target.tagName === "BUTTON" ||
+                e.target.closest(".chronica-stats-tab") ||
+                e.target.closest(".chronica-stats-close")) {
                 return;
             }
             e.preventDefault();
@@ -1805,8 +1819,12 @@ class ChronosTimelineView extends obsidian.ItemView {
      */
     setupStatsPanelWidthResize(statsPanel) {
         // Create left and right resize handles
-        const leftHandle = statsPanel.createEl("div", { cls: "chronica-stats-left-handle" });
-        const rightHandle = statsPanel.createEl("div", { cls: "chronica-stats-right-handle" });
+        const leftHandle = statsPanel.createEl("div", {
+            cls: "chronica-stats-left-handle",
+        });
+        const rightHandle = statsPanel.createEl("div", {
+            cls: "chronica-stats-right-handle",
+        });
         let startX = 0;
         let startWidth = 0;
         // Left handle drag (decreases width)
@@ -1822,7 +1840,7 @@ class ChronosTimelineView extends obsidian.ItemView {
         const onLeftMouseMove = (e) => {
             const deltaX = startX - e.clientX;
             const newWidth = Math.max(400, Math.min(1200, startWidth + deltaX));
-            document.documentElement.style.setProperty('--stats-panel-width', `${newWidth}px`);
+            document.documentElement.style.setProperty("--stats-panel-width", `${newWidth}px`);
             statsPanel.style.width = `${newWidth}px`;
             this.plugin.settings.statsPanelWidth = newWidth;
         };
@@ -1839,7 +1857,7 @@ class ChronosTimelineView extends obsidian.ItemView {
         const onRightMouseMove = (e) => {
             const deltaX = e.clientX - startX;
             const newWidth = Math.max(400, Math.min(1200, startWidth + deltaX));
-            document.documentElement.style.setProperty('--stats-panel-width', `${newWidth}px`);
+            document.documentElement.style.setProperty("--stats-panel-width", `${newWidth}px`);
             statsPanel.style.width = `${newWidth}px`;
             this.plugin.settings.statsPanelWidth = newWidth;
         };
@@ -1878,7 +1896,7 @@ class ChronosTimelineView extends obsidian.ItemView {
         contentEl.empty();
         contentEl.addClass("chronica-timeline-container");
         // Set initial CSS variables - this should be done regardless of panel state
-        document.documentElement.style.setProperty('--stats-panel-height', `${this.plugin.settings.statsPanelHeight}px`);
+        document.documentElement.style.setProperty("--stats-panel-height", `${this.plugin.settings.statsPanelHeight}px`);
         // Additional setup only if stats panel is open
         if (this.isStatsOpen) {
             // Force content area padding update
@@ -2058,16 +2076,16 @@ class ChronosTimelineView extends obsidian.ItemView {
         // ── Cell Shape Dropdown ──
         visualContainer.createEl("div", {
             cls: "section-header",
-            text: "Cell Shape"
+            text: "Cell Shape",
         });
         // Select
         const shapeSelect = visualContainer.createEl("select", {
-            cls: "chronica-select"
+            cls: "chronica-select",
         });
         ["square", "circle", "diamond"].forEach((opt) => {
             const option = shapeSelect.createEl("option", {
                 attr: { value: opt },
-                text: opt.charAt(0).toUpperCase() + opt.slice(1)
+                text: opt.charAt(0).toUpperCase() + opt.slice(1),
             });
             if (this.plugin.settings.cellShape === opt) {
                 option.selected = true;
@@ -2082,31 +2100,34 @@ class ChronosTimelineView extends obsidian.ItemView {
         // ── Grid Orientation Toggle ──
         visualContainer.createEl("div", {
             cls: "section-header",
-            text: "Grid Orientation"
+            text: "Grid Orientation",
         });
         // Orientation toggle button
         const orientationBtn = visualContainer.createEl("button", {
             cls: "chronica-btn chronica-orientation-button",
-            text: this.plugin.settings.gridOrientation === 'landscape'
+            text: this.plugin.settings.gridOrientation === "landscape"
                 ? "Switch to Portrait"
                 : "Switch to Landscape",
             attr: {
-                title: this.plugin.settings.gridOrientation === 'landscape'
+                title: this.plugin.settings.gridOrientation === "landscape"
                     ? "Display years as rows, weeks as columns"
-                    : "Display years as columns, weeks as rows"
+                    : "Display years as columns, weeks as rows",
             },
         });
         orientationBtn.addEventListener("click", async () => {
             // Toggle the orientation
             this.plugin.settings.gridOrientation =
-                this.plugin.settings.gridOrientation === 'landscape' ? 'portrait' : 'landscape';
+                this.plugin.settings.gridOrientation === "landscape"
+                    ? "portrait"
+                    : "landscape";
             // Save settings
             await this.plugin.saveSettings();
             // Update button text
-            orientationBtn.textContent = this.plugin.settings.gridOrientation === 'landscape'
-                ? "Switch to Portrait"
-                : "Switch to Landscape";
-            orientationBtn.setAttribute("title", this.plugin.settings.gridOrientation === 'landscape'
+            orientationBtn.textContent =
+                this.plugin.settings.gridOrientation === "landscape"
+                    ? "Switch to Portrait"
+                    : "Switch to Landscape";
+            orientationBtn.setAttribute("title", this.plugin.settings.gridOrientation === "landscape"
                 ? "Display years as rows, weeks as columns"
                 : "Display years as columns, weeks as rows");
             // Re-render the grid with new orientation
@@ -2160,7 +2181,9 @@ class ChronosTimelineView extends obsidian.ItemView {
         });
         // Calculate basic statistics
         const now = new Date();
-        const [year, month, day] = this.plugin.settings.birthday.split('-').map(Number);
+        const [year, month, day] = this.plugin.settings.birthday
+            .split("-")
+            .map(Number);
         const birthdayDate = new Date(year, month - 1, day);
         const ageInWeeks = this.plugin.getFullWeekAge(birthdayDate, now);
         const totalWeeks = this.plugin.settings.lifespan * 52;
@@ -2394,9 +2417,9 @@ class ChronosTimelineView extends obsidian.ItemView {
         const regularGap = cellGap; // Store the regular gap size
         // Create decade markers container (horizontal markers above the grid)
         if (this.plugin.settings.showDecadeMarkers) {
-            const isPortrait = this.plugin.settings.gridOrientation === 'portrait';
+            const isPortrait = this.plugin.settings.gridOrientation === "portrait";
             const decadeMarkersContainer = container.createEl("div", {
-                cls: `chronica-decade-markers ${isPortrait ? 'portrait-mode' : ''}`,
+                cls: `chronica-decade-markers ${isPortrait ? "portrait-mode" : ""}`,
             });
             if (!isPortrait) {
                 decadeMarkersContainer.style.left = `${leftOffset}px`;
@@ -2404,9 +2427,9 @@ class ChronosTimelineView extends obsidian.ItemView {
             // Add decade markers starting from 10 (skipping 0)
             // Create decade markers container (horizontal markers above the grid)
             if (this.plugin.settings.showDecadeMarkers) {
-                const isPortrait = this.plugin.settings.gridOrientation === 'portrait';
+                const isPortrait = this.plugin.settings.gridOrientation === "portrait";
                 const decadeMarkersContainer = container.createEl("div", {
-                    cls: `chronica-decade-markers ${isPortrait ? 'portrait-mode' : ''}`,
+                    cls: `chronica-decade-markers ${isPortrait ? "portrait-mode" : ""}`,
                 });
                 if (!isPortrait) {
                     decadeMarkersContainer.style.left = `${leftOffset}px`;
@@ -2414,7 +2437,7 @@ class ChronosTimelineView extends obsidian.ItemView {
                 // Add decade markers starting from 10 (skipping 0)
                 for (let decade = 10; decade <= this.plugin.settings.lifespan; decade += 10) {
                     const marker = decadeMarkersContainer.createEl("div", {
-                        cls: `chronica-decade-marker ${isPortrait ? 'portrait-mode' : ''}`,
+                        cls: `chronica-decade-marker ${isPortrait ? "portrait-mode" : ""}`,
                         text: decade.toString(),
                     });
                     // Position each decade marker using the calculateYearPosition method
@@ -2440,7 +2463,9 @@ class ChronosTimelineView extends obsidian.ItemView {
         }
         // Add birthday cake marker (independent of month markers)
         if (this.plugin.settings.showBirthdayMarker) {
-            const [year, month, day] = this.plugin.settings.birthday.split('-').map(Number);
+            const [year, month, day] = this.plugin.settings.birthday
+                .split("-")
+                .map(Number);
             const birthdayDate = new Date(year, month - 1, day); // Month is 0-indexed in JavaScript
             const birthMonth = birthdayDate.getMonth();
             const birthDay = birthdayDate.getDate();
@@ -2461,9 +2486,9 @@ class ChronosTimelineView extends obsidian.ItemView {
             cakeEl.setAttribute("title", `${birthMonthName} ${birthDay}, ${birthYear} (Your Birthday)`);
         }
         // Create markers container with structured layout
-        const isPortrait = this.plugin.settings.gridOrientation === 'portrait';
+        const isPortrait = this.plugin.settings.gridOrientation === "portrait";
         const markersContainer = container.createEl("div", {
-            cls: `chronica-vertical-markers ${isPortrait ? 'portrait-mode' : ''}`,
+            cls: `chronica-vertical-markers ${isPortrait ? "portrait-mode" : ""}`,
         });
         // First, create the separate containers for week and month markers
         const weekMarkersContainer = markersContainer.createEl("div", {
@@ -2478,11 +2503,14 @@ class ChronosTimelineView extends obsidian.ItemView {
                 if (week === 0)
                     continue; // Skip 0 to start with 10
                 const marker = weekMarkersContainer.createEl("div", {
-                    cls: `chronica-week-marker ${isPortrait ? 'portrait-mode' : ''}`,
+                    cls: `chronica-week-marker ${isPortrait ? "portrait-mode" : ""}`,
                     text: week.toString(),
                 });
                 // Calculate the exact position - align to grid
-                const position = (week * (cellSize + cellGap) + cellSize / 2 - (cellSize + cellGap)) - (cellSize + cellGap);
+                const position = week * (cellSize + cellGap) +
+                    cellSize / 2 -
+                    (cellSize + cellGap) -
+                    (cellSize + cellGap);
                 if (isPortrait) {
                     marker.style.left = `${position + 6.5}px`;
                     marker.style.top = "10px"; // Fixed position from the top
@@ -2497,7 +2525,9 @@ class ChronosTimelineView extends obsidian.ItemView {
         }
         // Add month markers if enabled
         if (this.plugin.settings.showMonthMarkers) {
-            const [year, month, day] = this.plugin.settings.birthday.split('-').map(Number);
+            const [year, month, day] = this.plugin.settings.birthday
+                .split("-")
+                .map(Number);
             const birthdayDate = new Date(year, month - 1, day); // Month is 0-indexed in JavaScript
             const birthMonth = birthdayDate.getMonth();
             birthdayDate.getDate();
@@ -2537,7 +2567,7 @@ class ChronosTimelineView extends obsidian.ItemView {
                         weekIndex: weekPosition,
                         isFirstOfYear: marker.isFirstOfYear,
                         fullLabel: marker.fullLabel,
-                        monthNumber: marker.monthNumber
+                        monthNumber: marker.monthNumber,
                     });
                 }
             }
@@ -2547,13 +2577,13 @@ class ChronosTimelineView extends obsidian.ItemView {
                 weekIndex: birthMonthMarkerWeek,
                 isFirstOfYear: birthMonth === 0,
                 fullLabel: `${birthMonthName} ${birthYear} (Birth Month)`,
-                monthNumber: birthMonth
+                monthNumber: birthMonth,
             });
             // Render all month markers
             for (const [monthIndex, marker] of monthMarkersMap.entries()) {
                 // Create marker element
                 const markerEl = monthMarkersContainer.createEl("div", {
-                    cls: `chronica-month-marker ${marker.isFirstOfYear ? "first-of-year" : ""} ${monthIndex === birthMonth ? "birth-month" : ""} ${isPortrait ? 'portrait-mode' : ''}`,
+                    cls: `chronica-month-marker ${marker.isFirstOfYear ? "first-of-year" : ""} ${monthIndex === birthMonth ? "birth-month" : ""} ${isPortrait ? "portrait-mode" : ""}`,
                 });
                 // Add the month name
                 markerEl.textContent = marker.label;
@@ -2562,7 +2592,9 @@ class ChronosTimelineView extends obsidian.ItemView {
                     if (marker.monthNumber !== undefined) {
                         // Calculate position based on month number for even spacing
                         const weekPosition = marker.weekIndex % 52;
-                        markerEl.style.left = `${weekPosition * (cellSize + cellGap) + (cellSize + cellGap) + cellSize / 2}px`;
+                        markerEl.style.left = `${weekPosition * (cellSize + cellGap) +
+                            (cellSize + cellGap) +
+                            cellSize / 2}px`;
                         markerEl.style.top = `10px`; // Fixed distance from the top
                         markerEl.style.transform = "translateX(-50%)"; // Center marker on its position
                     }
@@ -2585,15 +2617,17 @@ class ChronosTimelineView extends obsidian.ItemView {
         }
         // Create the grid container
         const gridEl = container.createEl("div", { cls: "chronica-grid" });
-        gridEl.toggleClass('shape-circle', this.plugin.settings.cellShape === 'circle');
-        gridEl.toggleClass('shape-diamond', this.plugin.settings.cellShape === 'diamond');
+        gridEl.toggleClass("shape-circle", this.plugin.settings.cellShape === "circle");
+        gridEl.toggleClass("shape-diamond", this.plugin.settings.cellShape === "diamond");
         // Use display block instead of grid, as we'll manually position each cell
         gridEl.style.display = "block";
         gridEl.style.position = "absolute";
         gridEl.style.top = `${topOffset}px`;
         gridEl.style.left = `${leftOffset}px`;
         const now = new Date();
-        const [year, month, day] = this.plugin.settings.birthday.split('-').map(Number);
+        const [year, month, day] = this.plugin.settings.birthday
+            .split("-")
+            .map(Number);
         const birthdayDate = new Date(year, month - 1, day); // Month is 0-indexed in JavaScript
         const ageInWeeks = this.plugin.getFullWeekAge(birthdayDate, now);
         const currentWeekKey = this.plugin.getWeekKeyFromDate(now);
@@ -2622,8 +2656,18 @@ class ChronosTimelineView extends obsidian.ItemView {
                 // Format the dates
                 const formatDate = (date) => {
                     const months = [
-                        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+                        "Jan",
+                        "Feb",
+                        "Mar",
+                        "Apr",
+                        "May",
+                        "Jun",
+                        "Jul",
+                        "Aug",
+                        "Sep",
+                        "Oct",
+                        "Nov",
+                        "Dec",
                     ];
                     return `${months[date.getMonth()]} ${date.getDate()}`;
                 };
@@ -2636,7 +2680,7 @@ class ChronosTimelineView extends obsidian.ItemView {
                 // Calculate week position (simple)
                 const weekPos = week * (cellSize + regularGap);
                 // Position based on orientation
-                if (this.plugin.settings.gridOrientation === 'landscape') {
+                if (this.plugin.settings.gridOrientation === "landscape") {
                     // Landscape mode (default): years as columns, weeks as rows
                     cell.style.left = `${yearPos}px`;
                     cell.style.top = `${weekPos}px`;
@@ -2742,9 +2786,9 @@ class ChronosTimelineView extends obsidian.ItemView {
         }
     }
     /**
-   * Render the statistics panel
-   * @param container - Container to render panel in
-   */
+     * Render the statistics panel
+     * @param container - Container to render panel in
+     */
     renderStatsPanel(container) {
         // Create the stats handle (always visible)
         const statsHandle = container.createEl("div", {
@@ -2770,25 +2814,31 @@ class ChronosTimelineView extends obsidian.ItemView {
             }
         }
         // Create header
-        const statsHeader = statsPanel.createEl("div", { cls: "chronica-stats-header" });
+        const statsHeader = statsPanel.createEl("div", {
+            cls: "chronica-stats-header",
+        });
         // Set up horizontal dragging via header
         this.setupStatsPanelHorizontalDrag(statsHeader, statsPanel, statsHandle);
         // Add drag handle for resizing
-        const dragHandle = statsHeader.createEl("div", { cls: "chronica-stats-drag-handle" });
+        const dragHandle = statsHeader.createEl("div", {
+            cls: "chronica-stats-drag-handle",
+        });
         // Create tabs container
-        const tabsContainer = statsHeader.createEl("div", { cls: "chronica-stats-tabs" });
+        const tabsContainer = statsHeader.createEl("div", {
+            cls: "chronica-stats-tabs",
+        });
         // Define tabs
         const tabs = [
             { id: "overview", label: "Overview" },
             { id: "events", label: "Events" },
             { id: "timeline", label: "Timeline" },
-            { id: "charts", label: "Charts" }
+            { id: "charts", label: "Charts" },
         ];
         // Add tab buttons
-        tabs.forEach(tab => {
+        tabs.forEach((tab) => {
             const tabButton = tabsContainer.createEl("button", {
                 cls: `chronica-stats-tab ${this.plugin.settings.activeStatsTab === tab.id ? "active" : ""}`,
-                text: tab.label
+                text: tab.label,
             });
             tabButton.dataset.tabId = tab.id;
             // Add click event handler
@@ -2797,22 +2847,26 @@ class ChronosTimelineView extends obsidian.ItemView {
                 this.plugin.settings.activeStatsTab = tab.id;
                 this.plugin.saveSettings();
                 // Update UI (use class-based approach like sidebar)
-                tabsContainer.querySelectorAll(".chronica-stats-tab").forEach(btn => {
+                tabsContainer.querySelectorAll(".chronica-stats-tab").forEach((btn) => {
                     btn.classList.toggle("active", btn.getAttribute("data-tab-id") === tab.id);
                 });
                 // Update content
-                statsPanel.querySelectorAll(".chronica-stats-tab-content").forEach(content => {
+                statsPanel
+                    .querySelectorAll(".chronica-stats-tab-content")
+                    .forEach((content) => {
                     content.classList.toggle("active", content.id === `tab-content-${tab.id}`);
                 });
             });
         });
         // Add content container
-        const contentContainer = statsPanel.createEl("div", { cls: "chronica-stats-content" });
+        const contentContainer = statsPanel.createEl("div", {
+            cls: "chronica-stats-content",
+        });
         // Create tab content areas
-        tabs.forEach(tab => {
+        tabs.forEach((tab) => {
             const tabContent = contentContainer.createEl("div", {
                 cls: `chronica-stats-tab-content ${this.plugin.settings.activeStatsTab === tab.id ? "active" : ""}`,
-                attr: { id: `tab-content-${tab.id}` }
+                attr: { id: `tab-content-${tab.id}` },
             });
             // Add tab-specific content
             if (tab.id === "overview") {
@@ -2839,10 +2893,10 @@ class ChronosTimelineView extends obsidian.ItemView {
             // Important: Set explicit panel height when expanding
             if (this.isStatsOpen) {
                 statsPanel.style.height = `${this.plugin.settings.statsPanelHeight}px`;
-                document.documentElement.style.setProperty('--stats-panel-height', `${this.plugin.settings.statsPanelHeight}px`);
+                document.documentElement.style.setProperty("--stats-panel-height", `${this.plugin.settings.statsPanelHeight}px`);
             }
             else {
-                statsPanel.style.height = '0';
+                statsPanel.style.height = "0";
             }
             // Update content area padding
             const contentArea = this.containerEl.querySelector(".chronica-content-area");
@@ -2893,7 +2947,7 @@ class ChronosTimelineView extends obsidian.ItemView {
             const maxOffset = (windowWidth - panelWidth) / 2;
             const newOffset = Math.max(-maxOffset, Math.min(maxOffset, startOffset + deltaX));
             // Update CSS variable for height
-            document.documentElement.style.setProperty('--stats-panel-height', `${newHeight}px`);
+            document.documentElement.style.setProperty("--stats-panel-height", `${newHeight}px`);
             // Update panel height and position
             statsPanel.style.height = `${newHeight}px`;
             statsPanel.style.transform = `translateX(calc(-50% + ${newOffset}px))`;
@@ -2928,7 +2982,7 @@ class ChronosTimelineView extends obsidian.ItemView {
             return;
         // Set panel height
         const panelHeight = this.plugin.settings.statsPanelHeight;
-        document.documentElement.style.setProperty('--stats-panel-height', `${panelHeight}px`);
+        document.documentElement.style.setProperty("--stats-panel-height", `${panelHeight}px`);
         // Get horizontal offset
         const horizontalOffset = this.plugin.settings.statsPanelHorizontalOffset || 0;
         // Get the total window width and calculate the available width
@@ -2950,8 +3004,8 @@ class ChronosTimelineView extends obsidian.ItemView {
         }
         else {
             contentArea.classList.remove("stats-expanded");
-            statsPanel.style.height = '0';
-            contentArea.style.paddingBottom = '0';
+            statsPanel.style.height = "0";
+            contentArea.style.paddingBottom = "0";
         }
     }
     /**
@@ -2961,7 +3015,9 @@ class ChronosTimelineView extends obsidian.ItemView {
     renderOverviewTab(container) {
         // Calculate statistics
         const now = new Date();
-        const [year, month, day] = this.plugin.settings.birthday.split('-').map(Number);
+        const [year, month, day] = this.plugin.settings.birthday
+            .split("-")
+            .map(Number);
         const birthdayDate = new Date(year, month - 1, day);
         const ageInWeeks = this.plugin.getFullWeekAge(birthdayDate, now);
         const totalWeeks = this.plugin.settings.lifespan * 52;
@@ -2974,14 +3030,20 @@ class ChronosTimelineView extends obsidian.ItemView {
         const educationCareerEvents = this.plugin.settings.purpleEvents.length;
         // Calculate custom event counts
         let customEventCount = 0;
-        if (this.plugin.settings.customEventTypes && this.plugin.settings.customEvents) {
+        if (this.plugin.settings.customEventTypes &&
+            this.plugin.settings.customEvents) {
             for (const eventType of this.plugin.settings.customEventTypes) {
                 if (this.plugin.settings.customEvents[eventType.name]) {
-                    customEventCount += this.plugin.settings.customEvents[eventType.name].length;
+                    customEventCount +=
+                        this.plugin.settings.customEvents[eventType.name].length;
                 }
             }
         }
-        const totalEvents = majorLifeEvents + travelEvents + relationshipEvents + educationCareerEvents + customEventCount;
+        const totalEvents = majorLifeEvents +
+            travelEvents +
+            relationshipEvents +
+            educationCareerEvents +
+            customEventCount;
         // Create main container with grid layout
         const overviewGrid = container.createEl("div", {
             cls: "chronica-stats-grid",
@@ -3011,7 +3073,7 @@ class ChronosTimelineView extends obsidian.ItemView {
     <svg width="60" height="60" viewBox="0 0 80 80">
       <circle cx="40" cy="40" r="35" fill="none" stroke="var(--background-modifier-border)" stroke-width="5"></circle>
       <circle cx="40" cy="40" r="35" fill="none" stroke="var(--interactive-accent)" stroke-width="5"
-        stroke-dasharray="220" stroke-dashoffset="${220 - (220 * livedPercentage / 100)}"
+        stroke-dasharray="220" stroke-dashoffset="${220 - (220 * livedPercentage) / 100}"
         transform="rotate(-90 40 40)"></circle>
     </svg>
     <div class="chronica-circular-progress-text">${progressValue}%</div>
@@ -3092,8 +3154,18 @@ class ChronosTimelineView extends obsidian.ItemView {
         });
         const formatBirthday = (date) => {
             const months = [
-                "January", "February", "March", "April", "May", "June",
-                "July", "August", "September", "October", "November", "December"
+                "January",
+                "February",
+                "March",
+                "April",
+                "May",
+                "June",
+                "July",
+                "August",
+                "September",
+                "October",
+                "November",
+                "December",
             ];
             return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
         };
@@ -3128,7 +3200,8 @@ class ChronosTimelineView extends obsidian.ItemView {
         // Calculate custom event counts
         let customEventCount = 0;
         let customEvents = [];
-        if (this.plugin.settings.customEventTypes && this.plugin.settings.customEvents) {
+        if (this.plugin.settings.customEventTypes &&
+            this.plugin.settings.customEvents) {
             for (const eventType of this.plugin.settings.customEventTypes) {
                 const count = this.plugin.settings.customEvents[eventType.name]?.length || 0;
                 customEventCount += count;
@@ -3136,17 +3209,21 @@ class ChronosTimelineView extends obsidian.ItemView {
                     customEvents.push({
                         name: eventType.name,
                         count: count,
-                        color: eventType.color
+                        color: eventType.color,
                     });
                 }
             }
         }
-        const totalEvents = majorLifeEvents + travelEvents + relationshipEvents + educationCareerEvents + customEventCount;
+        const totalEvents = majorLifeEvents +
+            travelEvents +
+            relationshipEvents +
+            educationCareerEvents +
+            customEventCount;
         // If there are no events, show a message
         if (totalEvents === 0) {
             container.createEl("div", {
                 cls: "chronica-empty-state",
-                text: "No events added yet. Add events to see statistics and distributions."
+                text: "No events added yet. Add events to see statistics and distributions.",
             });
             return;
         }
@@ -3171,14 +3248,18 @@ class ChronosTimelineView extends obsidian.ItemView {
             { name: "Major Life", count: majorLifeEvents, color: "#4CAF50" },
             { name: "Travel", count: travelEvents, color: "#2196F3" },
             { name: "Relationship", count: relationshipEvents, color: "#E91E63" },
-            { name: "Education/Career", count: educationCareerEvents, color: "#9C27B0" }
+            {
+                name: "Education/Career",
+                count: educationCareerEvents,
+                color: "#9C27B0",
+            },
         ];
         // Combine standard and custom events
-        const allEvents = [...standardEvents, ...customEvents].filter(e => e.count > 0);
+        const allEvents = [...standardEvents, ...customEvents].filter((e) => e.count > 0);
         // Sort by count (highest first)
         allEvents.sort((a, b) => b.count - a.count);
         // Create horizontal bar chart
-        const maxCount = Math.max(...allEvents.map(e => e.count));
+        const maxCount = Math.max(...allEvents.map((e) => e.count));
         for (const event of allEvents) {
             const barRow = chartContainer.createEl("div", {
                 cls: "chronica-chart-row",
@@ -3213,22 +3294,22 @@ class ChronosTimelineView extends obsidian.ItemView {
             const parts = key.split("-W");
             return {
                 year: parseInt(parts[0]),
-                week: parseInt(parts[1])
+                week: parseInt(parts[1]),
             };
         };
         // Collect all events into a single array
         let allEventsList = [];
         // Add standard events
         const addEvents = (events, type, color) => {
-            events.forEach(eventData => {
-                const parts = eventData.split(':');
+            events.forEach((eventData) => {
+                const parts = eventData.split(":");
                 if (parts.length === 2) {
                     // Single event
                     allEventsList.push({
                         weekKey: parts[0],
                         description: parts[1],
                         type: type,
-                        color: color
+                        color: color,
                     });
                 }
                 else if (parts.length === 3) {
@@ -3239,7 +3320,7 @@ class ChronosTimelineView extends obsidian.ItemView {
                         description: parts[2],
                         type: type,
                         color: color,
-                        isRange: true
+                        isRange: true,
                     });
                 }
             });
@@ -3250,7 +3331,8 @@ class ChronosTimelineView extends obsidian.ItemView {
         addEvents(this.plugin.settings.pinkEvents, "Relationship", "#E91E63");
         addEvents(this.plugin.settings.purpleEvents, "Education/Career", "#9C27B0");
         // Add custom events
-        if (this.plugin.settings.customEventTypes && this.plugin.settings.customEvents) {
+        if (this.plugin.settings.customEventTypes &&
+            this.plugin.settings.customEvents) {
             for (const eventType of this.plugin.settings.customEventTypes) {
                 if (this.plugin.settings.customEvents[eventType.name]) {
                     addEvents(this.plugin.settings.customEvents[eventType.name], eventType.name, eventType.color);
@@ -3312,11 +3394,13 @@ class ChronosTimelineView extends obsidian.ItemView {
             text: "Event Statistics",
         });
         // Calculate additional stats
-        const allYears = allEventsList.map(e => parseWeekKey(e.weekKey).year);
+        const allYears = allEventsList.map((e) => parseWeekKey(e.weekKey).year);
         const uniqueYears = [...new Set(allYears)];
-        const eventsByYear = uniqueYears.length > 0 ? (totalEvents / uniqueYears.length).toFixed(1) : "0";
+        const eventsByYear = uniqueYears.length > 0
+            ? (totalEvents / uniqueYears.length).toFixed(1)
+            : "0";
         // Count range events
-        const rangeEvents = allEventsList.filter(e => e.isRange).length;
+        const rangeEvents = allEventsList.filter((e) => e.isRange).length;
         const singleEvents = totalEvents - rangeEvents;
         const statsTable = eventStatsCard.createEl("table", {
             cls: "chronica-stats-table",
@@ -3339,7 +3423,9 @@ class ChronosTimelineView extends obsidian.ItemView {
     renderTimelineTab(container) {
         // Calculate statistics
         const now = new Date();
-        const [birthYear, birthMonth, birthDay] = this.plugin.settings.birthday.split('-').map(Number);
+        const [birthYear, birthMonth, birthDay] = this.plugin.settings.birthday
+            .split("-")
+            .map(Number);
         const birthdayDate = new Date(birthYear, birthMonth - 1, birthDay);
         const ageInWeeks = this.plugin.getFullWeekAge(birthdayDate, now);
         this.plugin.settings.lifespan * 52;
@@ -3397,11 +3483,15 @@ class ChronosTimelineView extends obsidian.ItemView {
             { name: "Young Adult", end: 25, color: "#00BCD4" },
             { name: "Early Adult", end: 40, color: "#03A9F4" },
             { name: "Middle Adult", end: 60, color: "#3F51B5" },
-            { name: "Late Adult", end: this.plugin.settings.lifespan, color: "#9C27B0" }
+            {
+                name: "Late Adult",
+                end: this.plugin.settings.lifespan,
+                color: "#9C27B0",
+            },
         ];
         // Calculate total width for all phases
         let totalWidth = 0;
-        phases.forEach(phase => {
+        phases.forEach((phase) => {
             let phaseWidth;
             if (phase.name === "Childhood") {
                 phaseWidth = phase.end;
@@ -3412,7 +3502,7 @@ class ChronosTimelineView extends obsidian.ItemView {
             }
             totalWidth += phaseWidth;
         });
-        phases.forEach(phase => {
+        phases.forEach((phase) => {
             let phaseWidth;
             if (phase.name === "Childhood") {
                 phaseWidth = phase.end;
@@ -3438,10 +3528,14 @@ class ChronosTimelineView extends obsidian.ItemView {
                 text: phase.end.toString(),
             });
             // Add current position marker if in this phase
-            if (ageInYears <= phase.end && (phase.name === "Childhood" || ageInYears > phases[phases.indexOf(phase) - 1].end)) {
+            if (ageInYears <= phase.end &&
+                (phase.name === "Childhood" ||
+                    ageInYears > phases[phases.indexOf(phase) - 1].end)) {
                 const markerPosition = phase.name === "Childhood"
                     ? (ageInYears / phase.end) * 100
-                    : ((ageInYears - phases[phases.indexOf(phase) - 1].end) / phaseWidth) * 100;
+                    : ((ageInYears - phases[phases.indexOf(phase) - 1].end) /
+                        phaseWidth) *
+                        100;
                 const currentMarker = phaseSegment.createEl("div", {
                     cls: "chronica-current-marker",
                 });
@@ -3481,8 +3575,18 @@ class ChronosTimelineView extends obsidian.ItemView {
             // Format date
             const formatDate = (date) => {
                 const months = [
-                    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+                    "Jan",
+                    "Feb",
+                    "Mar",
+                    "Apr",
+                    "May",
+                    "Jun",
+                    "Jul",
+                    "Aug",
+                    "Sep",
+                    "Oct",
+                    "Nov",
+                    "Dec",
                 ];
                 return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
             };
@@ -3529,15 +3633,17 @@ class ChronosTimelineView extends obsidian.ItemView {
         const purpleEvents = this.plugin.settings.purpleEvents.length;
         // Calculate custom event counts
         let customEventCount = 0;
-        if (this.plugin.settings.customEventTypes && this.plugin.settings.customEvents) {
+        if (this.plugin.settings.customEventTypes &&
+            this.plugin.settings.customEvents) {
             for (const eventType of this.plugin.settings.customEventTypes) {
                 if (this.plugin.settings.customEvents[eventType.name]) {
-                    customEventCount += this.plugin.settings.customEvents[eventType.name].length;
+                    customEventCount +=
+                        this.plugin.settings.customEvents[eventType.name].length;
                 }
             }
         }
         const totalEvents = greenEvents + blueEvents + pinkEvents + purpleEvents + customEventCount;
-        const eventsPerWeek = pastWeeks > 0 ? (totalEvents / pastWeeks) : 0;
+        const eventsPerWeek = pastWeeks > 0 ? totalEvents / pastWeeks : 0;
         completionCard.createEl("div", {
             cls: "chronica-completion-stat",
             text: `${totalEvents} events recorded (${eventsPerWeek.toFixed(3)} events/week)`,
@@ -3550,7 +3656,9 @@ class ChronosTimelineView extends obsidian.ItemView {
     renderChartsTab(container) {
         // Calculate statistics
         const now = new Date();
-        this.plugin.settings.birthday.split('-').map(Number);
+        this.plugin.settings.birthday
+            .split("-")
+            .map(Number);
         // Create main container with grid layout
         const chartsGridContainer = container.createEl("div", {
             cls: "chronica-charts-grid-container",
@@ -3564,20 +3672,20 @@ class ChronosTimelineView extends obsidian.ItemView {
                 return { year: 0, week: 0 };
             return {
                 year: parseInt(parts[0], 10),
-                week: parseInt(parts[1], 10)
+                week: parseInt(parts[1], 10),
             };
         };
         // Add standard events
         const addEvents = (events, type, color) => {
-            events.forEach(eventData => {
-                const parts = eventData.split(':');
+            events.forEach((eventData) => {
+                const parts = eventData.split(":");
                 if (parts.length === 2) {
                     // Single event
                     allEvents.push({
                         weekKey: parts[0],
                         description: parts[1],
                         type: type,
-                        color: color
+                        color: color,
                     });
                 }
                 else if (parts.length === 3) {
@@ -3588,7 +3696,7 @@ class ChronosTimelineView extends obsidian.ItemView {
                         description: parts[2],
                         type: type,
                         color: color,
-                        isRange: true
+                        isRange: true,
                     });
                 }
             });
@@ -3599,7 +3707,8 @@ class ChronosTimelineView extends obsidian.ItemView {
         addEvents(this.plugin.settings.pinkEvents, "Relationship", "#E91E63");
         addEvents(this.plugin.settings.purpleEvents, "Education/Career", "#9C27B0");
         // Add custom events
-        if (this.plugin.settings.customEventTypes && this.plugin.settings.customEvents) {
+        if (this.plugin.settings.customEventTypes &&
+            this.plugin.settings.customEvents) {
             for (const eventType of this.plugin.settings.customEventTypes) {
                 if (this.plugin.settings.customEvents[eventType.name]) {
                     addEvents(this.plugin.settings.customEvents[eventType.name], eventType.name, eventType.color);
@@ -3635,11 +3744,11 @@ class ChronosTimelineView extends obsidian.ItemView {
         });
         // Count events by type
         const eventsByType = {};
-        allEvents.forEach(event => {
+        allEvents.forEach((event) => {
             if (!eventsByType[event.type]) {
                 eventsByType[event.type] = {
                     count: 0,
-                    color: event.color
+                    color: event.color,
                 };
             }
             eventsByType[event.type].count++;
@@ -3649,7 +3758,7 @@ class ChronosTimelineView extends obsidian.ItemView {
             .map(([type, data]) => ({
             type,
             count: data.count,
-            color: data.color
+            color: data.color,
         }))
             .sort((a, b) => b.count - a.count);
         // Calculate total for percentages
@@ -3677,13 +3786,13 @@ class ChronosTimelineView extends obsidian.ItemView {
         svg.appendChild(g);
         // Calculate pie segments
         let startAngle = 0;
-        typeData.forEach(item => {
+        typeData.forEach((item) => {
             const percentage = (item.count / totalEvents) * 100;
             const angleSize = (percentage / 100) * 360;
             const endAngle = startAngle + angleSize;
             // Convert angles to radians
-            const startRad = (startAngle - 90) * Math.PI / 180;
-            const endRad = (endAngle - 90) * Math.PI / 180;
+            const startRad = ((startAngle - 90) * Math.PI) / 180;
+            const endRad = ((endAngle - 90) * Math.PI) / 180;
             // Calculate coordinates
             const x1 = 40 * Math.cos(startRad);
             const y1 = 40 * Math.sin(startRad);
@@ -3698,7 +3807,7 @@ class ChronosTimelineView extends obsidian.ItemView {
                 `M ${x1},${y1}`,
                 `A 40,40 0 ${largeArcFlag},1 ${x2},${y2}`,
                 `L 0,0`,
-                `Z` // Close path
+                `Z`, // Close path
             ].join(" ");
             path.setAttribute("d", d);
             path.setAttribute("fill", item.color);
@@ -3755,6 +3864,179 @@ class ChronosTimelineView extends obsidian.ItemView {
         totalLabel.setAttribute("font-size", "6");
         totalLabel.textContent = "Events";
         g.appendChild(totalLabel);
+        // ======== SEASONAL PATTERN ANALYSIS ========
+        const seasonalCard = chartsGridContainer.createEl("div", {
+            cls: "chronica-chart-card",
+        });
+        seasonalCard.createEl("h3", {
+            cls: "chronica-chart-title",
+            text: "Seasonal Patterns",
+        });
+        // Define seasons with their months and colors
+        const seasons = [
+            { name: "Winter", months: [11, 0, 1], color: "#90CAF9" },
+            { name: "Spring", months: [2, 3, 4], color: "#A5D6A7" },
+            { name: "Summer", months: [5, 6, 7], color: "#FFCC80" },
+            { name: "Fall", months: [8, 9, 10], color: "#EF9A9A" }, // Sep, Oct, Nov
+        ];
+        // Count events by season
+        const seasonCounts = seasons.map((season) => {
+            let count = 0;
+            allEvents.forEach((event) => {
+                const { year, week } = parseWeekKey(event.weekKey);
+                if (year <= 0)
+                    return;
+                // Estimate month from week number (approximate)
+                const eventDate = new Date(year, 0, 1);
+                eventDate.setDate(eventDate.getDate() + (week - 1) * 7);
+                const month = eventDate.getMonth();
+                if (season.months.includes(month)) {
+                    count++;
+                }
+            });
+            return { ...season, count };
+        });
+        // Create seasonal chart container
+        const seasonalChartContainer = seasonalCard.createEl("div", {
+            cls: "chronica-seasonal-chart-container",
+        });
+        // Create SVG for circular chart - Use existing svgNS rather than redeclaring
+        const seasonalSvg = document.createElementNS(svgNS, "svg");
+        seasonalSvg.setAttribute("viewBox", "0 0 200 200");
+        seasonalSvg.setAttribute("class", "chronica-seasonal-chart");
+        seasonalChartContainer.appendChild(seasonalSvg);
+        // Find total for percentages
+        const totalSeasonEvents = seasonCounts.reduce((sum, s) => sum + s.count, 0);
+        if (totalSeasonEvents > 0) {
+            // Calculate arc angles
+            let startAngle = 0;
+            const anglePerSeason = 360 / 4; // 4 seasons
+            // Create season segments
+            seasonCounts.forEach((season) => {
+                const percentage = (season.count / totalSeasonEvents) * 100;
+                // Convert angles to radians
+                const endAngle = startAngle + anglePerSeason;
+                const startRad = ((startAngle - 90) * Math.PI) / 180;
+                const endRad = ((endAngle - 90) * Math.PI) / 180;
+                // Calculate coordinates for inner and outer arc
+                const innerRadius = 40;
+                const outerRadius = 80;
+                const x1i = innerRadius * Math.cos(startRad) + 100;
+                const y1i = innerRadius * Math.sin(startRad) + 100;
+                const x2i = innerRadius * Math.cos(endRad) + 100;
+                const y2i = innerRadius * Math.sin(endRad) + 100;
+                const x1o = outerRadius * Math.cos(startRad) + 100;
+                const y1o = outerRadius * Math.sin(startRad) + 100;
+                const x2o = outerRadius * Math.cos(endRad) + 100;
+                const y2o = outerRadius * Math.sin(endRad) + 100;
+                // Create path for segment
+                const path = document.createElementNS(svgNS, "path");
+                // SVG path for a segment
+                const largeArcFlag = 0; // anglePerSeason is always 90 degrees, which is < 180
+                const d = [
+                    `M ${x1i},${y1i}`,
+                    `L ${x1o},${y1o}`,
+                    `A ${outerRadius},${outerRadius} 0 ${largeArcFlag},1 ${x2o},${y2o}`,
+                    `L ${x2i},${y2i}`,
+                    `A ${innerRadius},${innerRadius} 0 ${largeArcFlag},0 ${x1i},${y1i}`,
+                    `Z`, // Close path
+                ].join(" ");
+                path.setAttribute("d", d);
+                path.setAttribute("fill", season.color);
+                // Add opacity based on percentage
+                const opacity = 0.3 + (percentage / 100) * 0.7;
+                path.setAttribute("opacity", Math.max(opacity, 0.3).toString());
+                seasonalSvg.appendChild(path);
+                // Add season label
+                const angle = startAngle + anglePerSeason / 2;
+                const labelRad = (angle * Math.PI) / 180;
+                const labelRadius = 100;
+                const labelX = labelRadius * Math.cos(labelRad - Math.PI / 2) + 100;
+                const labelY = labelRadius * Math.sin(labelRad - Math.PI / 2) + 100;
+                const text = document.createElementNS(svgNS, "text");
+                text.setAttribute("x", labelX.toString());
+                text.setAttribute("y", labelY.toString());
+                text.setAttribute("text-anchor", "middle");
+                text.setAttribute("dominant-baseline", "middle");
+                text.setAttribute("fill", "var(--text-normal)");
+                text.setAttribute("font-size", "12");
+                text.setAttribute("font-weight", "bold");
+                text.textContent = season.name;
+                seasonalSvg.appendChild(text);
+                // Add count label if non-zero
+                if (season.count > 0) {
+                    const countAngle = angle;
+                    const countRad = (countAngle * Math.PI) / 180;
+                    const countRadius = 65;
+                    const countX = countRadius * Math.cos(countRad - Math.PI / 2) + 100;
+                    const countY = countRadius * Math.sin(countRad - Math.PI / 2) + 100;
+                    const countText = document.createElementNS(svgNS, "text");
+                    countText.setAttribute("x", countX.toString());
+                    countText.setAttribute("y", countY.toString());
+                    countText.setAttribute("text-anchor", "middle");
+                    countText.setAttribute("dominant-baseline", "middle");
+                    countText.setAttribute("fill", "var(--text-normal)");
+                    countText.setAttribute("font-size", "14");
+                    countText.setAttribute("font-weight", "bold");
+                    countText.textContent = season.count.toString();
+                    seasonalSvg.appendChild(countText);
+                    // Add percentage
+                    const pctText = document.createElementNS(svgNS, "text");
+                    const pctRadius = 52;
+                    const pctX = pctRadius * Math.cos(countRad - Math.PI / 2) + 100;
+                    const pctY = pctRadius * Math.sin(countRad - Math.PI / 2) + 100;
+                    pctText.setAttribute("x", pctX.toString());
+                    pctText.setAttribute("y", pctY.toString());
+                    pctText.setAttribute("text-anchor", "middle");
+                    pctText.setAttribute("dominant-baseline", "middle");
+                    pctText.setAttribute("fill", "var(--text-muted)");
+                    pctText.setAttribute("font-size", "10");
+                    pctText.textContent = `${Math.round(percentage)}%`;
+                    seasonalSvg.appendChild(pctText);
+                }
+                // Update angle for next segment
+                startAngle = endAngle;
+            });
+            // Add center circle
+            const centerCircle = document.createElementNS(svgNS, "circle");
+            centerCircle.setAttribute("cx", "100");
+            centerCircle.setAttribute("cy", "100");
+            centerCircle.setAttribute("r", "30");
+            centerCircle.setAttribute("fill", "var(--background-secondary)");
+            seasonalSvg.appendChild(centerCircle);
+            // Add total count in center
+            const totalText = document.createElementNS(svgNS, "text");
+            totalText.setAttribute("x", "100");
+            totalText.setAttribute("y", "95");
+            totalText.setAttribute("text-anchor", "middle");
+            totalText.setAttribute("dominant-baseline", "middle");
+            totalText.setAttribute("fill", "var(--text-normal)");
+            totalText.setAttribute("font-size", "16");
+            totalText.setAttribute("font-weight", "bold");
+            totalText.textContent = totalSeasonEvents.toString();
+            seasonalSvg.appendChild(totalText);
+            const eventsLabel = document.createElementNS(svgNS, "text");
+            eventsLabel.setAttribute("x", "100");
+            eventsLabel.setAttribute("y", "110");
+            eventsLabel.setAttribute("text-anchor", "middle");
+            eventsLabel.setAttribute("dominant-baseline", "middle");
+            eventsLabel.setAttribute("fill", "var(--text-muted)");
+            eventsLabel.setAttribute("font-size", "10");
+            eventsLabel.textContent = "Events";
+            seasonalSvg.appendChild(eventsLabel);
+        }
+        else {
+            // Show empty state
+            const emptyText = document.createElementNS(svgNS, "text");
+            emptyText.setAttribute("x", "100");
+            emptyText.setAttribute("y", "100");
+            emptyText.setAttribute("text-anchor", "middle");
+            emptyText.setAttribute("dominant-baseline", "middle");
+            emptyText.setAttribute("fill", "var(--text-muted)");
+            emptyText.setAttribute("font-size", "14");
+            emptyText.textContent = "No events to analyze";
+            seasonalSvg.appendChild(emptyText);
+        }
         // ======== EVENT TYPES BY YEAR CHART ========
         const stackedChartCard = chartsGridContainer.createEl("div", {
             cls: "chronica-chart-card chronica-full-width",
@@ -3766,26 +4048,27 @@ class ChronosTimelineView extends obsidian.ItemView {
         // Count events by year and type
         const eventsByYearAndType = {};
         const eventTypes = new Set();
-        allEvents.forEach(event => {
+        allEvents.forEach((event) => {
             const year = parseWeekKey(event.weekKey).year;
             if (year > 0) {
                 if (!eventsByYearAndType[year]) {
                     eventsByYearAndType[year] = {};
                 }
-                eventsByYearAndType[year][event.type] = (eventsByYearAndType[year][event.type] || 0) + 1;
+                eventsByYearAndType[year][event.type] =
+                    (eventsByYearAndType[year][event.type] || 0) + 1;
                 eventTypes.add(event.type);
             }
         });
         // Get color map
         const colorMap = {
             "Major Life": "#4CAF50",
-            "Travel": "#2196F3",
-            "Relationship": "#E91E63",
-            "Education/Career": "#9C27B0"
+            Travel: "#2196F3",
+            Relationship: "#E91E63",
+            "Education/Career": "#9C27B0",
         };
         // Add custom event colors
         if (this.plugin.settings.customEventTypes) {
-            this.plugin.settings.customEventTypes.forEach(type => {
+            this.plugin.settings.customEventTypes.forEach((type) => {
                 colorMap[type.name] = type.color;
             });
         }
@@ -3798,7 +4081,7 @@ class ChronosTimelineView extends obsidian.ItemView {
             cls: "chronica-chart-legend",
         });
         // Add legend items for all event types
-        Array.from(eventTypes).forEach(type => {
+        Array.from(eventTypes).forEach((type) => {
             const legendItem = stackedLegend.createEl("div", {
                 cls: "chronica-legend-item",
             });
@@ -3812,7 +4095,7 @@ class ChronosTimelineView extends obsidian.ItemView {
             });
         });
         // Create stacked bars
-        const allSortedYears = Array.from(new Set(allEvents.map(evt => parseWeekKey(evt.weekKey).year))).sort((a, b) => a - b);
+        const allSortedYears = Array.from(new Set(allEvents.map((evt) => parseWeekKey(evt.weekKey).year))).sort((a, b) => a - b);
         for (const year of allSortedYears) {
             const barContainer = stackedChartContainer.createEl("div", {
                 cls: "chronica-stacked-bar-container",
@@ -3829,11 +4112,11 @@ class ChronosTimelineView extends obsidian.ItemView {
             // Add segments for each event type
             let totalForYear = 0;
             // First, calculate total for this year
-            Array.from(eventTypes).forEach(type => {
+            Array.from(eventTypes).forEach((type) => {
                 totalForYear += eventsByYearAndType[year]?.[type] || 0;
             });
             // Then add segments for each type
-            Array.from(eventTypes).forEach(type => {
+            Array.from(eventTypes).forEach((type) => {
                 const count = eventsByYearAndType[year]?.[type] || 0;
                 if (count > 0) {
                     const segment = stackedBar.createEl("div", {
@@ -3856,6 +4139,99 @@ class ChronosTimelineView extends obsidian.ItemView {
                 stackedBar.addClass("chronica-current-bar");
             }
         }
+        // ======== FUTURE PLANNING HORIZON CHART ========
+        const futurePlanningCard = chartsGridContainer.createEl("div", {
+            cls: "chronica-chart-card chronica-full-width",
+        });
+        futurePlanningCard.createEl("h3", {
+            cls: "chronica-chart-title",
+            text: "Future Planning Horizon",
+        });
+        // Filter for future events only
+        const futureEvents = allEvents.filter((event) => {
+            const { year, week } = parseWeekKey(event.weekKey);
+            if (year <= 0)
+                return false;
+            // Create date from week key
+            const eventDate = new Date(year, 0, 1);
+            eventDate.setDate(eventDate.getDate() + (week - 1) * 7);
+            return eventDate > now;
+        });
+        // If no future events, show empty state
+        if (futureEvents.length === 0) {
+            futurePlanningCard.createEl("div", {
+                cls: "chronica-empty-state",
+                text: "No future events planned yet",
+            });
+        }
+        else {
+            // Group future events by time horizon
+            const horizons = {
+                "Next Month": 30,
+                "1-3 Months": 90,
+                "3-6 Months": 180,
+                "6-12 Months": 365,
+                "1-2 Years": 730,
+                "2+ Years": Infinity,
+            };
+            const horizonCounts = {};
+            Object.keys(horizons).forEach((key) => (horizonCounts[key] = 0));
+            // Count events for each horizon
+            futureEvents.forEach((event) => {
+                const { year, week } = parseWeekKey(event.weekKey);
+                // Create date from week key
+                const eventDate = new Date(year, 0, 1);
+                eventDate.setDate(eventDate.getDate() + (week - 1) * 7);
+                // Calculate days from now
+                const daysFromNow = Math.ceil((eventDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                // Find appropriate horizon
+                for (const [horizon, days] of Object.entries(horizons)) {
+                    if (daysFromNow <= days) {
+                        horizonCounts[horizon]++;
+                        break;
+                    }
+                }
+            });
+            // Create horizons chart container
+            const horizonsContainer = futurePlanningCard.createEl("div", {
+                cls: "chronica-horizons-container",
+            });
+            // Sort horizons by timeframe
+            const sortedHorizons = Object.keys(horizonCounts).filter((h) => horizonCounts[h] > 0);
+            // Find maximum for scaling
+            const maxHorizonCount = Math.max(...Object.values(horizonCounts), 1);
+            // Create bars for each horizon
+            sortedHorizons.forEach((horizon) => {
+                const count = horizonCounts[horizon];
+                if (count === 0)
+                    return;
+                const horizonRow = horizonsContainer.createEl("div", {
+                    cls: "chronica-horizon-row",
+                });
+                horizonRow.createEl("div", {
+                    cls: "chronica-horizon-label",
+                    text: horizon,
+                });
+                const barContainer = horizonRow.createEl("div", {
+                    cls: "chronica-horizon-bar-container",
+                });
+                const bar = barContainer.createEl("div", {
+                    cls: "chronica-horizon-bar",
+                });
+                // Scale the bar width
+                bar.style.width = `${(count / maxHorizonCount) * 100}%`;
+                // Add count on the bar
+                barContainer.createEl("div", {
+                    cls: "chronica-horizon-count",
+                    text: count.toString(),
+                });
+            });
+            // Add summary at the bottom
+            futurePlanningCard.createEl("div", {
+                cls: "chronica-horizon-summary",
+                text: `${futureEvents.length} events planned in the future`,
+            });
+        }
         // ======== MONTHLY DISTRIBUTION CHART ========
         const monthlyChartCard = chartsGridContainer.createEl("div", {
             cls: "chronica-chart-card chronica-full-width",
@@ -3866,7 +4242,7 @@ class ChronosTimelineView extends obsidian.ItemView {
         });
         // Count events by month
         const eventsByMonth = Array(12).fill(0);
-        allEvents.forEach(event => {
+        allEvents.forEach((event) => {
             // Simple approximation of month from week number
             const { year, week } = parseWeekKey(event.weekKey);
             if (year > 0) {
@@ -3883,8 +4259,18 @@ class ChronosTimelineView extends obsidian.ItemView {
         });
         // Month names
         const monthNames = [
-            "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+            "Jan",
+            "Feb",
+            "Mar",
+            "Apr",
+            "May",
+            "Jun",
+            "Jul",
+            "Aug",
+            "Sep",
+            "Oct",
+            "Nov",
+            "Dec",
         ];
         // Get maximum for scaling
         const maxMonthlyEvents = Math.max(...eventsByMonth, 1);
@@ -3971,7 +4357,7 @@ class ChronosTimelineView extends obsidian.ItemView {
                                 break;
                             default:
                                 // Check if it's a custom type
-                                const customType = this.plugin.settings.customEventTypes.find(t => t.name === eventData.type);
+                                const customType = this.plugin.settings.customEventTypes.find((t) => t.name === eventData.type);
                                 if (customType) {
                                     defaultColor = customType.color;
                                 }
@@ -3981,7 +4367,9 @@ class ChronosTimelineView extends obsidian.ItemView {
                     }
                     // Build tooltip
                     const eventName = eventData.name || eventData.event;
-                    const eventDesc = eventData.description ? `: ${eventData.description}` : '';
+                    const eventDesc = eventData.description
+                        ? `: ${eventData.description}`
+                        : "";
                     const prevTitle = cell.getAttribute("title") || "";
                     // Include date range info if present
                     let dateInfo = "";
@@ -3991,7 +4379,7 @@ class ChronosTimelineView extends obsidian.ItemView {
                     else if (eventData.startDate) {
                         dateInfo = ` (${eventData.startDate})`;
                     }
-                    cell.setAttribute("title", `${eventName}${eventDesc}${dateInfo}${prevTitle ? '\n' + prevTitle : ''}`);
+                    cell.setAttribute("title", `${eventName}${eventDesc}${dateInfo}${prevTitle ? "\n" + prevTitle : ""}`);
                     return true;
                 }
                 return false;
@@ -4014,7 +4402,7 @@ class ChronosTimelineView extends obsidian.ItemView {
         const applyEventStyle = (events, defaultColor, defaultDesc) => {
             // First, handle single-day events (format: weekKey:description)
             // Single‑week events (format: weekKey:description)
-            const singleEvents = events.filter(e => {
+            const singleEvents = events.filter((e) => {
                 const parts = e.split(":");
                 return parts.length === 2 && parts[0].includes("W");
             });
@@ -4034,9 +4422,9 @@ class ChronosTimelineView extends obsidian.ItemView {
                 }
             }
             // Next, handle range events (format: startWeek:endWeek:description)
-            const rangeEvents = events.filter(e => {
+            const rangeEvents = events.filter((e) => {
                 const parts = e.split(":");
-                return parts.length >= 3 && parts[0].includes("W") && parts[1].includes("W");
+                return (parts.length >= 3 && parts[0].includes("W") && parts[1].includes("W"));
             });
             for (const rangeEvent of rangeEvents) {
                 const [startWeekKey, endWeekKey, description] = rangeEvent.split(":");
@@ -4164,7 +4552,8 @@ class ChronosTimelineView extends obsidian.ItemView {
             cell.addClass("future-event-highlight");
         }
         // Apply filled week styling if applicable
-        if (this.plugin.settings.filledWeeks.includes(weekKey) && weekKey !== this.plugin.getWeekKeyFromDate(new Date())) {
+        if (this.plugin.settings.filledWeeks.includes(weekKey) &&
+            weekKey !== this.plugin.getWeekKeyFromDate(new Date())) {
             cell.addClass("filled-week");
             // Only change color if no event is on this week
             if (!cell.classList.contains("event")) {
@@ -4837,7 +5226,9 @@ class ChronosSettingTab extends obsidian.PluginSettingTab {
                 // Show/hide the zoom level setting based on this value
                 const zoomSetting = containerEl.querySelector(".zoom-level-setting");
                 if (zoomSetting) {
-                    zoomSetting.style.display = value ? "none" : "flex";
+                    zoomSetting.style.display = value
+                        ? "none"
+                        : "flex";
                 }
             }));
             // Zoom level setting
@@ -4859,11 +5250,11 @@ class ChronosSettingTab extends obsidian.PluginSettingTab {
                 zoomSetting.settingEl.style.display = "none";
             }
             new obsidian.Setting(containerEl)
-                .setName('Grid Orientation')
-                .setDesc('Display years as columns/weeks as rows (landscape) or years as rows/weeks as columns (portrait)')
-                .addDropdown(drop => drop
-                .addOption('landscape', 'Landscape (Default)')
-                .addOption('portrait', 'Portrait')
+                .setName("Grid Orientation")
+                .setDesc("Display years as columns/weeks as rows (landscape) or years as rows/weeks as columns (portrait)")
+                .addDropdown((drop) => drop
+                .addOption("landscape", "Landscape (Default)")
+                .addOption("portrait", "Portrait")
                 .setValue(this.plugin.settings.gridOrientation)
                 .onChange(async (value) => {
                 this.plugin.settings.gridOrientation = value;
@@ -4871,12 +5262,12 @@ class ChronosSettingTab extends obsidian.PluginSettingTab {
                 this.refreshAllViews();
             }));
             new obsidian.Setting(containerEl)
-                .setName('Cell Shape')
-                .setDesc('Square, circle, or diamond.')
-                .addDropdown(drop => drop
-                .addOption('square', 'Square')
-                .addOption('circle', 'Circle')
-                .addOption('diamond', 'Diamond')
+                .setName("Cell Shape")
+                .setDesc("Square, circle, or diamond.")
+                .addDropdown((drop) => drop
+                .addOption("square", "Square")
+                .addOption("circle", "Circle")
+                .addOption("diamond", "Diamond")
                 .setValue(this.plugin.settings.cellShape)
                 .onChange(async (value) => {
                 this.plugin.settings.cellShape = value;
