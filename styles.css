@@ -31,7 +31,7 @@
   --stats-panel-height: 170px;
   --stats-panel-min-height: 150px;
   --stats-panel-max-height: 600px;
-  
+  --stats-panel-width: 700px;
   
 }
 
@@ -900,9 +900,9 @@
    }
   
    .chronica-stats-panel {
-    width: 70%;
-    max-width: 900px;
-    min-width: 500px;
+    width: var(--stats-panel-width);
+    max-width: 1500px;
+    min-width: 200px;
     padding: 0;
     overflow-y: auto;
     display: flex;
@@ -919,6 +919,31 @@
     z-index: 20;
     will-change: height, left, transform;
   }
+
+  .chronica-stats-left-handle,
+.chronica-stats-right-handle {
+  position: absolute;
+  width: 8px;
+  height: 100%;
+  top: 0;
+  background-color: transparent;
+  cursor: ew-resize;
+  z-index: 21;
+}
+
+.chronica-stats-left-handle {
+  left: 0;
+}
+
+.chronica-stats-right-handle {
+  right: 0;
+}
+
+.chronica-stats-left-handle:hover,
+.chronica-stats-right-handle:hover {
+  background-color: rgba(var(--interactive-accent-rgb), 0.1);
+}
+
 
   .chronica-stats-panel.expanded {
     height: var(--stats-panel-height);

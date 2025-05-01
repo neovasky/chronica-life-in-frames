@@ -129,6 +129,9 @@ interface ChronosSettings {
 
   /** Horizontal offset of the stats panel from center (in pixels) */
   statsPanelHorizontalOffset: number;
+  
+  /** Width of the stats panel in pixels */
+  statsPanelWidth: number;
 }
 
 /** Interface for custom event types */
@@ -237,6 +240,7 @@ const DEFAULT_SETTINGS: ChronosSettings = {
   activeStatsTab: "overview",
   statsPanelHeight: 170,
   statsPanelHorizontalOffset: 0,
+  statsPanelWidth: 700,
 };
 
 /** SVG icon for the Chronica Timeline */
@@ -2009,11 +2013,85 @@ class ChronosTimelineView extends ItemView {
       '--stats-panel-height', 
       `${this.plugin.settings.statsPanelHeight}px`
     );
+    document.documentElement.style.setProperty(
+      '--stats-panel-width', 
+      `${this.plugin.settings.statsPanelWidth}px`
+    );
 
     this.registerDomEvent(window, 'resize', () => {
       // Reapply layout rules whenever window size changes
       this.updateStatsPanelLayout();
     });
+  }
+
+  /**
+ * Setup the horizontal resize functionality for the stats panel
+ * @param leftHandle - Left handle element for dragging
+ * @param rightHandle - Right handle element for dragging
+ * @param statsPanel - Panel to resize
+ */
+  setupStatsPanelHorizontalResize(leftHandle: HTMLElement, rightHandle: HTMLElement, statsPanel: HTMLElement): void {
+    let startX = 0;
+    let startWidth = 0;
+    
+    // Left handle drag (decreases width)
+    const onLeftMouseDown = (e: MouseEvent) => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      
+      startWidth = this.plugin.settings.statsPanelWidth;
+      startX = e.clientX;
+      
+      document.addEventListener("mousemove", onLeftMouseMove);
+      document.addEventListener("mouseup", onMouseUp);
+    };
+    
+    const onLeftMouseMove = (e: MouseEvent) => {
+      const deltaX = startX - e.clientX;
+      const newWidth = Math.max(400, Math.min(1200, startWidth + deltaX));
+      
+      document.documentElement.style.setProperty('--stats-panel-width', `${newWidth}px`);
+      statsPanel.style.width = `${newWidth}px`;
+      statsPanel.style.minWidth = `${newWidth}px`;
+      statsPanel.style.maxWidth = `${newWidth}px`;
+      
+      this.plugin.settings.statsPanelWidth = newWidth;
+    };
+    
+    // Right handle drag (increases width)
+    const onRightMouseDown = (e: MouseEvent) => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      
+      startWidth = this.plugin.settings.statsPanelWidth;
+      startX = e.clientX;
+      
+      document.addEventListener("mousemove", onRightMouseMove);
+      document.addEventListener("mouseup", onMouseUp);
+    };
+    
+    const onRightMouseMove = (e: MouseEvent) => {
+      const deltaX = e.clientX - startX;
+      const newWidth = Math.max(400, Math.min(1200, startWidth + deltaX));
+      
+      document.documentElement.style.setProperty('--stats-panel-width', `${newWidth}px`);
+      statsPanel.style.width = `${newWidth}px`;
+      statsPanel.style.minWidth = `${newWidth}px`;
+      statsPanel.style.maxWidth = `${newWidth}px`;
+      
+      this.plugin.settings.statsPanelWidth = newWidth;
+    };
+    
+    const onMouseUp = () => {
+      document.removeEventListener("mousemove", onLeftMouseMove);
+      document.removeEventListener("mousemove", onRightMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+      
+      this.plugin.saveSettings();
+    };
+    
+    leftHandle.addEventListener("mousedown", onLeftMouseDown);
+    rightHandle.addEventListener("mousedown", onRightMouseDown);
   }
 
   setupStatsPanelHorizontalDrag(headerEl: HTMLElement, statsPanel: HTMLElement, statsHandle: HTMLElement): void {
@@ -2072,6 +2150,75 @@ class ChronosTimelineView extends ItemView {
     // Add initial event listener
     headerEl.addEventListener("mousedown", onMouseDown);
   }
+
+/**
+ * Setup left and right resize handles for the stats panel
+ * @param statsPanel - Panel to resize
+ */
+setupStatsPanelWidthResize(statsPanel: HTMLElement): void {
+  // Create left and right resize handles
+  const leftHandle = statsPanel.createEl("div", { cls: "chronica-stats-left-handle" });
+  const rightHandle = statsPanel.createEl("div", { cls: "chronica-stats-right-handle" });
+  
+  let startX = 0;
+  let startWidth = 0;
+  
+  // Left handle drag (decreases width)
+  const onLeftMouseDown = (e: MouseEvent) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    
+    startWidth = this.plugin.settings.statsPanelWidth;
+    startX = e.clientX;
+    
+    document.addEventListener("mousemove", onLeftMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+  };
+  
+  const onLeftMouseMove = (e: MouseEvent) => {
+    const deltaX = startX - e.clientX;
+    const newWidth = Math.max(400, Math.min(1200, startWidth + deltaX));
+    
+    document.documentElement.style.setProperty('--stats-panel-width', `${newWidth}px`);
+    statsPanel.style.width = `${newWidth}px`;
+    
+    this.plugin.settings.statsPanelWidth = newWidth;
+  };
+  
+  // Right handle drag (increases width)
+  const onRightMouseDown = (e: MouseEvent) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    
+    startWidth = this.plugin.settings.statsPanelWidth;
+    startX = e.clientX;
+    
+    document.addEventListener("mousemove", onRightMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+  };
+  
+  const onRightMouseMove = (e: MouseEvent) => {
+    const deltaX = e.clientX - startX;
+    const newWidth = Math.max(400, Math.min(1200, startWidth + deltaX));
+    
+    document.documentElement.style.setProperty('--stats-panel-width', `${newWidth}px`);
+    statsPanel.style.width = `${newWidth}px`;
+    
+    this.plugin.settings.statsPanelWidth = newWidth;
+  };
+  
+  const onMouseUp = () => {
+    document.removeEventListener("mousemove", onLeftMouseMove);
+    document.removeEventListener("mousemove", onRightMouseMove);
+    document.removeEventListener("mouseup", onMouseUp);
+    
+    this.plugin.saveSettings();
+  };
+  
+  leftHandle.addEventListener("mousedown", onLeftMouseDown);
+  rightHandle.addEventListener("mousedown", onRightMouseDown);
+}
+
 
   /**
    * Get the unique view type
@@ -3216,6 +3363,8 @@ renderStatsPanel(container: HTMLElement): void {
 
   // Set up horizontal dragging via header
   this.setupStatsPanelHorizontalDrag(statsHeader, statsPanel, statsHandle);
+
+
   
   // Add drag handle for resizing
   const dragHandle = statsHeader.createEl("div", { cls: "chronica-stats-drag-handle" });
@@ -3349,6 +3498,9 @@ statsHandle.addEventListener("click", () => {
   
   // Setup resize functionality with simplified approach
   this.setupStatsPanelResize(dragHandle, statsPanel);
+
+  // Setup horizontal resize
+  this.setupStatsPanelWidthResize(statsPanel);
 }
 
 
@@ -3467,6 +3619,7 @@ updateStatsPanelLayout(): void {
   if (this.isStatsOpen) {
     contentArea.classList.add("stats-expanded");
     statsPanel.style.height = `${panelHeight}px`;
+    statsPanel.style.width = `${this.plugin.settings.statsPanelWidth}px`;
   } else {
     contentArea.classList.remove("stats-expanded");
     statsPanel.style.height = '0';
