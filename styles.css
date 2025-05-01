@@ -1421,62 +1421,94 @@
 }
 
 /* Charts Tab Styles */
-.chronica-charts-container {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+/* Charts tab redesign */
+.chronica-charts-grid-container {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-gap: 20px;
+  padding: 10px;
 }
 
 .chronica-chart-card {
   background-color: var(--background-secondary);
-  border-radius: 6px;
+  border-radius: 8px;
   padding: 15px;
-  box-shadow: var(--card-shadow);
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.chronica-full-width {
+  grid-column: 1 / -1;
 }
 
 .chronica-chart-title {
   font-size: 16px;
   font-weight: 600;
-  margin-bottom: 15px;
+  margin: 0 0 15px 0;
   color: var(--text-normal);
 }
 
 .chronica-empty-chart-state {
+  grid-column: 1 / -1;
   text-align: center;
-  padding: 40px 20px;
-  color: var(--text-muted);
-  font-style: italic;
-}
-
-/* Density Chart */
-.chronica-density-chart {
-  display: flex;
-  align-items: flex-end;
-  height: 160px;
-  gap: 4px;
-  padding-bottom: 25px;
-  margin: 10px 0;
-  position: relative;
-}
-
-.chronica-density-bar-container {
-  flex-grow: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
+  height: 200px;
+  background-color: var(--background-secondary);
+  border-radius: 8px;
+  padding: 40px 20px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.chronica-empty-icon {
+  font-size: 32px;
+  margin-bottom: 15px;
+}
+
+.chronica-empty-message {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 5px;
+}
+
+.chronica-empty-submessage {
+  font-size: 14px;
+  color: var(--text-faint);
+}
+
+/* Bar chart styling */
+.chronica-bar-chart-container {
+  display: flex;
+  align-items: flex-end;
+  height: 180px;
+  gap: 4px;
+  padding-top: 20px;
+  padding-bottom: 25px;
+  flex: 1;
+}
+
+.chronica-bar-wrapper {
+  flex: 1;
   height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   position: relative;
 }
 
-.chronica-density-bar {
+.chronica-bar {
   width: 100%;
   background-color: var(--interactive-accent);
-  border-radius: 3px 3px 0 0;
-  position: relative;
-  min-height: 2px;
+  border-radius: 4px 4px 0 0;
+  transition: all 0.2s ease;
 }
 
-.chronica-density-count {
+.chronica-bar-value {
   position: absolute;
   top: -20px;
   left: 0;
@@ -1487,156 +1519,163 @@
   color: var(--text-muted);
 }
 
-.chronica-year-label {
+.chronica-bar-label {
   position: absolute;
-  bottom: -22px;
-  left: 0;
-  width: 100%;
-  text-align: center;
+  bottom: -20px;
+  left: 50%;
+  transform: translateX(-50%);
   font-size: 11px;
   color: var(--text-muted);
-  transform: rotate(-45deg);
-  transform-origin: top left;
   white-space: nowrap;
 }
 
-/* Category Chart */
-.chronica-category-chart {
+/* Donut chart styling */
+.chronica-donut-container {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin: 15px 0;
+  flex: 1;
+  gap: 15px;
+  min-height: 180px;
 }
 
-.chronica-category-bar-container {
-  display: flex;
-  align-items: center;
-  height: 30px;
-}
-
-.chronica-category-bar {
-  flex-grow: 1;
-  height: 100%;
-  display: flex;
-  border-radius: 3px;
-  overflow: hidden;
-  position: relative;
-  margin-left: 10px;
-  background-color: var(--background-primary);
-}
-
-.chronica-category-segment {
-  height: 100%;
-}
-
-.chronica-category-count {
-  position: absolute;
-  right: 5px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-on-accent);
-  text-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+.chronica-donut-chart {
+  width: 150px;
+  height: 150px;
+  flex-shrink: 0;
 }
 
 .chronica-chart-legend {
+  flex: 1;
   display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 15px;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  max-height: 200px;
 }
 
 .chronica-legend-item {
   display: flex;
   align-items: center;
-  gap: 5px;
+  padding: 4px 0;
 }
 
-.chronica-legend-color {
+.chronica-legend-swatch {
   width: 12px;
   height: 12px;
   border-radius: 2px;
+  margin-right: 8px;
   flex-shrink: 0;
 }
 
-.chronica-legend-label {
-  font-size: 12px;
+.chronica-legend-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.chronica-legend-type {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chronica-legend-count {
+  font-size: 11px;
   color: var(--text-muted);
 }
 
-/* Seasonal Chart */
-.chronica-seasonal-chart {
+/* Stacked bar chart */
+.chronica-stacked-chart-container {
   display: flex;
   align-items: flex-end;
-  height: 160px;
-  gap: 4px;
+  gap: 10px;
+  height: 200px;
+  padding-top: 20px;
   padding-bottom: 25px;
-  margin: 10px 0;
-  position: relative;
 }
 
-.chronica-month-bar-container {
-  flex-grow: 1;
+.chronica-stacked-bar-container {
+  flex: 1;
+  height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
+  position: relative;
+}
+
+.chronica-stacked-bar {
+  width: 30px;
   height: 100%;
-  position: relative;
+  display: flex;
+  flex-direction: column-reverse; /* Stack from bottom */
+  border-radius: 4px;
+  overflow: hidden;
+  background-color: var(--background-primary);
 }
 
-.chronica-month-bar {
+.chronica-stacked-segment {
   width: 100%;
-  background-color: var(--interactive-accent);
-  border-radius: 3px 3px 0 0;
-  position: relative;
-  min-height: 2px;
+  transition: all 0.2s ease;
 }
 
-.chronica-month-count {
+.chronica-stacked-bar-label {
   position: absolute;
-  top: -20px;
-  left: 0;
-  width: 100%;
-  text-align: center;
+  bottom: -20px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.chronica-stacked-bar-count {
+  position: absolute;
+  top: -18px;
   font-size: 11px;
   font-weight: 500;
   color: var(--text-muted);
 }
 
-.chronica-month-label {
-  position: absolute;
-  bottom: -22px;
-  left: 0;
-  width: 100%;
-  text-align: center;
-  font-size: 11px;
-  color: var(--text-muted);
+/* Monthly chart */
+.chronica-monthly-chart-container {
+  display: flex;
+  align-items: flex-end;
+  height: 180px;
+  gap: 8px;
+  padding-top: 20px;
+  padding-bottom: 25px;
+}
+
+.chronica-month-bar-wrapper {
+  flex: 1;
+}
+
+.chronica-month-bar {
+  background-color: var(--interactive-accent);
 }
 
 /* Highlight current period */
-.current-year,
-.current-month {
-  position: relative;
+.chronica-current-period {
+  z-index: 2;
 }
 
-.current-year::after,
-.current-month::after {
-  content: "";
-  position: absolute;
-  bottom: -2px;
-  left: 0;
-  width: 100%;
-  height: 2px;
+.chronica-current-bar {
   background-color: var(--text-accent);
+  box-shadow: 0 0 8px rgba(var(--interactive-accent-rgb), 0.4);
 }
 
 /* Responsive adjustments */
-@media (max-width: 450px) {
-  .chronica-phase-label,
-  .chronica-year-label,
-  .chronica-month-label {
-    font-size: 9px;
+@media (max-width: 600px) {
+  .chronica-charts-grid-container {
+    grid-template-columns: 1fr;
+  }
+  
+  .chronica-donut-container {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .chronica-chart-legend {
+    width: 100%;
   }
 }
 

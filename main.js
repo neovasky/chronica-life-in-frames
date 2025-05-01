@@ -3394,27 +3394,29 @@ class ChronosTimelineView extends obsidian.ItemView {
         });
     }
     /**
-     * Render the Charts tab content with improved visualizations
+     * Render the Charts tab content with improved visualizations arranged in a grid
      * @param container - Container to render tab content in
      */
     renderChartsTab(container) {
-        // Clear any existing content
-        container.empty();
-        // Create header
-        container.createEl("h3", { text: "Charts & Visualizations", cls: "chronica-charts-header" });
         // Calculate statistics
         const now = new Date();
         this.plugin.settings.birthday.split('-').map(Number);
+        // Create main container with grid layout
+        const chartsGridContainer = container.createEl("div", {
+            cls: "chronica-charts-grid-container",
+        });
+        // Collect all events
+        let allEvents = [];
         // Function to parse week key
         const parseWeekKey = (key) => {
             const parts = key.split("-W");
+            if (parts.length !== 2)
+                return { year: 0, week: 0 };
             return {
-                year: parseInt(parts[0]),
-                week: parseInt(parts[1])
+                year: parseInt(parts[0], 10),
+                week: parseInt(parts[1], 10)
             };
         };
-        // Collect all events
-        let allEvents = [];
         // Add standard events
         const addEvents = (events, type, color) => {
             events.forEach(eventData => {
@@ -3456,33 +3458,38 @@ class ChronosTimelineView extends obsidian.ItemView {
         }
         // If no events, show a message
         if (allEvents.length === 0) {
-            const emptyState = container.createEl("div", {
-                cls: "chronica-charts-empty-state",
+            const emptyState = chartsGridContainer.createEl("div", {
+                cls: "chronica-empty-chart-state",
             });
             emptyState.createEl("div", {
-                cls: "chronica-charts-empty-icon",
-                text: "📊"
+                cls: "chronica-empty-icon",
+                text: "📊",
             });
             emptyState.createEl("div", {
-                cls: "chronica-charts-empty-title",
-                text: "No data to visualize yet"
+                cls: "chronica-empty-message",
+                text: "No events added yet",
             });
             emptyState.createEl("div", {
-                cls: "chronica-charts-empty-text",
-                text: "Add events to see charts and visualizations of your timeline data."
+                cls: "chronica-empty-submessage",
+                text: "Add events to see charts and visualizations",
             });
             return;
         }
-        // Create grid container for charts
-        const chartsGrid = container.createEl("div", {
-            cls: "chronica-charts-grid"
+        // ======== EVENT DENSITY BY YEAR CHART ========
+        const densityChartCard = chartsGridContainer.createEl("div", {
+            cls: "chronica-chart-card",
         });
-        // 1. EVENT DISTRIBUTION BY YEAR CHART
+        densityChartCard.createEl("h3", {
+            cls: "chronica-chart-title",
+            text: "Event Density by Year",
+        });
         // Count events by year
         const eventsByYear = {};
         allEvents.forEach(event => {
             const year = parseWeekKey(event.weekKey).year;
-            eventsByYear[year] = (eventsByYear[year] || 0) + 1;
+            if (year > 0) {
+                eventsByYear[year] = (eventsByYear[year] || 0) + 1;
+            }
         });
         // Get years range
         const years = Object.keys(eventsByYear).map(Number);
@@ -3496,56 +3503,191 @@ class ChronosTimelineView extends obsidian.ItemView {
         }
         // Sort years
         const sortedYears = Object.keys(eventsByYear).map(Number).sort((a, b) => a - b);
-        // Create event distribution chart card
-        const distributionCard = chartsGrid.createEl("div", {
-            cls: "chronica-chart-card"
+        // Create bar chart container
+        const densityChartContainer = densityChartCard.createEl("div", {
+            cls: "chronica-bar-chart-container",
         });
-        distributionCard.createEl("div", {
-            cls: "chronica-chart-title",
-            text: "Event Distribution by Year"
-        });
-        // Create horizontal bar chart (instead of vertical)
-        const distributionChart = distributionCard.createEl("div", {
-            cls: "chronica-distribution-chart"
-        });
-        // Calculate max events for scale
-        const maxEvents = Math.max(...Object.values(eventsByYear));
-        // Create bars for each year
-        sortedYears.forEach(year => {
-            const barGroup = distributionChart.createEl("div", {
-                cls: "chronica-distribution-bar-group"
-            });
-            // Year label on the left
-            barGroup.createEl("div", {
-                cls: "chronica-distribution-label",
-                text: year.toString()
-            });
-            // Bar container
-            const barContainer = barGroup.createEl("div", {
-                cls: "chronica-distribution-bar-container"
-            });
-            // Actual bar
-            const bar = barContainer.createEl("div", {
-                cls: "chronica-distribution-bar"
-            });
+        // Calculate maximum events for scaling
+        const maxEvents = Math.max(...Object.values(eventsByYear), 1); // Ensure non-zero
+        // Create bars
+        for (const year of sortedYears) {
             const count = eventsByYear[year];
-            const width = maxEvents > 0 ? (count / maxEvents) * 100 : 0;
-            bar.style.width = `${width}%`;
-            // Count label inside bar
-            bar.createEl("span", {
-                cls: "chronica-distribution-count",
-                text: count.toString()
+            const barHeight = Math.max(5, (count / maxEvents) * 100); // Minimum 5% height for visibility
+            const barContainer = densityChartContainer.createEl("div", {
+                cls: "chronica-bar-wrapper",
+            });
+            const bar = barContainer.createEl("div", {
+                cls: "chronica-bar",
+            });
+            bar.style.height = `${barHeight}%`;
+            // Add count on top of bar
+            barContainer.createEl("div", {
+                cls: "chronica-bar-value",
+                text: count.toString(),
+            });
+            // Add label below bar
+            barContainer.createEl("div", {
+                cls: "chronica-bar-label",
+                text: year.toString(),
             });
             // Highlight current year
             if (year === now.getFullYear()) {
-                barGroup.classList.add("current-year");
+                barContainer.addClass("chronica-current-period");
+                bar.addClass("chronica-current-bar");
             }
+            // Set tooltip
+            barContainer.setAttribute("title", `${year}: ${count} events`);
+        }
+        // ======== EVENT DISTRIBUTION BY TYPE CHART ========
+        const pieChartCard = chartsGridContainer.createEl("div", {
+            cls: "chronica-chart-card",
         });
-        // 2. EVENT TYPES DISTRIBUTION CHART
+        pieChartCard.createEl("h3", {
+            cls: "chronica-chart-title",
+            text: "Event Distribution by Type",
+        });
         // Count events by type
         const eventsByType = {};
         allEvents.forEach(event => {
-            eventsByType[event.type] = (eventsByType[event.type] || 0) + 1;
+            if (!eventsByType[event.type]) {
+                eventsByType[event.type] = {
+                    count: 0,
+                    color: event.color
+                };
+            }
+            eventsByType[event.type].count++;
+        });
+        // Convert to array and sort by count (descending)
+        const typeData = Object.entries(eventsByType)
+            .map(([type, data]) => ({
+            type,
+            count: data.count,
+            color: data.color
+        }))
+            .sort((a, b) => b.count - a.count);
+        // Calculate total for percentages
+        const totalEvents = typeData.reduce((sum, item) => sum + item.count, 0);
+        // Create donut chart container
+        const pieChartContainer = pieChartCard.createEl("div", {
+            cls: "chronica-donut-container",
+        });
+        // Create legend container
+        const legendContainer = pieChartContainer.createEl("div", {
+            cls: "chronica-chart-legend",
+        });
+        // Create the chart visualization area
+        const chartArea = pieChartContainer.createEl("div", {
+            cls: "chronica-donut-chart",
+        });
+        // Create SVG for pie chart
+        const svgNS = "http://www.w3.org/2000/svg";
+        const svg = document.createElementNS(svgNS, "svg");
+        svg.setAttribute("viewBox", "0 0 100 100");
+        chartArea.appendChild(svg);
+        // Create a group for the chart
+        const g = document.createElementNS(svgNS, "g");
+        g.setAttribute("transform", "translate(50,50)");
+        svg.appendChild(g);
+        // Calculate pie segments
+        let startAngle = 0;
+        typeData.forEach(item => {
+            const percentage = (item.count / totalEvents) * 100;
+            const angleSize = (percentage / 100) * 360;
+            const endAngle = startAngle + angleSize;
+            // Convert angles to radians
+            const startRad = (startAngle - 90) * Math.PI / 180;
+            const endRad = (endAngle - 90) * Math.PI / 180;
+            // Calculate coordinates
+            const x1 = 40 * Math.cos(startRad);
+            const y1 = 40 * Math.sin(startRad);
+            const x2 = 40 * Math.cos(endRad);
+            const y2 = 40 * Math.sin(endRad);
+            // Create path for arc
+            const path = document.createElementNS(svgNS, "path");
+            // Determine if the arc is greater than 180 degrees
+            const largeArcFlag = angleSize > 180 ? 1 : 0;
+            // SVG path for an arc
+            const d = [
+                `M ${x1},${y1}`,
+                `A 40,40 0 ${largeArcFlag},1 ${x2},${y2}`,
+                `L 0,0`,
+                `Z` // Close path
+            ].join(" ");
+            path.setAttribute("d", d);
+            path.setAttribute("fill", item.color);
+            path.setAttribute("title", `${item.type}: ${item.count} (${percentage.toFixed(1)}%)`);
+            g.appendChild(path);
+            // Add legend item
+            const legendItem = legendContainer.createEl("div", {
+                cls: "chronica-legend-item",
+            });
+            // Color swatch
+            const colorSwatch = legendItem.createEl("div", {
+                cls: "chronica-legend-swatch",
+            });
+            colorSwatch.style.backgroundColor = item.color;
+            // Text content with type and count
+            const legendText = legendItem.createEl("div", {
+                cls: "chronica-legend-text",
+            });
+            legendText.createEl("span", {
+                cls: "chronica-legend-type",
+                text: item.type,
+            });
+            legendText.createEl("span", {
+                cls: "chronica-legend-count",
+                text: `${item.count} (${percentage.toFixed(1)}%)`,
+            });
+            // Update for next segment
+            startAngle = endAngle;
+        });
+        // Add inner circle for donut hole
+        const circle = document.createElementNS(svgNS, "circle");
+        circle.setAttribute("cx", "0");
+        circle.setAttribute("cy", "0");
+        circle.setAttribute("r", "25");
+        circle.setAttribute("fill", "var(--background-secondary)");
+        g.appendChild(circle);
+        // Add total count in the middle
+        const totalText = document.createElementNS(svgNS, "text");
+        totalText.setAttribute("x", "0");
+        totalText.setAttribute("y", "0");
+        totalText.setAttribute("text-anchor", "middle");
+        totalText.setAttribute("dominant-baseline", "middle");
+        totalText.setAttribute("fill", "var(--text-normal)");
+        totalText.setAttribute("font-size", "12");
+        totalText.setAttribute("font-weight", "bold");
+        totalText.textContent = totalEvents.toString();
+        g.appendChild(totalText);
+        const totalLabel = document.createElementNS(svgNS, "text");
+        totalLabel.setAttribute("x", "0");
+        totalLabel.setAttribute("y", "12");
+        totalLabel.setAttribute("text-anchor", "middle");
+        totalLabel.setAttribute("dominant-baseline", "middle");
+        totalLabel.setAttribute("fill", "var(--text-muted)");
+        totalLabel.setAttribute("font-size", "6");
+        totalLabel.textContent = "Events";
+        g.appendChild(totalLabel);
+        // ======== EVENT TYPES BY YEAR CHART ========
+        const stackedChartCard = chartsGridContainer.createEl("div", {
+            cls: "chronica-chart-card chronica-full-width",
+        });
+        stackedChartCard.createEl("h3", {
+            cls: "chronica-chart-title",
+            text: "Event Types by Year",
+        });
+        // Count events by year and type
+        const eventsByYearAndType = {};
+        const eventTypes = new Set();
+        allEvents.forEach(event => {
+            const year = parseWeekKey(event.weekKey).year;
+            if (year > 0) {
+                if (!eventsByYearAndType[year]) {
+                    eventsByYearAndType[year] = {};
+                }
+                eventsByYearAndType[year][event.type] = (eventsByYearAndType[year][event.type] || 0) + 1;
+                eventTypes.add(event.type);
+            }
         });
         // Get color map
         const colorMap = {
@@ -3560,243 +3702,133 @@ class ChronosTimelineView extends obsidian.ItemView {
                 colorMap[type.name] = type.color;
             });
         }
-        // Sort types by count (highest first)
-        const sortedTypes = Object.keys(eventsByType).sort((a, b) => eventsByType[b] - eventsByType[a]);
-        // Create pie chart card
-        const typesCard = chartsGrid.createEl("div", {
-            cls: "chronica-chart-card"
+        // Create stacked chart container
+        const stackedChartContainer = stackedChartCard.createEl("div", {
+            cls: "chronica-stacked-chart-container",
         });
-        typesCard.createEl("div", {
-            cls: "chronica-chart-title",
-            text: "Event Types Distribution"
+        // Create legend for stacked chart
+        const stackedLegend = stackedChartCard.createEl("div", {
+            cls: "chronica-chart-legend",
         });
-        // Create horizontal bar chart
-        const typesChart = typesCard.createEl("div", {
-            cls: "chronica-types-chart"
+        // Add legend items for all event types
+        Array.from(eventTypes).forEach(type => {
+            const legendItem = stackedLegend.createEl("div", {
+                cls: "chronica-legend-item",
+            });
+            const colorSwatch = legendItem.createEl("div", {
+                cls: "chronica-legend-swatch",
+            });
+            colorSwatch.style.backgroundColor = colorMap[type] || "#999";
+            legendItem.createEl("div", {
+                cls: "chronica-legend-text",
+                text: type,
+            });
         });
-        // Calculate total events
-        const totalEvents = Object.values(eventsByType).reduce((sum, count) => sum + count, 0);
-        // Create bars for each type
-        sortedTypes.forEach(type => {
-            const barGroup = typesChart.createEl("div", {
-                cls: "chronica-types-bar-group"
+        // Create stacked bars
+        for (const year of sortedYears) {
+            const barContainer = stackedChartContainer.createEl("div", {
+                cls: "chronica-stacked-bar-container",
             });
-            // Color indicator
-            const colorIndicator = barGroup.createEl("div", {
-                cls: "chronica-types-color"
-            });
-            colorIndicator.style.backgroundColor = colorMap[type] || "#999";
-            // Type label
-            barGroup.createEl("div", {
-                cls: "chronica-types-label",
-                text: type
-            });
-            // Bar container
-            const barContainer = barGroup.createEl("div", {
-                cls: "chronica-types-bar-container"
-            });
-            // Actual bar
-            const bar = barContainer.createEl("div", {
-                cls: "chronica-types-bar"
-            });
-            const count = eventsByType[type];
-            const percentage = totalEvents > 0 ? (count / totalEvents) * 100 : 0;
-            bar.style.width = `${percentage}%`;
-            // Percentage and count
+            // Year label below bar
             barContainer.createEl("div", {
-                cls: "chronica-types-stats",
-                text: `${count} (${Math.round(percentage)}%)`
+                cls: "chronica-stacked-bar-label",
+                text: year.toString(),
             });
+            // Create the stacked bar
+            const stackedBar = barContainer.createEl("div", {
+                cls: "chronica-stacked-bar",
+            });
+            // Add segments for each event type
+            let totalForYear = 0;
+            // First, calculate total for this year
+            Array.from(eventTypes).forEach(type => {
+                totalForYear += eventsByYearAndType[year]?.[type] || 0;
+            });
+            // Then add segments for each type
+            Array.from(eventTypes).forEach(type => {
+                const count = eventsByYearAndType[year]?.[type] || 0;
+                if (count > 0) {
+                    const segment = stackedBar.createEl("div", {
+                        cls: "chronica-stacked-segment",
+                    });
+                    const heightPercentage = (count / totalForYear) * 100;
+                    segment.style.height = `${heightPercentage}%`;
+                    segment.style.backgroundColor = colorMap[type] || "#999";
+                    segment.setAttribute("title", `${type}: ${count} events`);
+                }
+            });
+            // Add count above bar
+            barContainer.createEl("div", {
+                cls: "chronica-stacked-bar-count",
+                text: totalForYear.toString(),
+            });
+            // Highlight current year
+            if (year === now.getFullYear()) {
+                barContainer.addClass("chronica-current-period");
+                stackedBar.addClass("chronica-current-bar");
+            }
+        }
+        // ======== MONTHLY DISTRIBUTION CHART ========
+        const monthlyChartCard = chartsGridContainer.createEl("div", {
+            cls: "chronica-chart-card chronica-full-width",
         });
-        // 3. EVENT HEATMAP BY MONTH AND YEAR
-        // Create a grid with years as columns and months as rows
-        const heatmapCard = chartsGrid.createEl("div", {
-            cls: "chronica-chart-card chronica-chart-full-width"
-        });
-        heatmapCard.createEl("div", {
+        monthlyChartCard.createEl("h3", {
             cls: "chronica-chart-title",
-            text: "Monthly Event Heatmap"
+            text: "Event Distribution by Month",
         });
-        // Count events by month and year
-        const eventsByMonthAndYear = {};
+        // Count events by month
+        const eventsByMonth = Array(12).fill(0);
         allEvents.forEach(event => {
+            // Simple approximation of month from week number
             const { year, week } = parseWeekKey(event.weekKey);
-            // Approximate month from week number (simple approximation)
-            const month = Math.floor((week - 1) / 4.34); // ~4.34 weeks per month
-            if (month >= 0 && month < 12) {
-                const key = `${year}-${month}`;
-                eventsByMonthAndYear[key] = (eventsByMonthAndYear[key] || 0) + 1;
+            if (year > 0) {
+                // Estimate month based on week number (very approximate)
+                const monthIndex = Math.min(11, Math.floor((week - 1) / 4.34)); // ~4.34 weeks per month
+                if (monthIndex >= 0 && monthIndex < 12) {
+                    eventsByMonth[monthIndex]++;
+                }
             }
         });
-        // Create heatmap container
-        const heatmapContainer = heatmapCard.createEl("div", {
-            cls: "chronica-heatmap-container"
+        // Create monthly chart container
+        const monthlyChartContainer = monthlyChartCard.createEl("div", {
+            cls: "chronica-monthly-chart-container",
         });
-        // Month names for labels
+        // Month names
         const monthNames = [
             "Jan", "Feb", "Mar", "Apr", "May", "Jun",
             "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
         ];
-        // Create header row with year labels
-        const headerRow = heatmapContainer.createEl("div", {
-            cls: "chronica-heatmap-header"
+        // Get maximum for scaling
+        const maxMonthlyEvents = Math.max(...eventsByMonth, 1);
+        // Create month bars
+        monthNames.forEach((month, index) => {
+            const count = eventsByMonth[index];
+            const barHeight = Math.max(5, (count / maxMonthlyEvents) * 100);
+            const barContainer = monthlyChartContainer.createEl("div", {
+                cls: "chronica-bar-wrapper chronica-month-bar-wrapper",
+            });
+            const bar = barContainer.createEl("div", {
+                cls: "chronica-bar chronica-month-bar",
+            });
+            bar.style.height = `${barHeight}%`;
+            // Add value above bar
+            barContainer.createEl("div", {
+                cls: "chronica-bar-value",
+                text: count > 0 ? count.toString() : "",
+            });
+            // Add month label below bar
+            barContainer.createEl("div", {
+                cls: "chronica-bar-label",
+                text: month,
+            });
+            // Highlight current month
+            if (index === now.getMonth()) {
+                barContainer.addClass("chronica-current-period");
+                bar.addClass("chronica-current-bar");
+            }
+            // Set tooltip
+            barContainer.setAttribute("title", `${month}: ${count} events`);
         });
-        // Empty cell for the corner
-        headerRow.createEl("div", {
-            cls: "chronica-heatmap-corner"
-        });
-        // Year column headers
-        sortedYears.forEach(year => {
-            headerRow.createEl("div", {
-                cls: "chronica-heatmap-year",
-                text: year.toString()
-            });
-        });
-        // Find maximum events in any month for color scaling
-        const maxMonthlyEvents = Math.max(...Object.values(eventsByMonthAndYear), 1);
-        // Create a row for each month
-        monthNames.forEach((monthName, monthIndex) => {
-            const monthRow = heatmapContainer.createEl("div", {
-                cls: "chronica-heatmap-row"
-            });
-            // Month label on the left
-            monthRow.createEl("div", {
-                cls: "chronica-heatmap-month",
-                text: monthName
-            });
-            // Create a cell for each year
-            sortedYears.forEach(year => {
-                const key = `${year}-${monthIndex}`;
-                const count = eventsByMonthAndYear[key] || 0;
-                const cell = monthRow.createEl("div", {
-                    cls: "chronica-heatmap-cell",
-                    attr: {
-                        "data-count": count.toString(),
-                        "title": `${monthName} ${year}: ${count} events`
-                    }
-                });
-                // Add the count as text if > 0
-                if (count > 0) {
-                    cell.textContent = count.toString();
-                }
-                // Calculate intensity for coloring (0 to 1)
-                const intensity = count / maxMonthlyEvents;
-                // Apply color based on intensity
-                cell.style.backgroundColor = count > 0
-                    ? `rgba(132, 90, 223, ${0.2 + intensity * 0.8})`
-                    : "var(--background-secondary)";
-                // Highlight current month
-                if (year === now.getFullYear() && monthIndex === now.getMonth()) {
-                    cell.classList.add("current-month");
-                }
-            });
-        });
-        // 4. EVENT TRENDS CHART - ANNUALIZED DATA
-        // Create annualized data for a trends view
-        if (sortedYears.length > 1) {
-            const trendsCard = chartsGrid.createEl("div", {
-                cls: "chronica-chart-card chronica-chart-full-width"
-            });
-            trendsCard.createEl("div", {
-                cls: "chronica-chart-title",
-                text: "Event Type Trends by Year"
-            });
-            // Count events by year and type
-            const eventsByYearAndType = {};
-            allEvents.forEach(event => {
-                const year = parseWeekKey(event.weekKey).year;
-                if (!eventsByYearAndType[year]) {
-                    eventsByYearAndType[year] = {};
-                }
-                eventsByYearAndType[year][event.type] = (eventsByYearAndType[year][event.type] || 0) + 1;
-            });
-            // Get all event types
-            const allTypes = Array.from(new Set(allEvents.map(event => event.type)));
-            // Create container for the trends chart
-            const trendsContainer = trendsCard.createEl("div", {
-                cls: "chronica-trends-container"
-            });
-            // Create a legend
-            const trendsLegend = trendsCard.createEl("div", {
-                cls: "chronica-trends-legend"
-            });
-            allTypes.forEach(type => {
-                const legendItem = trendsLegend.createEl("div", {
-                    cls: "chronica-legend-item"
-                });
-                const colorBox = legendItem.createEl("div", {
-                    cls: "chronica-legend-color"
-                });
-                colorBox.style.backgroundColor = colorMap[type] || "#999";
-                legendItem.createEl("div", {
-                    cls: "chronica-legend-label",
-                    text: type
-                });
-            });
-            // Find the maximum number of events in any year for any type
-            let maxTypeEvents = 0;
-            sortedYears.forEach(year => {
-                allTypes.forEach(type => {
-                    const count = eventsByYearAndType[year]?.[type] || 0;
-                    if (count > maxTypeEvents) {
-                        maxTypeEvents = count;
-                    }
-                });
-            });
-            allTypes.forEach((type, typeIndex) => {
-                // Create a line path
-                const linePath = trendsContainer.createEl("div", {
-                    cls: "chronica-trend-line"
-                });
-                linePath.style.borderColor = colorMap[type] || "#999";
-                // Create points for the line
-                let points = [];
-                sortedYears.forEach((year, yearIndex) => {
-                    const count = eventsByYearAndType[year]?.[type] || 0;
-                    // Calculate position
-                    const x = yearIndex / (sortedYears.length - 1) * 100;
-                    const y = count > 0 ? (1 - count / maxTypeEvents) * 100 : 100;
-                    points.push(`${x}% ${y}%`);
-                    // Add data point
-                    const point = trendsContainer.createEl("div", {
-                        cls: "chronica-trend-point",
-                        attr: {
-                            "title": `${type}, ${year}: ${count} events`
-                        }
-                    });
-                    point.style.left = `${x}%`;
-                    point.style.top = `${y}%`;
-                    point.style.backgroundColor = colorMap[type] || "#999";
-                    // Add data label if count > 0
-                    if (count > 0) {
-                        const label = trendsContainer.createEl("div", {
-                            cls: "chronica-trend-label",
-                            text: count.toString()
-                        });
-                        label.style.left = `${x}%`;
-                        label.style.top = `${y}%`;
-                        label.style.color = colorMap[type] || "#999";
-                    }
-                });
-                // Set the clip path for the line
-                if (points.length > 1) {
-                    const clipPath = `polygon(${points.join(", ")})`;
-                    linePath.style.clipPath = clipPath;
-                }
-            });
-            // Add year labels at the bottom
-            sortedYears.forEach((year, yearIndex) => {
-                const yearLabel = trendsContainer.createEl("div", {
-                    cls: "chronica-trend-year",
-                    text: year.toString()
-                });
-                yearLabel.style.left = `${yearIndex / (sortedYears.length - 1) * 100}%`;
-                // Highlight current year
-                if (year === now.getFullYear()) {
-                    yearLabel.classList.add("current-year");
-                }
-            });
-        }
     }
     /**
      * Apply styling for events to a cell
