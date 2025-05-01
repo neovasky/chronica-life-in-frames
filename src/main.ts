@@ -4626,7 +4626,7 @@ renderChartsTab(container: HTMLElement): void {
     return;
   }
   
-// ======== EVENT DENSITY BY YEAR CHART (TILE GRID) ========
+// ======== EVENT DENSITY BY YEAR CHART (YEAR BUBBLES) ========
 const densityChartCard = chartsGridContainer.createEl("div", {
   cls: "chronica-chart-card",
 });
@@ -4651,69 +4651,200 @@ const years = Object.keys(eventsByYear).map(Number);
 const minYear = Math.min(...years);
 const maxYear = Math.max(...years);
 
-// Fill in missing years
+// Create array of all years (even empties) for consistent display
+const yearsArray: {year: number, count: number}[] = [];
 for (let year = minYear; year <= maxYear; year++) {
-  if (!eventsByYear[year]) {
-    eventsByYear[year] = 0;
+  yearsArray.push({
+    year: year,
+    count: eventsByYear[year] || 0
+  });
+}
+
+// Sort years for any later references
+const allSortedYears = Object.keys(eventsByYear).map(Number).sort((a, b) => a - b);
+
+// Calculate maximum count for scaling
+const maxCount = Math.max(...Object.values(eventsByYear), 1); // Ensure non-zero
+
+// Create year bubbles container
+const bubbleContainer = densityChartCard.createEl("div", {
+  cls: "chronica-year-bubbles-container",
+});
+
+// Create timeline track
+const timelineTrack = bubbleContainer.createEl("div", {
+  cls: "chronica-timeline-track",
+});
+
+// Calculate timeline span and determine appropriate interval
+const timelineSpan = maxYear - minYear + 1;
+let markerInterval;
+
+// Adaptive marker spacing based on timeline span
+if (timelineSpan <= 20) markerInterval = 5;      // 5-year intervals for short spans 
+else if (timelineSpan <= 50) markerInterval = 10; // Decade intervals for medium spans
+else if (timelineSpan <= 100) markerInterval = 20; // 20-year intervals for long spans
+else markerInterval = 50;                         // Half-century for very long spans
+
+// Calculate start year rounded to interval
+const startMarkerYear = Math.floor(minYear / markerInterval) * markerInterval;
+
+// Create array of years to mark
+const markerYears = [];
+for (let year = startMarkerYear; year <= maxYear; year += markerInterval) {
+  if (year >= minYear) {
+    markerYears.push(year);
   }
 }
 
-// Sort years
-const sortedYears = Object.keys(eventsByYear).map(Number).sort((a, b) => a - b);
-
-// Create a tile grid container
-const tileGridContainer = densityChartCard.createEl("div", {
-  cls: "chronica-year-tile-grid",
-});
-
-// Calculate maximum count for color scaling
-const maxCount = Math.max(...Object.values(eventsByYear), 1); // Ensure non-zero
-
-// Create year tiles
-for (let year = minYear; year <= maxYear; year++) {
-  const count = eventsByYear[year] || 0;
-  const intensity = count / maxCount;
-  
-  const tile = tileGridContainer.createEl("div", {
-    cls: "chronica-year-tile",
+// Add markers only at selected intervals
+markerYears.forEach(year => {
+  const marker = timelineTrack.createEl("div", {
+    cls: "chronica-decade-marker",
   });
+  const position = ((year - minYear) / timelineSpan) * 100;
+  marker.style.left = `${position}%`;
   
-  // Set background color intensity based on count
-  if (count > 0) {
-    tile.style.backgroundColor = `rgba(var(--interactive-accent-rgb), ${Math.max(0.2, intensity)})`;
-    tile.style.color = intensity >= 0.7 ? "var(--text-on-accent)" : "var(--text-normal)";
-    tile.addClass("has-events");
-  }
-  
-  // Add year label
-  tile.createEl("div", {
-    cls: "chronica-year-tile-year",
+  const markerLabel = marker.createEl("div", {
+    cls: "chronica-decade-label",
     text: year.toString(),
   });
+});
+
+// Create bubbles container
+const bubblesTrack = bubbleContainer.createEl("div", {
+  cls: "chronica-bubbles-track",
+});
+
+// Size scaling function - use a non-linear scale for better visual differentiation
+const getRadius = (count: number) => {
+  // Minimum size for bubbles with events
+  const minSize = 6; 
+  // Maximum size for bubbles
+  const maxSize = 24;
   
-  // Add count
-  tile.createEl("div", {
-    cls: "chronica-year-tile-count",
-    text: count.toString(),
+  if (count === 0) return 2; // Tiny dot for years with no events
+  
+  // Use sqrt scale for better visual representation
+  return minSize + (maxSize - minSize) * Math.sqrt(count / maxCount);
+};
+
+// Create year bubbles
+yearsArray.forEach(yearData => {
+  const bubbleWrapper = bubblesTrack.createEl("div", {
+    cls: "chronica-bubble-wrapper",
   });
   
-  // Highlight current year
-  if (year === now.getFullYear()) {
-    tile.addClass("chronica-current-year");
+  // Position the bubble along the timeline
+  const position = ((yearData.year - minYear) / timelineSpan) * 100;
+  bubbleWrapper.style.left = `${position}%`;
+  
+  // Create the bubble
+  const bubble = bubbleWrapper.createEl("div", {
+    cls: `chronica-year-bubble ${yearData.count > 0 ? "has-events" : "no-events"}`,
+  });
+  
+  // Set bubble size based on count
+  const radius = getRadius(yearData.count);
+  bubble.style.width = `${radius * 2}px`;
+  bubble.style.height = `${radius * 2}px`;
+  
+  // Add count indicator for non-zero bubbles
+  if (yearData.count > 0) {
+    const countLabel = bubble.createEl("span", {
+      cls: "chronica-bubble-count",
+      text: yearData.count.toString(),
+    });
   }
   
-  // Add tooltip
-  tile.setAttribute("title", `${year}: ${count} events`);
+  // Highlight current year
+  if (yearData.year === now.getFullYear()) {
+    bubble.addClass("current-year");
+  }
   
-  // Add hover interaction for accessibility
-  tile.addEventListener("mouseenter", () => {
-    tile.style.transform = "translateY(-3px)";
-    tile.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.2)";
+// Add year label below bubble
+const yearLabel = bubbleWrapper.createEl("div", {
+  cls: "chronica-bubble-year",
+  text: yearData.year.toString(),
+});
+
+// Smart label display for wide time spans
+const timeSpan = maxYear - minYear;
+let shouldShowLabel = false;
+
+// Always show years with events
+if (yearData.count > 0) {
+  shouldShowLabel = true;
+}
+// Always show current year
+else if (yearData.year === now.getFullYear()) {
+  shouldShowLabel = true;
+}
+// For short timelines (<20 years), show every 5 years
+else if (timeSpan < 20 && yearData.year % 5 === 0) {
+  shouldShowLabel = true;
+}
+// For medium timelines (20-50 years), show every decade
+else if (timeSpan >= 20 && timeSpan <= 50 && yearData.year % 10 === 0) {
+  shouldShowLabel = true;
+}
+// For long timelines (>50 years), show every 20 years
+else if (timeSpan > 50 && yearData.year % 20 === 0) {
+  shouldShowLabel = true;
+}
+
+// Hide labels that don't meet our criteria
+if (!shouldShowLabel) {
+  yearLabel.style.opacity = "0";
+  yearLabel.style.fontSize = "8px";
+}
+  
+  // Add tooltip
+  bubble.setAttribute("title", `${yearData.year}: ${yearData.count} events`);
+  
+// Simplified hover effect - just highlight the bubble and show the label
+bubble.addEventListener("mouseleave", () => {
+  bubble.removeClass("bubble-hover");
+  
+  // Hide label again if it shouldn't be shown
+  if (!shouldShowLabel) {
+    yearLabel.style.opacity = "0";
+  }
+  yearLabel.style.fontWeight = "normal";
+});
+
+bubble.addEventListener("mouseleave", () => {
+  bubble.removeClass("bubble-hover");
+  
+  // Remove any tooltips
+  const tooltip = bubbleWrapper.querySelector(".chronica-bubble-tooltip");
+  if (tooltip) tooltip.remove();
+});
+  
+  // Add click event to show details (optional enhancement)
+  bubble.addEventListener("click", () => {
+    // For now just add a visual effect
+    bubble.addClass("bubble-active");
+    setTimeout(() => {
+      bubble.removeClass("bubble-active");
+    }, 500);
+    
+    // You could show a modal or expand details here in the future
+  });
+});
+
+// Add legend or summary
+if (years.length > 0) {
+  const bubbleLegend = bubbleContainer.createEl("div", {
+    cls: "chronica-bubble-legend",
   });
   
-  tile.addEventListener("mouseleave", () => {
-    tile.style.transform = "";
-    tile.style.boxShadow = "";
+  const totalEvents = Object.values(eventsByYear).reduce((sum, count) => sum + count, 0);
+  const yearsWithEvents = Object.values(eventsByYear).filter(count => count > 0).length;
+  
+  bubbleLegend.createEl("div", {
+    cls: "chronica-bubble-summary",
+    text: `${totalEvents} events across ${yearsWithEvents} years (${minYear}–${maxYear})`,
   });
 }
   
@@ -4944,7 +5075,7 @@ for (let year = minYear; year <= maxYear; year++) {
   });
   
   // Create stacked bars
-  for (const year of sortedYears) {
+  for (const year of allSortedYears) {
     const barContainer = stackedChartContainer.createEl("div", {
       cls: "chronica-stacked-bar-container",
     });
