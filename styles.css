@@ -1126,12 +1126,201 @@
     transition: padding-bottom 0.3s ease;
   }
     
-    .chronica-stats-tabs {
-      flex-wrap: wrap;
-      justify-content: center;
-    }
+  .chronica-stats-tabs {
+    flex-wrap: wrap;
+    justify-content: center;
+   }
     
-    .chronica-stats-tab {
-      padding: 3px 6px;
-      font-size: 12px;
-    }
+  .chronica-stats-tab {
+    padding: 3px 6px;
+    font-size: 12px;
+   }
+
+   /* Improved stats layout */
+.chronica-progress-container {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin: 10px 0;
+}
+
+.chronica-circular-progress {
+  width: 60px;
+  height: 60px;
+  flex-shrink: 0;
+}
+
+.chronica-bar-container {
+  flex-grow: 1;
+}
+
+.chronica-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-top: 10px;
+}
+
+.chronica-stat-section {
+  grid-column: span 2;
+}
+
+.chronica-stat-card-full {
+  grid-column: span 2;
+}
+
+/* Make circular progress smaller */
+.chronica-circular-progress svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.chronica-circular-progress-text {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* Additional stat cards formatting */
+.chronica-stat-card {
+  padding: 12px;
+  border-radius: 6px;
+  background-color: var(--background-secondary);
+  box-shadow: var(--card-shadow);
+  margin-bottom: 15px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 500px) {
+  .chronica-stats-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .chronica-stat-section, 
+  .chronica-stat-card-full {
+    grid-column: span 1;
+  }
+}
+
+/* Event tab styles */
+.chronica-empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.chronica-event-chart-container {
+  margin: 15px 0;
+}
+
+.chronica-chart-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.chronica-chart-label {
+  width: 120px;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chronica-chart-bar-container {
+  flex-grow: 1;
+  height: 24px;
+  position: relative;
+  background-color: var(--background-primary);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.chronica-chart-bar {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.chronica-chart-count {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-weight: 600;
+  color: var(--text-normal);
+  font-size: 14px;
+}
+
+.chronica-event-list {
+  margin-top: 15px;
+}
+
+.chronica-event-item {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--background-modifier-border);
+  display: flex;
+  align-items: center;
+}
+
+.chronica-event-item:last-child {
+  border-bottom: none;
+}
+
+.chronica-event-color-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 10px;
+  flex-shrink: 0;
+}
+
+.chronica-event-info {
+  flex-grow: 1;
+}
+
+.chronica-event-name {
+  font-weight: 500;
+  color: var(--text-normal);
+}
+
+.chronica-event-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.chronica-empty-list {
+  text-align: center;
+  padding: 20px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.chronica-stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+.chronica-stats-table td {
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.chronica-stats-table tr:last-child td {
+  border-bottom: none;
+}
+
+.chronica-stats-table td:first-child {
+  color: var(--text-muted);
+}
+
+.chronica-stats-table td:last-child {
+  font-weight: 500;
+  text-align: right;
+}
+

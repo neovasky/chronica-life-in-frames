@@ -2807,7 +2807,8 @@ class ChronosTimelineView extends obsidian.ItemView {
     renderOverviewTab(container) {
         // Calculate statistics
         const now = new Date();
-        const birthdayDate = new Date(this.plugin.settings.birthday);
+        const [year, month, day] = this.plugin.settings.birthday.split('-').map(Number);
+        const birthdayDate = new Date(year, month - 1, day);
         const ageInWeeks = this.plugin.getFullWeekAge(birthdayDate, now);
         const totalWeeks = this.plugin.settings.lifespan * 52;
         const livedPercentage = Math.min(100, Math.max(0, (ageInWeeks / totalWeeks) * 100));
@@ -2827,13 +2828,33 @@ class ChronosTimelineView extends obsidian.ItemView {
             }
         }
         const totalEvents = majorLifeEvents + travelEvents + relationshipEvents + educationCareerEvents + customEventCount;
-        // Create life progress circular indicator
-        const progressContainer = container.createEl("div", {
+        // Create main container with grid layout
+        const overviewGrid = container.createEl("div", {
+            cls: "chronica-stats-grid",
+        });
+        // Left side: Life progress section
+        const progressSection = overviewGrid.createEl("div", {
+            cls: "chronica-stat-section",
+        });
+        // Life progress card
+        const lifeSummary = progressSection.createEl("div", {
+            cls: "chronica-stat-card chronica-stat-card-full",
+        });
+        lifeSummary.createEl("div", {
+            cls: "chronica-stat-title",
+            text: "Life Progress",
+        });
+        // Create circular progress and bar in the same container
+        const progressContainer = lifeSummary.createEl("div", {
+            cls: "chronica-progress-container",
+        });
+        // Create circular progress on the left
+        const circleContainer = progressContainer.createEl("div", {
             cls: "chronica-circular-progress",
         });
         const progressValue = Math.round(livedPercentage);
-        progressContainer.innerHTML = `
-    <svg width="80" height="80" viewBox="0 0 80 80">
+        circleContainer.innerHTML = `
+    <svg width="60" height="60" viewBox="0 0 80 80">
       <circle cx="40" cy="40" r="35" fill="none" stroke="var(--background-modifier-border)" stroke-width="5"></circle>
       <circle cx="40" cy="40" r="35" fill="none" stroke="var(--interactive-accent)" stroke-width="5"
         stroke-dasharray="220" stroke-dashoffset="${220 - (220 * livedPercentage / 100)}"
@@ -2841,31 +2862,45 @@ class ChronosTimelineView extends obsidian.ItemView {
     </svg>
     <div class="chronica-circular-progress-text">${progressValue}%</div>
   `;
-        // Add life progress bar
-        const lifeSummary = container.createEl("div", {
-            cls: "chronica-stat-card",
+        // Create bar and text on the right
+        const barContainer = progressContainer.createEl("div", {
+            cls: "chronica-bar-container",
         });
-        lifeSummary.createEl("div", {
-            cls: "chronica-stat-title",
-            text: "Life Progress",
-        });
-        const progressBar = lifeSummary.createEl("div", {
+        const progressBar = barContainer.createEl("div", {
             cls: "chronica-progress-bar",
         });
         const progressFill = progressBar.createEl("div", {
             cls: "chronica-progress-bar-fill",
         });
         progressFill.style.width = `${livedPercentage}%`;
-        lifeSummary.createEl("div", {
+        barContainer.createEl("div", {
             cls: "chronica-stat-subtitle",
             text: `${ageInWeeks} weeks lived, ${remainingWeeks} weeks remaining`,
         });
-        // Create stats grid
-        const statsGrid = container.createEl("div", {
-            cls: "chronica-stats-grid",
+        // Right side: Additional stats
+        // Current age card
+        const ageCard = overviewGrid.createEl("div", {
+            cls: "chronica-stat-card",
+        });
+        ageCard.createEl("div", {
+            cls: "chronica-stat-title",
+            text: "Current Age",
+        });
+        const yearsLived = Math.floor(ageInWeeks / 52);
+        const remainingWeeksInYear = ageInWeeks % 52;
+        ageCard.createEl("div", {
+            cls: "chronica-stat-value",
+            text: `${yearsLived} years, ${remainingWeeksInYear} weeks`,
+        });
+        // Calculate decades lived
+        const decadesLived = Math.floor(yearsLived / 10);
+        const yearsIntoCurrentDecade = yearsLived % 10;
+        ageCard.createEl("div", {
+            cls: "chronica-stat-subtitle",
+            text: `${decadesLived} decades + ${yearsIntoCurrentDecade} years`,
         });
         // Events count card
-        const eventsCard = statsGrid.createEl("div", {
+        const eventsCard = overviewGrid.createEl("div", {
             cls: "chronica-stat-card",
         });
         eventsCard.createEl("div", {
@@ -2893,35 +2928,255 @@ class ChronosTimelineView extends obsidian.ItemView {
             cls: "chronica-stat-subtitle",
             text: eventBreakdown || "No events added yet",
         });
-        // Current age card
-        const ageCard = statsGrid.createEl("div", {
+        // Birthday info card
+        const birthdayCard = overviewGrid.createEl("div", {
             cls: "chronica-stat-card",
         });
-        ageCard.createEl("div", {
+        birthdayCard.createEl("div", {
             cls: "chronica-stat-title",
-            text: "Current Age",
+            text: "Birthday",
         });
-        const yearsLived = Math.floor(ageInWeeks / 52);
-        const remainingWeeksInYear = ageInWeeks % 52;
-        ageCard.createEl("div", {
+        const formatBirthday = (date) => {
+            const months = [
+                "January", "February", "March", "April", "May", "June",
+                "July", "August", "September", "October", "November", "December"
+            ];
+            return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
+        };
+        birthdayCard.createEl("div", {
             cls: "chronica-stat-value",
-            text: `${yearsLived} years, ${remainingWeeksInYear} weeks`,
+            text: formatBirthday(birthdayDate),
         });
-        // Calculate decades lived
-        const decadesLived = Math.floor(yearsLived / 10);
-        const yearsIntoCurrentDecade = yearsLived % 10;
-        ageCard.createEl("div", {
+        const nextBirthdayDate = new Date(birthdayDate);
+        nextBirthdayDate.setFullYear(now.getFullYear());
+        // If this year's birthday has passed, look at next year's
+        if (nextBirthdayDate < now) {
+            nextBirthdayDate.setFullYear(now.getFullYear() + 1);
+        }
+        const daysUntilBirthday = Math.ceil((nextBirthdayDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        birthdayCard.createEl("div", {
             cls: "chronica-stat-subtitle",
-            text: `${decadesLived} decades + ${yearsIntoCurrentDecade} years`,
+            text: `Next birthday in ${daysUntilBirthday} days`,
         });
     }
     /**
-     * Render the Events tab content (placeholder for now)
+     * Render the Events tab content with visualizations and event lists
      * @param container - Container to render tab content in
      */
     renderEventsTab(container) {
+        // Create main header
         container.createEl("h3", { text: "Event Statistics" });
-        container.createEl("p", { text: "This tab will show detailed event statistics and distributions." });
+        // Get event counts
+        const majorLifeEvents = this.plugin.settings.greenEvents.length;
+        const travelEvents = this.plugin.settings.blueEvents.length;
+        const relationshipEvents = this.plugin.settings.pinkEvents.length;
+        const educationCareerEvents = this.plugin.settings.purpleEvents.length;
+        // Calculate custom event counts
+        let customEventCount = 0;
+        let customEvents = [];
+        if (this.plugin.settings.customEventTypes && this.plugin.settings.customEvents) {
+            for (const eventType of this.plugin.settings.customEventTypes) {
+                const count = this.plugin.settings.customEvents[eventType.name]?.length || 0;
+                customEventCount += count;
+                if (count > 0) {
+                    customEvents.push({
+                        name: eventType.name,
+                        count: count,
+                        color: eventType.color
+                    });
+                }
+            }
+        }
+        const totalEvents = majorLifeEvents + travelEvents + relationshipEvents + educationCareerEvents + customEventCount;
+        // If there are no events, show a message
+        if (totalEvents === 0) {
+            container.createEl("div", {
+                cls: "chronica-empty-state",
+                text: "No events added yet. Add events to see statistics and distributions."
+            });
+            return;
+        }
+        // Create grid layout for stats
+        const statsGrid = container.createEl("div", {
+            cls: "chronica-stats-grid",
+        });
+        // Create distribution section
+        const distributionCard = statsGrid.createEl("div", {
+            cls: "chronica-stat-card chronica-stat-card-full",
+        });
+        distributionCard.createEl("div", {
+            cls: "chronica-stat-title",
+            text: "Event Type Distribution",
+        });
+        // Create bar chart for event distribution
+        const chartContainer = distributionCard.createEl("div", {
+            cls: "chronica-event-chart-container",
+        });
+        // Standard event types
+        const standardEvents = [
+            { name: "Major Life", count: majorLifeEvents, color: "#4CAF50" },
+            { name: "Travel", count: travelEvents, color: "#2196F3" },
+            { name: "Relationship", count: relationshipEvents, color: "#E91E63" },
+            { name: "Education/Career", count: educationCareerEvents, color: "#9C27B0" }
+        ];
+        // Combine standard and custom events
+        const allEvents = [...standardEvents, ...customEvents].filter(e => e.count > 0);
+        // Sort by count (highest first)
+        allEvents.sort((a, b) => b.count - a.count);
+        // Create horizontal bar chart
+        const maxCount = Math.max(...allEvents.map(e => e.count));
+        for (const event of allEvents) {
+            const barRow = chartContainer.createEl("div", {
+                cls: "chronica-chart-row",
+            });
+            barRow.createEl("div", {
+                cls: "chronica-chart-label",
+                text: event.name,
+            });
+            const barContainer = barRow.createEl("div", {
+                cls: "chronica-chart-bar-container",
+            });
+            const barEl = barContainer.createEl("div", {
+                cls: "chronica-chart-bar",
+            });
+            barEl.style.width = `${(event.count / maxCount) * 100}%`;
+            barEl.style.backgroundColor = event.color;
+            barContainer.createEl("div", {
+                cls: "chronica-chart-count",
+                text: event.count.toString(),
+            });
+        }
+        // Create event list section
+        const eventListCard = statsGrid.createEl("div", {
+            cls: "chronica-stat-card chronica-stat-card-full",
+        });
+        eventListCard.createEl("div", {
+            cls: "chronica-stat-title",
+            text: "Recent Events",
+        });
+        // Function to parse week key
+        const parseWeekKey = (key) => {
+            const parts = key.split("-W");
+            return {
+                year: parseInt(parts[0]),
+                week: parseInt(parts[1])
+            };
+        };
+        // Collect all events into a single array
+        let allEventsList = [];
+        // Add standard events
+        const addEvents = (events, type, color) => {
+            events.forEach(eventData => {
+                const parts = eventData.split(':');
+                if (parts.length === 2) {
+                    // Single event
+                    allEventsList.push({
+                        weekKey: parts[0],
+                        description: parts[1],
+                        type: type,
+                        color: color
+                    });
+                }
+                else if (parts.length === 3) {
+                    // Range event
+                    allEventsList.push({
+                        weekKey: parts[0],
+                        endWeekKey: parts[1],
+                        description: parts[2],
+                        type: type,
+                        color: color,
+                        isRange: true
+                    });
+                }
+            });
+        };
+        // Add all event types
+        addEvents(this.plugin.settings.greenEvents, "Major Life", "#4CAF50");
+        addEvents(this.plugin.settings.blueEvents, "Travel", "#2196F3");
+        addEvents(this.plugin.settings.pinkEvents, "Relationship", "#E91E63");
+        addEvents(this.plugin.settings.purpleEvents, "Education/Career", "#9C27B0");
+        // Add custom events
+        if (this.plugin.settings.customEventTypes && this.plugin.settings.customEvents) {
+            for (const eventType of this.plugin.settings.customEventTypes) {
+                if (this.plugin.settings.customEvents[eventType.name]) {
+                    addEvents(this.plugin.settings.customEvents[eventType.name], eventType.name, eventType.color);
+                }
+            }
+        }
+        // Sort events by date (most recent first)
+        allEventsList.sort((a, b) => {
+            const aDate = parseWeekKey(a.weekKey);
+            const bDate = parseWeekKey(b.weekKey);
+            if (aDate.year !== bDate.year) {
+                return bDate.year - aDate.year; // Most recent year first
+            }
+            return bDate.week - aDate.week; // Most recent week first
+        });
+        // Show max 10 most recent events
+        const recentEvents = allEventsList.slice(0, 10);
+        if (recentEvents.length > 0) {
+            const eventListEl = eventListCard.createEl("div", {
+                cls: "chronica-event-list",
+            });
+            for (const event of recentEvents) {
+                const eventItem = eventListEl.createEl("div", {
+                    cls: "chronica-event-item",
+                });
+                const colorDot = eventItem.createEl("div", {
+                    cls: "chronica-event-color-dot",
+                });
+                colorDot.style.backgroundColor = event.color;
+                let dateRange = event.weekKey;
+                if (event.isRange && event.endWeekKey) {
+                    dateRange = `${event.weekKey} → ${event.endWeekKey}`;
+                }
+                const eventInfo = eventItem.createEl("div", {
+                    cls: "chronica-event-info",
+                });
+                eventInfo.createEl("div", {
+                    cls: "chronica-event-name",
+                    text: event.description,
+                });
+                eventInfo.createEl("div", {
+                    cls: "chronica-event-meta",
+                    text: `${event.type} • ${dateRange}`,
+                });
+            }
+        }
+        else {
+            eventListCard.createEl("div", {
+                cls: "chronica-empty-list",
+                text: "No events found",
+            });
+        }
+        // Create event statistics card
+        const eventStatsCard = statsGrid.createEl("div", {
+            cls: "chronica-stat-card chronica-stat-card-full",
+        });
+        eventStatsCard.createEl("div", {
+            cls: "chronica-stat-title",
+            text: "Event Statistics",
+        });
+        // Calculate additional stats
+        const allYears = allEventsList.map(e => parseWeekKey(e.weekKey).year);
+        const uniqueYears = [...new Set(allYears)];
+        const eventsByYear = uniqueYears.length > 0 ? (totalEvents / uniqueYears.length).toFixed(1) : "0";
+        // Count range events
+        const rangeEvents = allEventsList.filter(e => e.isRange).length;
+        const singleEvents = totalEvents - rangeEvents;
+        const statsTable = eventStatsCard.createEl("table", {
+            cls: "chronica-stats-table",
+        });
+        const addStatRow = (label, value) => {
+            const row = statsTable.createEl("tr");
+            row.createEl("td", { text: label });
+            row.createEl("td", { text: value });
+        };
+        addStatRow("Total Events", totalEvents.toString());
+        addStatRow("Years with Events", uniqueYears.length.toString());
+        addStatRow("Average Events/Year", eventsByYear);
+        addStatRow("Single-Week Events", singleEvents.toString());
+        addStatRow("Multi-Week Events", rangeEvents.toString());
     }
     /**
      * Render the Timeline tab content (placeholder for now)
