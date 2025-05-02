@@ -3902,8 +3902,15 @@ class ChronosTimelineView extends obsidian.ItemView {
         });
         // Create SVG for radar chart
         const seasonalSvg = document.createElementNS(svgNS, "svg");
-        seasonalSvg.setAttribute("viewBox", "0 0 240 240");
-        seasonalSvg.setAttribute("class", "chronica-seasonal-chart");
+        seasonalSvg.classList.add("chronica-seasonal-chart");
+        // define true center and radius
+        const SIZE = 300;
+        const CENTER = SIZE / 2; // 150px
+        const OUTER_RADIUS = 100; // your existing radius
+        // set up your SVG coordinate space
+        seasonalSvg.setAttribute("viewBox", `0 0 ${SIZE} ${SIZE}`);
+        seasonalSvg.setAttribute("width", SIZE.toString());
+        seasonalSvg.setAttribute("height", SIZE.toString());
         seasonalChartContainer.appendChild(seasonalSvg);
         // Find maximum count for scaling
         const maxSeasonCount = Math.max(...seasonCounts.map((s) => s.count), 1);
@@ -3911,9 +3918,9 @@ class ChronosTimelineView extends obsidian.ItemView {
         if (totalSeasonEvents > 0) {
             // Create background circle
             const bgCircle = document.createElementNS(svgNS, "circle");
-            bgCircle.setAttribute("cx", "120");
-            bgCircle.setAttribute("cy", "120");
-            bgCircle.setAttribute("r", "100");
+            bgCircle.setAttribute("cx", CENTER.toString());
+            bgCircle.setAttribute("cy", CENTER.toString());
+            bgCircle.setAttribute("r", OUTER_RADIUS.toString());
             bgCircle.setAttribute("fill", "none");
             bgCircle.setAttribute("stroke", "var(--background-modifier-border)");
             bgCircle.setAttribute("stroke-width", "1");
@@ -3921,9 +3928,9 @@ class ChronosTimelineView extends obsidian.ItemView {
             seasonalSvg.appendChild(bgCircle);
             // Create mid-level circle
             const midCircle = document.createElementNS(svgNS, "circle");
-            midCircle.setAttribute("cx", "120");
-            midCircle.setAttribute("cy", "120");
-            midCircle.setAttribute("r", "50");
+            midCircle.setAttribute("cx", CENTER.toString());
+            midCircle.setAttribute("cy", CENTER.toString());
+            midCircle.setAttribute("r", (OUTER_RADIUS / 2).toString());
             midCircle.setAttribute("fill", "none");
             midCircle.setAttribute("stroke", "var(--background-modifier-border)");
             midCircle.setAttribute("stroke-width", "1");
@@ -3931,23 +3938,23 @@ class ChronosTimelineView extends obsidian.ItemView {
             seasonalSvg.appendChild(midCircle);
             // Create center point
             const centerPoint = document.createElementNS(svgNS, "circle");
-            centerPoint.setAttribute("cx", "120");
-            centerPoint.setAttribute("cy", "120");
+            centerPoint.setAttribute("cx", CENTER.toString());
+            centerPoint.setAttribute("cy", CENTER.toString());
             centerPoint.setAttribute("r", "3");
             centerPoint.setAttribute("fill", "var(--background-modifier-border)");
             seasonalSvg.appendChild(centerPoint);
             // Draw axis lines
             const axisPoints = [
-                { x: 120, y: 20 },
-                { x: 220, y: 120 },
-                { x: 120, y: 220 },
-                { x: 20, y: 120 }, // West - Fall
+                { x: CENTER, y: CENTER - OUTER_RADIUS },
+                { x: CENTER + OUTER_RADIUS, y: CENTER },
+                { x: CENTER, y: CENTER + OUTER_RADIUS },
+                { x: CENTER - OUTER_RADIUS, y: CENTER }, // Fall
             ];
             // Create axes
             for (let i = 0; i < 4; i++) {
                 const axis = document.createElementNS(svgNS, "line");
-                axis.setAttribute("x1", "120");
-                axis.setAttribute("y1", "120");
+                axis.setAttribute("x1", CENTER.toString());
+                axis.setAttribute("y1", CENTER.toString());
                 axis.setAttribute("x2", axisPoints[i].x.toString());
                 axis.setAttribute("y2", axisPoints[i].y.toString());
                 axis.setAttribute("stroke", "var(--background-modifier-border)");
@@ -3958,10 +3965,10 @@ class ChronosTimelineView extends obsidian.ItemView {
             // Create season labels with better positioning
             const seasonLabels = ["Winter", "Spring", "Summer", "Fall"];
             const labelPoints = [
-                { x: 120, y: 10 },
-                { x: 230, y: 120 },
-                { x: 120, y: 230 },
-                { x: 10, y: 120 }, // Fall (left) - further left
+                { x: CENTER, y: CENTER - OUTER_RADIUS - 20 },
+                { x: CENTER + OUTER_RADIUS + 30, y: CENTER },
+                { x: CENTER, y: CENTER + OUTER_RADIUS + 20 },
+                { x: CENTER - OUTER_RADIUS - 20, y: CENTER }, // Fall (left)
             ];
             for (let i = 0; i < 4; i++) {
                 const label = document.createElementNS(svgNS, "text");
@@ -3977,11 +3984,10 @@ class ChronosTimelineView extends obsidian.ItemView {
             // Calculate radar points
             const radarPoints = seasonCounts.map((season, i) => {
                 const normalizedValue = season.count / maxSeasonCount;
-                const radius = normalizedValue * 100;
-                // Calculate position based on angle
-                const angle = Math.PI / 2 - (i * Math.PI) / 2; // Start from top, go clockwise
-                const x = 120 + radius * Math.cos(angle);
-                const y = 120 - radius * Math.sin(angle);
+                const radius = normalizedValue * OUTER_RADIUS;
+                const angle = Math.PI / 2 - (i * Math.PI) / 2; // start at top, clockwise
+                const x = CENTER + radius * Math.cos(angle);
+                const y = CENTER - radius * Math.sin(angle);
                 return {
                     x,
                     y,
@@ -4001,82 +4007,69 @@ class ChronosTimelineView extends obsidian.ItemView {
                 seasonalSvg.appendChild(polygon);
                 // Add data points and labels
                 radarPoints.forEach((point, i) => {
-                    // Only add visible points
-                    if (point.value > 0) {
-                        // Add dot
-                        const dot = document.createElementNS(svgNS, "circle");
-                        dot.setAttribute("cx", point.x.toString());
-                        dot.setAttribute("cy", point.y.toString());
-                        dot.setAttribute("r", "6");
-                        dot.setAttribute("fill", seasons[i].color);
-                        dot.setAttribute("stroke", "var(--background-primary)");
-                        dot.setAttribute("stroke-width", "1");
-                        seasonalSvg.appendChild(dot);
-                        // Calculate better positions for labels based on season
-                        let labelX = 0;
-                        let labelY = 0;
-                        let pctX = 0;
-                        let pctY = 0;
-                        switch (i) {
-                            case 0: // Winter (top)
-                                labelX = point.x;
-                                labelY = point.y - 20;
-                                pctX = labelX;
-                                pctY = labelY - 14;
-                                break;
-                            case 1: // Spring (right)
-                                labelX = point.x + 20;
-                                labelY = point.y;
-                                pctX = labelX;
-                                pctY = labelY + 14;
-                                break;
-                            case 2: // Summer (bottom)
-                                labelX = point.x;
-                                labelY = point.y + 20;
-                                pctX = labelX;
-                                pctY = labelY + 14;
-                                break;
-                            case 3: // Fall (left)
-                                labelX = point.x - 20;
-                                labelY = point.y;
-                                pctX = labelX;
-                                pctY = labelY + 14;
-                                break;
-                        }
-                        // Add value label
-                        const valueLabel = document.createElementNS(svgNS, "text");
-                        valueLabel.setAttribute("x", labelX.toString());
-                        valueLabel.setAttribute("y", labelY.toString());
-                        valueLabel.setAttribute("text-anchor", "middle");
-                        valueLabel.setAttribute("dominant-baseline", "middle");
-                        valueLabel.setAttribute("fill", "var(--text-normal)");
-                        valueLabel.setAttribute("font-size", "14");
-                        valueLabel.setAttribute("font-weight", "bold");
-                        valueLabel.textContent = point.value.toString();
-                        seasonalSvg.appendChild(valueLabel);
-                        // Add percentage
-                        const pctLabel = document.createElementNS(svgNS, "text");
-                        pctLabel.setAttribute("x", pctX.toString());
-                        pctLabel.setAttribute("y", pctY.toString());
-                        pctLabel.setAttribute("text-anchor", "middle");
-                        pctLabel.setAttribute("dominant-baseline", "middle");
-                        pctLabel.setAttribute("fill", "var(--text-muted)");
-                        pctLabel.setAttribute("font-size", "10");
-                        pctLabel.textContent = `${Math.round(point.percentage)}%`;
-                        seasonalSvg.appendChild(pctLabel);
+                    // Always add the points for all four seasons regardless of value
+                    // Add dot
+                    const dot = document.createElementNS(svgNS, "circle");
+                    dot.setAttribute("cx", point.x.toString());
+                    dot.setAttribute("cy", point.y.toString());
+                    dot.setAttribute("r", "6");
+                    dot.setAttribute("fill", seasons[i].color);
+                    dot.setAttribute("stroke", "var(--background-primary)");
+                    dot.setAttribute("stroke-width", "1");
+                    seasonalSvg.appendChild(dot);
+                    // Calculate better positions for labels based on season
+                    let labelX = 0;
+                    let labelY = 0;
+                    let pctX = 0;
+                    let pctY = 0;
+                    switch (i) {
+                        case 0: // Winter (top)
+                            labelX = point.x;
+                            labelY = point.y - 20;
+                            pctX = labelX;
+                            pctY = labelY - 15;
+                            break;
+                        case 1: // Spring (right)
+                            labelX = point.x;
+                            labelY = point.y - 10;
+                            pctX = labelX;
+                            pctY = labelY - 15;
+                            break;
+                        case 2: // Summer (bottom)
+                            labelX = point.x;
+                            labelY = point.y + 20;
+                            pctX = labelX;
+                            pctY = labelY + 15;
+                            break;
+                        case 3: // Fall (left)
+                            labelX = point.x - 30;
+                            labelY = point.y;
+                            pctX = labelX;
+                            pctY = labelY - 15;
+                            break;
                     }
+                    // Add percentage (always show)
+                    const pctLabel = document.createElementNS(svgNS, "text");
+                    pctLabel.setAttribute("x", pctX.toString());
+                    pctLabel.setAttribute("y", pctY.toString());
+                    pctLabel.setAttribute("text-anchor", "middle");
+                    pctLabel.setAttribute("dominant-baseline", "middle");
+                    pctLabel.setAttribute("fill", "var(--text-muted)");
+                    pctLabel.setAttribute("font-size", "10");
+                    pctLabel.textContent = `${Math.round(point.percentage)}%`;
+                    seasonalSvg.appendChild(pctLabel);
                 });
             }
             // Add total in center
             const totalContainer = document.createElementNS(svgNS, "circle");
-            totalContainer.setAttribute("cx", "120");
-            totalContainer.setAttribute("cy", "120");
-            totalContainer.setAttribute("r", "25");
+            totalContainer.setAttribute("cx", CENTER.toString());
+            totalContainer.setAttribute("cy", CENTER.toString());
+            totalContainer.setAttribute("r", (OUTER_RADIUS / 4).toString()); // 25 if OUTER_RADIUS=100
             totalContainer.setAttribute("fill", "var(--background-secondary)");
             seasonalSvg.appendChild(totalContainer);
             const totalText = document.createElementNS(svgNS, "text");
-            totalText.setAttribute("x", "120");
-            totalText.setAttribute("y", "115");
+            totalText.setAttribute("x", CENTER.toString());
+            totalText.setAttribute("y", (CENTER - 5).toString());
             totalText.setAttribute("text-anchor", "middle");
             totalText.setAttribute("dominant-baseline", "middle");
             totalText.setAttribute("fill", "var(--text-normal)");
@@ -4085,8 +4078,8 @@ class ChronosTimelineView extends obsidian.ItemView {
             totalText.textContent = totalSeasonEvents.toString();
             seasonalSvg.appendChild(totalText);
             const eventsLabel = document.createElementNS(svgNS, "text");
-            eventsLabel.setAttribute("x", "120");
-            eventsLabel.setAttribute("y", "130");
+            eventsLabel.setAttribute("x", CENTER.toString());
+            eventsLabel.setAttribute("y", (CENTER + 10).toString());
             eventsLabel.setAttribute("text-anchor", "middle");
             eventsLabel.setAttribute("dominant-baseline", "middle");
             eventsLabel.setAttribute("fill", "var(--text-muted)");
@@ -4097,8 +4090,8 @@ class ChronosTimelineView extends obsidian.ItemView {
         else {
             // Show empty state
             const emptyText = document.createElementNS(svgNS, "text");
-            emptyText.setAttribute("x", "120");
-            emptyText.setAttribute("y", "120");
+            emptyText.setAttribute("x", CENTER.toString());
+            emptyText.setAttribute("y", CENTER.toString());
             emptyText.setAttribute("text-anchor", "middle");
             emptyText.setAttribute("dominant-baseline", "middle");
             emptyText.setAttribute("fill", "var(--text-muted)");
