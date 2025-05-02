@@ -4058,6 +4058,23 @@ class ChronosTimelineView extends obsidian.ItemView {
                     pctLabel.setAttribute("font-size", "10");
                     pctLabel.textContent = `${Math.round(point.percentage)}%`;
                     seasonalSvg.appendChild(pctLabel);
+                    // Add raw count with Spring/Fall moved under the percentage
+                    const countLabel = document.createElementNS(svgNS, "text");
+                    // default: place under the percent
+                    let countX = pctX;
+                    let countY = pctY + 12;
+                    if (i === 2) {
+                        // Summer: override to place above
+                        countY = pctY - 12;
+                    }
+                    countLabel.setAttribute("x", countX.toString());
+                    countLabel.setAttribute("y", countY.toString());
+                    countLabel.setAttribute("text-anchor", "middle");
+                    countLabel.setAttribute("dominant-baseline", "middle");
+                    countLabel.setAttribute("fill", "var(--text-normal)");
+                    countLabel.setAttribute("font-size", "10");
+                    countLabel.textContent = point.value.toString();
+                    seasonalSvg.appendChild(countLabel);
                 });
             }
             // Add total in center
