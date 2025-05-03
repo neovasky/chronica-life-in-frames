@@ -885,6 +885,39 @@ export default class ChronosTimelinePlugin extends Plugin {
   }
 
 /**
+ * Calculate ISO week number and the associated ISO year for a given date
+ * @param date - Date to calculate week number for
+ * @returns Object with ISO week number (1-53) and ISO year
+ */
+getISOWeekYearNumber(date: Date): { week: number; year: number } {
+  // Create a copy of the date to avoid modifying the original
+  const target = new Date(date.getTime());
+  target.setHours(0, 0, 0, 0);
+
+  // ISO week starts on Monday
+  const dayNumber = target.getDay() || 7; // Convert Sunday (0) to 7
+
+  // Move target to Thursday in the same week
+  target.setDate(target.getDate() - dayNumber + 4);
+
+  // Get the year of this Thursday (this is the ISO year for this week)
+  const weekYear = target.getFullYear();
+
+  // Get January 1st of the target's year
+  const yearStart = new Date(weekYear, 0, 1);
+
+  // Calculate the number of days since January 1st
+  const daysSinceFirstDay = Math.floor(
+    (target.getTime() - yearStart.getTime()) / 86400000
+  );
+
+  // Calculate the week number
+  const weekNumber = 1 + Math.floor(daysSinceFirstDay / 7);
+
+  return { week: weekNumber, year: weekYear };
+}
+
+/**
  * Get the ISO week and year for a given date following strict ISO 8601 standard
  * @param date - Date to calculate for
  * @returns Object with week number and correct ISO year
@@ -944,7 +977,7 @@ getISOWeekNumber(date: Date): number {
  * @returns Week key in YYYY-WXX format
  */
 getWeekKeyFromDate(date: Date): string {
-  const { year, week } = this.getISOWeekData(date);
+  const { week, year } = this.getISOWeekYearNumber(date);
   return `${year}-W${week.toString().padStart(2, "0")}`;
 }
 
@@ -3488,9 +3521,8 @@ class ChronosTimelineView extends ItemView {
         cellDate.setDate(cellDate.getDate() + week * 7);
 
         // Get calendar information for display
-        const cellYear = cellDate.getFullYear();
-        const cellWeek = this.plugin.getISOWeekNumber(cellDate);
-        const weekKey = `${cellYear}-W${cellWeek.toString().padStart(2, "0")}`;
+        const { week: cellWeek, year: isoYear } = this.plugin.getISOWeekYearNumber(cellDate);
+        const weekKey = `${isoYear}-W${cellWeek.toString().padStart(2, "0")}`;
         cell.dataset.weekKey = weekKey;
 
         // Calculate the date range directly from the actual cell date
@@ -3523,7 +3555,7 @@ class ChronosTimelineView extends ItemView {
 
         cell.setAttribute(
           "title",
-          `Week ${cellWeek}, ${cellYear}\n${dateRange}`
+          `Week ${cellWeek}, ${isoYear}\n${dateRange}`
         );
 
         // Position the cell with absolute positioning
@@ -3618,8 +3650,8 @@ class ChronosTimelineView extends ItemView {
               }
             }
 
-            const content = `# Week ${cellWeek}, ${cellYear}\n\n## Reflections\n\n## Tasks\n\n## Notes\n`;
-            const newFile = await this.app.vault.create(fullPath, content);
+            const isoYear = weekKey.split("-W")[0]; // Extract the year from the weekKey
+            const content = `# Week ${cellWeek}, ${isoYear}\n\n## Reflections\n\n## Tasks\n\n## Notes\n`;            const newFile = await this.app.vault.create(fullPath, content);
 
             // Replace this line:
             // await this.app.workspace.getLeaf().openFile(newFile);
