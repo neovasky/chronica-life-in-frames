@@ -598,7 +598,7 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
                     {
                         events: this.settings.purpleEvents,
                         type: "Education/Career",
-                        color: "#9C27B0",
+                        color: "#D2B55B",
                     },
                 ];
                 // [KEEP THE REST OF THE EXISTING EVENT DETECTION LOGIC]
@@ -1387,7 +1387,7 @@ class ChronosEventModal extends obsidian.Modal {
             { name: "Major Life", color: "#4CAF50" },
             { name: "Travel", color: "#2196F3" },
             { name: "Relationship", color: "#E91E63" },
-            { name: "Education/Career", color: "#9C27B0" },
+            { name: "Education/Career", color: "#D2B55B" },
         ];
         const typeSettingContainer = new obsidian.Setting(contentEl)
             .setName("Select Event Type")
@@ -2144,7 +2144,7 @@ class ChronosTimelineView extends obsidian.ItemView {
             { text: "Major Life Events", color: "#4CAF50" },
             { text: "Travel", color: "#2196F3" },
             { text: "Relationships", color: "#E91E63" },
-            { text: "Education/Career", color: "#9C27B0" },
+            { text: "Education/Career", color: "#D2B55B" },
             {
                 text: "Upcoming Planned Event",
                 color: this.plugin.settings.futureCellColor,
@@ -3251,7 +3251,7 @@ class ChronosTimelineView extends obsidian.ItemView {
             {
                 name: "Education/Career",
                 count: educationCareerEvents,
-                color: "#9C27B0",
+                color: "#D2B55B",
             },
         ];
         // Combine standard and custom events
@@ -3329,7 +3329,7 @@ class ChronosTimelineView extends obsidian.ItemView {
         addEvents(this.plugin.settings.greenEvents, "Major Life", "#4CAF50");
         addEvents(this.plugin.settings.blueEvents, "Travel", "#2196F3");
         addEvents(this.plugin.settings.pinkEvents, "Relationship", "#E91E63");
-        addEvents(this.plugin.settings.purpleEvents, "Education/Career", "#9C27B0");
+        addEvents(this.plugin.settings.purpleEvents, "Education/Career", "#D2B55B");
         // Add custom events
         if (this.plugin.settings.customEventTypes &&
             this.plugin.settings.customEvents) {
@@ -3705,7 +3705,7 @@ class ChronosTimelineView extends obsidian.ItemView {
         addEvents(this.plugin.settings.greenEvents, "Major Life", "#4CAF50");
         addEvents(this.plugin.settings.blueEvents, "Travel", "#2196F3");
         addEvents(this.plugin.settings.pinkEvents, "Relationship", "#E91E63");
-        addEvents(this.plugin.settings.purpleEvents, "Education/Career", "#9C27B0");
+        addEvents(this.plugin.settings.purpleEvents, "Education/Career", "#D2B55B");
         // Add custom events
         if (this.plugin.settings.customEventTypes &&
             this.plugin.settings.customEvents) {
@@ -4330,7 +4330,7 @@ class ChronosTimelineView extends obsidian.ItemView {
                                 defaultColor = "#E91E63";
                                 break;
                             case "Education/Career":
-                                defaultColor = "#9C27B0";
+                                defaultColor = "#D2B55B";
                                 break;
                             default:
                                 // Check if it's a custom type
@@ -4443,7 +4443,7 @@ class ChronosTimelineView extends obsidian.ItemView {
                         else if (defaultColor === "#E91E63") {
                             cell.addClass("relationship-event");
                         }
-                        else if (defaultColor === "#9C27B0") {
+                        else if (defaultColor === "#D2B55B") {
                             cell.addClass("education-career-event");
                         }
                         const eventDesc = description || defaultDesc;
@@ -4503,7 +4503,7 @@ class ChronosTimelineView extends obsidian.ItemView {
         const hasPinkEvent = applyEventStyle(this.plugin.settings.pinkEvents, "#E91E63", "Relationship");
         if (hasPinkEvent)
             return true;
-        const hasPurpleEvent = applyEventStyle(this.plugin.settings.purpleEvents, "#9C27B0", "Education/Career");
+        const hasPurpleEvent = applyEventStyle(this.plugin.settings.purpleEvents, "#D2B55B", "Education/Career");
         if (hasPurpleEvent)
             return true;
         // Only check custom events if no built-in event was found
@@ -4639,7 +4639,7 @@ class ManageEventTypesModal extends obsidian.Modal {
             { name: "Major Life", color: "#4CAF50" },
             { name: "Travel", color: "#2196F3" },
             { name: "Relationship", color: "#E91E63" },
-            { name: "Education/Career", color: "#9C27B0" },
+            { name: "Education/Career", color: "#D2B55B" },
         ];
         for (const type of builtInTypes) {
             const typeItem = newList.createEl("div", {

@@ -26,7 +26,7 @@
   --future-event-color: rgba(255, 215, 0, 0.5);
   --relationship-color: #e91e63;
   --travel-color: #2196f3;
-  --education-career-color: #9c27b0;
+  --education-career-color: #d2b55b;
   --major-life-color: #4caf50;
   --stats-panel-height: 170px;
   --stats-panel-min-height: 150px;
@@ -496,10 +496,6 @@
   border-color: var(--present-color);
 }
 
-.chronica-grid-cell.past.event {
-  border-width: 2px !important;
-}
-
 .chronica-grid-cell.future.event {
   border-width: 2px !important;
 }
@@ -507,22 +503,6 @@
 .chronica-grid-cell.event {
   border-width: 2px !important;
   box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
-}
-
-.chronica-grid-cell.major-life-event {
-  border-color: var(--major-life-color) !important;
-}
-
-.chronica-grid-cell.travel-event {
-  border-color: var(--travel-color) !important;
-}
-
-.chronica-grid-cell.relationship-event {
-  border-color: var(--relationship-color) !important;
-}
-
-.chronica-grid-cell.education-career-event {
-  border-color: var(--education-career-color) !important;
 }
 
 /* Future event highlight - subtle indicator */
@@ -1704,11 +1684,6 @@
   font-size: 18px;
   font-weight: 600;
   margin-top: 2px;
-}
-
-.chronica-current-year {
-  border: 2px solid var(--text-accent) !important;
-  box-shadow: 0 0 8px rgba(var(--interactive-accent-rgb), 0.4) !important;
 }
 
 /* Responsive adjustments for tiny screens */

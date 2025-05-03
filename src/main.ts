@@ -858,7 +858,7 @@ export default class ChronosTimelinePlugin extends Plugin {
           {
             events: this.settings.purpleEvents,
             type: "Education/Career",
-            color: "#9C27B0",
+            color: "#D2B55B",
           },
         ];
 
@@ -1854,7 +1854,7 @@ class ChronosEventModal extends Modal {
       { name: "Major Life", color: "#4CAF50" },
       { name: "Travel", color: "#2196F3" },
       { name: "Relationship", color: "#E91E63" },
-      { name: "Education/Career", color: "#9C27B0" },
+      { name: "Education/Career", color: "#D2B55B" },
     ];
 
     const typeSettingContainer = new Setting(contentEl)
@@ -2824,7 +2824,7 @@ class ChronosTimelineView extends ItemView {
       { text: "Major Life Events", color: "#4CAF50" },
       { text: "Travel", color: "#2196F3" },
       { text: "Relationships", color: "#E91E63" },
-      { text: "Education/Career", color: "#9C27B0" },
+      { text: "Education/Career", color: "#D2B55B" },
       {
         text: "Upcoming Planned Event",
         color: this.plugin.settings.futureCellColor,
@@ -4280,7 +4280,7 @@ class ChronosTimelineView extends ItemView {
       {
         name: "Education/Career",
         count: educationCareerEvents,
-        color: "#9C27B0",
+        color: "#D2B55B",
       },
     ];
 
@@ -4381,7 +4381,7 @@ class ChronosTimelineView extends ItemView {
     addEvents(this.plugin.settings.greenEvents, "Major Life", "#4CAF50");
     addEvents(this.plugin.settings.blueEvents, "Travel", "#2196F3");
     addEvents(this.plugin.settings.pinkEvents, "Relationship", "#E91E63");
-    addEvents(this.plugin.settings.purpleEvents, "Education/Career", "#9C27B0");
+    addEvents(this.plugin.settings.purpleEvents, "Education/Career", "#D2B55B");
 
     // Add custom events
     if (
@@ -4846,7 +4846,7 @@ class ChronosTimelineView extends ItemView {
     addEvents(this.plugin.settings.greenEvents, "Major Life", "#4CAF50");
     addEvents(this.plugin.settings.blueEvents, "Travel", "#2196F3");
     addEvents(this.plugin.settings.pinkEvents, "Relationship", "#E91E63");
-    addEvents(this.plugin.settings.purpleEvents, "Education/Career", "#9C27B0");
+    addEvents(this.plugin.settings.purpleEvents, "Education/Career", "#D2B55B");
 
     // Add custom events
     if (
@@ -5588,7 +5588,7 @@ class ChronosTimelineView extends ItemView {
                 defaultColor = "#E91E63";
                 break;
               case "Education/Career":
-                defaultColor = "#9C27B0";
+                defaultColor = "#D2B55B";
                 break;
               default:
                 // Check if it's a custom type
@@ -5733,7 +5733,7 @@ class ChronosTimelineView extends ItemView {
               cell.addClass("travel-event");
             } else if (defaultColor === "#E91E63") {
               cell.addClass("relationship-event");
-            } else if (defaultColor === "#9C27B0") {
+            } else if (defaultColor === "#D2B55B") {
               cell.addClass("education-career-event");
             }
 
@@ -5824,7 +5824,7 @@ class ChronosTimelineView extends ItemView {
 
     const hasPurpleEvent = applyEventStyle(
       this.plugin.settings.purpleEvents,
-      "#9C27B0",
+      "#D2B55B",
       "Education/Career"
     );
     if (hasPurpleEvent) return true;
@@ -6143,7 +6143,7 @@ class ManageEventTypesModal extends Modal {
       { name: "Major Life", color: "#4CAF50" },
       { name: "Travel", color: "#2196F3" },
       { name: "Relationship", color: "#E91E63" },
-      { name: "Education/Career", color: "#9C27B0" },
+      { name: "Education/Career", color: "#D2B55B" },
     ];
 
     for (const type of builtInTypes) {
