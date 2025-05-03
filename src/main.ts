@@ -302,22 +302,32 @@ export default class ChronosTimelinePlugin extends Plugin {
       // already registered on hot-reload—ignore
     }
 
-    // 2) Re-draw whenever a new weekly note appears
-    this.registerEvent(
-      this.app.vault.on("create", () => {
-        this.registerPotentialSyncOperation();
-        // Only refresh if not during a likely sync operation
-        if (!this.isSyncOperation) {
-          this.refreshAllViews();
-        }
-      })
-    );
 
-    this.registerEvent(
-      this.app.vault.on("modify", () => {
-        this.registerPotentialSyncOperation();
-      })
-    );
+// 2) Re-draw whenever a new weekly note appears
+this.registerEvent(
+  this.app.vault.on("create", () => {
+    this.registerPotentialSyncOperation();
+    // Only refresh if not during a likely sync operation
+    if (!this.isSyncOperation) {
+      this.refreshAllViews();
+    }
+  })
+);
+
+this.registerEvent(
+  this.app.vault.on("modify", (file) => {
+    this.registerPotentialSyncOperation();
+    
+    // Protect against sync-triggered modifications
+    if (this.isSyncOperation) {
+      console.debug("Chronica: File modification during sync, deferring actions", file.path);
+      return;
+    }
+    
+    // Safe to proceed with normal modification handling
+    // (The existing code just registered sync, but didn't do anything else)
+  })
+);
 
     // 3) On deletion, remove from settings AND re-draw
     this.registerEvent(
@@ -388,6 +398,14 @@ export default class ChronosTimelinePlugin extends Plugin {
     this.registerInterval(
       window.setInterval(() => this.checkAndAutoFill(), 1000 * 60 * 60)
     );
+  }
+
+  /**
+ * Public method to check if a sync operation is in progress
+ * @returns whether a sync operation is currently detected
+  */
+  public isSyncInProgress(): boolean {
+    return this.isSyncOperation;
   }
 
   /**
@@ -804,15 +822,21 @@ export default class ChronosTimelinePlugin extends Plugin {
    */
   async createOrOpenWeekNote(): Promise<void> {
     try {
+      // ADD THIS CHECK HERE
+      if (this.isSyncOperation) {
+        new Notice("Sync in progress. Please try again in a moment.");
+        return;
+      }
+      
       const date = new Date();
       const year = date.getFullYear();
       const weekNum = this.getISOWeekNumber(date);
       const fileName = `${year}-W${weekNum.toString().padStart(2, "0")}.md`;
       const fullPath = this.getFullPath(fileName);
       const weekKey = `${year}-W${weekNum.toString().padStart(2, "0")}`;
-
+  
       const existingFile = this.app.vault.getAbstractFileByPath(fullPath);
-
+  
       if (existingFile instanceof TFile) {
         // Use our safe method instead of directly opening in active leaf
         await this.safelyOpenFile(existingFile);
@@ -861,8 +885,6 @@ export default class ChronosTimelinePlugin extends Plugin {
             color: "#D2B55B",
           },
         ];
-
-        // [KEEP THE REST OF THE EXISTING EVENT DETECTION LOGIC]
 
         // Add frontmatter if event exists
         if (eventMeta) {
@@ -1578,17 +1600,32 @@ getBirthdayWeekForYear(year: number): {
     return null;
   }
 
-  /**
-   * Safely open a file in a Chronica-specific leaf
-   * @param file - File to open
-   */
-  async safelyOpenFile(file: TFile): Promise<void> {
+/**
+ * Safely open a file, respecting files already open in other panes
+ * @param file - File to open
+ */
+async safelyOpenFile(file: TFile): Promise<void> {
+  // First, check if the file is already open in any leaf
+  const existingLeaf = this.app.workspace.getLeavesOfType("markdown").find(
+    (leaf) => {
+      const viewState = leaf.getViewState();
+      return viewState.state?.file === file.path;
+    }
+  );
+
+  if (existingLeaf) {
+    // File is already open, just focus that leaf
+    this.app.workspace.setActiveLeaf(existingLeaf, { focus: true });
+    this.app.workspace.revealLeaf(existingLeaf);
+  } else {
+    // File is not open, use a Chronica leaf
     const leaf = this.getChronicaLeaf();
     if (leaf) {
       await leaf.openFile(file);
       this.app.workspace.revealLeaf(leaf);
     }
   }
+}
 
   /**
    * Track potential sync operations to prevent interference
@@ -1608,11 +1645,14 @@ getBirthdayWeekForYear(year: number): {
     // Mark as being in a sync operation
     this.isSyncOperation = true;
 
-    // Reset after 5 seconds of no file events
+    // Reset after 10 seconds of no file events (increased from 5)
     this.syncOperationTimer = setTimeout(() => {
       this.isSyncOperation = false;
       this.syncOperationTimer = null;
-    }, 5000);
+    }, 10000);
+    
+    // Log sync operation detection for debugging
+    console.debug("Chronica: Potential sync operation detected, operations paused");
   }
 }
 
@@ -3618,8 +3658,13 @@ class ChronosTimelineView extends ItemView {
           }
         }
 
-        // Add click and context menu events to the cell
         cell.addEventListener("click", async (event) => {
+          // Check for sync operation using the public method
+          if (this.plugin.isSyncInProgress()) {
+            new Notice("Sync in progress. Please try again in a moment.");
+            return;
+          }
+          
           // If shift key is pressed, add an event
           if (event.shiftKey) {
             const modal = new ChronosEventModal(this.app, this.plugin, weekKey);
@@ -3633,13 +3678,8 @@ class ChronosTimelineView extends ItemView {
           const existingFile = this.app.vault.getAbstractFileByPath(fullPath);
 
           if (existingFile instanceof TFile) {
-            // Replace this line:
-            // await this.app.workspace.getLeaf().openFile(existingFile);
-
-            // With this line:
             await this.plugin.safelyOpenFile(existingFile);
           } else {
-            // Create new file with template
             if (
               this.plugin.settings.notesFolder &&
               this.plugin.settings.notesFolder.trim() !== ""

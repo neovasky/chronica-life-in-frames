@@ -147,8 +147,15 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
                 this.refreshAllViews();
             }
         }));
-        this.registerEvent(this.app.vault.on("modify", () => {
+        this.registerEvent(this.app.vault.on("modify", (file) => {
             this.registerPotentialSyncOperation();
+            // Protect against sync-triggered modifications
+            if (this.isSyncOperation) {
+                console.debug("Chronica: File modification during sync, deferring actions", file.path);
+                return;
+            }
+            // Safe to proceed with normal modification handling
+            // (The existing code just registered sync, but didn't do anything else)
         }));
         // 3) On deletion, remove from settings AND re-draw
         this.registerEvent(this.app.vault.on("delete", async (file) => {
@@ -205,6 +212,13 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
         this.checkAndAutoFill();
         // Register interval to check for auto-fill (check every hour)
         this.registerInterval(window.setInterval(() => this.checkAndAutoFill(), 1000 * 60 * 60));
+    }
+    /**
+   * Public method to check if a sync operation is in progress
+   * @returns whether a sync operation is currently detected
+    */
+    isSyncInProgress() {
+        return this.isSyncOperation;
     }
     /**
      * Scan vault for notes with event metadata and populate plugin settings
@@ -550,6 +564,11 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
      */
     async createOrOpenWeekNote() {
         try {
+            // ADD THIS CHECK HERE
+            if (this.isSyncOperation) {
+                new obsidian.Notice("Sync in progress. Please try again in a moment.");
+                return;
+            }
             const date = new Date();
             const year = date.getFullYear();
             const weekNum = this.getISOWeekNumber(date);
@@ -601,7 +620,6 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
                         color: "#D2B55B",
                     },
                 ];
-                // [KEEP THE REST OF THE EXISTING EVENT DETECTION LOGIC]
                 // Add frontmatter if event exists
                 if (eventMeta) ;
                 else {
@@ -1165,14 +1183,27 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
         return null;
     }
     /**
-     * Safely open a file in a Chronica-specific leaf
+     * Safely open a file, respecting files already open in other panes
      * @param file - File to open
      */
     async safelyOpenFile(file) {
-        const leaf = this.getChronicaLeaf();
-        if (leaf) {
-            await leaf.openFile(file);
-            this.app.workspace.revealLeaf(leaf);
+        // First, check if the file is already open in any leaf
+        const existingLeaf = this.app.workspace.getLeavesOfType("markdown").find((leaf) => {
+            const viewState = leaf.getViewState();
+            return viewState.state?.file === file.path;
+        });
+        if (existingLeaf) {
+            // File is already open, just focus that leaf
+            this.app.workspace.setActiveLeaf(existingLeaf, { focus: true });
+            this.app.workspace.revealLeaf(existingLeaf);
+        }
+        else {
+            // File is not open, use a Chronica leaf
+            const leaf = this.getChronicaLeaf();
+            if (leaf) {
+                await leaf.openFile(file);
+                this.app.workspace.revealLeaf(leaf);
+            }
         }
     }
     /**
@@ -1190,11 +1221,13 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
         }
         // Mark as being in a sync operation
         this.isSyncOperation = true;
-        // Reset after 5 seconds of no file events
+        // Reset after 10 seconds of no file events (increased from 5)
         this.syncOperationTimer = setTimeout(() => {
             this.isSyncOperation = false;
             this.syncOperationTimer = null;
-        }, 5000);
+        }, 10000);
+        // Log sync operation detection for debugging
+        console.debug("Chronica: Potential sync operation detected, operations paused");
     }
 }
 // -----------------------------------------------------------------------
@@ -2756,8 +2789,12 @@ class ChronosTimelineView extends obsidian.ItemView {
                         cell.style.backgroundColor = this.plugin.settings.futureCellColor;
                     }
                 }
-                // Add click and context menu events to the cell
                 cell.addEventListener("click", async (event) => {
+                    // Check for sync operation using the public method
+                    if (this.plugin.isSyncInProgress()) {
+                        new obsidian.Notice("Sync in progress. Please try again in a moment.");
+                        return;
+                    }
                     // If shift key is pressed, add an event
                     if (event.shiftKey) {
                         const modal = new ChronosEventModal(this.app, this.plugin, weekKey);
@@ -2769,13 +2806,9 @@ class ChronosTimelineView extends obsidian.ItemView {
                     const fullPath = this.plugin.getFullPath(fileName);
                     const existingFile = this.app.vault.getAbstractFileByPath(fullPath);
                     if (existingFile instanceof obsidian.TFile) {
-                        // Replace this line:
-                        // await this.app.workspace.getLeaf().openFile(existingFile);
-                        // With this line:
                         await this.plugin.safelyOpenFile(existingFile);
                     }
                     else {
-                        // Create new file with template
                         if (this.plugin.settings.notesFolder &&
                             this.plugin.settings.notesFolder.trim() !== "") {
                             try {
