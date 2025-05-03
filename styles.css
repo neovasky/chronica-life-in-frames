@@ -172,6 +172,16 @@
   border-bottom: 1px solid var(--background-modifier-border);
 }
 
+.subsection-header {
+  font-size: 14px;
+  font-weight: 500;
+  margin: 10px 0 5px 0;
+  color: var(--text-muted);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Adjust the existing section-header to create more contrast */
 .section-header {
   font-size: 16px;
   font-weight: 600;
@@ -180,6 +190,38 @@
   color: var(--text-normal);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+.chronica-select {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 16px;
+  background-color: var(--background-secondary);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--container-border-radius);
+  margin-bottom: 12px;
+  cursor: pointer;
+  appearance: menulist;
+  height: auto;
+  line-height: 1.5;
+  font-weight: normal;
+  appearance: menulist;
+  padding: 8px 30px 8px 10px;
+  text-align: left;
+}
+
+.chronica-select:focus {
+  border-color: var(--interactive-accent);
+  outline: none;
+}
+
+
+
+
+.chronica-sidebar-section h3.section-header + div .cell-shape-heading,
+.chronica-sidebar-section h3.section-header + div .grid-orientation-heading {
+  text-transform: none;
 }
 
 /* Title styling */
@@ -263,6 +305,8 @@
   justify-content: center;
   gap: 6px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  font-weight: normal;
+  text-align: center;
 }
 
 .chronica-btn:hover {

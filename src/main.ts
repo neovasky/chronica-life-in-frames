@@ -2665,18 +2665,18 @@ class ChronosTimelineView extends ItemView {
       this.updateStatsPanelLayout();
     });
 
-    // Controls section
-    const controlsSection = sidebarEl.createEl("div", {
+    // DATA SECTION - For timeline content manipulation
+    const dataSection = sidebarEl.createEl("div", {
       cls: "chronica-sidebar-section",
     });
-    controlsSection.createEl("h3", { text: "CONTROLS", cls: "section-header" });
-    const controlsContainer = controlsSection.createEl("div", {
+    dataSection.createEl("h3", { text: "TIMELINE DATA", cls: "section-header" });
+    const dataContainer = dataSection.createEl("div", {
       cls: "chronica-controls",
     });
 
-    // Plan future event button
-    const planEventBtn = controlsContainer.createEl("button", {
-      text: "Plan Event",
+    // Plan event button
+    const planEventBtn = dataContainer.createEl("button", {
+      text: "Add Event",
       cls: "chronica-btn chronica-btn-primary",
     });
     planEventBtn.addEventListener("click", () => {
@@ -2684,30 +2684,30 @@ class ChronosTimelineView extends ItemView {
     });
 
     // Manage event types button
-    const manageTypesBtn = controlsContainer.createEl("button", {
+    const manageTypesBtn = dataContainer.createEl("button", {
       text: "Manage Event Types",
-      cls: "chronica-btn chronica-btn-primary", // Same styling as Plan Event
+      cls: "chronica-btn chronica-btn-primary",
     });
     manageTypesBtn.addEventListener("click", () => {
       const modal = new ManageEventTypesModal(this.app, this.plugin);
       modal.open();
     });
 
-    // Visualization controls section
-    const visualSection = sidebarEl.createEl("div", {
+    // VIEW SECTION - For visualization options
+    const viewSection = sidebarEl.createEl("div", {
       cls: "chronica-sidebar-section",
     });
-    visualSection.createEl("h3", {
-      text: "VIEW OPTIONS",
+    viewSection.createEl("h3", {
+      text: "VISUALIZATION",
       cls: "section-header",
     });
 
-    const visualContainer = visualSection.createEl("div", {
+    const viewContainer = viewSection.createEl("div", {
       cls: "chronica-visual-controls",
     });
 
     // Zoom controls with 3-button layout
-    const zoomControlsDiv = visualContainer.createEl("div", {
+    const zoomControlsDiv = viewContainer.createEl("div", {
       cls: "chronica-zoom-controls",
     });
 
@@ -2766,7 +2766,7 @@ class ChronosTimelineView extends ItemView {
     });
 
     // Fit to screen button
-    const fitToScreenBtn = visualContainer.createEl("button", {
+    const fitToScreenBtn = viewContainer.createEl("button", {
       cls: "chronica-btn chronica-fit-to-screen",
       text: "Fit to Screen",
       attr: { title: "Automatically adjust zoom to fit entire grid on screen" },
@@ -2775,15 +2775,28 @@ class ChronosTimelineView extends ItemView {
       this.fitToScreen();
     });
 
-    // ── Cell Shape Dropdown ──
-    visualContainer.createEl("div", {
+    // DISPLAY SECTION - For display settings
+    const displaySection = sidebarEl.createEl("div", {
+      cls: "chronica-sidebar-section",
+    });
+    displaySection.createEl("h3", {
+      text: "DISPLAY SETTINGS",
       cls: "section-header",
+    });
+
+    const displayContainer = displaySection.createEl("div", {
+      cls: "chronica-controls",
+    });
+
+    // Cell Shape dropdown
+    displayContainer.createEl("h4", {  // Changed from div to h4
+      cls: "subsection-header",  // Changed from section-header
       text: "Cell Shape",
     });
 
     // Select
-    const shapeSelect = visualContainer.createEl("select", {
-      cls: "chronica-select",
+    const shapeSelect = displayContainer.createEl("select", {
+      cls: "chronica-select chronica-dropdown",  // Added a class for styling
     });
     ["square", "circle", "diamond"].forEach((opt) => {
       const option = shapeSelect.createEl("option", {
@@ -2797,29 +2810,24 @@ class ChronosTimelineView extends ItemView {
     shapeSelect.addEventListener("change", async () => {
       this.plugin.settings.cellShape = shapeSelect.value as any;
       await this.plugin.saveSettings();
-      // Re-render grid with new shape
       this.updateZoomLevel();
     });
-
-    // ── Grid Orientation Toggle ──
-    visualContainer.createEl("div", {
-      cls: "section-header",
+    
+    // Grid Orientation subsection - also using the subsection styling
+    displayContainer.createEl("h4", {
+      cls: "subsection-header",  // Using the same subsection styling
       text: "Grid Orientation",
     });
 
     // Orientation toggle button
-    const orientationBtn = visualContainer.createEl("button", {
+    const orientationBtn = displayContainer.createEl("button", {
       cls: "chronica-btn chronica-orientation-button",
-      text:
-        this.plugin.settings.gridOrientation === "landscape"
-          ? "Switch to Portrait"
+      text: this.plugin.settings.gridOrientation === "landscape" 
+          ? "Switch to Portrait" 
           : "Switch to Landscape",
-      attr: {
-        title:
-          this.plugin.settings.gridOrientation === "landscape"
-            ? "Display years as rows, weeks as columns"
-            : "Display years as columns, weeks as rows",
-      },
+      attr: { title: this.plugin.settings.gridOrientation === "landscape"
+          ? "Display years as rows, weeks as columns"
+          : "Display years as columns, weeks as rows" },
     });
 
     orientationBtn.addEventListener("click", async () => {
@@ -2849,7 +2857,7 @@ class ChronosTimelineView extends ItemView {
       this.updateZoomLevel();
     });
 
-    // Legend section (vertical)
+    // LEGEND section (keep existing, but move it down in hierarchy)
     const legendSection = sidebarEl.createEl("div", {
       cls: "chronica-sidebar-section",
     });
@@ -2861,7 +2869,7 @@ class ChronosTimelineView extends ItemView {
       { text: "Major Life Events", color: "#4CAF50" },
       { text: "Travel", color: "#2196F3" },
       { text: "Relationships", color: "#E91E63" },
-      { text: "Education/Career", color: "#D2B55B" },
+      { text: "Education/Career", color: "#9C27B0" },
       {
         text: "Upcoming Planned Event",
         color: this.plugin.settings.futureCellColor,
