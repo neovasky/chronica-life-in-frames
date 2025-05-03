@@ -884,44 +884,69 @@ export default class ChronosTimelinePlugin extends Plugin {
     }
   }
 
-  /**
-   * Calculate ISO week number for a given date
-   * @param date - Date to calculate week number for
-   * @returns ISO week number (1-53)
-   */
-  getISOWeekNumber(date: Date): number {
-    // Create a copy of the date to avoid modifying the original
-    const target = new Date(date.getTime());
-    target.setHours(0, 0, 0, 0);
-
-    // ISO week starts on Monday
-    const dayNumber = target.getDay() || 7; // Convert Sunday (0) to 7
-
-    // Move target to Thursday in the same week
-    target.setDate(target.getDate() - dayNumber + 4);
-
-    // Get January 1st of the target year
-    const yearStart = new Date(target.getFullYear(), 0, 1);
-
-    // Calculate the number of days since January 1st
-    const daysSinceFirstDay = Math.floor(
-      (target.getTime() - yearStart.getTime()) / 86400000
-    );
-
-    // Calculate the week number
-    return 1 + Math.floor(daysSinceFirstDay / 7);
+/**
+ * Get the ISO week and year for a given date following strict ISO 8601 standard
+ * @param date - Date to calculate for
+ * @returns Object with week number and correct ISO year
+ */
+getISOWeekData(date: Date): { week: number; year: number } {
+  // Create a copy to avoid modifying the original
+  const d = new Date(date.getTime());
+  
+  // Get the day of week (0 = Sunday, 1 = Monday, etc.)
+  const dayOfWeek = d.getDay();
+  
+  // Set to nearest Thursday (current date + 4 - current day number)
+  d.setDate(d.getDate() + 4 - (dayOfWeek || 7));
+  
+  // Get first day of this ISO year (January 1st)
+  const yearStart = new Date(d.getFullYear(), 0, 1);
+  
+  // Calculate days between date and first day of year, plus 1 day
+  const days = Math.floor((d.getTime() - yearStart.getTime()) / 86400000) + 1;
+  
+  // Calculate the ISO week number
+  const weekNum = Math.ceil(days / 7);
+  
+  // Check for edge cases at year boundaries
+  if (weekNum === 0) {
+    // Week belongs to the previous year
+    // Find the last week of previous year
+    const lastDayPrevYear = new Date(d.getFullYear() - 1, 11, 31);
+    const lastWeekData = this.getISOWeekData(lastDayPrevYear);
+    return lastWeekData;
+  } else if (weekNum > 52) {
+    // Check if it's actually week 1 of next year
+    const dec31 = new Date(d.getFullYear(), 11, 31);
+    const dec31Day = dec31.getDay();
+    
+    // If Dec 31 is on Wed-Sun, the last days are week 1 of next year
+    if (dec31Day >= 3) {
+      return { week: 1, year: d.getFullYear() + 1 };
+    }
   }
+  
+  return { week: weekNum, year: d.getFullYear() };
+}
 
-  /**
-   * Get week key in YYYY-WXX format from date
-   * @param date - Date to get week key for
-   * @returns Week key in YYYY-WXX format
-   */
-  getWeekKeyFromDate(date: Date): string {
-    const year = date.getFullYear();
-    const weekNum = this.getISOWeekNumber(date);
-    return `${year}-W${weekNum.toString().padStart(2, "0")}`;
-  }
+/**
+ * Calculate ISO week number for a given date
+ * @param date - Date to calculate week number for
+ * @returns ISO week number (1-53)
+ */
+getISOWeekNumber(date: Date): number {
+  return this.getISOWeekData(date).week;
+}
+
+/**
+ * Get week key in YYYY-WXX format from date with corrected year
+ * @param date - Date to get week key for
+ * @returns Week key in YYYY-WXX format
+ */
+getWeekKeyFromDate(date: Date): string {
+  const { year, week } = this.getISOWeekData(date);
+  return `${year}-W${week.toString().padStart(2, "0")}`;
+}
 
   /**
    * Get all week keys between two dates
@@ -1093,43 +1118,35 @@ export default class ChronosTimelinePlugin extends Plugin {
   getWeekDateRange(weekKey: string): string {
     const parts = weekKey.split("-W");
     if (parts.length !== 2) return "";
-
+    
     const year = parseInt(parts[0]);
     const week = parseInt(parts[1]);
-
-    // Calculate the first day of the week (Monday of that week for ISO weeks)
-    const firstDayOfWeek = new Date(year, 0, 1);
-    const dayOffset = firstDayOfWeek.getDay() || 7; // getDay returns 0 for Sunday
-    const dayToAdd = 1 + (week - 1) * 7 - (dayOffset - 1);
-
-    firstDayOfWeek.setDate(dayToAdd);
-
-    // Calculate the last day of the week (Sunday if not startWeekOnMonday, otherwise Sunday)
+    
+    // Find January 4th for the given year, which is always in week 1
+    const jan4 = new Date(year, 0, 4);
+    
+    // Find the Monday of week 1
+    const week1Start = this.getStartOfISOWeek(jan4);
+    
+    // Calculate the first day of the target week
+    const firstDayOfWeek = new Date(week1Start);
+    firstDayOfWeek.setDate(week1Start.getDate() + (week - 1) * 7);
+    
+    // Calculate the last day of the week (Sunday)
     const lastDayOfWeek = new Date(firstDayOfWeek);
     lastDayOfWeek.setDate(firstDayOfWeek.getDate() + 6);
-
+    
     // Format the dates
     const formatDate = (date: Date): string => {
       const months = [
-        "Jan",
-        "Feb",
-        "Mar",
-        "Apr",
-        "May",
-        "Jun",
-        "Jul",
-        "Aug",
-        "Sep",
-        "Oct",
-        "Nov",
-        "Dec",
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun", 
+        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
       ];
       return `${months[date.getMonth()]} ${date.getDate()}`;
     };
-
+    
     return `${formatDate(firstDayOfWeek)} - ${formatDate(lastDayOfWeek)}`;
   }
-
   /**
    * Calculate the birthday date for a specific age year
    * @param birthDate - Original birth date
@@ -1142,57 +1159,44 @@ export default class ChronosTimelinePlugin extends Plugin {
     return targetDate;
   }
 
-  /**
-   * Calculate which ISO week number contains the birthday in a specific year
-   * @param year - Year to check
-   * @returns ISO week number (1-53) containing the birthday
-   */
-  getBirthdayWeekForYear(year: number): {
-    weekNumber: number;
-    weekStart: Date;
-  } {
-    // Get the birthday in this specific year
-    const birthdayDate = new Date(this.settings.birthday);
-    birthdayDate.setFullYear(year);
-
-    // Find ISO week number
-    const weekNumber = this.getISOWeekNumber(birthdayDate);
-
-    // Find the Monday that starts this week
-    const tempDate = new Date(birthdayDate.getTime());
-    const dayOfWeek = tempDate.getDay() || 7; // Convert Sunday (0) to 7
-
-    // Move to the Monday of this week (ISO week starts on Monday)
-    tempDate.setDate(tempDate.getDate() - (dayOfWeek - 1));
-    tempDate.setHours(0, 0, 0, 0);
-
-    // Verify this week actually contains the birthday
-    const weekEndDate = new Date(tempDate);
-    weekEndDate.setDate(weekEndDate.getDate() + 6); // Sunday
-
-    const containsBirthday =
-      birthdayDate >= tempDate && birthdayDate <= weekEndDate;
-
-    if (!containsBirthday) {
-      // If the calculated week doesn't contain the birthday, something is wrong
-      // Let's recalculate more directly
-      const correctedDate = new Date(birthdayDate);
-      const birthdayDayOfWeek = correctedDate.getDay() || 7;
-      correctedDate.setDate(correctedDate.getDate() - (birthdayDayOfWeek - 1));
-      correctedDate.setHours(0, 0, 0, 0);
-
-      return {
-        weekNumber: weekNumber,
-        weekStart: correctedDate,
-      };
-    }
-
+/**
+ * Calculate which ISO week number contains the birthday in a specific year
+ * @param year - Year to check
+ * @returns ISO week number (1-53) containing the birthday
+ */
+getBirthdayWeekForYear(year: number): {
+  weekNumber: number;
+  weekStart: Date;
+} {
+  // Get the birthday in this specific year
+  const birthdayDate = new Date(this.settings.birthday);
+  birthdayDate.setFullYear(year);
+  
+  // Calculate the ISO week data
+  const { week, year: isoYear } = this.getISOWeekData(birthdayDate);
+  
+  // If the ISO year is different than the calendar year
+  if (isoYear !== year) {
+    // We need to find a date that's definitely in the requested year
+    // Let's use January 4th which is always in week 1 of the ISO year
+    const jan4 = new Date(year, 0, 4);
+    const jan4Data = this.getISOWeekData(jan4);
+    const weekStart = this.getStartOfISOWeek(jan4);
+    
     return {
-      weekNumber: weekNumber,
-      weekStart: tempDate,
+      weekNumber: jan4Data.week,
+      weekStart: weekStart
     };
   }
-
+  
+  // Find the Monday that starts this ISO week
+  const weekStart = this.getStartOfISOWeek(birthdayDate);
+  
+  return {
+    weekNumber: week,
+    weekStart: weekStart
+  };
+}
   /**
    * Get the start date (Monday) of the ISO week containing the given date
    * @param date - Date to find the containing week for
