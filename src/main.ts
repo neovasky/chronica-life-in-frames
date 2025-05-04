@@ -226,7 +226,7 @@ interface MonthMarker {
 
 /** Default plugin settings */
 const DEFAULT_SETTINGS: ChronosSettings = {
-  birthday: "2003-07-18",
+  birthday: "2000-01-01",
   lifespan: 90,
   defaultView: "weeks",
   pastCellColor: "#6A7BA3",
@@ -2229,11 +2229,11 @@ export default class ChronosTimelinePlugin extends Plugin {
     // Mark as being in a sync operation
     this.isSyncOperation = true;
 
-    // Reset after 10 seconds of no file events (increased from 5)
+    // Reset after 5 seconds of no file events
     this.syncOperationTimer = setTimeout(() => {
       this.isSyncOperation = false;
       this.syncOperationTimer = null;
-    }, 10000);
+    }, 5000);
 
     // Log sync operation detection for debugging
     console.debug(

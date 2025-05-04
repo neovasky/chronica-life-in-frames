@@ -59,7 +59,7 @@ class FolderSuggest extends obsidian.AbstractInputSuggest {
 }
 /** Default plugin settings */
 const DEFAULT_SETTINGS = {
-    birthday: "2003-07-18",
+    birthday: "2000-01-01",
     lifespan: 90,
     defaultView: "weeks",
     pastCellColor: "#6A7BA3",
@@ -1664,11 +1664,11 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
         }
         // Mark as being in a sync operation
         this.isSyncOperation = true;
-        // Reset after 10 seconds of no file events (increased from 5)
+        // Reset after 5 seconds of no file events
         this.syncOperationTimer = setTimeout(() => {
             this.isSyncOperation = false;
             this.syncOperationTimer = null;
-        }, 10000);
+        }, 5000);
         // Log sync operation detection for debugging
         console.debug("Chronica: Potential sync operation detected, operations paused");
     }
@@ -2305,6 +2305,10 @@ class ChronicaWelcomeModal extends obsidian.Modal {
                 value: this.plugin.settings.birthday,
             },
             cls: "chronica-welcome-input",
+        });
+        // Instructions for note folders
+        setupSection.createEl("p", {
+            text: "Please create or choose a folder for your weekly notes and a folder for your event notes in your vault. You can configure these in Settings → Chronica: Life in Frames under 'Notes Folder' and 'Event Notes Folder'.",
         });
         // Create buttons section
         const buttonsSection = contentEl.createEl("div", {
