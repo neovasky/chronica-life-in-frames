@@ -132,6 +132,21 @@ interface ChronosSettings {
 
   /** Width of the stats panel in pixels */
   statsPanelWidth: number;
+
+  /** Custom week note naming template */
+  weekNoteTemplate: string;
+
+  /** Custom event note naming template */
+  eventNoteTemplate: string;
+
+  /** Custom range event naming template */
+  rangeNoteTemplate: string;
+
+  /** Whether to use separate folders for week and event notes */
+  useSeparateFolders: boolean;
+
+  /** Folder to store event notes (empty for vault root) */
+  eventNotesFolder: string;
 }
 
 /** Interface for custom event types */
@@ -242,6 +257,11 @@ const DEFAULT_SETTINGS: ChronosSettings = {
   statsPanelHeight: 470,
   statsPanelHorizontalOffset: 0,
   statsPanelWidth: 700,
+  weekNoteTemplate: "${year}-W${week}",
+  eventNoteTemplate: "${year}-W${week}",
+  rangeNoteTemplate: "${startYear}-W${startWeek}_to_${endYear}-W${endWeek}",
+  useSeparateFolders: false,
+  eventNotesFolder: "",
 };
 
 /** SVG icon for the Chronica Timeline */
@@ -479,190 +499,172 @@ export default class ChronosTimelinePlugin extends Plugin {
     return weekPattern.test(fileBasename) || rangePattern.test(fileBasename);
   }
 
-  /**
-   * Scan vault for notes with event metadata and populate plugin settings
-   */
-  async scanVaultForEvents(): Promise<void> {
-    console.log("Scanning vault for event metadata...");
 
-    // Get all markdown files in the vault
-    const files = this.app.vault.getMarkdownFiles();
+  
+/**
+ * Scan vault for notes with event metadata and populate plugin settings
+ */
+async scanVaultForEvents(): Promise<void> {
+  console.log("Scanning vault for event metadata...");
 
-    // Track how many event notes we find
-    let eventCount = 0;
-
-    // Map to track range events so we can parse them fully
-    const rangeEventMap = new Map<
-      string,
-      {
-        startWeek: string;
-        endWeek: string;
-        description: string;
-        type: string;
-        color: string;
-      }
-    >();
-
-    // Process each file
-    for (const file of files) {
-      try {
-        // Convert basename to a consistent format - handle both "2023-W15" and "2023--W15" formats
-        let normalizedBasename = file.basename;
-        normalizedBasename = normalizedBasename.replace(/--W/, "-W"); // Convert 2023--W15 to 2023-W15
-
-        // Check if the filename matches our weekly note pattern (both potential formats)
-        // Regular week format (single week): 2023-W15.md or 2023--W15.md
-        const weekPattern = /(\d{4}-W\d{2})/;
-
-        // Range format: 2023-W15_to_2023-W20.md or 2023--W15_to_2023--W20.md
-        const rangePattern = /(\d{4}-W\d{2})_to_(\d{4}-W\d{2})/;
-
-        let weekKey: string | null = null;
-        let endWeekKey: string | null = null;
-        let isRange = false;
-
-        // Check for single week pattern
-        const weekMatch = normalizedBasename.match(weekPattern);
-        if (weekMatch) {
-          weekKey = weekMatch[1];
+  // Get all markdown files in the vault
+  let files = this.app.vault.getMarkdownFiles();
+  
+  // Filter files based on folders
+  const filesToProcess: TFile[] = [];
+  
+  // If no folders are specified, use all files
+  if ((!this.settings.notesFolder || this.settings.notesFolder.trim() === "") && 
+      (!this.settings.useSeparateFolders || !this.settings.eventNotesFolder || this.settings.eventNotesFolder.trim() === "")) {
+    filesToProcess.push(...files);
+  } else {
+    // Otherwise, filter based on specified folders
+    
+    // Add files from main notes folder if specified
+    if (this.settings.notesFolder && this.settings.notesFolder.trim() !== "") {
+      const normalizedFolder = this.settings.notesFolder.endsWith("/") 
+        ? this.settings.notesFolder 
+        : this.settings.notesFolder + "/";
+      
+      const notesFiles = files.filter(file => file.path.startsWith(normalizedFolder));
+      filesToProcess.push(...notesFiles);
+    }
+    
+    // Add files from event folder if using separate folders
+    if (this.settings.useSeparateFolders && 
+        this.settings.eventNotesFolder && 
+        this.settings.eventNotesFolder.trim() !== "") {
+      
+      const normalizedEventFolder = this.settings.eventNotesFolder.endsWith("/") 
+        ? this.settings.eventNotesFolder 
+        : this.settings.eventNotesFolder + "/";
+      
+      const eventFiles = files.filter(file => file.path.startsWith(normalizedEventFolder));
+      
+      // Only add files that aren't already included
+      for (const file of eventFiles) {
+        if (!filesToProcess.some(f => f.path === file.path)) {
+          filesToProcess.push(file);
         }
-
-        // Check for range pattern
-        const rangeMatch = normalizedBasename.match(rangePattern);
-        if (rangeMatch) {
-          weekKey = rangeMatch[1];
-          endWeekKey = rangeMatch[2];
-          isRange = true;
-        }
-
-        // If it's neither a week nor a range, skip
-        if (!weekKey) continue;
-
-        // Read file content
-        const content = await this.app.vault.read(file);
-
-        // Check for YAML frontmatter
-        const frontmatterMatch = content.match(/^---\s+([\s\S]*?)\s+---/);
-        if (!frontmatterMatch) continue;
-
-        // Parse frontmatter
-        const frontmatter = frontmatterMatch[1];
-        const metadata: Record<string, any> = {};
-
-        frontmatter.split("\n").forEach((line) => {
-          const match = line.match(/^([^:]+):\s*(.+)$/);
-          if (match) {
-            const [_, key, value] = match;
-            metadata[key.trim()] = value.trim().replace(/^"(.*)"$/, "$1");
-          }
-        });
-
-        // If no event or type, skip
-        if (!metadata.event && !metadata.name) continue;
-
-        const eventName = metadata.event || metadata.name;
-        const eventType = metadata.type || "Major Life";
-        const description = metadata.description || eventName;
-
-        // Check if this is part of a range event by looking at startDate and endDate in metadata
-        if (metadata.startDate && metadata.endDate && !isRange) {
-          // This is a single week note that's part of a range event
-          const startDate = new Date(metadata.startDate);
-          const endDate = new Date(metadata.endDate);
-
-          // Generate a unique ID for this range event
-          const rangeId = `${eventName}-${startDate.toISOString()}-${endDate.toISOString()}`;
-
-          // If we haven't seen this range before, create it
-          if (!rangeEventMap.has(rangeId)) {
-            // Convert dates to week keys
-            const startWeek = this.getWeekKeyFromDate(startDate);
-            const endWeek = this.getWeekKeyFromDate(endDate);
-
-            rangeEventMap.set(rangeId, {
-              startWeek,
-              endWeek,
-              description,
-              type: eventType,
-              color: metadata.color || "",
-            });
-          }
-
-          // We'll process this note as part of a range later
-          continue;
-        }
-
-        // Format event string based on whether it's a range
-        let eventString = "";
-        if (isRange && endWeekKey) {
-          eventString = `${weekKey}:${endWeekKey}:${description}`;
-        } else {
-          eventString = `${weekKey}:${description}`;
-        }
-
-        // Add to appropriate collection if not already present
-        let added = false;
-        switch (eventType) {
-          case "Major Life":
-            if (!this.settings.greenEvents.includes(eventString)) {
-              this.settings.greenEvents.push(eventString);
-              added = true;
-            }
-            break;
-          case "Travel":
-            if (!this.settings.blueEvents.includes(eventString)) {
-              this.settings.blueEvents.push(eventString);
-              added = true;
-            }
-            break;
-          case "Relationship":
-            if (!this.settings.pinkEvents.includes(eventString)) {
-              this.settings.pinkEvents.push(eventString);
-              added = true;
-            }
-            break;
-          case "Education/Career":
-            if (!this.settings.purpleEvents.includes(eventString)) {
-              this.settings.purpleEvents.push(eventString);
-              added = true;
-            }
-            break;
-          default:
-            // Handle custom event types
-            if (this.settings.customEventTypes) {
-              const customType = this.settings.customEventTypes.find(
-                (t) => t.name === eventType
-              );
-              if (customType) {
-                if (!this.settings.customEvents[eventType]) {
-                  this.settings.customEvents[eventType] = [];
-                }
-                if (
-                  !this.settings.customEvents[eventType].includes(eventString)
-                ) {
-                  this.settings.customEvents[eventType].push(eventString);
-                  added = true;
-                }
-              }
-            }
-            break;
-        }
-
-        if (added) {
-          eventCount++;
-        }
-      } catch (error) {
-        console.error("Error processing file:", file.path, error);
       }
     }
+  }
 
-    // Process the range events we collected
-    for (const rangeEvent of rangeEventMap.values()) {
-      const eventString = `${rangeEvent.startWeek}:${rangeEvent.endWeek}:${rangeEvent.description}`;
+  // Track how many event notes we find
+  let eventCount = 0;
+
+  // Map to track range events so we can parse them fully
+  const rangeEventMap = new Map
+    string,
+    {
+      startWeek: string;
+      endWeek: string;
+      description: string;
+      type: string;
+      color: string;
+    }
+  >();
+
+  // Process each file
+  for (const file of filesToProcess) {
+    try {
+      // Convert basename to a consistent format - handle both "2023-W15" and "2023--W15" formats
+      let normalizedBasename = file.basename;
+      normalizedBasename = normalizedBasename.replace(/--W/, "-W"); // Convert 2023--W15 to 2023-W15
+
+      // Check if the filename matches our weekly note pattern (both potential formats)
+      // Regular week format (single week): 2023-W15.md or 2023--W15.md
+      const weekPattern = /(\d{4}-W\d{2})/;
+
+      // Range format: 2023-W15_to_2023-W20.md or 2023--W15_to_2023--W20.md
+      const rangePattern = /(\d{4}-W\d{2})_to_(\d{4}-W\d{2})/;
+
+      let weekKey: string | null = null;
+      let endWeekKey: string | null = null;
+      let isRange = false;
+
+      // Check for single week pattern
+      const weekMatch = normalizedBasename.match(weekPattern);
+      if (weekMatch) {
+        weekKey = weekMatch[1];
+      }
+
+      // Check for range pattern
+      const rangeMatch = normalizedBasename.match(rangePattern);
+      if (rangeMatch) {
+        weekKey = rangeMatch[1];
+        endWeekKey = rangeMatch[2];
+        isRange = true;
+      }
+
+      // If it's neither a week nor a range, skip
+      if (!weekKey) continue;
+
+      // Read file content
+      const content = await this.app.vault.read(file);
+
+      // Check for YAML frontmatter
+      const frontmatterMatch = content.match(/^---\s+([\s\S]*?)\s+---/);
+      if (!frontmatterMatch) continue;
+
+      // Parse frontmatter
+      const frontmatter = frontmatterMatch[1];
+      const metadata: Record<string, any> = {};
+
+      frontmatter.split("\n").forEach((line) => {
+        const match = line.match(/^([^:]+):\s*(.+)$/);
+        if (match) {
+          const [_, key, value] = match;
+          metadata[key.trim()] = value.trim().replace(/^"(.*)"$/, "$1");
+        }
+      });
+
+      // If no event or type, skip
+      if (!metadata.event && !metadata.name) continue;
+
+      const eventName = metadata.event || metadata.name;
+      const eventType = metadata.type || "Major Life";
+      const description = metadata.description || eventName;
+
+      // Check if this is part of a range event by looking at startDate and endDate in metadata
+      if (metadata.startDate && metadata.endDate && !isRange) {
+        // This is a single week note that's part of a range event
+        const startDate = new Date(metadata.startDate);
+        const endDate = new Date(metadata.endDate);
+
+        // Generate a unique ID for this range event
+        const rangeId = `${eventName}-${startDate.toISOString()}-${endDate.toISOString()}`;
+
+        // If we haven't seen this range before, create it
+        if (!rangeEventMap.has(rangeId)) {
+          // Convert dates to week keys
+          const startWeek = this.getWeekKeyFromDate(startDate);
+          const endWeek = this.getWeekKeyFromDate(endDate);
+
+          rangeEventMap.set(rangeId, {
+            startWeek,
+            endWeek,
+            description,
+            type: eventType,
+            color: metadata.color || "",
+          });
+        }
+
+        // We'll process this note as part of a range later
+        continue;
+      }
+
+      // Format event string based on whether it's a range
+      let eventString = "";
+      if (isRange && endWeekKey) {
+        eventString = `${weekKey}:${endWeekKey}:${description}`;
+      } else {
+        eventString = `${weekKey}:${description}`;
+      }
 
       // Add to appropriate collection if not already present
       let added = false;
-      switch (rangeEvent.type) {
+      switch (eventType) {
         case "Major Life":
           if (!this.settings.greenEvents.includes(eventString)) {
             this.settings.greenEvents.push(eventString);
@@ -691,18 +693,16 @@ export default class ChronosTimelinePlugin extends Plugin {
           // Handle custom event types
           if (this.settings.customEventTypes) {
             const customType = this.settings.customEventTypes.find(
-              (t) => t.name === rangeEvent.type
+              (t) => t.name === eventType
             );
             if (customType) {
-              if (!this.settings.customEvents[rangeEvent.type]) {
-                this.settings.customEvents[rangeEvent.type] = [];
+              if (!this.settings.customEvents[eventType]) {
+                this.settings.customEvents[eventType] = [];
               }
               if (
-                !this.settings.customEvents[rangeEvent.type].includes(
-                  eventString
-                )
+                !this.settings.customEvents[eventType].includes(eventString)
               ) {
-                this.settings.customEvents[rangeEvent.type].push(eventString);
+                this.settings.customEvents[eventType].push(eventString);
                 added = true;
               }
             }
@@ -713,13 +713,75 @@ export default class ChronosTimelinePlugin extends Plugin {
       if (added) {
         eventCount++;
       }
-    }
-
-    if (eventCount > 0) {
-      console.log(`Found ${eventCount} events from note metadata`);
-      await this.saveSettings();
+    } catch (error) {
+      console.error("Error processing file:", file.path, error);
     }
   }
+
+  // Process the range events we collected
+  for (const rangeEvent of rangeEventMap.values()) {
+    const eventString = `${rangeEvent.startWeek}:${rangeEvent.endWeek}:${rangeEvent.description}`;
+
+    // Add to appropriate collection if not already present
+    let added = false;
+    switch (rangeEvent.type) {
+      case "Major Life":
+        if (!this.settings.greenEvents.includes(eventString)) {
+          this.settings.greenEvents.push(eventString);
+          added = true;
+        }
+        break;
+      case "Travel":
+        if (!this.settings.blueEvents.includes(eventString)) {
+          this.settings.blueEvents.push(eventString);
+          added = true;
+        }
+        break;
+      case "Relationship":
+        if (!this.settings.pinkEvents.includes(eventString)) {
+          this.settings.pinkEvents.push(eventString);
+          added = true;
+        }
+        break;
+      case "Education/Career":
+        if (!this.settings.purpleEvents.includes(eventString)) {
+          this.settings.purpleEvents.push(eventString);
+          added = true;
+        }
+        break;
+      default:
+        // Handle custom event types
+        if (this.settings.customEventTypes) {
+          const customType = this.settings.customEventTypes.find(
+            (t) => t.name === rangeEvent.type
+          );
+          if (customType) {
+            if (!this.settings.customEvents[rangeEvent.type]) {
+              this.settings.customEvents[rangeEvent.type] = [];
+            }
+            if (
+              !this.settings.customEvents[rangeEvent.type].includes(
+                eventString
+              )
+            ) {
+              this.settings.customEvents[rangeEvent.type].push(eventString);
+              added = true;
+            }
+          }
+        }
+        break;
+    }
+
+    if (added) {
+      eventCount++;
+    }
+  }
+
+  if (eventCount > 0) {
+    console.log(`Found ${eventCount} events from note metadata`);
+    await this.saveSettings();
+  }
+}
 
   public refreshAllViews(): void {
     // Skip refreshing during likely sync operations
@@ -875,18 +937,56 @@ export default class ChronosTimelinePlugin extends Plugin {
   /**
    * Get full path for a note, using settings folder if specified
    * @param fileName - Name of the file
+   * @param isEvent - Whether this is an event note (for separate folders)
    * @returns Full path including folder if specified
    */
-  getFullPath(fileName: string): string {
-    if (this.settings.notesFolder && this.settings.notesFolder.trim() !== "") {
-      let folderPath = this.settings.notesFolder;
+  getFullPath(fileName: string, isEvent: boolean = false): string {
+    // Get the appropriate folder based on settings and file type
+    let folderPath = this.settings.notesFolder;
+
+    // If using separate folders and this is an event, use the event folder
+    if (
+      isEvent &&
+      this.settings.useSeparateFolders &&
+      this.settings.eventNotesFolder
+    ) {
+      folderPath = this.settings.eventNotesFolder;
+    }
+
+    // If there's a folder, append the file name to it
+    if (folderPath && folderPath.trim() !== "") {
       if (!folderPath.endsWith("/")) {
         folderPath += "/";
       }
       return `${folderPath}${fileName}`;
     }
+
+    // Otherwise just use the filename
     return fileName;
   }
+
+    /**
+     * Generate a filename based on a template and values
+     * @param template - The template string with placeholders
+     * @param values - Object containing values to replace placeholders
+     * @returns Formatted filename
+     */
+    private formatFileName(template: string, values: Record<string, any>): string {
+      let result = template;
+      
+      // Replace all placeholders in the template
+      for (const [key, value] of Object.entries(values)) {
+        const placeholder = "${" + key + "}";
+        result = result.replace(new RegExp(placeholder, "g"), value.toString());
+      }
+      
+      // Ensure the extension is .md
+      if (!result.endsWith(".md")) {
+        result += ".md";
+      }
+      
+      return result;
+    }
 
   /**
    * Create or open a note for the current week
@@ -903,7 +1003,7 @@ export default class ChronosTimelinePlugin extends Plugin {
       const year = date.getFullYear();
       const weekNum = this.getISOWeekNumber(date);
       const fileName = `${year}-W${weekNum.toString().padStart(2, "0")}.md`;
-      const fullPath = this.getFullPath(fileName);
+      const fullPath = this.getFullPath(fileName, false);
       const weekKey = `${year}-W${weekNum.toString().padStart(2, "0")}`;
 
       const existingFile = this.app.vault.getAbstractFileByPath(fullPath);
@@ -2291,7 +2391,7 @@ class ChronosEventModal extends Modal {
     startDate: Date,
     endDate?: Date
   ): Promise<void> {
-    const fullPath = this.plugin.getFullPath(fileName);
+    const fullPath = this.plugin.getFullPath(fileName, true);
     const fileExists =
       this.plugin.app.vault.getAbstractFileByPath(fullPath) instanceof TFile;
 
@@ -6574,6 +6674,51 @@ class ChronosSettingTab extends PluginSettingTab {
         new FolderSuggest(this.app, search.inputEl, this.plugin);
       });
 
+    // Separate folders for event notes
+    new Setting(containerEl)
+      .setName("Use Separate Folders")
+      .setDesc("Store week notes and event notes in different folders")
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.useSeparateFolders)
+          .onChange(async (value) => {
+            this.plugin.settings.useSeparateFolders = value;
+            await this.plugin.saveSettings();
+
+            // Show/hide event folder selector based on toggle state
+            const eventFolderSetting = containerEl.querySelector(
+              ".event-folder-selector"
+            );
+            if (eventFolderSetting) {
+              (eventFolderSetting as HTMLElement).style.display = value
+                ? "flex"
+                : "none";
+            }
+          })
+      );
+
+    // Event notes folder setting
+    const eventFolderSetting = new Setting(containerEl)
+      .setName("Event Notes Folder")
+      .setDesc("Select the folder where your event notes will be stored")
+      .setClass("event-folder-selector")
+      .addSearch((search) => {
+        search
+          .setPlaceholder("Pick a folder…")
+          .setValue(this.plugin.settings.eventNotesFolder)
+          .onChange(async (value) => {
+            this.plugin.settings.eventNotesFolder = value;
+            await this.plugin.saveSettings();
+          });
+        // Pass the plugin instance to FolderSuggest
+        new FolderSuggest(this.app, search.inputEl, this.plugin);
+      });
+
+    // Hide event folder selector if separate folders not enabled
+    if (!this.plugin.settings.useSeparateFolders) {
+      eventFolderSetting.settingEl.style.display = "none";
+    }
+
     // Quote setting
     new Setting(containerEl)
       .setName("Footer Quote")
@@ -6822,6 +6967,62 @@ class ChronosSettingTab extends PluginSettingTab {
           modal.open();
         });
       });
+
+    // File naming templates section
+    containerEl.createEl("h3", { text: "File Naming Templates" });
+    containerEl.createEl("p", {
+      text: "Customize how Chronica names your week and event note files. Use placeholders like ${year}, ${week}, etc.",
+    });
+
+    // Week note template
+    new Setting(containerEl)
+      .setName("Week Note Template")
+      .setDesc("Template for week note filenames. Example: ${year}-W${week}")
+      .addText((text) =>
+        text
+          .setPlaceholder("${year}-W${week}")
+          .setValue(this.plugin.settings.weekNoteTemplate)
+          .onChange(async (value) => {
+            this.plugin.settings.weekNoteTemplate = value || "${year}-W${week}";
+            await this.plugin.saveSettings();
+          })
+      );
+
+    // Event note template
+    new Setting(containerEl)
+      .setName("Event Note Template")
+      .setDesc(
+        "Template for event note filenames. Example: ${year}-W${week}-${event}"
+      )
+      .addText((text) =>
+        text
+          .setPlaceholder("${year}-W${week}")
+          .setValue(this.plugin.settings.eventNoteTemplate)
+          .onChange(async (value) => {
+            this.plugin.settings.eventNoteTemplate =
+              value || "${year}-W${week}";
+            await this.plugin.saveSettings();
+          })
+      );
+
+    // Range note template
+    new Setting(containerEl)
+      .setName("Range Event Template")
+      .setDesc(
+        "Template for range event filenames. Example: ${startYear}-W${startWeek}_to_${endYear}-W${endWeek}"
+      )
+      .addText((text) =>
+        text
+          .setPlaceholder(
+            "${startYear}-W${startWeek}_to_${endYear}-W${endWeek}"
+          )
+          .setValue(this.plugin.settings.rangeNoteTemplate)
+          .onChange(async (value) => {
+            this.plugin.settings.rangeNoteTemplate =
+              value || "${startYear}-W${startWeek}_to_${endYear}-W${endWeek}";
+            await this.plugin.saveSettings();
+          })
+      );
 
     // Clear event data section
     containerEl.createEl("h3", { text: "Clear Event Data" });
