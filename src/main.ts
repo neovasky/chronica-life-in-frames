@@ -258,8 +258,9 @@ const DEFAULT_SETTINGS: ChronosSettings = {
   statsPanelHorizontalOffset: 0,
   statsPanelWidth: 700,
   weekNoteTemplate: "${year}-W${week}",
-  eventNoteTemplate: "${year}-W${week}",
-  rangeNoteTemplate: "${startYear}-W${startWeek}_to_${endYear}-W${endWeek}",
+  eventNoteTemplate: "${eventName}_${startDate}_${year}-W${week}",
+  rangeNoteTemplate:
+    "${eventName}_${startDate}_${startYear}-W${startWeek}_to_${endYear}-W${endWeek}",
   useSeparateFolders: false,
   eventNotesFolder: "",
 };
@@ -983,10 +984,7 @@ export default class ChronosTimelinePlugin extends Plugin {
    * @param values - Object containing values to replace placeholders
    * @returns Formatted filename
    */
-  private formatFileName(
-    template: string,
-    values: Record<string, any>
-  ): string {
+  public formatFileName(template: string, values: Record<string, any>): string {
     let result = template;
 
     // Replace all placeholders in the template
