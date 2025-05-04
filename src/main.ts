@@ -5843,7 +5843,6 @@ class ChronosTimelineView extends ItemView {
         if (eventData && eventData.event) {
           // Apply styling based on note frontmatter
           cell.classList.add("event");
-          cell.classList.add("major-life-event");
 
           // Add specific event type class based on type
           switch (eventData.type) {
