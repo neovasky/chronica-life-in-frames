@@ -303,41 +303,73 @@ export default class ChronosTimelinePlugin extends Plugin {
       // already registered on hot-reload—ignore
     }
 
+    // 2) Re-draw whenever a new weekly note appears
+    this.registerEvent(
+      this.app.vault.on("create", (file) => {
+        // Register potential sync operation for ALL files
+        this.registerPotentialSyncOperation();
 
-// 2) Re-draw whenever a new weekly note appears
-this.registerEvent(
-  this.app.vault.on("create", () => {
-    this.registerPotentialSyncOperation();
-    // Only refresh if not during a likely sync operation
-    if (!this.isSyncOperation) {
-      this.refreshAllViews();
-    }
-  })
-);
+        // Only continue processing for Chronica-related files
+        if (!this.isChronicaRelatedFile(file)) {
+          return;
+        }
 
-this.registerEvent(
-  this.app.vault.on("modify", (file) => {
-    this.registerPotentialSyncOperation();
-    
-    // Protect against sync-triggered modifications
-    if (this.isSyncOperation) {
-      console.debug("Chronica: File modification during sync, deferring actions", file.path);
-      return;
-    }
-    
-    // Safe to proceed with normal modification handling
-    // (The existing code just registered sync, but didn't do anything else)
-  })
-);
+        // Only refresh if not during a likely sync operation
+        if (!this.isSyncOperation) {
+          this.refreshAllViews();
+        }
+      })
+    );
+
+    this.registerEvent(
+      this.app.vault.on("modify", (file) => {
+        // Register potential sync operation for ALL files
+        this.registerPotentialSyncOperation();
+
+        // Protect against sync-triggered modifications
+        if (this.isSyncOperation) {
+          console.debug(
+            "Chronica: File modification during sync, deferring actions",
+            file.path
+          );
+          return;
+        }
+
+        // Skip if not a Chronica-related file
+        if (!this.isChronicaRelatedFile(file)) {
+          return;
+        }
+
+        // Safe to proceed with normal modification handling for Chronica files
+        // (The existing code just registered sync, but didn't do anything else)
+      })
+    );
 
     // 3) On deletion, remove from settings AND re-draw
     this.registerEvent(
       this.app.vault.on("delete", async (file) => {
+        // Register potential sync operation for ALL files
+        this.registerPotentialSyncOperation();
+
+        // Protect against sync-triggered deletions
+        if (this.isSyncOperation) {
+          console.debug(
+            "Chronica: File deletion during sync, deferring actions",
+            file.path
+          );
+          return;
+        }
+
+        // Only process Chronica-related files
+        if (!this.isChronicaRelatedFile(file)) {
+          return;
+        }
+
         if (!(file instanceof TFile)) return;
 
-        // 1) Only run on notes named like "2025--W23.md"
-        const base = file.basename; // e.g. "2025--W23"
-        if (!/^\d{4}--W\d{2}$/.test(base)) return; // skip everything else
+        // Now we know it's a Chronica-related file, proceed with event cleaning
+        // 1) Get the basename (e.g. "2025--W23")
+        const base = file.basename;
 
         // 2) Normalize to "2025-W23" so it matches your settings entries
         const weekKey = base.replace("--", "-");
@@ -402,11 +434,49 @@ this.registerEvent(
   }
 
   /**
- * Public method to check if a sync operation is in progress
- * @returns whether a sync operation is currently detected
-  */
+   * Public method to check if a sync operation is in progress
+   * @returns whether a sync operation is currently detected
+   */
   public isSyncInProgress(): boolean {
     return this.isSyncOperation;
+  }
+
+  /**
+   * Check if a file is related to Chronica by examining its name and location
+   * @param file - File to check
+   * @returns Whether the file is related to Chronica
+   */
+  private isChronicaRelatedFile(file: TAbstractFile): boolean {
+    // 1. Check if it's a TFile (not a folder)
+    if (!(file instanceof TFile)) {
+      return false;
+    }
+
+    // 2. Check if a notes folder is specified and if the file is in that folder
+    if (this.settings.notesFolder && this.settings.notesFolder.trim() !== "") {
+      // Make sure folder path format is consistent
+      let folderPath = this.settings.notesFolder;
+      if (!folderPath.endsWith("/")) {
+        folderPath += "/";
+      }
+
+      // If file is not in the specified folder, it's not ours
+      if (!file.path.startsWith(folderPath)) {
+        return false;
+      }
+    }
+
+    // 3. Check filename patterns for weekly notes & event notes
+    const fileBasename = file.basename;
+
+    // Weekly note patterns: 2023-W15 or 2023--W15
+    const weekPattern = /^\d{4}(-|--)W\d{2}$/;
+
+    // Range note patterns: 2023-W15_to_2023-W20 or 2023--W15_to_2023--W20
+    const rangePattern = /^\d{4}(-|--)W\d{2}_to_\d{4}(-|--)W\d{2}$/;
+
+    // Check if filename matches any of our patterns
+    return weekPattern.test(fileBasename) || rangePattern.test(fileBasename);
   }
 
   /**
@@ -828,16 +898,16 @@ this.registerEvent(
         new Notice("Sync in progress. Please try again in a moment.");
         return;
       }
-      
+
       const date = new Date();
       const year = date.getFullYear();
       const weekNum = this.getISOWeekNumber(date);
       const fileName = `${year}-W${weekNum.toString().padStart(2, "0")}.md`;
       const fullPath = this.getFullPath(fileName);
       const weekKey = `${year}-W${weekNum.toString().padStart(2, "0")}`;
-  
+
       const existingFile = this.app.vault.getAbstractFileByPath(fullPath);
-  
+
       if (existingFile instanceof TFile) {
         // Use our safe method instead of directly opening in active leaf
         await this.safelyOpenFile(existingFile);
@@ -907,102 +977,102 @@ this.registerEvent(
     }
   }
 
-/**
- * Calculate ISO week number and the associated ISO year for a given date
- * @param date - Date to calculate week number for
- * @returns Object with ISO week number (1-53) and ISO year
- */
-getISOWeekYearNumber(date: Date): { week: number; year: number } {
-  // Create a copy of the date to avoid modifying the original
-  const target = new Date(date.getTime());
-  target.setHours(0, 0, 0, 0);
+  /**
+   * Calculate ISO week number and the associated ISO year for a given date
+   * @param date - Date to calculate week number for
+   * @returns Object with ISO week number (1-53) and ISO year
+   */
+  getISOWeekYearNumber(date: Date): { week: number; year: number } {
+    // Create a copy of the date to avoid modifying the original
+    const target = new Date(date.getTime());
+    target.setHours(0, 0, 0, 0);
 
-  // ISO week starts on Monday
-  const dayNumber = target.getDay() || 7; // Convert Sunday (0) to 7
+    // ISO week starts on Monday
+    const dayNumber = target.getDay() || 7; // Convert Sunday (0) to 7
 
-  // Move target to Thursday in the same week
-  target.setDate(target.getDate() - dayNumber + 4);
+    // Move target to Thursday in the same week
+    target.setDate(target.getDate() - dayNumber + 4);
 
-  // Get the year of this Thursday (this is the ISO year for this week)
-  const weekYear = target.getFullYear();
+    // Get the year of this Thursday (this is the ISO year for this week)
+    const weekYear = target.getFullYear();
 
-  // Get January 1st of the target's year
-  const yearStart = new Date(weekYear, 0, 1);
+    // Get January 1st of the target's year
+    const yearStart = new Date(weekYear, 0, 1);
 
-  // Calculate the number of days since January 1st
-  const daysSinceFirstDay = Math.floor(
-    (target.getTime() - yearStart.getTime()) / 86400000
-  );
+    // Calculate the number of days since January 1st
+    const daysSinceFirstDay = Math.floor(
+      (target.getTime() - yearStart.getTime()) / 86400000
+    );
 
-  // Calculate the week number
-  const weekNumber = 1 + Math.floor(daysSinceFirstDay / 7);
+    // Calculate the week number
+    const weekNumber = 1 + Math.floor(daysSinceFirstDay / 7);
 
-  return { week: weekNumber, year: weekYear };
-}
-
-/**
- * Get the ISO week and year for a given date following strict ISO 8601 standard
- * @param date - Date to calculate for
- * @returns Object with week number and correct ISO year
- */
-getISOWeekData(date: Date): { week: number; year: number } {
-  // Create a copy to avoid modifying the original
-  const d = new Date(date.getTime());
-  
-  // Get the day of week (0 = Sunday, 1 = Monday, etc.)
-  const dayOfWeek = d.getDay();
-  
-  // Set to nearest Thursday (current date + 4 - current day number)
-  d.setDate(d.getDate() + 4 - (dayOfWeek || 7));
-  
-  // Get first day of this ISO year (January 1st)
-  const yearStart = new Date(d.getFullYear(), 0, 1);
-  
-  // Calculate days between date and first day of year, plus 1 day
-  const days = Math.floor((d.getTime() - yearStart.getTime()) / 86400000) + 1;
-  
-  // Calculate the ISO week number
-  const weekNum = Math.ceil(days / 7);
-  
-  // Check for edge cases at year boundaries
-  if (weekNum === 0) {
-    // Week belongs to the previous year
-    // Find the last week of previous year
-    const lastDayPrevYear = new Date(d.getFullYear() - 1, 11, 31);
-    const lastWeekData = this.getISOWeekData(lastDayPrevYear);
-    return lastWeekData;
-  } else if (weekNum > 52) {
-    // Check if it's actually week 1 of next year
-    const dec31 = new Date(d.getFullYear(), 11, 31);
-    const dec31Day = dec31.getDay();
-    
-    // If Dec 31 is on Wed-Sun, the last days are week 1 of next year
-    if (dec31Day >= 3) {
-      return { week: 1, year: d.getFullYear() + 1 };
-    }
+    return { week: weekNumber, year: weekYear };
   }
-  
-  return { week: weekNum, year: d.getFullYear() };
-}
 
-/**
- * Calculate ISO week number for a given date
- * @param date - Date to calculate week number for
- * @returns ISO week number (1-53)
- */
-getISOWeekNumber(date: Date): number {
-  return this.getISOWeekData(date).week;
-}
+  /**
+   * Get the ISO week and year for a given date following strict ISO 8601 standard
+   * @param date - Date to calculate for
+   * @returns Object with week number and correct ISO year
+   */
+  getISOWeekData(date: Date): { week: number; year: number } {
+    // Create a copy to avoid modifying the original
+    const d = new Date(date.getTime());
 
-/**
- * Get week key in YYYY-WXX format from date with corrected year
- * @param date - Date to get week key for
- * @returns Week key in YYYY-WXX format
- */
-getWeekKeyFromDate(date: Date): string {
-  const { week, year } = this.getISOWeekYearNumber(date);
-  return `${year}-W${week.toString().padStart(2, "0")}`;
-}
+    // Get the day of week (0 = Sunday, 1 = Monday, etc.)
+    const dayOfWeek = d.getDay();
+
+    // Set to nearest Thursday (current date + 4 - current day number)
+    d.setDate(d.getDate() + 4 - (dayOfWeek || 7));
+
+    // Get first day of this ISO year (January 1st)
+    const yearStart = new Date(d.getFullYear(), 0, 1);
+
+    // Calculate days between date and first day of year, plus 1 day
+    const days = Math.floor((d.getTime() - yearStart.getTime()) / 86400000) + 1;
+
+    // Calculate the ISO week number
+    const weekNum = Math.ceil(days / 7);
+
+    // Check for edge cases at year boundaries
+    if (weekNum === 0) {
+      // Week belongs to the previous year
+      // Find the last week of previous year
+      const lastDayPrevYear = new Date(d.getFullYear() - 1, 11, 31);
+      const lastWeekData = this.getISOWeekData(lastDayPrevYear);
+      return lastWeekData;
+    } else if (weekNum > 52) {
+      // Check if it's actually week 1 of next year
+      const dec31 = new Date(d.getFullYear(), 11, 31);
+      const dec31Day = dec31.getDay();
+
+      // If Dec 31 is on Wed-Sun, the last days are week 1 of next year
+      if (dec31Day >= 3) {
+        return { week: 1, year: d.getFullYear() + 1 };
+      }
+    }
+
+    return { week: weekNum, year: d.getFullYear() };
+  }
+
+  /**
+   * Calculate ISO week number for a given date
+   * @param date - Date to calculate week number for
+   * @returns ISO week number (1-53)
+   */
+  getISOWeekNumber(date: Date): number {
+    return this.getISOWeekData(date).week;
+  }
+
+  /**
+   * Get week key in YYYY-WXX format from date with corrected year
+   * @param date - Date to get week key for
+   * @returns Week key in YYYY-WXX format
+   */
+  getWeekKeyFromDate(date: Date): string {
+    const { week, year } = this.getISOWeekYearNumber(date);
+    return `${year}-W${week.toString().padStart(2, "0")}`;
+  }
 
   /**
    * Get all week keys between two dates
@@ -1174,33 +1244,43 @@ getWeekKeyFromDate(date: Date): string {
   getWeekDateRange(weekKey: string): string {
     const parts = weekKey.split("-W");
     if (parts.length !== 2) return "";
-    
+
     const year = parseInt(parts[0]);
     const week = parseInt(parts[1]);
-    
+
     // Find January 4th for the given year, which is always in week 1
     const jan4 = new Date(year, 0, 4);
-    
+
     // Find the Monday of week 1
     const week1Start = this.getStartOfISOWeek(jan4);
-    
+
     // Calculate the first day of the target week
     const firstDayOfWeek = new Date(week1Start);
     firstDayOfWeek.setDate(week1Start.getDate() + (week - 1) * 7);
-    
+
     // Calculate the last day of the week (Sunday)
     const lastDayOfWeek = new Date(firstDayOfWeek);
     lastDayOfWeek.setDate(firstDayOfWeek.getDate() + 6);
-    
+
     // Format the dates
     const formatDate = (date: Date): string => {
       const months = [
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun", 
-        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
       ];
       return `${months[date.getMonth()]} ${date.getDate()}`;
     };
-    
+
     return `${formatDate(firstDayOfWeek)} - ${formatDate(lastDayOfWeek)}`;
   }
   /**
@@ -1215,44 +1295,44 @@ getWeekKeyFromDate(date: Date): string {
     return targetDate;
   }
 
-/**
- * Calculate which ISO week number contains the birthday in a specific year
- * @param year - Year to check
- * @returns ISO week number (1-53) containing the birthday
- */
-getBirthdayWeekForYear(year: number): {
-  weekNumber: number;
-  weekStart: Date;
-} {
-  // Get the birthday in this specific year
-  const birthdayDate = new Date(this.settings.birthday);
-  birthdayDate.setFullYear(year);
-  
-  // Calculate the ISO week data
-  const { week, year: isoYear } = this.getISOWeekData(birthdayDate);
-  
-  // If the ISO year is different than the calendar year
-  if (isoYear !== year) {
-    // We need to find a date that's definitely in the requested year
-    // Let's use January 4th which is always in week 1 of the ISO year
-    const jan4 = new Date(year, 0, 4);
-    const jan4Data = this.getISOWeekData(jan4);
-    const weekStart = this.getStartOfISOWeek(jan4);
-    
+  /**
+   * Calculate which ISO week number contains the birthday in a specific year
+   * @param year - Year to check
+   * @returns ISO week number (1-53) containing the birthday
+   */
+  getBirthdayWeekForYear(year: number): {
+    weekNumber: number;
+    weekStart: Date;
+  } {
+    // Get the birthday in this specific year
+    const birthdayDate = new Date(this.settings.birthday);
+    birthdayDate.setFullYear(year);
+
+    // Calculate the ISO week data
+    const { week, year: isoYear } = this.getISOWeekData(birthdayDate);
+
+    // If the ISO year is different than the calendar year
+    if (isoYear !== year) {
+      // We need to find a date that's definitely in the requested year
+      // Let's use January 4th which is always in week 1 of the ISO year
+      const jan4 = new Date(year, 0, 4);
+      const jan4Data = this.getISOWeekData(jan4);
+      const weekStart = this.getStartOfISOWeek(jan4);
+
+      return {
+        weekNumber: jan4Data.week,
+        weekStart: weekStart,
+      };
+    }
+
+    // Find the Monday that starts this ISO week
+    const weekStart = this.getStartOfISOWeek(birthdayDate);
+
     return {
-      weekNumber: jan4Data.week,
-      weekStart: weekStart
+      weekNumber: week,
+      weekStart: weekStart,
     };
   }
-  
-  // Find the Monday that starts this ISO week
-  const weekStart = this.getStartOfISOWeek(birthdayDate);
-  
-  return {
-    weekNumber: week,
-    weekStart: weekStart
-  };
-}
   /**
    * Get the start date (Monday) of the ISO week containing the given date
    * @param date - Date to find the containing week for
@@ -1601,32 +1681,32 @@ getBirthdayWeekForYear(year: number): {
     return null;
   }
 
-/**
- * Safely open a file, respecting files already open in other panes
- * @param file - File to open
- */
-async safelyOpenFile(file: TFile): Promise<void> {
-  // First, check if the file is already open in any leaf
-  const existingLeaf = this.app.workspace.getLeavesOfType("markdown").find(
-    (leaf) => {
-      const viewState = leaf.getViewState();
-      return viewState.state?.file === file.path;
-    }
-  );
+  /**
+   * Safely open a file, respecting files already open in other panes
+   * @param file - File to open
+   */
+  async safelyOpenFile(file: TFile): Promise<void> {
+    // First, check if the file is already open in any leaf
+    const existingLeaf = this.app.workspace
+      .getLeavesOfType("markdown")
+      .find((leaf) => {
+        const viewState = leaf.getViewState();
+        return viewState.state?.file === file.path;
+      });
 
-  if (existingLeaf) {
-    // File is already open, just focus that leaf
-    this.app.workspace.setActiveLeaf(existingLeaf, { focus: true });
-    this.app.workspace.revealLeaf(existingLeaf);
-  } else {
-    // File is not open, use a Chronica leaf
-    const leaf = this.getChronicaLeaf();
-    if (leaf) {
-      await leaf.openFile(file);
-      this.app.workspace.revealLeaf(leaf);
+    if (existingLeaf) {
+      // File is already open, just focus that leaf
+      this.app.workspace.setActiveLeaf(existingLeaf, { focus: true });
+      this.app.workspace.revealLeaf(existingLeaf);
+    } else {
+      // File is not open, use a Chronica leaf
+      const leaf = this.getChronicaLeaf();
+      if (leaf) {
+        await leaf.openFile(file);
+        this.app.workspace.revealLeaf(leaf);
+      }
     }
   }
-}
 
   /**
    * Track potential sync operations to prevent interference
@@ -1651,9 +1731,11 @@ async safelyOpenFile(file: TFile): Promise<void> {
       this.isSyncOperation = false;
       this.syncOperationTimer = null;
     }, 10000);
-    
+
     // Log sync operation detection for debugging
-    console.debug("Chronica: Potential sync operation detected, operations paused");
+    console.debug(
+      "Chronica: Potential sync operation detected, operations paused"
+    );
   }
 }
 
@@ -2710,7 +2792,10 @@ class ChronosTimelineView extends ItemView {
     const dataSection = sidebarEl.createEl("div", {
       cls: "chronica-sidebar-section",
     });
-    dataSection.createEl("h3", { text: "TIMELINE DATA", cls: "section-header" });
+    dataSection.createEl("h3", {
+      text: "TIMELINE DATA",
+      cls: "section-header",
+    });
     const dataContainer = dataSection.createEl("div", {
       cls: "chronica-controls",
     });
@@ -2830,14 +2915,15 @@ class ChronosTimelineView extends ItemView {
     });
 
     // Cell Shape dropdown
-    displayContainer.createEl("h4", {  // Changed from div to h4
-      cls: "subsection-header",  // Changed from section-header
+    displayContainer.createEl("h4", {
+      // Changed from div to h4
+      cls: "subsection-header", // Changed from section-header
       text: "Cell Shape",
     });
 
     // Select
     const shapeSelect = displayContainer.createEl("select", {
-      cls: "chronica-select chronica-dropdown",  // Added a class for styling
+      cls: "chronica-select chronica-dropdown", // Added a class for styling
     });
     ["square", "circle", "diamond"].forEach((opt) => {
       const option = shapeSelect.createEl("option", {
@@ -2853,22 +2939,26 @@ class ChronosTimelineView extends ItemView {
       await this.plugin.saveSettings();
       this.updateZoomLevel();
     });
-    
+
     // Grid Orientation subsection - also using the subsection styling
     displayContainer.createEl("h4", {
-      cls: "subsection-header",  // Using the same subsection styling
+      cls: "subsection-header", // Using the same subsection styling
       text: "Grid Orientation",
     });
 
     // Orientation toggle button
     const orientationBtn = displayContainer.createEl("button", {
       cls: "chronica-btn chronica-orientation-button",
-      text: this.plugin.settings.gridOrientation === "landscape" 
-          ? "Switch to Portrait" 
+      text:
+        this.plugin.settings.gridOrientation === "landscape"
+          ? "Switch to Portrait"
           : "Switch to Landscape",
-      attr: { title: this.plugin.settings.gridOrientation === "landscape"
-          ? "Display years as rows, weeks as columns"
-          : "Display years as columns, weeks as rows" },
+      attr: {
+        title:
+          this.plugin.settings.gridOrientation === "landscape"
+            ? "Display years as rows, weeks as columns"
+            : "Display years as columns, weeks as rows",
+      },
     });
 
     orientationBtn.addEventListener("click", async () => {
@@ -3570,7 +3660,8 @@ class ChronosTimelineView extends ItemView {
         cellDate.setDate(cellDate.getDate() + week * 7);
 
         // Get calendar information for display
-        const { week: cellWeek, year: isoYear } = this.plugin.getISOWeekYearNumber(cellDate);
+        const { week: cellWeek, year: isoYear } =
+          this.plugin.getISOWeekYearNumber(cellDate);
         const weekKey = `${isoYear}-W${cellWeek.toString().padStart(2, "0")}`;
         cell.dataset.weekKey = weekKey;
 
@@ -3665,7 +3756,7 @@ class ChronosTimelineView extends ItemView {
             new Notice("Sync in progress. Please try again in a moment.");
             return;
           }
-          
+
           // If shift key is pressed, add an event
           if (event.shiftKey) {
             const modal = new ChronosEventModal(this.app, this.plugin, weekKey);
@@ -3700,7 +3791,8 @@ class ChronosTimelineView extends ItemView {
             }
 
             const isoYear = weekKey.split("-W")[0]; // Extract the year from the weekKey
-            const content = `# Week ${cellWeek}, ${isoYear}\n\n## Reflections\n\n## Tasks\n\n## Notes\n`;            const newFile = await this.app.vault.create(fullPath, content);
+            const content = `# Week ${cellWeek}, ${isoYear}\n\n## Reflections\n\n## Tasks\n\n## Notes\n`;
+            const newFile = await this.app.vault.create(fullPath, content);
 
             // Replace this line:
             // await this.app.workspace.getLeaf().openFile(newFile);
@@ -7048,63 +7140,148 @@ class ChronosSettingTab extends PluginSettingTab {
         );
     }
 
-      // Help tips section
-      containerEl.createEl("h3", { text: "Tips & Shortcuts" });
+    // Help tips section
+    containerEl.createEl("h3", { text: "Tips & Shortcuts" });
 
-      // Create container for tips sections
-      const tipsContainer = containerEl.createDiv({ cls: "chronica-tips-container" });
+    // Create container for tips sections
+    const tipsContainer = containerEl.createDiv({
+      cls: "chronica-tips-container",
+    });
 
-      // Basic Navigation section
-      const navigationDetails = tipsContainer.createEl("details", { cls: "chronica-tips-details" });
-      navigationDetails.createEl("summary", { text: "Basic Navigation", cls: "chronica-tips-summary" });
-      const navContent = navigationDetails.createDiv({ cls: "chronica-tips-content" });
-      navContent.createEl("p", { text: "• Click on any week to create or open a note for that week" });
-      navContent.createEl("p", { text: "• Shift+Click on a week to quickly add an event at that date" });
-      navContent.createEl("p", { text: "• Hover over a cell to see week number and date range" });
-      navContent.createEl("p", { text: "• Use the zoom controls in the sidebar to adjust cell size" });
-      navContent.createEl("p", { text: "• Click 'Fit to Screen' to automatically size the grid to your window" });
+    // Basic Navigation section
+    const navigationDetails = tipsContainer.createEl("details", {
+      cls: "chronica-tips-details",
+    });
+    navigationDetails.createEl("summary", {
+      text: "Basic Navigation",
+      cls: "chronica-tips-summary",
+    });
+    const navContent = navigationDetails.createDiv({
+      cls: "chronica-tips-content",
+    });
+    navContent.createEl("p", {
+      text: "• Click on any week to create or open a note for that week",
+    });
+    navContent.createEl("p", {
+      text: "• Shift+Click on a week to quickly add an event at that date",
+    });
+    navContent.createEl("p", {
+      text: "• Hover over a cell to see week number and date range",
+    });
+    navContent.createEl("p", {
+      text: "• Use the zoom controls in the sidebar to adjust cell size",
+    });
+    navContent.createEl("p", {
+      text: "• Click 'Fit to Screen' to automatically size the grid to your window",
+    });
 
-      // Events & Planning section
-      const eventsDetails = tipsContainer.createEl("details", { cls: "chronica-tips-details" });
-      eventsDetails.createEl("summary", { text: "Events & Planning", cls: "chronica-tips-summary" });
-      const eventsContent = eventsDetails.createDiv({ cls: "chronica-tips-content" });
-      eventsContent.createEl("p", { text: "• Use the 'Plan Event' button to mark significant life events" });
-      eventsContent.createEl("p", { text: "• Create date ranges by selecting 'Date Range' in the event modal" });
-      eventsContent.createEl("p", { text: "• Create custom event types with your own names and colors" });
-      eventsContent.createEl("p", { text: "• Right-click on future weeks to manually mark them as filled (when auto-fill is disabled)" });
-      eventsContent.createEl("p", { text: "• Events are stored as regular notes with YAML frontmatter" });
+    // Events & Planning section
+    const eventsDetails = tipsContainer.createEl("details", {
+      cls: "chronica-tips-details",
+    });
+    eventsDetails.createEl("summary", {
+      text: "Events & Planning",
+      cls: "chronica-tips-summary",
+    });
+    const eventsContent = eventsDetails.createDiv({
+      cls: "chronica-tips-content",
+    });
+    eventsContent.createEl("p", {
+      text: "• Use the 'Plan Event' button to mark significant life events",
+    });
+    eventsContent.createEl("p", {
+      text: "• Create date ranges by selecting 'Date Range' in the event modal",
+    });
+    eventsContent.createEl("p", {
+      text: "• Create custom event types with your own names and colors",
+    });
+    eventsContent.createEl("p", {
+      text: "• Right-click on future weeks to manually mark them as filled (when auto-fill is disabled)",
+    });
+    eventsContent.createEl("p", {
+      text: "• Events are stored as regular notes with YAML frontmatter",
+    });
 
-      // Customization section
-      const customDetails = tipsContainer.createEl("details", { cls: "chronica-tips-details" });
-      customDetails.createEl("summary", { text: "Customization", cls: "chronica-tips-summary" });
-      const customContent = customDetails.createDiv({ cls: "chronica-tips-content" });
-      customContent.createEl("p", { text: "• Change between square, circle, or diamond cells for different visual styles" });
-      customContent.createEl("p", { text: "• Try portrait mode for an alternative timeline view (years as rows instead of columns)" });
-      customContent.createEl("p", { text: "• Customize which markers appear using the marker visibility toggles" });
-      customContent.createEl("p", { text: "• Adjust color schemes for past, present, and future weeks" });
-      customContent.createEl("p", { text: "• Personalize the footer quote to display your own mantra or reminder" });
+    // Customization section
+    const customDetails = tipsContainer.createEl("details", {
+      cls: "chronica-tips-details",
+    });
+    customDetails.createEl("summary", {
+      text: "Customization",
+      cls: "chronica-tips-summary",
+    });
+    const customContent = customDetails.createDiv({
+      cls: "chronica-tips-content",
+    });
+    customContent.createEl("p", {
+      text: "• Change between square, circle, or diamond cells for different visual styles",
+    });
+    customContent.createEl("p", {
+      text: "• Try portrait mode for an alternative timeline view (years as rows instead of columns)",
+    });
+    customContent.createEl("p", {
+      text: "• Customize which markers appear using the marker visibility toggles",
+    });
+    customContent.createEl("p", {
+      text: "• Adjust color schemes for past, present, and future weeks",
+    });
+    customContent.createEl("p", {
+      text: "• Personalize the footer quote to display your own mantra or reminder",
+    });
 
-      // Statistics section
-      const statsDetails = tipsContainer.createEl("details", { cls: "chronica-tips-details" });
-      statsDetails.createEl("summary", { text: "Statistics Panel", cls: "chronica-tips-summary" });
-      const statsContent = statsDetails.createDiv({ cls: "chronica-tips-content" });
-      statsContent.createEl("p", { text: "• Click the 'Statistics' handle at the bottom of the screen to open the stats panel" });
-      statsContent.createEl("p", { text: "• Browse different tabs to see varied visualizations of your timeline data" });
-      statsContent.createEl("p", { text: "• Drag the top handle of the stats panel to resize it" });
-      statsContent.createEl("p", { text: "• Analyze seasonal patterns and event distribution in the Charts tab" });
-      statsContent.createEl("p", { text: "• Track your life progress and upcoming milestones in the Timeline tab" });
+    // Statistics section
+    const statsDetails = tipsContainer.createEl("details", {
+      cls: "chronica-tips-details",
+    });
+    statsDetails.createEl("summary", {
+      text: "Statistics Panel",
+      cls: "chronica-tips-summary",
+    });
+    const statsContent = statsDetails.createDiv({
+      cls: "chronica-tips-content",
+    });
+    statsContent.createEl("p", {
+      text: "• Click the 'Statistics' handle at the bottom of the screen to open the stats panel",
+    });
+    statsContent.createEl("p", {
+      text: "• Browse different tabs to see varied visualizations of your timeline data",
+    });
+    statsContent.createEl("p", {
+      text: "• Drag the top handle of the stats panel to resize it",
+    });
+    statsContent.createEl("p", {
+      text: "• Analyze seasonal patterns and event distribution in the Charts tab",
+    });
+    statsContent.createEl("p", {
+      text: "• Track your life progress and upcoming milestones in the Timeline tab",
+    });
 
-      // Obsidian Integration section
-      const integrationDetails = tipsContainer.createEl("details", { cls: "chronica-tips-details" });
-      integrationDetails.createEl("summary", { text: "Obsidian Integration", cls: "chronica-tips-summary" });
-      const integrationContent = integrationDetails.createDiv({ cls: "chronica-tips-content" });
-      integrationContent.createEl("p", { text: "• Weekly notes are stored as regular markdown files in your vault" });
-      integrationContent.createEl("p", { text: "• Define a specific folder for all timeline notes in settings" });
-      integrationContent.createEl("p", { text: "• Event metadata is stored in YAML frontmatter for compatibility with other plugins" });
-      integrationContent.createEl("p", { text: "• Use Command+P (Ctrl+P) and search for 'Chronica' to access timeline commands" });
+    // Obsidian Integration section
+    const integrationDetails = tipsContainer.createEl("details", {
+      cls: "chronica-tips-details",
+    });
+    integrationDetails.createEl("summary", {
+      text: "Obsidian Integration",
+      cls: "chronica-tips-summary",
+    });
+    const integrationContent = integrationDetails.createDiv({
+      cls: "chronica-tips-content",
+    });
+    integrationContent.createEl("p", {
+      text: "• Weekly notes are stored as regular markdown files in your vault",
+    });
+    integrationContent.createEl("p", {
+      text: "• Define a specific folder for all timeline notes in settings",
+    });
+    integrationContent.createEl("p", {
+      text: "• Event metadata is stored in YAML frontmatter for compatibility with other plugins",
+    });
+    integrationContent.createEl("p", {
+      text: "• Use Command+P (Ctrl+P) and search for 'Chronica' to access timeline commands",
+    });
 
-      // Set the first section to be open by default
-      navigationDetails.setAttribute("open", "");
+    // Set the first section to be open by default
+    navigationDetails.setAttribute("open", "");
   }
 
   /**

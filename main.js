@@ -140,31 +140,51 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
             // already registered on hot-reload—ignore
         }
         // 2) Re-draw whenever a new weekly note appears
-        this.registerEvent(this.app.vault.on("create", () => {
+        this.registerEvent(this.app.vault.on("create", (file) => {
+            // Register potential sync operation for ALL files
             this.registerPotentialSyncOperation();
+            // Only continue processing for Chronica-related files
+            if (!this.isChronicaRelatedFile(file)) {
+                return;
+            }
             // Only refresh if not during a likely sync operation
             if (!this.isSyncOperation) {
                 this.refreshAllViews();
             }
         }));
         this.registerEvent(this.app.vault.on("modify", (file) => {
+            // Register potential sync operation for ALL files
             this.registerPotentialSyncOperation();
             // Protect against sync-triggered modifications
             if (this.isSyncOperation) {
                 console.debug("Chronica: File modification during sync, deferring actions", file.path);
                 return;
             }
-            // Safe to proceed with normal modification handling
+            // Skip if not a Chronica-related file
+            if (!this.isChronicaRelatedFile(file)) {
+                return;
+            }
+            // Safe to proceed with normal modification handling for Chronica files
             // (The existing code just registered sync, but didn't do anything else)
         }));
         // 3) On deletion, remove from settings AND re-draw
         this.registerEvent(this.app.vault.on("delete", async (file) => {
+            // Register potential sync operation for ALL files
+            this.registerPotentialSyncOperation();
+            // Protect against sync-triggered deletions
+            if (this.isSyncOperation) {
+                console.debug("Chronica: File deletion during sync, deferring actions", file.path);
+                return;
+            }
+            // Only process Chronica-related files
+            if (!this.isChronicaRelatedFile(file)) {
+                return;
+            }
             if (!(file instanceof obsidian.TFile))
                 return;
-            // 1) Only run on notes named like "2025--W23.md"
-            const base = file.basename; // e.g. "2025--W23"
-            if (!/^\d{4}--W\d{2}$/.test(base))
-                return; // skip everything else
+            // Now we know it's a Chronica-related file, proceed with event cleaning
+            // 1) Get the basename (e.g. "2025--W23")
+            const base = file.basename;
             // 2) Normalize to "2025-W23" so it matches your settings entries
             const weekKey = base.replace("--", "-");
             // 3) Purge it from every array, same as before
@@ -214,11 +234,42 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
         this.registerInterval(window.setInterval(() => this.checkAndAutoFill(), 1000 * 60 * 60));
     }
     /**
-   * Public method to check if a sync operation is in progress
-   * @returns whether a sync operation is currently detected
-    */
+     * Public method to check if a sync operation is in progress
+     * @returns whether a sync operation is currently detected
+     */
     isSyncInProgress() {
         return this.isSyncOperation;
+    }
+    /**
+     * Check if a file is related to Chronica by examining its name and location
+     * @param file - File to check
+     * @returns Whether the file is related to Chronica
+     */
+    isChronicaRelatedFile(file) {
+        // 1. Check if it's a TFile (not a folder)
+        if (!(file instanceof obsidian.TFile)) {
+            return false;
+        }
+        // 2. Check if a notes folder is specified and if the file is in that folder
+        if (this.settings.notesFolder && this.settings.notesFolder.trim() !== "") {
+            // Make sure folder path format is consistent
+            let folderPath = this.settings.notesFolder;
+            if (!folderPath.endsWith("/")) {
+                folderPath += "/";
+            }
+            // If file is not in the specified folder, it's not ours
+            if (!file.path.startsWith(folderPath)) {
+                return false;
+            }
+        }
+        // 3. Check filename patterns for weekly notes & event notes
+        const fileBasename = file.basename;
+        // Weekly note patterns: 2023-W15 or 2023--W15
+        const weekPattern = /^\d{4}(-|--)W\d{2}$/;
+        // Range note patterns: 2023-W15_to_2023-W20 or 2023--W15_to_2023--W20
+        const rangePattern = /^\d{4}(-|--)W\d{2}_to_\d{4}(-|--)W\d{2}$/;
+        // Check if filename matches any of our patterns
+        return weekPattern.test(fileBasename) || rangePattern.test(fileBasename);
     }
     /**
      * Scan vault for notes with event metadata and populate plugin settings
@@ -864,8 +915,18 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
         // Format the dates
         const formatDate = (date) => {
             const months = [
-                "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+                "Jan",
+                "Feb",
+                "Mar",
+                "Apr",
+                "May",
+                "Jun",
+                "Jul",
+                "Aug",
+                "Sep",
+                "Oct",
+                "Nov",
+                "Dec",
             ];
             return `${months[date.getMonth()]} ${date.getDate()}`;
         };
@@ -902,14 +963,14 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
             const weekStart = this.getStartOfISOWeek(jan4);
             return {
                 weekNumber: jan4Data.week,
-                weekStart: weekStart
+                weekStart: weekStart,
             };
         }
         // Find the Monday that starts this ISO week
         const weekStart = this.getStartOfISOWeek(birthdayDate);
         return {
             weekNumber: week,
-            weekStart: weekStart
+            weekStart: weekStart,
         };
     }
     /**
@@ -1188,7 +1249,9 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
      */
     async safelyOpenFile(file) {
         // First, check if the file is already open in any leaf
-        const existingLeaf = this.app.workspace.getLeavesOfType("markdown").find((leaf) => {
+        const existingLeaf = this.app.workspace
+            .getLeavesOfType("markdown")
+            .find((leaf) => {
             const viewState = leaf.getViewState();
             return viewState.state?.file === file.path;
         });
@@ -2041,7 +2104,10 @@ class ChronosTimelineView extends obsidian.ItemView {
         const dataSection = sidebarEl.createEl("div", {
             cls: "chronica-sidebar-section",
         });
-        dataSection.createEl("h3", { text: "TIMELINE DATA", cls: "section-header" });
+        dataSection.createEl("h3", {
+            text: "TIMELINE DATA",
+            cls: "section-header",
+        });
         const dataContainer = dataSection.createEl("div", {
             cls: "chronica-controls",
         });
@@ -2150,6 +2216,7 @@ class ChronosTimelineView extends obsidian.ItemView {
         });
         // Cell Shape dropdown
         displayContainer.createEl("h4", {
+            // Changed from div to h4
             cls: "subsection-header",
             text: "Cell Shape",
         });
@@ -2182,9 +2249,11 @@ class ChronosTimelineView extends obsidian.ItemView {
             text: this.plugin.settings.gridOrientation === "landscape"
                 ? "Switch to Portrait"
                 : "Switch to Landscape",
-            attr: { title: this.plugin.settings.gridOrientation === "landscape"
+            attr: {
+                title: this.plugin.settings.gridOrientation === "landscape"
                     ? "Display years as rows, weeks as columns"
-                    : "Display years as columns, weeks as rows" },
+                    : "Display years as columns, weeks as rows",
+            },
         });
         orientationBtn.addEventListener("click", async () => {
             // Toggle the orientation
@@ -5373,51 +5442,136 @@ class ChronosSettingTab extends obsidian.PluginSettingTab {
         // Help tips section
         containerEl.createEl("h3", { text: "Tips & Shortcuts" });
         // Create container for tips sections
-        const tipsContainer = containerEl.createDiv({ cls: "chronica-tips-container" });
+        const tipsContainer = containerEl.createDiv({
+            cls: "chronica-tips-container",
+        });
         // Basic Navigation section
-        const navigationDetails = tipsContainer.createEl("details", { cls: "chronica-tips-details" });
-        navigationDetails.createEl("summary", { text: "Basic Navigation", cls: "chronica-tips-summary" });
-        const navContent = navigationDetails.createDiv({ cls: "chronica-tips-content" });
-        navContent.createEl("p", { text: "• Click on any week to create or open a note for that week" });
-        navContent.createEl("p", { text: "• Shift+Click on a week to quickly add an event at that date" });
-        navContent.createEl("p", { text: "• Hover over a cell to see week number and date range" });
-        navContent.createEl("p", { text: "• Use the zoom controls in the sidebar to adjust cell size" });
-        navContent.createEl("p", { text: "• Click 'Fit to Screen' to automatically size the grid to your window" });
+        const navigationDetails = tipsContainer.createEl("details", {
+            cls: "chronica-tips-details",
+        });
+        navigationDetails.createEl("summary", {
+            text: "Basic Navigation",
+            cls: "chronica-tips-summary",
+        });
+        const navContent = navigationDetails.createDiv({
+            cls: "chronica-tips-content",
+        });
+        navContent.createEl("p", {
+            text: "• Click on any week to create or open a note for that week",
+        });
+        navContent.createEl("p", {
+            text: "• Shift+Click on a week to quickly add an event at that date",
+        });
+        navContent.createEl("p", {
+            text: "• Hover over a cell to see week number and date range",
+        });
+        navContent.createEl("p", {
+            text: "• Use the zoom controls in the sidebar to adjust cell size",
+        });
+        navContent.createEl("p", {
+            text: "• Click 'Fit to Screen' to automatically size the grid to your window",
+        });
         // Events & Planning section
-        const eventsDetails = tipsContainer.createEl("details", { cls: "chronica-tips-details" });
-        eventsDetails.createEl("summary", { text: "Events & Planning", cls: "chronica-tips-summary" });
-        const eventsContent = eventsDetails.createDiv({ cls: "chronica-tips-content" });
-        eventsContent.createEl("p", { text: "• Use the 'Plan Event' button to mark significant life events" });
-        eventsContent.createEl("p", { text: "• Create date ranges by selecting 'Date Range' in the event modal" });
-        eventsContent.createEl("p", { text: "• Create custom event types with your own names and colors" });
-        eventsContent.createEl("p", { text: "• Right-click on future weeks to manually mark them as filled (when auto-fill is disabled)" });
-        eventsContent.createEl("p", { text: "• Events are stored as regular notes with YAML frontmatter" });
+        const eventsDetails = tipsContainer.createEl("details", {
+            cls: "chronica-tips-details",
+        });
+        eventsDetails.createEl("summary", {
+            text: "Events & Planning",
+            cls: "chronica-tips-summary",
+        });
+        const eventsContent = eventsDetails.createDiv({
+            cls: "chronica-tips-content",
+        });
+        eventsContent.createEl("p", {
+            text: "• Use the 'Plan Event' button to mark significant life events",
+        });
+        eventsContent.createEl("p", {
+            text: "• Create date ranges by selecting 'Date Range' in the event modal",
+        });
+        eventsContent.createEl("p", {
+            text: "• Create custom event types with your own names and colors",
+        });
+        eventsContent.createEl("p", {
+            text: "• Right-click on future weeks to manually mark them as filled (when auto-fill is disabled)",
+        });
+        eventsContent.createEl("p", {
+            text: "• Events are stored as regular notes with YAML frontmatter",
+        });
         // Customization section
-        const customDetails = tipsContainer.createEl("details", { cls: "chronica-tips-details" });
-        customDetails.createEl("summary", { text: "Customization", cls: "chronica-tips-summary" });
-        const customContent = customDetails.createDiv({ cls: "chronica-tips-content" });
-        customContent.createEl("p", { text: "• Change between square, circle, or diamond cells for different visual styles" });
-        customContent.createEl("p", { text: "• Try portrait mode for an alternative timeline view (years as rows instead of columns)" });
-        customContent.createEl("p", { text: "• Customize which markers appear using the marker visibility toggles" });
-        customContent.createEl("p", { text: "• Adjust color schemes for past, present, and future weeks" });
-        customContent.createEl("p", { text: "• Personalize the footer quote to display your own mantra or reminder" });
+        const customDetails = tipsContainer.createEl("details", {
+            cls: "chronica-tips-details",
+        });
+        customDetails.createEl("summary", {
+            text: "Customization",
+            cls: "chronica-tips-summary",
+        });
+        const customContent = customDetails.createDiv({
+            cls: "chronica-tips-content",
+        });
+        customContent.createEl("p", {
+            text: "• Change between square, circle, or diamond cells for different visual styles",
+        });
+        customContent.createEl("p", {
+            text: "• Try portrait mode for an alternative timeline view (years as rows instead of columns)",
+        });
+        customContent.createEl("p", {
+            text: "• Customize which markers appear using the marker visibility toggles",
+        });
+        customContent.createEl("p", {
+            text: "• Adjust color schemes for past, present, and future weeks",
+        });
+        customContent.createEl("p", {
+            text: "• Personalize the footer quote to display your own mantra or reminder",
+        });
         // Statistics section
-        const statsDetails = tipsContainer.createEl("details", { cls: "chronica-tips-details" });
-        statsDetails.createEl("summary", { text: "Statistics Panel", cls: "chronica-tips-summary" });
-        const statsContent = statsDetails.createDiv({ cls: "chronica-tips-content" });
-        statsContent.createEl("p", { text: "• Click the 'Statistics' handle at the bottom of the screen to open the stats panel" });
-        statsContent.createEl("p", { text: "• Browse different tabs to see varied visualizations of your timeline data" });
-        statsContent.createEl("p", { text: "• Drag the top handle of the stats panel to resize it" });
-        statsContent.createEl("p", { text: "• Analyze seasonal patterns and event distribution in the Charts tab" });
-        statsContent.createEl("p", { text: "• Track your life progress and upcoming milestones in the Timeline tab" });
+        const statsDetails = tipsContainer.createEl("details", {
+            cls: "chronica-tips-details",
+        });
+        statsDetails.createEl("summary", {
+            text: "Statistics Panel",
+            cls: "chronica-tips-summary",
+        });
+        const statsContent = statsDetails.createDiv({
+            cls: "chronica-tips-content",
+        });
+        statsContent.createEl("p", {
+            text: "• Click the 'Statistics' handle at the bottom of the screen to open the stats panel",
+        });
+        statsContent.createEl("p", {
+            text: "• Browse different tabs to see varied visualizations of your timeline data",
+        });
+        statsContent.createEl("p", {
+            text: "• Drag the top handle of the stats panel to resize it",
+        });
+        statsContent.createEl("p", {
+            text: "• Analyze seasonal patterns and event distribution in the Charts tab",
+        });
+        statsContent.createEl("p", {
+            text: "• Track your life progress and upcoming milestones in the Timeline tab",
+        });
         // Obsidian Integration section
-        const integrationDetails = tipsContainer.createEl("details", { cls: "chronica-tips-details" });
-        integrationDetails.createEl("summary", { text: "Obsidian Integration", cls: "chronica-tips-summary" });
-        const integrationContent = integrationDetails.createDiv({ cls: "chronica-tips-content" });
-        integrationContent.createEl("p", { text: "• Weekly notes are stored as regular markdown files in your vault" });
-        integrationContent.createEl("p", { text: "• Define a specific folder for all timeline notes in settings" });
-        integrationContent.createEl("p", { text: "• Event metadata is stored in YAML frontmatter for compatibility with other plugins" });
-        integrationContent.createEl("p", { text: "• Use Command+P (Ctrl+P) and search for 'Chronica' to access timeline commands" });
+        const integrationDetails = tipsContainer.createEl("details", {
+            cls: "chronica-tips-details",
+        });
+        integrationDetails.createEl("summary", {
+            text: "Obsidian Integration",
+            cls: "chronica-tips-summary",
+        });
+        const integrationContent = integrationDetails.createDiv({
+            cls: "chronica-tips-content",
+        });
+        integrationContent.createEl("p", {
+            text: "• Weekly notes are stored as regular markdown files in your vault",
+        });
+        integrationContent.createEl("p", {
+            text: "• Define a specific folder for all timeline notes in settings",
+        });
+        integrationContent.createEl("p", {
+            text: "• Event metadata is stored in YAML frontmatter for compatibility with other plugins",
+        });
+        integrationContent.createEl("p", {
+            text: "• Use Command+P (Ctrl+P) and search for 'Chronica' to access timeline commands",
+        });
         // Set the first section to be open by default
         navigationDetails.setAttribute("open", "");
     }
