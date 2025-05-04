@@ -1896,3 +1896,128 @@
 .chronica-tips-content p {
   margin: 6px 0;
 }
+
+/* -----------------------------------------------------------------------------
+   WELCOME MODAL
+   ----------------------------------------------------------------------------- */
+.chronica-welcome-modal {
+  max-width: 500px;
+  padding: 20px;
+}
+
+.chronica-welcome-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+  flex-direction: column;
+}
+
+.chronica-welcome-icon {
+  width: 80px;
+  height: 80px;
+  margin-bottom: 10px;
+}
+
+.chronica-welcome-icon svg {
+  width: 100%;
+  height: 100%;
+  color: var(--interactive-accent);
+}
+
+.chronica-welcome-title {
+  margin: 0;
+  font-size: 28px;
+  text-align: center;
+}
+
+.chronica-welcome-subtitle {
+  margin: 10px 0;
+  font-size: 20px;
+}
+
+.chronica-welcome-intro {
+  text-align: center;
+  margin-bottom: 20px;
+  font-size: 16px;
+  font-style: italic;
+  color: var(--text-muted);
+}
+
+.chronica-welcome-setup {
+  background-color: var(--background-secondary);
+  padding: 20px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+}
+
+.chronica-welcome-birthdate {
+  margin: 20px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.chronica-welcome-label {
+  margin-bottom: 5px;
+  font-weight: 500;
+}
+
+.chronica-welcome-input {
+  font-size: 16px;
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid var(--background-modifier-border);
+  background-color: var(--background-primary);
+  color: var(--text-normal);
+}
+
+.chronica-welcome-buttons {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.chronica-welcome-button {
+  padding: 10px 15px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  border: 1px solid var(--background-modifier-border);
+  background-color: var(--background-secondary);
+  color: var(--text-normal);
+  flex: 1;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.chronica-welcome-button:hover {
+  background-color: var(--background-modifier-hover);
+}
+
+.chronica-welcome-primary-button {
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+}
+
+.chronica-welcome-primary-button:hover {
+  background-color: var(--interactive-accent-hover);
+}
+
+.chronica-welcome-accent-button {
+  background-color: var(--background-modifier-success);
+  color: var(--text-on-accent);
+  border-color: var(--background-modifier-success);
+}
+
+.chronica-welcome-accent-button:hover {
+  filter: brightness(1.1);
+}
+
+.chronica-welcome-footer {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+}

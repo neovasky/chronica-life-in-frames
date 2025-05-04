@@ -147,6 +147,9 @@ interface ChronosSettings {
 
   /** Folder to store event notes (empty for vault root) */
   eventNotesFolder: string;
+
+  /** Whether the user has seen the welcome screen */
+  hasSeenWelcome: boolean;
 }
 
 /** Interface for custom event types */
@@ -263,6 +266,7 @@ const DEFAULT_SETTINGS: ChronosSettings = {
     "${eventName}_${startDate}_${startYear}-W${startWeek}_to_${endYear}-W${endWeek}",
   useSeparateFolders: false,
   eventNotesFolder: "",
+  hasSeenWelcome: false,
 };
 
 /** SVG icon for the Chronica Timeline */
@@ -415,6 +419,15 @@ export default class ChronosTimelinePlugin extends Plugin {
         this.refreshAllViews();
       })
     );
+
+    // Check if we should show welcome modal
+    if (!this.settings.hasSeenWelcome) {
+      // Delay showing welcome modal to ensure UI is fully loaded
+      setTimeout(() => {
+        const welcomeModal = new ChronicaWelcomeModal(this.app, this);
+        welcomeModal.open();
+      }, 500);
+    }
 
     // 4) Now your regular setup
     addIcon("chronica-icon", CHRONOS_ICON);
@@ -2537,6 +2550,162 @@ class ChronosEventModal extends Modal {
    */
   onClose(): void {
     this.contentEl.empty();
+  }
+}
+
+/**
+ * Welcome modal shown to new users
+ */
+class ChronicaWelcomeModal extends Modal {
+  /** Reference to the main plugin */
+  plugin: ChronosTimelinePlugin;
+
+  /**
+   * Create a welcome modal
+   * @param app - Obsidian App instance
+   * @param plugin - ChronosTimelinePlugin instance
+   */
+  constructor(app: App, plugin: ChronosTimelinePlugin) {
+    super(app);
+    this.plugin = plugin;
+  }
+
+  /**
+   * Build the modal UI when opened
+   */
+  onOpen(): void {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.addClass("chronica-welcome-modal");
+
+    // Create header with logo
+    const headerEl = contentEl.createEl("div", {
+      cls: "chronica-welcome-header",
+    });
+
+    // Add plugin icon
+    const iconEl = headerEl.createEl("div", {
+      cls: "chronica-welcome-icon",
+    });
+    iconEl.innerHTML = CHRONOS_ICON;
+
+    // Add title
+    headerEl.createEl("h1", {
+      text: "Welcome to Chronica",
+      cls: "chronica-welcome-title",
+    });
+
+    // Introduction section
+    contentEl.createEl("div", {
+      cls: "chronica-welcome-intro",
+      text: "Visualize, navigate, and reflect on your life across multiple time scales.",
+    });
+
+    // Create setup section
+    const setupSection = contentEl.createEl("div", {
+      cls: "chronica-welcome-setup",
+    });
+
+    setupSection.createEl("h2", {
+      text: "Let's get started",
+      cls: "chronica-welcome-subtitle",
+    });
+
+    setupSection.createEl("p", {
+      text: "To create your personal timeline, Chronica needs your birthdate. Let's set that up first.",
+    });
+
+    // Birthdate input
+    const birthdateSection = setupSection.createEl("div", {
+      cls: "chronica-welcome-birthdate",
+    });
+
+    birthdateSection.createEl("label", {
+      text: "Your birthdate:",
+      attr: { for: "chronica-birthdate-input" },
+      cls: "chronica-welcome-label",
+    });
+
+    const birthdateInput = birthdateSection.createEl("input", {
+      attr: {
+        type: "date",
+        id: "chronica-birthdate-input",
+        value: this.plugin.settings.birthday,
+      },
+      cls: "chronica-welcome-input",
+    });
+
+    // Create buttons section
+    const buttonsSection = contentEl.createEl("div", {
+      cls: "chronica-welcome-buttons",
+    });
+
+    // Open settings button
+    const settingsButton = buttonsSection.createEl("button", {
+      text: "Open Settings",
+      cls: "chronica-welcome-button chronica-welcome-primary-button",
+    });
+
+    settingsButton.addEventListener("click", () => {
+      // Open settings tab
+      this.app.setting.open();
+      this.app.setting.openTabById("chronica-life-in-frames");
+
+      // Mark as seen and close
+      this.plugin.settings.hasSeenWelcome = true;
+      this.plugin.saveSettings();
+      this.close();
+    });
+
+    // Apply birthdate button
+    const applyButton = buttonsSection.createEl("button", {
+      text: "Save Birthdate",
+      cls: "chronica-welcome-button chronica-welcome-accent-button",
+    });
+
+    applyButton.addEventListener("click", () => {
+      const birthdate = birthdateInput.value;
+
+      if (birthdate) {
+        this.plugin.settings.birthday = birthdate;
+        this.plugin.settings.hasSeenWelcome = true;
+        this.plugin.saveSettings().then(() => {
+          new Notice("Birthday saved successfully!");
+          this.close();
+
+          // Refresh open views
+          this.plugin.refreshAllViews();
+        });
+      } else {
+        new Notice("Please enter your birthdate");
+      }
+    });
+
+    // Skip button
+    const skipButton = buttonsSection.createEl("button", {
+      text: "Skip for Now",
+      cls: "chronica-welcome-button",
+    });
+
+    skipButton.addEventListener("click", () => {
+      this.plugin.settings.hasSeenWelcome = true;
+      this.plugin.saveSettings();
+      this.close();
+    });
+
+    // Additional information
+    contentEl.createEl("div", {
+      cls: "chronica-welcome-footer",
+      text: "You can always change these settings later by going to Settings > Chronica Timeline.",
+    });
+  }
+
+  /**
+   * Clean up on modal close
+   */
+  onClose(): void {
+    const { contentEl } = this;
+    contentEl.empty();
   }
 }
 
