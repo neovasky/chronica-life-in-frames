@@ -2293,13 +2293,32 @@ class ChronosEventModal extends Modal {
       // Get all week keys in the range
       const weekKeys = this.plugin.getWeekKeysBetweenDates(startDate, endDate);
 
-      // Create filename for the note (use the whole range)
+      // Create filename for the note using template
       const startWeekKey = this.plugin.getWeekKeyFromDate(startDate);
       const endWeekKey = this.plugin.getWeekKeyFromDate(endDate);
-      const fileName = `${startWeekKey.replace(
-        "W",
-        "-W"
-      )}_to_${endWeekKey.replace("W", "-W")}.md`;
+      const startDateStr = startDate.toISOString().split("T")[0]; // YYYY-MM-DD
+      const startYear = startWeekKey.split("-")[0];
+      const startWeek = startWeekKey.split("-W")[1];
+      const endYear = endWeekKey.split("-")[0];
+      const endWeek = endWeekKey.split("-W")[1];
+
+      // Sanitize event name for file name
+      const sanitizedEventName = this.eventName
+        .replace(/[/\\?%*:|"<>]/g, "-") // Replace invalid file chars
+        .replace(/\s+/g, "_"); // Replace spaces with underscores
+
+      // Use the template to format the file name
+      const fileName = this.plugin.formatFileName(
+        this.plugin.settings.rangeNoteTemplate,
+        {
+          eventName: sanitizedEventName,
+          startDate: startDateStr,
+          startYear: startYear,
+          startWeek: startWeek,
+          endYear: endYear,
+          endWeek: endWeek,
+        }
+      );
 
       // Format date range event data with range markers
       const eventData = `${startWeekKey}:${endWeekKey}:${this.eventDescription}`;
@@ -2332,11 +2351,29 @@ class ChronosEventModal extends Modal {
         this.refreshViews();
       });
     } else {
-      // Handle single date event (original functionality)
       const eventDate = new Date(this.singleDateInput.value);
       const weekKey = this.plugin.getWeekKeyFromDate(eventDate);
+      const dateStr = eventDate.toISOString().split("T")[0]; // YYYY-MM-DD
+      const year = weekKey.split("-")[0];
+      const week = weekKey.split("-W")[1];
+
+      // Sanitize event name for file name
+      const sanitizedEventName = this.eventName
+        .replace(/[/\\?%*:|"<>]/g, "-") // Replace invalid file chars
+        .replace(/\s+/g, "_"); // Replace spaces with underscores
+
+      // Use the template to format the file name
+      const fileName = this.plugin.formatFileName(
+        this.plugin.settings.eventNoteTemplate,
+        {
+          eventName: sanitizedEventName,
+          startDate: dateStr,
+          year: year,
+          week: week,
+        }
+      );
+
       const eventData = `${weekKey}:${this.eventDescription}`;
-      const fileName = `${weekKey.replace("W", "-W")}.md`;
 
       // Add to existing event collections
       this.addEventToCollection(eventData);
