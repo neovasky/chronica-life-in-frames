@@ -205,6 +205,7 @@ interface MonthMarker {
   /** Month number for precise positioning */
   monthNumber?: number;
 }
+
 /** Default plugin settings */
 const DEFAULT_SETTINGS: ChronosSettings = {
   birthday: "2003-07-18",
@@ -223,9 +224,9 @@ const DEFAULT_SETTINGS: ChronosSettings = {
   notesFolder: "",
   showDecadeMarkers: true,
   showWeekMarkers: true,
-  showMonthMarkers: false,
+  showMonthMarkers: true,
   showBirthdayMarker: true,
-  monthMarkerFrequency: "all",
+  monthMarkerFrequency: "year",
   enableManualFill: false,
   enableAutoFill: true,
   autoFillDay: 1, // Monday by default
