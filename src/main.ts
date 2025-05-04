@@ -386,13 +386,12 @@ export default class ChronosTimelinePlugin extends Plugin {
         }
 
         // Only continue processing for Chronica-related files
-        if (!this.isChronicaRelatedFile(file)) {
-          return;
-        }
-
+        if (!this.isChronicaRelatedFile(file)) return;
         if (!(file instanceof TFile)) return;
 
         await this.handleFileDelete(file);
+        // now rebuild all event metadata so any deleted notes drop out immediately
+        await this.scanVaultForEvents();
       })
     );
     // Check if we should show welcome modal
@@ -456,46 +455,75 @@ export default class ChronosTimelinePlugin extends Plugin {
    * @returns Whether the file is related to Chronica
    */
   private isChronicaRelatedFile(file: TAbstractFile): boolean {
-    // 1. Check if it's a TFile (not a folder)
+    // 1. Only files (not folders)
     if (!(file instanceof TFile)) {
       return false;
     }
 
-    // 2. Check if a notes folder is specified and if the file is in that folder
+    // 2. If using a separate folder for event notes, include any file there
+    if (
+      this.settings.useSeparateFolders &&
+      this.settings.eventNotesFolder &&
+      this.settings.eventNotesFolder.trim() !== ""
+    ) {
+      let eventFolderPath = this.settings.eventNotesFolder;
+      if (!eventFolderPath.endsWith("/")) {
+        eventFolderPath += "/";
+      }
+      if (file.path.startsWith(eventFolderPath)) {
+        return true;
+      }
+    }
+
+    // 3. If a notes‐folder is set, ignore files outside it
     if (this.settings.notesFolder && this.settings.notesFolder.trim() !== "") {
-      // Make sure folder path format is consistent
       let folderPath = this.settings.notesFolder;
       if (!folderPath.endsWith("/")) {
         folderPath += "/";
       }
-
-      // If file is not in the specified folder, it's not ours
       if (!file.path.startsWith(folderPath)) {
         return false;
       }
     }
 
-    // 3. Check filename patterns for weekly notes & event notes
+    // 4. Match weekly‐note filenames (e.g. "2025-W15" or "2025-W15_to_2025-W20")
     const fileBasename = file.basename;
-
-    // Weekly note patterns: 2023-W15 or 2023--W15
     const weekPattern = /^\d{4}(-|--)W\d{2}$/;
-
-    // Range note patterns: 2023-W15_to_2023-W20 or 2023--W15_to_2023--W20
     const rangePattern = /^\d{4}(-|--)W\d{2}_to_\d{4}(-|--)W\d{2}$/;
 
-    // Check if filename matches any of our patterns
-    return weekPattern.test(fileBasename) || rangePattern.test(fileBasename);
+    // 5. Also match event‐note filenames (e.g. "Birthday_2025-W15" or "Trip_2025-W15_to_2025-W20")
+    const eventPattern = /^[^_]+_\d{4}(-|--)W\d{2}$/;
+    const eventRangePattern = /^[^_]+_\d{4}(-|--)W\d{2}_to_\d{4}(-|--)W\d{2}$/;
+
+    return (
+      weekPattern.test(fileBasename) ||
+      rangePattern.test(fileBasename) ||
+      eventPattern.test(fileBasename) ||
+      eventRangePattern.test(fileBasename)
+    );
   }
 
   /**
    * Scan vault for notes with event metadata and populate plugin settings
    */
   async scanVaultForEvents(): Promise<void> {
-    console.log("Scanning vault for event metadata...");
+    // — reset every event bucket so we’ll rebuild from scratch —
+    this.settings.greenEvents = [];
+    this.settings.blueEvents = [];
+    this.settings.pinkEvents = [];
+    this.settings.purpleEvents = [];
+    if (this.settings.customEventTypes && this.settings.customEvents) {
+      for (const t of this.settings.customEventTypes) {
+        this.settings.customEvents[t.name] = [];
+      }
+    }
+    // persist the cleared-out state immediately
+    await this.saveSettings();
 
+    console.log("Scanning vault for event metadata...");
     // Get all markdown files in the vault
     let files = this.app.vault.getMarkdownFiles();
+    // …rest of method…
 
     // Filter files based on folders
     const filesToProcess: TFile[] = [];
@@ -2204,6 +2232,37 @@ export default class ChronosTimelinePlugin extends Plugin {
     console.debug(
       "Chronica: Potential sync operation detected, operations paused"
     );
+  }
+
+  public async cleanInvalidEvents(): Promise<void> {
+    let needsSave = false;
+
+    const removeInvalid = (events: string[]): string[] =>
+      events.filter((entry) => {
+        const [key] = entry.split(":");
+        const fileName = key.replace("W", "-W") + ".md";
+        const fullPath = this.getFullPath(fileName, true);
+        const file = this.app.vault.getAbstractFileByPath(fullPath);
+        return file instanceof TFile;
+      });
+
+    this.settings.greenEvents = removeInvalid(this.settings.greenEvents);
+    this.settings.blueEvents = removeInvalid(this.settings.blueEvents);
+    this.settings.pinkEvents = removeInvalid(this.settings.pinkEvents);
+    this.settings.purpleEvents = removeInvalid(this.settings.purpleEvents);
+
+    if (this.settings.customEventTypes && this.settings.customEvents) {
+      for (const type of this.settings.customEventTypes) {
+        if (this.settings.customEvents[type.name]) {
+          this.settings.customEvents[type.name] = removeInvalid(
+            this.settings.customEvents[type.name]
+          );
+        }
+      }
+    }
+
+    await this.saveSettings();
+    this.refreshAllViews();
   }
 }
 
@@ -4419,7 +4478,51 @@ class ChronosTimelineView extends ItemView {
             return;
           }
 
-          // Otherwise open/create the weekly note
+          // First check if there's an event note for this week
+          if (cell.dataset.eventFile) {
+            const stored = this.app.vault.getAbstractFileByPath(
+              cell.dataset.eventFile
+            );
+            if (stored instanceof TFile) {
+              await this.plugin.safelyOpenFile(stored);
+              return;
+            } else {
+              // event file has been deleted/renamed: clean up
+              delete cell.dataset.eventFile;
+              await this.plugin.cleanInvalidEvents();
+            }
+          }
+
+          // Now look up the event normally
+          const eventData = await this.plugin.getEventFromNote(weekKey);
+          if (eventData && eventData.event) {
+            const files = this.app.vault.getMarkdownFiles();
+            let eventFile: TFile | null = null;
+
+            for (const file of files) {
+              // Match any event file whose name contains the exact weekKey (e.g. "2025-W15")
+              if (file.basename.includes(weekKey)) {
+                const content = await this.app.vault.read(file);
+                const fm = content.match(/^---\s+([\s\S]*?)\s+---/);
+                if (
+                  fm &&
+                  (fm[1].includes("event:") || fm[1].includes("type:"))
+                ) {
+                  eventFile = file;
+                  break;
+                }
+              }
+            }
+
+            if (eventFile) {
+              // cache for next time
+              cell.dataset.eventFile = eventFile.path;
+              await this.plugin.safelyOpenFile(eventFile);
+              return;
+            }
+          }
+
+          // If no event note was found, proceed with the normal week note handling
           const fileName = `${weekKey.replace("W", "-W")}.md`;
           const fullPath = this.plugin.getFullPath(fileName);
           const existingFile = this.app.vault.getAbstractFileByPath(fullPath);
@@ -4427,6 +4530,7 @@ class ChronosTimelineView extends ItemView {
           if (existingFile instanceof TFile) {
             await this.plugin.safelyOpenFile(existingFile);
           } else {
+            // Create folder if needed
             if (
               this.plugin.settings.notesFolder &&
               this.plugin.settings.notesFolder.trim() !== ""
@@ -4445,14 +4549,16 @@ class ChronosTimelineView extends ItemView {
               }
             }
 
-            const isoYear = weekKey.split("-W")[0]; // Extract the year from the weekKey
-            const content = `# Week ${cellWeek}, ${isoYear}\n\n## Reflections\n\n## Tasks\n\n## Notes\n`;
+            // Add empty frontmatter
+            let content = this.plugin.formatFrontmatter({});
+
+            // Add note template
+            const weekNum = parseInt(weekKey.split("-W")[1]);
+            const year = parseInt(weekKey.split("-")[0]);
+            content += `# Week ${weekNum}, ${year}\n\n## Reflections\n\n## Tasks\n\n## Notes\n`;
+
             const newFile = await this.app.vault.create(fullPath, content);
-
-            // Replace this line:
-            // await this.app.workspace.getLeaf().openFile(newFile);
-
-            // With this line:
+            // Use our safe method instead of directly opening in active leaf
             await this.plugin.safelyOpenFile(newFile);
           }
         });
@@ -6369,12 +6475,6 @@ class ChronosTimelineView extends ItemView {
     });
   }
 
-  /**
-   * Apply styling for events to a cell
-   * @param cell - Cell element to style
-   * @param weekKey - Week key to check for events (YYYY-WXX)
-   * @returns Whether an event was applied to this cell
-   */
   applyEventStyling(cell: HTMLElement, weekKey: string): boolean {
     // Flag to track if an event was applied by any method
     let eventApplied = false;
@@ -8095,7 +8195,7 @@ class ChronosSettingTab extends PluginSettingTab {
   }
 
   /**
-   * Refresh all timeline views
+   * Refresh all timeline viewsprivate isChronicaRelatedFile(file: TAbstractFile): boolea
    */
   refreshAllViews(): void {
     this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE).forEach((leaf) => {
