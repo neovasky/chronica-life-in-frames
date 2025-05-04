@@ -1247,25 +1247,71 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
     /**
      * Get event metadata from a note
      * @param weekKey - Week key in YYYY-WXX format
-     * @returns Event metadata if found, null if file doesn't exist or has no event
+     * @returns Event metadata if found
      */
     async getEventFromNote(weekKey) {
+        // First try the week note (old approach)
         const fileName = `${weekKey.replace("W", "-W")}.md`;
         const fullPath = this.getFullPath(fileName);
         // Check if file exists
-        const file = this.app.vault.getAbstractFileByPath(fullPath);
+        let file = this.app.vault.getAbstractFileByPath(fullPath);
+        // If we don't find the week note, look for event notes that correspond to this week
+        if (!(file instanceof obsidian.TFile)) {
+            // Get all markdown files
+            const allFiles = this.app.vault.getMarkdownFiles();
+            // Look for event notes that contain the week key in their filename
+            // For example: "EventName_2023-W15.md" or "EventName_2023-W15_to_2023-W20.md"
+            const eventFile = allFiles.find((f) => {
+                // Check for files with the weekKey in their name
+                if (f.basename.includes(weekKey)) {
+                    return true;
+                }
+                // Check for range files that might contain this week
+                if (f.basename.includes("_to_")) {
+                    const rangeMatch = f.basename.match(/(\d{4}-W\d{2})_to_(\d{4}-W\d{2})/);
+                    if (rangeMatch) {
+                        const startWeekKey = rangeMatch[1];
+                        const endWeekKey = rangeMatch[2];
+                        // Parse the week numbers
+                        const startYear = parseInt(startWeekKey.split("-W")[0], 10);
+                        const startWeek = parseInt(startWeekKey.split("-W")[1], 10);
+                        const endYear = parseInt(endWeekKey.split("-W")[0], 10);
+                        const endWeek = parseInt(endWeekKey.split("-W")[1], 10);
+                        // Parse current cell week
+                        const cellYear = parseInt(weekKey.split("-W")[0], 10);
+                        const cellWeek = parseInt(weekKey.split("-W")[1], 10);
+                        // Check if the current week falls within the range
+                        if ((cellYear > startYear ||
+                            (cellYear === startYear && cellWeek >= startWeek)) &&
+                            (cellYear < endYear ||
+                                (cellYear === endYear && cellWeek <= endWeek))) {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            });
+            // If we found an event file, use it; otherwise return null
+            if (eventFile) {
+                file = eventFile;
+            }
+            else {
+                return null;
+            }
+        }
+        // Ensure file is a TFile before reading
         if (!(file instanceof obsidian.TFile)) {
             return null;
         }
+        // Read file content
+        const content = await this.app.vault.read(file);
+        // Check for YAML frontmatter
+        const frontmatterMatch = content.match(/^---\s+([\s\S]*?)\s+---/);
+        if (!frontmatterMatch) {
+            return null;
+        }
+        // Parse YAML frontmatter
         try {
-            // Read file content
-            const content = await this.app.vault.read(file);
-            // Check for YAML frontmatter
-            const frontmatterMatch = content.match(/^---\s+([\s\S]*?)\s+---/);
-            if (!frontmatterMatch) {
-                return null;
-            }
-            // Parse YAML frontmatter
             const frontmatter = frontmatterMatch[1];
             const metadata = {};
             // Simple YAML parsing (not using an external parser for simplicity)
@@ -1276,10 +1322,6 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
                     metadata[key.trim()] = value.trim().replace(/^"(.*)"$/, "$1");
                 }
             });
-            // Only return event data if there's actually an event or name field
-            if (!metadata.event && !metadata.name) {
-                return null;
-            }
             return {
                 event: metadata.event || metadata.name,
                 name: metadata.name || metadata.event,
@@ -1291,7 +1333,7 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
             };
         }
         catch (error) {
-            console.log("Error reading or parsing note:", error);
+            console.log("Error parsing frontmatter:", error);
             return null;
         }
     }
@@ -1971,17 +2013,6 @@ class ChronosEventModal extends obsidian.Modal {
             this.addEventToCollection(eventData);
             // Create a note for the event (for the range)
             this.createEventNote(fileName, startDate, endDate);
-            // NEW: Add metadata to the first week's note
-            const metadata = {
-                event: this.eventName,
-                name: this.eventName,
-                description: this.eventDescription,
-                type: this.selectedEventType,
-                color: this.selectedColor,
-                startDate: startDate.toISOString().split("T")[0],
-                endDate: endDate.toISOString().split("T")[0],
-            };
-            await this.plugin.updateEventInNote(startWeekKey, metadata);
             // Save settings
             this.plugin.saveSettings().then(() => {
                 new obsidian.Notice(`Event added: ${this.eventDescription} (${weekKeys.length} weeks)`);
@@ -2011,16 +2042,6 @@ class ChronosEventModal extends obsidian.Modal {
             this.addEventToCollection(eventData);
             // Create a note for the event
             this.createEventNote(fileName, eventDate);
-            // NEW: Add metadata to the week note
-            const metadata = {
-                event: this.eventName,
-                name: this.eventName,
-                description: this.eventDescription,
-                type: this.selectedEventType,
-                color: this.selectedColor,
-                startDate: eventDate.toISOString().split("T")[0],
-            };
-            await this.plugin.updateEventInNote(weekKey, metadata);
             this.plugin.saveSettings().then(() => {
                 new obsidian.Notice(`Event added: ${this.eventDescription}`);
                 this.close();
@@ -2061,6 +2082,22 @@ class ChronosEventModal extends obsidian.Modal {
      * @param endDate - Optional end date for range events
      */
     async createEventNote(fileName, startDate, endDate) {
+        // First, check if the filename uses the template format
+        if (fileName.includes("${")) {
+            // This is the templated filename with placeholders
+            // Let's create a better filename based on the event name
+            const sanitizedEventName = this.eventName
+                .replace(/[/\\?%*:|"<>]/g, "-") // Replace invalid file chars
+                .replace(/\s+/g, "_"); // Replace spaces with underscores
+            // Create a simpler filename format: EventName_YYYY-WXX.md
+            const weekKey = this.plugin.getWeekKeyFromDate(startDate);
+            fileName = `${sanitizedEventName}_${weekKey}.md`;
+            if (endDate) {
+                // For range events, include both week keys
+                const endWeekKey = this.plugin.getWeekKeyFromDate(endDate);
+                fileName = `${sanitizedEventName}_${weekKey}_to_${endWeekKey}.md`;
+            }
+        }
         const fullPath = this.plugin.getFullPath(fileName, true);
         const fileExists = this.plugin.app.vault.getAbstractFileByPath(fullPath) instanceof obsidian.TFile;
         if (!fileExists) {
@@ -2086,8 +2123,8 @@ class ChronosEventModal extends obsidian.Modal {
                 // Get week keys for title
                 const startWeekKey = this.plugin.getWeekKeyFromDate(startDate);
                 const endWeekKey = this.plugin.getWeekKeyFromDate(endDate);
-                const startWeekDisplayName = startWeekKey.replace("W", "-W");
-                const endWeekDisplayName = endWeekKey.replace("W", "-W");
+                const startWeekDisplayName = startWeekKey.replace("W", "--W");
+                const endWeekDisplayName = endWeekKey.replace("W", "--W");
                 // Add frontmatter
                 const metadata = {
                     event: this.eventName,
@@ -2107,7 +2144,7 @@ class ChronosEventModal extends obsidian.Modal {
                 const dateStr = startDate.toISOString().split("T")[0];
                 // Get week key for title
                 const weekKey = this.plugin.getWeekKeyFromDate(startDate);
-                const weekDisplayName = weekKey.replace("W", "-W");
+                const weekDisplayName = weekKey.replace("W", "--W");
                 // Add frontmatter
                 const metadata = {
                     event: this.eventName,
