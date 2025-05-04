@@ -820,6 +820,258 @@ export default class ChronosTimelinePlugin extends Plugin {
       (leaf.view as ChronosTimelineView).renderView();
     });
   }
+
+  /**
+   * Find all Chronica-related files in the vault
+   * @param excludeFolder - Optional folder to exclude from search
+   * @returns Array of Chronica-related files
+   */
+  async findChronicaRelatedFiles(excludeFolder?: string): Promise<TFile[]> {
+    // Get all markdown files in the vault
+    const allFiles = this.app.vault.getMarkdownFiles();
+
+    // Filter to only include Chronica-related files
+    const chronicaFiles = allFiles.filter((file) => {
+      // Skip files that are already in the exclude folder
+      if (excludeFolder && file.path.startsWith(excludeFolder)) {
+        return false;
+      }
+
+      return this.isChronicaRelatedFile(file);
+    });
+
+    return chronicaFiles;
+  }
+
+  /**
+   * Handle changes to note folder settings
+   * @param oldFolder - Previous folder path
+   * @param newFolder - New folder path
+   * @param isEventFolder - Whether this is for event notes
+   */
+  async handleFolderChange(
+    oldFolder: string,
+    newFolder: string,
+    isEventFolder: boolean = false
+  ): Promise<void> {
+    // Skip if no new folder is set
+    if (!newFolder || newFolder.trim() === "") {
+      return;
+    }
+
+    // Normalize folder paths
+    newFolder = newFolder.endsWith("/") ? newFolder : newFolder + "/";
+
+    // Find Chronica notes that should be moved
+    let filesToMove: TFile[] = [];
+
+    // If this is for week notes (and separate folders enabled)
+    if (!isEventFolder || !this.settings.useSeparateFolders) {
+      // Find all Chronica files not already in the new folder
+      filesToMove = await this.findChronicaRelatedFiles(newFolder);
+
+      // If using separate folders and this is for week notes,
+      // exclude event notes if they have their own folder
+      if (
+        isEventFolder &&
+        this.settings.useSeparateFolders &&
+        this.settings.eventNotesFolder
+      ) {
+        const eventFolder = this.settings.eventNotesFolder.endsWith("/")
+          ? this.settings.eventNotesFolder
+          : this.settings.eventNotesFolder + "/";
+
+        filesToMove = filesToMove.filter(
+          (file) => !file.path.startsWith(eventFolder)
+        );
+      }
+
+      // If handling event notes and separate folders is enabled
+      // only include event note files
+      if (isEventFolder && this.settings.useSeparateFolders) {
+        // Filter files that match the event note pattern
+        filesToMove = filesToMove.filter((file) => {
+          // Extract basename to check if it's an event note
+          const basename = file.basename;
+          // Check for event note patterns (like range events)
+          return basename.includes("_to_") || this.isEventNote(file);
+        });
+      } else if (
+        !isEventFolder &&
+        this.settings.useSeparateFolders &&
+        this.settings.eventNotesFolder
+      ) {
+        // For week notes folder, exclude event notes
+        filesToMove = filesToMove.filter((file) => {
+          const basename = file.basename;
+          // Exclude files that match event note patterns
+          return !basename.includes("_to_") && !this.isEventNote(file);
+        });
+      }
+    } else {
+      // This is for event notes and separate folders are enabled
+      // Get all event notes that aren't already in the event folder
+      filesToMove = await this.findChronicaRelatedFiles(newFolder);
+
+      // Filter to only include event notes
+      filesToMove = filesToMove.filter((file) => {
+        const basename = file.basename;
+        // Check for event note patterns (like range events)
+        return basename.includes("_to_") || this.isEventNote(file);
+      });
+    }
+
+    // If no files to move, exit
+    if (filesToMove.length === 0) {
+      return;
+    }
+
+    // Ask user for confirmation
+    const confirmation = await this.showFolderChangeConfirmation(
+      filesToMove.length,
+      newFolder,
+      isEventFolder
+    );
+
+    if (!confirmation) {
+      return;
+    }
+
+    // Ensure the target folder exists
+    try {
+      const folderExists = this.app.vault.getAbstractFileByPath(newFolder);
+      if (!folderExists) {
+        await this.app.vault.createFolder(newFolder);
+      }
+    } catch (err) {
+      console.log("Error checking/creating folder:", err);
+      new Notice(`Failed to create folder: ${newFolder}`);
+      return;
+    }
+
+    // Move files
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const file of filesToMove) {
+      try {
+        // Generate new path
+        const newPath = newFolder + file.name;
+
+        // Skip if file already exists at destination
+        const existingFile = this.app.vault.getAbstractFileByPath(newPath);
+        if (existingFile) {
+          failCount++;
+          continue;
+        }
+
+        // Move the file
+        await this.app.fileManager.renameFile(file, newPath);
+        successCount++;
+      } catch (error) {
+        console.error(`Error moving file ${file.path}:`, error);
+        failCount++;
+      }
+    }
+
+    // Show result notification
+    if (successCount > 0) {
+      new Notice(
+        `Successfully moved ${successCount} Chronica ${
+          isEventFolder ? "event" : "week"
+        } notes to ${newFolder}`
+      );
+    }
+
+    if (failCount > 0) {
+      new Notice(`Failed to move ${failCount} files`);
+    }
+  }
+
+  /**
+   * Show confirmation dialog for moving files
+   * @param fileCount - Number of files to move
+   * @param targetFolder - Folder to move files to
+   * @param isEventFolder - Whether this is for event notes
+   * @returns Whether the user confirmed the operation
+   */
+  async showFolderChangeConfirmation(
+    fileCount: number,
+    targetFolder: string,
+    isEventFolder: boolean
+  ): Promise<boolean> {
+    return new Promise((resolve) => {
+      const modal = new Modal(this.app);
+      modal.titleEl.setText("Move Chronica Notes");
+
+      const { contentEl } = modal;
+
+      contentEl.createEl("p", {
+        text: `Found ${fileCount} Chronica ${
+          isEventFolder ? "event" : "week"
+        } notes that can be moved to "${targetFolder}".`,
+      });
+
+      contentEl.createEl("p", {
+        text: "Would you like to move these notes to the new folder?",
+      });
+
+      const buttonContainer = contentEl.createDiv({
+        cls: "chronica-confirmation-buttons",
+      });
+
+      const confirmButton = buttonContainer.createEl("button", {
+        text: "Move Files",
+        cls: "chronica-confirm-button",
+      });
+
+      const cancelButton = buttonContainer.createEl("button", {
+        text: "Cancel",
+        cls: "chronica-cancel-button",
+      });
+
+      confirmButton.addEventListener("click", () => {
+        modal.close();
+        resolve(true);
+      });
+
+      cancelButton.addEventListener("click", () => {
+        modal.close();
+        resolve(false);
+      });
+
+      modal.open();
+    });
+  }
+
+  /**
+   * Check if a file is an event note
+   * @param file - File to check
+   * @returns Whether the file is an event note
+   */
+  async isEventNote(file: TFile): Promise<boolean> {
+    try {
+      // Read file content
+      const content = await this.app.vault.read(file);
+
+      // Check for event frontmatter
+      const frontmatterMatch = content.match(/^---\s+([\s\S]*?)\s+---/);
+      if (!frontmatterMatch) return false;
+
+      const frontmatter = frontmatterMatch[1];
+
+      // Check for event-related fields in frontmatter
+      return (
+        frontmatter.includes("event:") ||
+        frontmatter.includes("type:") ||
+        frontmatter.includes("startDate:")
+      );
+    } catch (error) {
+      console.error("Error checking if file is event note:", error);
+      return false;
+    }
+  }
+
   /**
    * Load settings from storage
    */
@@ -2647,9 +2899,10 @@ class ChronicaWelcomeModal extends Modal {
     });
 
     settingsButton.addEventListener("click", () => {
-      // Open settings tab
-      this.app.setting.open();
-      this.app.setting.openTabById("chronica-life-in-frames");
+      // Just show a notice directing the user to settings
+      new Notice(
+        "Please navigate to Settings > Community Plugins > Chronica: Life in Frames to configure your timeline."
+      );
 
       // Mark as seen and close
       this.plugin.settings.hasSeenWelcome = true;
@@ -6881,12 +7134,21 @@ class ChronosSettingTab extends PluginSettingTab {
       .setName("Notes folder")
       .setDesc("Select the folder where your weekly notes live")
       .addSearch((search) => {
+        // Store the original value
+        const originalFolder = this.plugin.settings.notesFolder;
+
         search
           .setPlaceholder("Pick a folder…")
           .setValue(this.plugin.settings.notesFolder)
           .onChange(async (value) => {
+            // Update setting
             this.plugin.settings.notesFolder = value;
             await this.plugin.saveSettings();
+
+            // If value has changed significantly, handle folder migration
+            if (value && value.trim() !== "" && value !== originalFolder) {
+              this.plugin.handleFolderChange(originalFolder, value, false);
+            }
           });
         // Pass the plugin instance to FolderSuggest
         new FolderSuggest(this.app, search.inputEl, this.plugin);
@@ -6921,17 +7183,25 @@ class ChronosSettingTab extends PluginSettingTab {
       .setDesc("Select the folder where your event notes will be stored")
       .setClass("event-folder-selector")
       .addSearch((search) => {
+        // Store the original value
+        const originalFolder = this.plugin.settings.eventNotesFolder;
+
         search
           .setPlaceholder("Pick a folder…")
           .setValue(this.plugin.settings.eventNotesFolder)
           .onChange(async (value) => {
+            // Update setting
             this.plugin.settings.eventNotesFolder = value;
             await this.plugin.saveSettings();
+
+            // If value has changed significantly, handle folder migration
+            if (value && value.trim() !== "" && value !== originalFolder) {
+              this.plugin.handleFolderChange(originalFolder, value, true);
+            }
           });
         // Pass the plugin instance to FolderSuggest
         new FolderSuggest(this.app, search.inputEl, this.plugin);
       });
-
     // Hide event folder selector if separate folders not enabled
     if (!this.plugin.settings.useSeparateFolders) {
       eventFolderSetting.settingEl.style.display = "none";
