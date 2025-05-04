@@ -150,6 +150,9 @@ interface ChronosSettings {
 
   /** Whether the user has seen the welcome screen */
   hasSeenWelcome: boolean;
+
+  /** Whether user has completed folder selection on first cell‐click */
+  hasSeenFolders: boolean;
 }
 
 /** Interface for custom event types */
@@ -264,9 +267,10 @@ const DEFAULT_SETTINGS: ChronosSettings = {
   eventNoteTemplate: "${eventName}_${startDate}_${year}-W${week}",
   rangeNoteTemplate:
     "${eventName}_${startDate}_${startYear}-W${startWeek}_to_${endYear}-W${endWeek}",
-  useSeparateFolders: false,
+  useSeparateFolders: true,
   eventNotesFolder: "",
   hasSeenWelcome: false,
+  hasSeenFolders: false,
 };
 
 /** SVG icon for the Chronica Timeline */
@@ -300,6 +304,123 @@ const MONTH_NAMES = [
   "Nov",
   "Dec",
 ];
+
+class ChronosFolderSelectionModal extends Modal {
+  private plugin: ChronosTimelinePlugin;
+
+  constructor(app: App, plugin: ChronosTimelinePlugin) {
+    super(app);
+    this.plugin = plugin;
+  }
+
+  onOpen(): void {
+    this.titleEl.setText("Select Notes Folders");
+
+    const container = this.contentEl.createDiv({
+      cls: "chronica-welcome-setup",
+    });
+
+    const weekSection = container.createDiv({
+      cls: "chronica-welcome-birthdate",
+    });
+    weekSection.createEl("label", {
+      text: "Weekly Notes Folder:",
+      attr: { for: "chronica-week-folder-input" },
+      cls: "chronica-welcome-label",
+    });
+    const weekInput = weekSection.createEl("input", {
+      attr: {
+        type: "text",
+        id: "chronica-week-folder-input",
+        value: this.plugin.settings.notesFolder,
+        placeholder: "e.g. Weekly Notes",
+      },
+      cls: "chronica-welcome-input",
+    });
+
+    new FolderSuggest(this.app, weekInput, this.plugin);
+    // Prevent auto-opening on modal open
+    setTimeout(() => weekInput.blur(), 0);
+
+    const eventSection = container.createDiv({
+      cls: "chronica-welcome-birthdate",
+    });
+    eventSection.createEl("label", {
+      text: "Event Notes Folder:",
+      attr: { for: "chronica-event-folder-input" },
+      cls: "chronica-welcome-label",
+    });
+    const eventInput = eventSection.createEl("input", {
+      attr: {
+        type: "text",
+        id: "chronica-event-folder-input",
+        value: this.plugin.settings.eventNotesFolder,
+        placeholder: "e.g. Event Notes",
+      },
+      cls: "chronica-welcome-input",
+    });
+
+    new FolderSuggest(this.app, eventInput, this.plugin);
+    // Prevent auto-opening on modal open
+    setTimeout(() => eventInput.blur(), 0);
+
+    const buttons = container.createDiv({ cls: "chronica-welcome-buttons" });
+    const saveBtn = buttons.createEl("button", {
+      text: "Save",
+      cls: "chronica-welcome-button chronica-welcome-accent-button",
+    });
+    const cancelBtn = buttons.createEl("button", {
+      text: "Cancel",
+      cls: "chronica-welcome-button",
+    });
+
+    // Reminder: folders can be changed later
+    const footerDiv = container.createEl("div", {
+      cls: "chronica-welcome-footer",
+    });
+    footerDiv.createEl("strong", {
+      text: "Please create your dedicated folders in your vault before selecting them here.",
+      attr: { style: "font-size: 13px;" },
+    });
+
+    container.createEl("div", {
+      cls: "chronica-welcome-footer",
+      text: "You can change these folders later under Settings → Chronica: Life in Frames. ",
+    });
+
+    saveBtn.addEventListener("click", () => {
+      const weekVal = (weekInput as HTMLInputElement).value.trim();
+      const eventVal = (eventInput as HTMLInputElement).value.trim();
+
+      if (weekVal) {
+        if (!this.plugin.app.vault.getAbstractFileByPath(weekVal)) {
+          this.plugin.app.vault.createFolder(weekVal);
+        }
+        this.plugin.settings.notesFolder = weekVal;
+      }
+
+      if (eventVal) {
+        if (!this.plugin.app.vault.getAbstractFileByPath(eventVal)) {
+          this.plugin.app.vault.createFolder(eventVal);
+        }
+        this.plugin.settings.eventNotesFolder = eventVal;
+      }
+
+      this.plugin.settings.hasSeenFolders = true;
+      this.plugin.saveSettings().then(() => {
+        this.close();
+      });
+    });
+
+    cancelBtn.addEventListener("click", () => {
+      this.close();
+    });
+  }
+
+  onClose(): void {
+    this.contentEl.empty();
+  }
+}
 
 // -----------------------------------------------------------------------
 // MAIN PLUGIN CLASS
@@ -4501,9 +4622,12 @@ class ChronosTimelineView extends ItemView {
         }
 
         cell.addEventListener("click", async (event) => {
-          // Check for sync operation using the public method
-          if (this.plugin.isSyncInProgress()) {
-            new Notice("Sync in progress. Please try again in a moment.");
+          if (!this.plugin.settings.hasSeenFolders) {
+            const modal = new ChronosFolderSelectionModal(
+              this.app,
+              this.plugin
+            );
+            modal.open();
             return;
           }
 

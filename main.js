@@ -96,9 +96,10 @@ const DEFAULT_SETTINGS = {
     weekNoteTemplate: "${year}-W${week}",
     eventNoteTemplate: "${eventName}_${startDate}_${year}-W${week}",
     rangeNoteTemplate: "${eventName}_${startDate}_${startYear}-W${startWeek}_to_${endYear}-W${endWeek}",
-    useSeparateFolders: false,
+    useSeparateFolders: true,
     eventNotesFolder: "",
     hasSeenWelcome: false,
+    hasSeenFolders: false,
 };
 /** SVG icon for the Chronica Timeline */
 const CHRONOS_ICON = `<svg viewBox="0 0 100 100" width="100" height="100" xmlns="http://www.w3.org/2000/svg">
@@ -124,6 +125,106 @@ const MONTH_NAMES = [
     "Nov",
     "Dec",
 ];
+class ChronosFolderSelectionModal extends obsidian.Modal {
+    plugin;
+    constructor(app, plugin) {
+        super(app);
+        this.plugin = plugin;
+    }
+    onOpen() {
+        this.titleEl.setText("Select Notes Folders");
+        const container = this.contentEl.createDiv({
+            cls: "chronica-welcome-setup",
+        });
+        const weekSection = container.createDiv({
+            cls: "chronica-welcome-birthdate",
+        });
+        weekSection.createEl("label", {
+            text: "Weekly Notes Folder:",
+            attr: { for: "chronica-week-folder-input" },
+            cls: "chronica-welcome-label",
+        });
+        const weekInput = weekSection.createEl("input", {
+            attr: {
+                type: "text",
+                id: "chronica-week-folder-input",
+                value: this.plugin.settings.notesFolder,
+                placeholder: "e.g. Weekly Notes",
+            },
+            cls: "chronica-welcome-input",
+        });
+        new FolderSuggest(this.app, weekInput, this.plugin);
+        // Prevent auto-opening on modal open
+        setTimeout(() => weekInput.blur(), 0);
+        const eventSection = container.createDiv({
+            cls: "chronica-welcome-birthdate",
+        });
+        eventSection.createEl("label", {
+            text: "Event Notes Folder:",
+            attr: { for: "chronica-event-folder-input" },
+            cls: "chronica-welcome-label",
+        });
+        const eventInput = eventSection.createEl("input", {
+            attr: {
+                type: "text",
+                id: "chronica-event-folder-input",
+                value: this.plugin.settings.eventNotesFolder,
+                placeholder: "e.g. Event Notes",
+            },
+            cls: "chronica-welcome-input",
+        });
+        new FolderSuggest(this.app, eventInput, this.plugin);
+        // Prevent auto-opening on modal open
+        setTimeout(() => eventInput.blur(), 0);
+        const buttons = container.createDiv({ cls: "chronica-welcome-buttons" });
+        const saveBtn = buttons.createEl("button", {
+            text: "Save",
+            cls: "chronica-welcome-button chronica-welcome-accent-button",
+        });
+        const cancelBtn = buttons.createEl("button", {
+            text: "Cancel",
+            cls: "chronica-welcome-button",
+        });
+        // Reminder: folders can be changed later
+        const footerDiv = container.createEl("div", {
+            cls: "chronica-welcome-footer",
+        });
+        footerDiv.createEl("strong", {
+            text: "Please create your dedicated folders in your vault before selecting them here.",
+            attr: { style: "font-size: 13px;" },
+        });
+        container.createEl("div", {
+            cls: "chronica-welcome-footer",
+            text: "You can change these folders later under Settings → Chronica: Life in Frames. ",
+        });
+        saveBtn.addEventListener("click", () => {
+            const weekVal = weekInput.value.trim();
+            const eventVal = eventInput.value.trim();
+            if (weekVal) {
+                if (!this.plugin.app.vault.getAbstractFileByPath(weekVal)) {
+                    this.plugin.app.vault.createFolder(weekVal);
+                }
+                this.plugin.settings.notesFolder = weekVal;
+            }
+            if (eventVal) {
+                if (!this.plugin.app.vault.getAbstractFileByPath(eventVal)) {
+                    this.plugin.app.vault.createFolder(eventVal);
+                }
+                this.plugin.settings.eventNotesFolder = eventVal;
+            }
+            this.plugin.settings.hasSeenFolders = true;
+            this.plugin.saveSettings().then(() => {
+                this.close();
+            });
+        });
+        cancelBtn.addEventListener("click", () => {
+            this.close();
+        });
+    }
+    onClose() {
+        this.contentEl.empty();
+    }
+}
 // -----------------------------------------------------------------------
 // MAIN PLUGIN CLASS
 // -----------------------------------------------------------------------
@@ -2306,10 +2407,6 @@ class ChronicaWelcomeModal extends obsidian.Modal {
             },
             cls: "chronica-welcome-input",
         });
-        // Instructions for note folders
-        setupSection.createEl("p", {
-            text: "Please create or choose a folder for your weekly notes and a folder for your event notes in your vault. You can configure these in Settings → Chronica: Life in Frames under 'Notes Folder' and 'Event Notes Folder'.",
-        });
         // Create buttons section
         const buttonsSection = contentEl.createEl("div", {
             cls: "chronica-welcome-buttons",
@@ -3444,9 +3541,9 @@ class ChronosTimelineView extends obsidian.ItemView {
                     }
                 }
                 cell.addEventListener("click", async (event) => {
-                    // Check for sync operation using the public method
-                    if (this.plugin.isSyncInProgress()) {
-                        new obsidian.Notice("Sync in progress. Please try again in a moment.");
+                    if (!this.plugin.settings.hasSeenFolders) {
+                        const modal = new ChronosFolderSelectionModal(this.app, this.plugin);
+                        modal.open();
                         return;
                     }
                     // If shift key is pressed, add an event
