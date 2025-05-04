@@ -173,23 +173,28 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
             // Safe to proceed with normal modification handling for Chronica files
             // (The existing code just registered sync, but didn't do anything else)
         }));
-        // 3) On deletion, remove from settings AND re-draw
+        // 3) On deletion of a week- or event-note, re-scan vault & refresh timeline
         this.registerEvent(this.app.vault.on("delete", async (file) => {
-            // Register potential sync operation for ALL files
-            this.registerPotentialSyncOperation();
-            // Protect against sync-triggered deletions
-            if (this.isSyncOperation) {
-                console.debug("Chronica: File deletion during sync, deferring actions", file.path);
-                return;
-            }
-            // Only continue processing for Chronica-related files
-            if (!this.isChronicaRelatedFile(file))
-                return;
+            // Only care about actual files in our grid
             if (!(file instanceof obsidian.TFile))
                 return;
-            await this.handleFileDelete(file);
-            // now rebuild all event metadata so any deleted notes drop out immediately
+            if (!this.isChronicaRelatedFile(file))
+                return;
+            // Skip if this delete was triggered by our own sync logic
+            if (this.isSyncOperation)
+                return;
+            // Rebuild all events from the remaining notes
             await this.scanVaultForEvents();
+            // Persist the newly rebuilt event lists
+            await this.saveSettings();
+            // Immediately re-draw every open timeline so the cell vanishes
+            this.app.workspace
+                .getLeavesOfType(TIMELINE_VIEW_TYPE)
+                .forEach((leaf) => {
+                const view = leaf.view;
+                view.clearCachedEventData();
+                view.renderView();
+            });
         }));
         // Check if we should show welcome modal
         if (!this.settings.hasSeenWelcome) {
@@ -1583,6 +1588,8 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
             // Refresh all timeline views
             this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE).forEach((leaf) => {
                 const view = leaf.view;
+                // Clear any cached event data
+                view.clearCachedEventData();
                 view.renderView();
             });
             new obsidian.Notice(`Event removed from timeline grid`);
@@ -1591,6 +1598,8 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
             // Weekly‐note file was deleted (no settings event removed) — still need to repaint
             this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE).forEach((leaf) => {
                 const view = leaf.view;
+                // Clear any cached event data
+                view.clearCachedEventData();
                 view.renderView();
             });
         }
@@ -2487,6 +2496,30 @@ class ChronosTimelineView extends obsidian.ItemView {
         };
         // Add initial event listener
         headerEl.addEventListener("mousedown", onMouseDown);
+    }
+    /**
+     * Clear any cached event data to ensure clean re-rendering
+     */
+    clearCachedEventData() {
+        // Find all grid cells
+        const cells = this.containerEl.querySelectorAll(".chronica-grid-cell");
+        // Clear event-related attributes and data from each cell
+        cells.forEach((cell) => {
+            const cellEl = cell;
+            // Clear data attributes that might cache event info
+            delete cellEl.dataset.checkingEvents;
+            delete cellEl.dataset.eventFile;
+            // Remove event-related classes
+            cellEl.classList.remove("event");
+            cellEl.classList.remove("major-life-event");
+            cellEl.classList.remove("travel-event");
+            cellEl.classList.remove("relationship-event");
+            cellEl.classList.remove("education-career-event");
+            cellEl.classList.remove("future-event-highlight");
+            // Clear inline styles
+            cellEl.style.backgroundColor = "";
+            cellEl.style.border = "";
+        });
     }
     /**
      * Setup left and right resize handles for the stats panel
