@@ -499,172 +499,244 @@ export default class ChronosTimelinePlugin extends Plugin {
     return weekPattern.test(fileBasename) || rangePattern.test(fileBasename);
   }
 
+  /**
+   * Scan vault for notes with event metadata and populate plugin settings
+   */
+  async scanVaultForEvents(): Promise<void> {
+    console.log("Scanning vault for event metadata...");
 
-  
-/**
- * Scan vault for notes with event metadata and populate plugin settings
- */
-async scanVaultForEvents(): Promise<void> {
-  console.log("Scanning vault for event metadata...");
+    // Get all markdown files in the vault
+    let files = this.app.vault.getMarkdownFiles();
 
-  // Get all markdown files in the vault
-  let files = this.app.vault.getMarkdownFiles();
-  
-  // Filter files based on folders
-  const filesToProcess: TFile[] = [];
-  
-  // If no folders are specified, use all files
-  if ((!this.settings.notesFolder || this.settings.notesFolder.trim() === "") && 
-      (!this.settings.useSeparateFolders || !this.settings.eventNotesFolder || this.settings.eventNotesFolder.trim() === "")) {
-    filesToProcess.push(...files);
-  } else {
-    // Otherwise, filter based on specified folders
-    
-    // Add files from main notes folder if specified
-    if (this.settings.notesFolder && this.settings.notesFolder.trim() !== "") {
-      const normalizedFolder = this.settings.notesFolder.endsWith("/") 
-        ? this.settings.notesFolder 
-        : this.settings.notesFolder + "/";
-      
-      const notesFiles = files.filter(file => file.path.startsWith(normalizedFolder));
-      filesToProcess.push(...notesFiles);
-    }
-    
-    // Add files from event folder if using separate folders
-    if (this.settings.useSeparateFolders && 
-        this.settings.eventNotesFolder && 
-        this.settings.eventNotesFolder.trim() !== "") {
-      
-      const normalizedEventFolder = this.settings.eventNotesFolder.endsWith("/") 
-        ? this.settings.eventNotesFolder 
-        : this.settings.eventNotesFolder + "/";
-      
-      const eventFiles = files.filter(file => file.path.startsWith(normalizedEventFolder));
-      
-      // Only add files that aren't already included
-      for (const file of eventFiles) {
-        if (!filesToProcess.some(f => f.path === file.path)) {
-          filesToProcess.push(file);
+    // Filter files based on folders
+    const filesToProcess: TFile[] = [];
+
+    // If no folders are specified, use all files
+    if (
+      (!this.settings.notesFolder || this.settings.notesFolder.trim() === "") &&
+      (!this.settings.useSeparateFolders ||
+        !this.settings.eventNotesFolder ||
+        this.settings.eventNotesFolder.trim() === "")
+    ) {
+      filesToProcess.push(...files);
+    } else {
+      // Otherwise, filter based on specified folders
+
+      // Add files from main notes folder if specified
+      if (
+        this.settings.notesFolder &&
+        this.settings.notesFolder.trim() !== ""
+      ) {
+        const normalizedFolder = this.settings.notesFolder.endsWith("/")
+          ? this.settings.notesFolder
+          : this.settings.notesFolder + "/";
+
+        const notesFiles = files.filter((file) =>
+          file.path.startsWith(normalizedFolder)
+        );
+        filesToProcess.push(...notesFiles);
+      }
+
+      // Add files from event folder if using separate folders
+      if (
+        this.settings.useSeparateFolders &&
+        this.settings.eventNotesFolder &&
+        this.settings.eventNotesFolder.trim() !== ""
+      ) {
+        const normalizedEventFolder = this.settings.eventNotesFolder.endsWith(
+          "/"
+        )
+          ? this.settings.eventNotesFolder
+          : this.settings.eventNotesFolder + "/";
+
+        const eventFiles = files.filter((file) =>
+          file.path.startsWith(normalizedEventFolder)
+        );
+
+        // Only add files that aren't already included
+        for (const file of eventFiles) {
+          if (!filesToProcess.some((f) => f.path === file.path)) {
+            filesToProcess.push(file);
+          }
         }
       }
     }
-  }
 
-  // Track how many event notes we find
-  let eventCount = 0;
+    // Track how many event notes we find
+    let eventCount = 0;
 
-  // Map to track range events so we can parse them fully
-  const rangeEventMap = new Map
-    string,
-    {
-      startWeek: string;
-      endWeek: string;
-      description: string;
-      type: string;
-      color: string;
+    // Map to track range events so we can parse them fully
+    const rangeEventMap = new Map<
+      string,
+      {
+        startWeek: string;
+        endWeek: string;
+        description: string;
+        type: string;
+        color: string;
+      }
+    >();
+
+    // Process each file
+    for (const file of filesToProcess) {
+      try {
+        // Convert basename to a consistent format - handle both "2023-W15" and "2023--W15" formats
+        let normalizedBasename = file.basename;
+        normalizedBasename = normalizedBasename.replace(/--W/, "-W"); // Convert 2023--W15 to 2023-W15
+
+        // Check if the filename matches our weekly note pattern (both potential formats)
+        // Regular week format (single week): 2023-W15.md or 2023--W15.md
+        const weekPattern = /(\d{4}-W\d{2})/;
+
+        // Range format: 2023-W15_to_2023-W20.md or 2023--W15_to_2023--W20.md
+        const rangePattern = /(\d{4}-W\d{2})_to_(\d{4}-W\d{2})/;
+
+        let weekKey: string | null = null;
+        let endWeekKey: string | null = null;
+        let isRange = false;
+
+        // Check for single week pattern
+        const weekMatch = normalizedBasename.match(weekPattern);
+        if (weekMatch) {
+          weekKey = weekMatch[1];
+        }
+
+        // Check for range pattern
+        const rangeMatch = normalizedBasename.match(rangePattern);
+        if (rangeMatch) {
+          weekKey = rangeMatch[1];
+          endWeekKey = rangeMatch[2];
+          isRange = true;
+        }
+
+        // If it's neither a week nor a range, skip
+        if (!weekKey) continue;
+
+        // Read file content
+        const content = await this.app.vault.read(file);
+
+        // Check for YAML frontmatter
+        const frontmatterMatch = content.match(/^---\s+([\s\S]*?)\s+---/);
+        if (!frontmatterMatch) continue;
+
+        // Parse frontmatter
+        const frontmatter = frontmatterMatch[1];
+        const metadata: Record<string, any> = {};
+
+        frontmatter.split("\n").forEach((line) => {
+          const match = line.match(/^([^:]+):\s*(.+)$/);
+          if (match) {
+            const [_, key, value] = match;
+            metadata[key.trim()] = value.trim().replace(/^"(.*)"$/, "$1");
+          }
+        });
+
+        // If no event or type, skip
+        if (!metadata.event && !metadata.name) continue;
+
+        const eventName = metadata.event || metadata.name;
+        const eventType = metadata.type || "Major Life";
+        const description = metadata.description || eventName;
+
+        // Check if this is part of a range event by looking at startDate and endDate in metadata
+        if (metadata.startDate && metadata.endDate && !isRange) {
+          // This is a single week note that's part of a range event
+          const startDate = new Date(metadata.startDate);
+          const endDate = new Date(metadata.endDate);
+
+          // Generate a unique ID for this range event
+          const rangeId = `${eventName}-${startDate.toISOString()}-${endDate.toISOString()}`;
+
+          // If we haven't seen this range before, create it
+          if (!rangeEventMap.has(rangeId)) {
+            // Convert dates to week keys
+            const startWeek = this.getWeekKeyFromDate(startDate);
+            const endWeek = this.getWeekKeyFromDate(endDate);
+
+            rangeEventMap.set(rangeId, {
+              startWeek,
+              endWeek,
+              description,
+              type: eventType,
+              color: metadata.color || "",
+            });
+          }
+
+          // We'll process this note as part of a range later
+          continue;
+        }
+
+        // Format event string based on whether it's a range
+        let eventString = "";
+        if (isRange && endWeekKey) {
+          eventString = `${weekKey}:${endWeekKey}:${description}`;
+        } else {
+          eventString = `${weekKey}:${description}`;
+        }
+
+        // Add to appropriate collection if not already present
+        let added = false;
+        switch (eventType) {
+          case "Major Life":
+            if (!this.settings.greenEvents.includes(eventString)) {
+              this.settings.greenEvents.push(eventString);
+              added = true;
+            }
+            break;
+          case "Travel":
+            if (!this.settings.blueEvents.includes(eventString)) {
+              this.settings.blueEvents.push(eventString);
+              added = true;
+            }
+            break;
+          case "Relationship":
+            if (!this.settings.pinkEvents.includes(eventString)) {
+              this.settings.pinkEvents.push(eventString);
+              added = true;
+            }
+            break;
+          case "Education/Career":
+            if (!this.settings.purpleEvents.includes(eventString)) {
+              this.settings.purpleEvents.push(eventString);
+              added = true;
+            }
+            break;
+          default:
+            // Handle custom event types
+            if (this.settings.customEventTypes) {
+              const customType = this.settings.customEventTypes.find(
+                (t) => t.name === eventType
+              );
+              if (customType) {
+                if (!this.settings.customEvents[eventType]) {
+                  this.settings.customEvents[eventType] = [];
+                }
+                if (
+                  !this.settings.customEvents[eventType].includes(eventString)
+                ) {
+                  this.settings.customEvents[eventType].push(eventString);
+                  added = true;
+                }
+              }
+            }
+            break;
+        }
+
+        if (added) {
+          eventCount++;
+        }
+      } catch (error) {
+        console.error("Error processing file:", file.path, error);
+      }
     }
-  >();
 
-  // Process each file
-  for (const file of filesToProcess) {
-    try {
-      // Convert basename to a consistent format - handle both "2023-W15" and "2023--W15" formats
-      let normalizedBasename = file.basename;
-      normalizedBasename = normalizedBasename.replace(/--W/, "-W"); // Convert 2023--W15 to 2023-W15
-
-      // Check if the filename matches our weekly note pattern (both potential formats)
-      // Regular week format (single week): 2023-W15.md or 2023--W15.md
-      const weekPattern = /(\d{4}-W\d{2})/;
-
-      // Range format: 2023-W15_to_2023-W20.md or 2023--W15_to_2023--W20.md
-      const rangePattern = /(\d{4}-W\d{2})_to_(\d{4}-W\d{2})/;
-
-      let weekKey: string | null = null;
-      let endWeekKey: string | null = null;
-      let isRange = false;
-
-      // Check for single week pattern
-      const weekMatch = normalizedBasename.match(weekPattern);
-      if (weekMatch) {
-        weekKey = weekMatch[1];
-      }
-
-      // Check for range pattern
-      const rangeMatch = normalizedBasename.match(rangePattern);
-      if (rangeMatch) {
-        weekKey = rangeMatch[1];
-        endWeekKey = rangeMatch[2];
-        isRange = true;
-      }
-
-      // If it's neither a week nor a range, skip
-      if (!weekKey) continue;
-
-      // Read file content
-      const content = await this.app.vault.read(file);
-
-      // Check for YAML frontmatter
-      const frontmatterMatch = content.match(/^---\s+([\s\S]*?)\s+---/);
-      if (!frontmatterMatch) continue;
-
-      // Parse frontmatter
-      const frontmatter = frontmatterMatch[1];
-      const metadata: Record<string, any> = {};
-
-      frontmatter.split("\n").forEach((line) => {
-        const match = line.match(/^([^:]+):\s*(.+)$/);
-        if (match) {
-          const [_, key, value] = match;
-          metadata[key.trim()] = value.trim().replace(/^"(.*)"$/, "$1");
-        }
-      });
-
-      // If no event or type, skip
-      if (!metadata.event && !metadata.name) continue;
-
-      const eventName = metadata.event || metadata.name;
-      const eventType = metadata.type || "Major Life";
-      const description = metadata.description || eventName;
-
-      // Check if this is part of a range event by looking at startDate and endDate in metadata
-      if (metadata.startDate && metadata.endDate && !isRange) {
-        // This is a single week note that's part of a range event
-        const startDate = new Date(metadata.startDate);
-        const endDate = new Date(metadata.endDate);
-
-        // Generate a unique ID for this range event
-        const rangeId = `${eventName}-${startDate.toISOString()}-${endDate.toISOString()}`;
-
-        // If we haven't seen this range before, create it
-        if (!rangeEventMap.has(rangeId)) {
-          // Convert dates to week keys
-          const startWeek = this.getWeekKeyFromDate(startDate);
-          const endWeek = this.getWeekKeyFromDate(endDate);
-
-          rangeEventMap.set(rangeId, {
-            startWeek,
-            endWeek,
-            description,
-            type: eventType,
-            color: metadata.color || "",
-          });
-        }
-
-        // We'll process this note as part of a range later
-        continue;
-      }
-
-      // Format event string based on whether it's a range
-      let eventString = "";
-      if (isRange && endWeekKey) {
-        eventString = `${weekKey}:${endWeekKey}:${description}`;
-      } else {
-        eventString = `${weekKey}:${description}`;
-      }
+    // Process the range events we collected
+    for (const rangeEvent of rangeEventMap.values()) {
+      const eventString = `${rangeEvent.startWeek}:${rangeEvent.endWeek}:${rangeEvent.description}`;
 
       // Add to appropriate collection if not already present
       let added = false;
-      switch (eventType) {
+      switch (rangeEvent.type) {
         case "Major Life":
           if (!this.settings.greenEvents.includes(eventString)) {
             this.settings.greenEvents.push(eventString);
@@ -693,16 +765,18 @@ async scanVaultForEvents(): Promise<void> {
           // Handle custom event types
           if (this.settings.customEventTypes) {
             const customType = this.settings.customEventTypes.find(
-              (t) => t.name === eventType
+              (t) => t.name === rangeEvent.type
             );
             if (customType) {
-              if (!this.settings.customEvents[eventType]) {
-                this.settings.customEvents[eventType] = [];
+              if (!this.settings.customEvents[rangeEvent.type]) {
+                this.settings.customEvents[rangeEvent.type] = [];
               }
               if (
-                !this.settings.customEvents[eventType].includes(eventString)
+                !this.settings.customEvents[rangeEvent.type].includes(
+                  eventString
+                )
               ) {
-                this.settings.customEvents[eventType].push(eventString);
+                this.settings.customEvents[rangeEvent.type].push(eventString);
                 added = true;
               }
             }
@@ -713,75 +787,13 @@ async scanVaultForEvents(): Promise<void> {
       if (added) {
         eventCount++;
       }
-    } catch (error) {
-      console.error("Error processing file:", file.path, error);
-    }
-  }
-
-  // Process the range events we collected
-  for (const rangeEvent of rangeEventMap.values()) {
-    const eventString = `${rangeEvent.startWeek}:${rangeEvent.endWeek}:${rangeEvent.description}`;
-
-    // Add to appropriate collection if not already present
-    let added = false;
-    switch (rangeEvent.type) {
-      case "Major Life":
-        if (!this.settings.greenEvents.includes(eventString)) {
-          this.settings.greenEvents.push(eventString);
-          added = true;
-        }
-        break;
-      case "Travel":
-        if (!this.settings.blueEvents.includes(eventString)) {
-          this.settings.blueEvents.push(eventString);
-          added = true;
-        }
-        break;
-      case "Relationship":
-        if (!this.settings.pinkEvents.includes(eventString)) {
-          this.settings.pinkEvents.push(eventString);
-          added = true;
-        }
-        break;
-      case "Education/Career":
-        if (!this.settings.purpleEvents.includes(eventString)) {
-          this.settings.purpleEvents.push(eventString);
-          added = true;
-        }
-        break;
-      default:
-        // Handle custom event types
-        if (this.settings.customEventTypes) {
-          const customType = this.settings.customEventTypes.find(
-            (t) => t.name === rangeEvent.type
-          );
-          if (customType) {
-            if (!this.settings.customEvents[rangeEvent.type]) {
-              this.settings.customEvents[rangeEvent.type] = [];
-            }
-            if (
-              !this.settings.customEvents[rangeEvent.type].includes(
-                eventString
-              )
-            ) {
-              this.settings.customEvents[rangeEvent.type].push(eventString);
-              added = true;
-            }
-          }
-        }
-        break;
     }
 
-    if (added) {
-      eventCount++;
+    if (eventCount > 0) {
+      console.log(`Found ${eventCount} events from note metadata`);
+      await this.saveSettings();
     }
   }
-
-  if (eventCount > 0) {
-    console.log(`Found ${eventCount} events from note metadata`);
-    await this.saveSettings();
-  }
-}
 
   public refreshAllViews(): void {
     // Skip refreshing during likely sync operations
@@ -965,28 +977,31 @@ async scanVaultForEvents(): Promise<void> {
     return fileName;
   }
 
-    /**
-     * Generate a filename based on a template and values
-     * @param template - The template string with placeholders
-     * @param values - Object containing values to replace placeholders
-     * @returns Formatted filename
-     */
-    private formatFileName(template: string, values: Record<string, any>): string {
-      let result = template;
-      
-      // Replace all placeholders in the template
-      for (const [key, value] of Object.entries(values)) {
-        const placeholder = "${" + key + "}";
-        result = result.replace(new RegExp(placeholder, "g"), value.toString());
-      }
-      
-      // Ensure the extension is .md
-      if (!result.endsWith(".md")) {
-        result += ".md";
-      }
-      
-      return result;
+  /**
+   * Generate a filename based on a template and values
+   * @param template - The template string with placeholders
+   * @param values - Object containing values to replace placeholders
+   * @returns Formatted filename
+   */
+  private formatFileName(
+    template: string,
+    values: Record<string, any>
+  ): string {
+    let result = template;
+
+    // Replace all placeholders in the template
+    for (const [key, value] of Object.entries(values)) {
+      const placeholder = "${" + key + "}";
+      result = result.replace(new RegExp(placeholder, "g"), value.toString());
     }
+
+    // Ensure the extension is .md
+    if (!result.endsWith(".md")) {
+      result += ".md";
+    }
+
+    return result;
+  }
 
   /**
    * Create or open a note for the current week

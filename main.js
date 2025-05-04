@@ -93,6 +93,11 @@ const DEFAULT_SETTINGS = {
     statsPanelHeight: 470,
     statsPanelHorizontalOffset: 0,
     statsPanelWidth: 700,
+    weekNoteTemplate: "${year}-W${week}",
+    eventNoteTemplate: "${year}-W${week}",
+    rangeNoteTemplate: "${startYear}-W${startWeek}_to_${endYear}-W${endWeek}",
+    useSeparateFolders: false,
+    eventNotesFolder: "",
 };
 /** SVG icon for the Chronica Timeline */
 const CHRONOS_ICON = `<svg viewBox="0 0 100 100" width="100" height="100" xmlns="http://www.w3.org/2000/svg">
@@ -277,13 +282,49 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
     async scanVaultForEvents() {
         console.log("Scanning vault for event metadata...");
         // Get all markdown files in the vault
-        const files = this.app.vault.getMarkdownFiles();
+        let files = this.app.vault.getMarkdownFiles();
+        // Filter files based on folders
+        const filesToProcess = [];
+        // If no folders are specified, use all files
+        if ((!this.settings.notesFolder || this.settings.notesFolder.trim() === "") &&
+            (!this.settings.useSeparateFolders ||
+                !this.settings.eventNotesFolder ||
+                this.settings.eventNotesFolder.trim() === "")) {
+            filesToProcess.push(...files);
+        }
+        else {
+            // Otherwise, filter based on specified folders
+            // Add files from main notes folder if specified
+            if (this.settings.notesFolder &&
+                this.settings.notesFolder.trim() !== "") {
+                const normalizedFolder = this.settings.notesFolder.endsWith("/")
+                    ? this.settings.notesFolder
+                    : this.settings.notesFolder + "/";
+                const notesFiles = files.filter((file) => file.path.startsWith(normalizedFolder));
+                filesToProcess.push(...notesFiles);
+            }
+            // Add files from event folder if using separate folders
+            if (this.settings.useSeparateFolders &&
+                this.settings.eventNotesFolder &&
+                this.settings.eventNotesFolder.trim() !== "") {
+                const normalizedEventFolder = this.settings.eventNotesFolder.endsWith("/")
+                    ? this.settings.eventNotesFolder
+                    : this.settings.eventNotesFolder + "/";
+                const eventFiles = files.filter((file) => file.path.startsWith(normalizedEventFolder));
+                // Only add files that aren't already included
+                for (const file of eventFiles) {
+                    if (!filesToProcess.some((f) => f.path === file.path)) {
+                        filesToProcess.push(file);
+                    }
+                }
+            }
+        }
         // Track how many event notes we find
         let eventCount = 0;
         // Map to track range events so we can parse them fully
         const rangeEventMap = new Map();
         // Process each file
-        for (const file of files) {
+        for (const file of filesToProcess) {
             try {
                 // Convert basename to a consistent format - handle both "2023-W15" and "2023--W15" formats
                 let normalizedBasename = file.basename;
@@ -598,17 +639,46 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
     /**
      * Get full path for a note, using settings folder if specified
      * @param fileName - Name of the file
+     * @param isEvent - Whether this is an event note (for separate folders)
      * @returns Full path including folder if specified
      */
-    getFullPath(fileName) {
-        if (this.settings.notesFolder && this.settings.notesFolder.trim() !== "") {
-            let folderPath = this.settings.notesFolder;
+    getFullPath(fileName, isEvent = false) {
+        // Get the appropriate folder based on settings and file type
+        let folderPath = this.settings.notesFolder;
+        // If using separate folders and this is an event, use the event folder
+        if (isEvent &&
+            this.settings.useSeparateFolders &&
+            this.settings.eventNotesFolder) {
+            folderPath = this.settings.eventNotesFolder;
+        }
+        // If there's a folder, append the file name to it
+        if (folderPath && folderPath.trim() !== "") {
             if (!folderPath.endsWith("/")) {
                 folderPath += "/";
             }
             return `${folderPath}${fileName}`;
         }
+        // Otherwise just use the filename
         return fileName;
+    }
+    /**
+     * Generate a filename based on a template and values
+     * @param template - The template string with placeholders
+     * @param values - Object containing values to replace placeholders
+     * @returns Formatted filename
+     */
+    formatFileName(template, values) {
+        let result = template;
+        // Replace all placeholders in the template
+        for (const [key, value] of Object.entries(values)) {
+            const placeholder = "${" + key + "}";
+            result = result.replace(new RegExp(placeholder, "g"), value.toString());
+        }
+        // Ensure the extension is .md
+        if (!result.endsWith(".md")) {
+            result += ".md";
+        }
+        return result;
     }
     /**
      * Create or open a note for the current week
@@ -624,7 +694,7 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
             const year = date.getFullYear();
             const weekNum = this.getISOWeekNumber(date);
             const fileName = `${year}-W${weekNum.toString().padStart(2, "0")}.md`;
-            const fullPath = this.getFullPath(fileName);
+            const fullPath = this.getFullPath(fileName, false);
             const weekKey = `${year}-W${weekNum.toString().padStart(2, "0")}`;
             const existingFile = this.app.vault.getAbstractFileByPath(fullPath);
             if (existingFile instanceof obsidian.TFile) {
@@ -1730,7 +1800,7 @@ class ChronosEventModal extends obsidian.Modal {
      * @param endDate - Optional end date for range events
      */
     async createEventNote(fileName, startDate, endDate) {
-        const fullPath = this.plugin.getFullPath(fileName);
+        const fullPath = this.plugin.getFullPath(fileName, true);
         const fileExists = this.plugin.app.vault.getAbstractFileByPath(fullPath) instanceof obsidian.TFile;
         if (!fileExists) {
             // Create folder if needed
@@ -4984,6 +5054,43 @@ class ChronosSettingTab extends obsidian.PluginSettingTab {
             // Pass the plugin instance to FolderSuggest
             new FolderSuggest(this.app, search.inputEl, this.plugin);
         });
+        // Separate folders for event notes
+        new obsidian.Setting(containerEl)
+            .setName("Use Separate Folders")
+            .setDesc("Store week notes and event notes in different folders")
+            .addToggle((toggle) => toggle
+            .setValue(this.plugin.settings.useSeparateFolders)
+            .onChange(async (value) => {
+            this.plugin.settings.useSeparateFolders = value;
+            await this.plugin.saveSettings();
+            // Show/hide event folder selector based on toggle state
+            const eventFolderSetting = containerEl.querySelector(".event-folder-selector");
+            if (eventFolderSetting) {
+                eventFolderSetting.style.display = value
+                    ? "flex"
+                    : "none";
+            }
+        }));
+        // Event notes folder setting
+        const eventFolderSetting = new obsidian.Setting(containerEl)
+            .setName("Event Notes Folder")
+            .setDesc("Select the folder where your event notes will be stored")
+            .setClass("event-folder-selector")
+            .addSearch((search) => {
+            search
+                .setPlaceholder("Pick a folder…")
+                .setValue(this.plugin.settings.eventNotesFolder)
+                .onChange(async (value) => {
+                this.plugin.settings.eventNotesFolder = value;
+                await this.plugin.saveSettings();
+            });
+            // Pass the plugin instance to FolderSuggest
+            new FolderSuggest(this.app, search.inputEl, this.plugin);
+        });
+        // Hide event folder selector if separate folders not enabled
+        if (!this.plugin.settings.useSeparateFolders) {
+            eventFolderSetting.settingEl.style.display = "none";
+        }
         // Quote setting
         new obsidian.Setting(containerEl)
             .setName("Footer Quote")
@@ -5185,6 +5292,46 @@ class ChronosSettingTab extends obsidian.PluginSettingTab {
                 modal.open();
             });
         });
+        // File naming templates section
+        containerEl.createEl("h3", { text: "File Naming Templates" });
+        containerEl.createEl("p", {
+            text: "Customize how Chronica names your week and event note files. Use placeholders like ${year}, ${week}, etc.",
+        });
+        // Week note template
+        new obsidian.Setting(containerEl)
+            .setName("Week Note Template")
+            .setDesc("Template for week note filenames. Example: ${year}-W${week}")
+            .addText((text) => text
+            .setPlaceholder("${year}-W${week}")
+            .setValue(this.plugin.settings.weekNoteTemplate)
+            .onChange(async (value) => {
+            this.plugin.settings.weekNoteTemplate = value || "${year}-W${week}";
+            await this.plugin.saveSettings();
+        }));
+        // Event note template
+        new obsidian.Setting(containerEl)
+            .setName("Event Note Template")
+            .setDesc("Template for event note filenames. Example: ${year}-W${week}-${event}")
+            .addText((text) => text
+            .setPlaceholder("${year}-W${week}")
+            .setValue(this.plugin.settings.eventNoteTemplate)
+            .onChange(async (value) => {
+            this.plugin.settings.eventNoteTemplate =
+                value || "${year}-W${week}";
+            await this.plugin.saveSettings();
+        }));
+        // Range note template
+        new obsidian.Setting(containerEl)
+            .setName("Range Event Template")
+            .setDesc("Template for range event filenames. Example: ${startYear}-W${startWeek}_to_${endYear}-W${endWeek}")
+            .addText((text) => text
+            .setPlaceholder("${startYear}-W${startWeek}_to_${endYear}-W${endWeek}")
+            .setValue(this.plugin.settings.rangeNoteTemplate)
+            .onChange(async (value) => {
+            this.plugin.settings.rangeNoteTemplate =
+                value || "${startYear}-W${startWeek}_to_${endYear}-W${endWeek}";
+            await this.plugin.saveSettings();
+        }));
         // Clear event data section
         containerEl.createEl("h3", { text: "Clear Event Data" });
         // Green events (Major Life Events)
