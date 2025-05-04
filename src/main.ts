@@ -385,38 +385,14 @@ export default class ChronosTimelinePlugin extends Plugin {
           return;
         }
 
-        // Only process Chronica-related files
+        // Only continue processing for Chronica-related files
         if (!this.isChronicaRelatedFile(file)) {
           return;
         }
 
         if (!(file instanceof TFile)) return;
 
-        // Now we know it's a Chronica-related file, proceed with event cleaning
-        // 1) Get the basename (e.g. "2025--W23")
-        const base = file.basename;
-
-        // 2) Normalize to "2025-W23" so it matches your settings entries
-        const weekKey = base.replace("--", "-");
-
-        // 3) Purge it from every array, same as before
-        const purge = (arr: string[]) =>
-          arr.filter((e) => e.split(":")[0] !== weekKey);
-        this.settings.greenEvents = purge(this.settings.greenEvents);
-        this.settings.blueEvents = purge(this.settings.blueEvents);
-        this.settings.pinkEvents = purge(this.settings.pinkEvents);
-        this.settings.purpleEvents = purge(this.settings.purpleEvents);
-
-        if (this.settings.customEventTypes) {
-          for (const t of this.settings.customEventTypes) {
-            const list = this.settings.customEvents[t.name] || [];
-            this.settings.customEvents[t.name] = purge(list);
-          }
-        }
-
-        // 4) Save & redraw
-        await this.saveSettings();
-        this.refreshAllViews();
+        await this.handleFileDelete(file);
       })
     );
 
@@ -1734,7 +1710,7 @@ export default class ChronosTimelinePlugin extends Plugin {
   /**
    * Get event metadata from a note
    * @param weekKey - Week key in YYYY-WXX format
-   * @returns Event metadata if found
+   * @returns Event metadata if found, null if file doesn't exist or has no event
    */
   async getEventFromNote(weekKey: string): Promise<{
     event?: string;
@@ -1754,17 +1730,17 @@ export default class ChronosTimelinePlugin extends Plugin {
       return null;
     }
 
-    // Read file content
-    const content = await this.app.vault.read(file);
-
-    // Check for YAML frontmatter
-    const frontmatterMatch = content.match(/^---\s+([\s\S]*?)\s+---/);
-    if (!frontmatterMatch) {
-      return null;
-    }
-
-    // Parse YAML frontmatter
     try {
+      // Read file content
+      const content = await this.app.vault.read(file);
+
+      // Check for YAML frontmatter
+      const frontmatterMatch = content.match(/^---\s+([\s\S]*?)\s+---/);
+      if (!frontmatterMatch) {
+        return null;
+      }
+
+      // Parse YAML frontmatter
       const frontmatter = frontmatterMatch[1];
       const metadata: Record<string, any> = {};
 
@@ -1777,6 +1753,11 @@ export default class ChronosTimelinePlugin extends Plugin {
         }
       });
 
+      // Only return event data if there's actually an event or name field
+      if (!metadata.event && !metadata.name) {
+        return null;
+      }
+
       return {
         event: metadata.event || metadata.name,
         name: metadata.name || metadata.event,
@@ -1787,7 +1768,7 @@ export default class ChronosTimelinePlugin extends Plugin {
         endDate: metadata.endDate,
       };
     } catch (error) {
-      console.log("Error parsing frontmatter:", error);
+      console.log("Error reading or parsing note:", error);
       return null;
     }
   }
@@ -1908,49 +1889,67 @@ export default class ChronosTimelinePlugin extends Plugin {
     const fileName = filePath.split("/").pop() || "";
 
     // Check if it matches our event file naming pattern
-    const weekPattern = /(\d{4}-W\d{2})\.md$/;
-    const rangePattern = /(\d{4}-W\d{2})_to_(\d{4}-W\d{2})\.md$/;
+    const weekPattern = /(\d{4}(-|--)[Ww]\d{2})\.md$/i;
+    const rangePattern =
+      /(\d{4}(-|--)[Ww]\d{2})_to_(\d{4}(-|--)[Ww]\d{2})\.md$/i;
 
     let weekKeys: string[] = [];
 
     // Single week file
     const weekMatch = fileName.match(weekPattern);
     if (weekMatch) {
-      const weekKey = weekMatch[1].replace("-W", "-W");
+      // Normalize weekKey format (replace -- with - and ensure W is uppercase)
+      const rawWeekKey = weekMatch[1];
+      const weekKey = rawWeekKey.replace(/--/g, "-").replace(/w/i, "W");
       weekKeys.push(weekKey);
     }
 
     // Range week file
     const rangeMatch = fileName.match(rangePattern);
     if (rangeMatch) {
-      const startWeekKey = rangeMatch[1].replace("-W", "-W");
-      const endWeekKey = rangeMatch[2].replace("-W", "-W");
+      // Normalize both start and end keys
+      const startRawKey = rangeMatch[1];
+      const endRawKey = rangeMatch[3];
+
+      const startWeekKey = startRawKey.replace(/--/g, "-").replace(/w/i, "W");
+      const endWeekKey = endRawKey.replace(/--/g, "-").replace(/w/i, "W");
 
       // For range events, we need to get all weeks in the range
-      // Parse dates from week keys
-      const startYear = parseInt(startWeekKey.split("-W")[0]);
-      const startWeek = parseInt(startWeekKey.split("-W")[1]);
-      const endYear = parseInt(endWeekKey.split("-W")[0]);
-      const endWeek = parseInt(endWeekKey.split("-W")[1]);
+      try {
+        // Parse dates from week keys
+        const startYear = parseInt(startWeekKey.split("-W")[0]);
+        const startWeek = parseInt(startWeekKey.split("-W")[1]);
+        const endYear = parseInt(endWeekKey.split("-W")[0]);
+        const endWeek = parseInt(endWeekKey.split("-W")[1]);
 
-      // Create actual dates
-      const startDate = new Date(startYear, 0, 1);
-      startDate.setDate(startDate.getDate() + (startWeek - 1) * 7);
+        // Create actual dates
+        const startDate = new Date(startYear, 0, 1);
+        startDate.setDate(startDate.getDate() + (startWeek - 1) * 7);
 
-      const endDate = new Date(endYear, 0, 1);
-      endDate.setDate(endDate.getDate() + (endWeek - 1) * 7 + 6);
+        const endDate = new Date(endYear, 0, 1);
+        endDate.setDate(endDate.getDate() + (endWeek - 1) * 7 + 6);
 
-      // Get all week keys in the range
-      weekKeys = this.getWeekKeysBetweenDates(startDate, endDate);
+        // Get all week keys in the range
+        weekKeys = this.getWeekKeysBetweenDates(startDate, endDate);
+      } catch (error) {
+        console.error("Error processing week range for deletion:", error);
+        // Still try to handle the start and end weeks directly
+        weekKeys = [startWeekKey, endWeekKey];
+      }
     }
 
     // If no matching week keys found, exit
     if (weekKeys.length === 0) return;
 
+    console.log(
+      `Found ${weekKeys.length} week keys to clean for deleted file:`,
+      fileName
+    );
+
     // Check each of our event collections and remove matching events
     let needsSave = false;
 
-    // Helper function to filter events
+    // Helper function to filter events - handles both single events and ranges
     const filterEvents = (events: string[]): string[] => {
       return events.filter((eventData) => {
         const parts = eventData.split(":");
@@ -1963,11 +1962,50 @@ export default class ChronosTimelinePlugin extends Plugin {
         // Range event (format: startWeekKey:endWeekKey:description)
         if (parts.length === 3) {
           const [startKey, endKey] = parts;
-          // Skip if either the start or end key matches one of our weeks
-          return !(weekKeys.includes(startKey) || weekKeys.includes(endKey));
+
+          // Remove if either start or end key is in our deleted weekKeys
+          // OR if any week in the deleted keys falls between the start and end
+          if (weekKeys.includes(startKey) || weekKeys.includes(endKey)) {
+            return false;
+          }
+
+          // Check if any week in the range matches our deleted weeks
+          try {
+            // Parse start and end dates of the event range
+            const eventStartYear = parseInt(startKey.split("-W")[0]);
+            const eventStartWeek = parseInt(startKey.split("-W")[1]);
+            const eventEndYear = parseInt(endKey.split("-W")[0]);
+            const eventEndWeek = parseInt(endKey.split("-W")[1]);
+
+            // Create actual dates
+            const eventStartDate = new Date(eventStartYear, 0, 1);
+            eventStartDate.setDate(
+              eventStartDate.getDate() + (eventStartWeek - 1) * 7
+            );
+
+            const eventEndDate = new Date(eventEndYear, 0, 1);
+            eventEndDate.setDate(
+              eventEndDate.getDate() + (eventEndWeek - 1) * 7 + 6
+            );
+
+            // Check if any of our deleted weeks falls within this date range
+            for (const weekKey of weekKeys) {
+              const [weekYear, weekNum] = weekKey
+                .split("-W")
+                .map((n) => parseInt(n));
+              const weekDate = new Date(weekYear, 0, 1);
+              weekDate.setDate(weekDate.getDate() + (weekNum - 1) * 7);
+
+              if (weekDate >= eventStartDate && weekDate <= eventEndDate) {
+                return false; // Remove the event
+              }
+            }
+          } catch (error) {
+            console.error("Error checking event range for deletion:", error);
+          }
         }
 
-        return true; // Keep any event we don't understand
+        return true; // Keep any event we don't explicitly filter out
       });
     };
 
@@ -6296,6 +6334,45 @@ class ChronosTimelineView extends ItemView {
     // Check if we have an event in the note frontmatter (new functionality)
     const checkNoteEvent = async () => {
       try {
+        // First check if the file exists - using a cache would be more efficient
+        const fileName = `${weekKey.replace("W", "-W")}.md`;
+        const fullPath = this.plugin.getFullPath(fileName);
+        const fileExists =
+          this.plugin.app.vault.getAbstractFileByPath(fullPath) instanceof
+          TFile;
+
+        // If file doesn't exist, make sure to remove any existing styling
+        if (!fileExists) {
+          // Remove any event styling from the cell
+          cell.classList.remove("event");
+          cell.classList.remove("major-life-event");
+          cell.classList.remove("travel-event");
+          cell.classList.remove("relationship-event");
+          cell.classList.remove("education-career-event");
+          cell.style.backgroundColor = "";
+          cell.style.border = "";
+
+          // Restore appropriate base styling
+          const now = new Date();
+          const [year, weekNum] = weekKey.split("-W").map((n) => parseInt(n));
+          const cellDate = new Date(year, 0, 1);
+          cellDate.setDate(cellDate.getDate() + (weekNum - 1) * 7);
+
+          // Reapply appropriate base styling
+          const isCurrentWeek =
+            weekKey === this.plugin.getWeekKeyFromDate(new Date());
+          if (isCurrentWeek) {
+            cell.style.backgroundColor = this.plugin.settings.presentCellColor;
+          } else if (cellDate < now) {
+            cell.style.backgroundColor = this.plugin.settings.pastCellColor;
+          } else {
+            cell.style.backgroundColor = this.plugin.settings.futureCellColor;
+          }
+
+          return false;
+        }
+
+        // Continue with normal event checking
         const eventData = await this.plugin.getEventFromNote(weekKey);
         if (eventData && eventData.event) {
           // Apply styling based on note frontmatter
@@ -6382,7 +6459,6 @@ class ChronosTimelineView extends ItemView {
         return false;
       }
     };
-
     // Schedule the async check to happen soon (we can't make this method async without breaking a lot of code)
     setTimeout(async () => {
       if (await checkNoteEvent()) {
