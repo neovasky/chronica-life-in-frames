@@ -32,6 +32,13 @@
   --stats-panel-min-height: 150px;
   --stats-panel-max-height: 600px;
   --stats-panel-width: 700px;
+  --custom-color: initial;
+  --position-left: 0px;
+  --position-top: 0px;
+  --element-width: auto;
+  --element-height: auto;
+  --transform-value: none;
+  --progress-width: 0%;
 }
 
 /* -----------------------------------------------------------------------------
@@ -528,6 +535,64 @@
   transform: scale(1.15);
   box-shadow: var(--hover-shadow);
   z-index: 10;
+}
+
+/* For cell states */
+.chronica-cell-filled {
+  background-color: #8bc34a;
+}
+
+.chronica-cell-present {
+  background-color: var(--present-color);
+}
+
+.chronica-cell-past {
+  background-color: var(--past-color);
+}
+
+.chronica-cell-future {
+  background-color: var(--future-color);
+}
+
+/* For custom event styling */
+.chronica-event-custom {
+  border-width: 2px;
+  border-style: solid;
+  background-color: var(--custom-color);
+  border-color: var(--custom-color);
+}
+
+.chronica-filled-week {
+  background-color: #8bc34a;
+}
+
+/* For visibility states */
+.chronica-hidden {
+  display: none;
+}
+
+.chronica-visible {
+  display: block;
+}
+
+
+/* Elements with dynamic positions */
+.chronica-position-dynamic {
+  position: absolute;
+  left: var(--position-left);
+  top: var(--position-top);
+  transform: var(--transform-value);
+}
+
+/* Elements with dynamic sizes */
+.chronica-size-dynamic {
+  width: var(--element-width);
+  height: var(--element-height);
+}
+
+/* Progress elements */
+.chronica-progress-dynamic {
+  width: var(--progress-width);
 }
 
 /* Special cell states */

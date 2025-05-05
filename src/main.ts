@@ -153,6 +153,9 @@ interface ChronosSettings {
 
   /** Whether user has completed folder selection on first cell‐click */
   hasSeenFolders: boolean;
+
+    /** Enable debug logs in console */
+    debugMode: boolean;
 }
 
 /** Interface for custom event types */
@@ -271,6 +274,7 @@ const DEFAULT_SETTINGS: ChronosSettings = {
   eventNotesFolder: "",
   hasSeenWelcome: false,
   hasSeenFolders: false,
+  debugMode: false,
 };
 
 /** SVG icon for the Chronica Timeline */
@@ -437,7 +441,6 @@ export default class ChronosTimelinePlugin extends Plugin {
    * Plugin initialization on load
    */
   async onload(): Promise<void> {
-    console.log("Loading Chronica Timeline Plugin");
 
     // 1) Register the timeline view exactly once
     try {
@@ -644,7 +647,6 @@ export default class ChronosTimelinePlugin extends Plugin {
     // persist the cleared-out state immediately
     await this.saveSettings();
 
-    console.log("Scanning vault for event metadata...");
     // Get all markdown files in the vault
     let files = this.app.vault.getMarkdownFiles();
     // …rest of method…
@@ -931,7 +933,6 @@ export default class ChronosTimelinePlugin extends Plugin {
     }
 
     if (eventCount > 0) {
-      console.log(`Found ${eventCount} events from note metadata`);
       await this.saveSettings();
     }
   }
@@ -939,7 +940,6 @@ export default class ChronosTimelinePlugin extends Plugin {
   public refreshAllViews(): void {
     // Skip refreshing during likely sync operations
     if (this.isSyncOperation) {
-      console.log("Skipping refresh during potential sync operation");
       return;
     }
 
@@ -1071,7 +1071,6 @@ export default class ChronosTimelinePlugin extends Plugin {
         await this.app.vault.createFolder(newFolder);
       }
     } catch (err) {
-      console.log("Error checking/creating folder:", err);
       new Notice(`Failed to create folder: ${newFolder}`);
       return;
     }
@@ -1430,7 +1429,6 @@ export default class ChronosTimelinePlugin extends Plugin {
               await this.app.vault.createFolder(this.settings.notesFolder);
             }
           } catch (err) {
-            console.log("Error checking/creating folder:", err);
           }
         }
 
@@ -2038,7 +2036,6 @@ export default class ChronosTimelinePlugin extends Plugin {
         endDate: metadata.endDate,
       };
     } catch (error) {
-      console.log("Error parsing frontmatter:", error);
       return null;
     }
   }
@@ -2110,7 +2107,6 @@ export default class ChronosTimelinePlugin extends Plugin {
             await this.app.vault.createFolder(this.settings.notesFolder);
           }
         } catch (err) {
-          console.log("Error checking/creating folder:", err);
         }
       }
 
@@ -2210,11 +2206,6 @@ export default class ChronosTimelinePlugin extends Plugin {
 
     // If no matching week keys found, exit
     if (weekKeys.length === 0) return;
-
-    console.log(
-      `Found ${weekKeys.length} week keys to clean for deleted file:`,
-      fileName
-    );
 
     // Check each of our event collections and remove matching events
     let needsSave = false;
@@ -3061,7 +3052,6 @@ class ChronosEventModal extends Modal {
             await this.app.vault.createFolder(this.plugin.settings.notesFolder);
           }
         } catch (err) {
-          console.log("Error checking/creating folder:", err);
         }
       }
 
@@ -3692,9 +3682,31 @@ class ChronosTimelineView extends ItemView {
       },
     });
 
-    sidebarToggle.innerHTML = this.isSidebarOpen
-      ? `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>`
-      : `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>`;
+    // Clear any existing content
+    sidebarToggle.empty();
+
+    // Create SVG element with namespace
+    const sidebarSvgNS = "http://www.w3.org/2000/svg";
+    const sidebarSvg = document.createElementNS(sidebarSvgNS, "svg");
+    sidebarSvg.setAttribute("width", "18");
+    sidebarSvg.setAttribute("height", "18");
+    sidebarSvg.setAttribute("viewBox", "0 0 24 24");
+    sidebarSvg.setAttribute("fill", "none");
+    sidebarSvg.setAttribute("stroke", "currentColor");
+    sidebarSvg.setAttribute("stroke-width", "2");
+    sidebarSvg.setAttribute("stroke-linecap", "round");
+    sidebarSvg.setAttribute("stroke-linejoin", "round");
+
+    // Create path element based on sidebar state
+    const sidebarPath = document.createElementNS(sidebarSvgNS, "path");
+    sidebarPath.setAttribute(
+      "d",
+      this.isSidebarOpen ? "M15 18l-6-6 6-6" : "M9 18l6-6-6-6"
+    );
+    sidebarSvg.appendChild(sidebarPath);
+
+    // Add SVG to the button
+    sidebarToggle.appendChild(sidebarSvg);
 
     sidebarToggle.addEventListener("click", () => {
       this.isSidebarOpen = !this.isSidebarOpen;
@@ -3719,8 +3731,14 @@ class ChronosTimelineView extends ItemView {
 
       // Toggle visibility of the collapsed toggle button
       if (collapsedToggle) {
-        collapsedToggle.style.display = this.isSidebarOpen ? "none" : "block";
-      }
+        if (this.isSidebarOpen) {
+          collapsedToggle.addClass("chronica-hidden");
+          collapsedToggle.removeClass("chronica-visible");
+        } else {
+          collapsedToggle.addClass("chronica-visible");
+          collapsedToggle.removeClass("chronica-hidden");
+        }
+            }
 
       this.updateStatsPanelLayout();
     });
@@ -4024,7 +4042,31 @@ class ChronosTimelineView extends ItemView {
       cls: "chronica-collapsed-toggle",
       attr: { title: "Expand Sidebar" },
     });
-    collapsedToggle.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>`;
+
+// Clear any existing content
+collapsedToggle.empty();
+
+// Create SVG element with namespace
+const collapsedSvgNS = "http://www.w3.org/2000/svg";
+const collapsedSvg = document.createElementNS(collapsedSvgNS, "svg");
+collapsedSvg.setAttribute("width", "18");
+collapsedSvg.setAttribute("height", "18");
+collapsedSvg.setAttribute("viewBox", "0 0 24 24");
+collapsedSvg.setAttribute("fill", "none");
+collapsedSvg.setAttribute("stroke", "currentColor");
+collapsedSvg.setAttribute("stroke-width", "2");
+collapsedSvg.setAttribute("stroke-linecap", "round");
+collapsedSvg.setAttribute("stroke-linejoin", "round");
+
+// Create path element
+const collapsedPath = document.createElementNS(collapsedSvgNS, "path");
+collapsedPath.setAttribute("d", "M9 18l6-6-6-6");
+collapsedSvg.appendChild(collapsedPath);
+
+// Add SVG to the toggle
+collapsedToggle.appendChild(collapsedSvg);
+
+
     collapsedToggle.addEventListener("click", () => {
       this.isSidebarOpen = true;
 
@@ -4040,7 +4082,28 @@ class ChronosTimelineView extends ItemView {
       // Update sidebar toggle icon
       const sidebarToggle = sidebarEl.querySelector(".chronica-sidebar-toggle");
       if (sidebarToggle) {
-        sidebarToggle.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>`;
+        // Clear existing content
+        sidebarToggle.empty();
+        
+        // Create SVG with DOM API
+        const listenerSvgNS = "http://www.w3.org/2000/svg";
+        const listenerSvg = document.createElementNS(listenerSvgNS, "svg");
+        listenerSvg.setAttribute("width", "18");
+        listenerSvg.setAttribute("height", "18");
+        listenerSvg.setAttribute("viewBox", "0 0 24 24");
+        listenerSvg.setAttribute("fill", "none");
+        listenerSvg.setAttribute("stroke", "currentColor");
+        listenerSvg.setAttribute("stroke-width", "2");
+        listenerSvg.setAttribute("stroke-linecap", "round");
+        listenerSvg.setAttribute("stroke-linejoin", "round");
+        
+        // Create path
+        const listenerPath = document.createElementNS(listenerSvgNS, "path");
+        listenerPath.setAttribute("d", "M15 18l-6-6 6-6");
+        listenerSvg.appendChild(listenerPath);
+        
+        // Add to button
+        sidebarToggle.appendChild(listenerSvg);
         sidebarToggle.setAttribute("title", "Collapse Sidebar");
       }
 
@@ -4295,7 +4358,8 @@ class ChronosTimelineView extends ItemView {
       });
 
       if (!isPortrait) {
-        decadeMarkersContainer.style.left = `${leftOffset}px`;
+        decadeMarkersContainer.style.setProperty('--position-left', `${leftOffset}px`);
+        decadeMarkersContainer.addClass("chronica-position-dynamic");
       }
 
       // Add decade markers starting from 10 (skipping 0)
@@ -4307,7 +4371,8 @@ class ChronosTimelineView extends ItemView {
         });
 
         if (!isPortrait) {
-          decadeMarkersContainer.style.left = `${leftOffset}px`;
+          decadeMarkersContainer.style.setProperty('--position-left', `${leftOffset}px`);
+          decadeMarkersContainer.addClass("chronica-position-dynamic");
         }
 
         // Add decade markers starting from 10 (skipping 0)
@@ -4322,7 +4387,7 @@ class ChronosTimelineView extends ItemView {
           });
 
           // Position each decade marker using the calculateYearPosition method
-          marker.style.position = "absolute";
+          marker.addClass("chronica-position-dynamic");
 
           // Calculate the position of last year of previous decade (e.g., year 9 for marker "10")
           const lastYearOfPreviousDecade = decade - 1;
@@ -4338,13 +4403,13 @@ class ChronosTimelineView extends ItemView {
           const leftPosition = decadePosition + cellSize / 2;
 
           if (isPortrait) {
-            marker.style.top = `${leftPosition}px`;
-            marker.style.left = `${topOffset}px`;
-            marker.style.transform = "translate(-50%, -50%)"; // Keep centered
+            marker.style.setProperty('--position-top', `${leftPosition}px`);
+            marker.style.setProperty('--position-left', `${topOffset}px`);
+            marker.style.setProperty('--transform-value', 'translate(-50%, -50%)');
           } else {
-            marker.style.left = `${leftPosition}px`;
-            marker.style.top = `${topOffset / 2}px`;
-            marker.style.transform = "translate(-50%, -50%)";
+            marker.style.setProperty('--position-left', `${leftPosition}px`);
+            marker.style.setProperty('--position-top', `${topOffset / 2}px`);
+            marker.style.setProperty('--transform-value', 'translate(-50%, -50%)');
           }
         }
       }
@@ -4708,8 +4773,9 @@ class ChronosTimelineView extends ItemView {
         }
 
         // Explicitly set width and height
-        cell.style.width = `${cellSize}px`;
-        cell.style.height = `${cellSize}px`;
+        cell.style.setProperty('--element-width', `${cellSize}px`);
+        cell.style.setProperty('--element-height', `${cellSize}px`);
+        cell.addClass("chronica-size-dynamic");
 
         // Color coding (past, present, future)
         const isCurrentWeek = weekKey === currentWeekKey;
@@ -4727,11 +4793,11 @@ class ChronosTimelineView extends ItemView {
         // Only apply base color coding if there's no event
         if (!hasEvent) {
           if (isCurrentWeek) {
-            cell.style.backgroundColor = this.plugin.settings.presentCellColor;
+            cell.addClass("chronica-cell-present");
           } else if (cellStartDate < now) {
-            cell.style.backgroundColor = this.plugin.settings.pastCellColor;
+            cell.addClass("chronica-cell-past");
           } else {
-            cell.style.backgroundColor = this.plugin.settings.futureCellColor;
+            cell.addClass("chronica-cell-future");
           }
         }
 
@@ -4821,7 +4887,6 @@ class ChronosTimelineView extends ItemView {
                   );
                 }
               } catch (err) {
-                console.log("Error checking/creating folder:", err);
               }
             }
 
@@ -4870,23 +4935,41 @@ class ChronosTimelineView extends ItemView {
     }
   }
 
-  /**
-   * Render the statistics panel
-   * @param container - Container to render panel in
-   */
+    /**
+     * Render the statistics panel
+     * @param container - Container to render panel in
+     */
 
-  renderStatsPanel(container: HTMLElement): void {
-    // Create the stats handle (always visible)
-    const statsHandle = container.createEl("div", {
-      cls: "chronica-stats-handle",
-    });
+    renderStatsPanel(container: HTMLElement): void {
+      // Create the stats handle (always visible)
+      const statsHandle = container.createEl("div", {
+        cls: "chronica-stats-handle",
+      });
 
-    statsHandle.innerHTML = `
-    <svg class="chronica-stats-handle-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M18 20V10M12 20V4M6 20v-6"></path>
-    </svg>
-    <span>Statistics</span>
-  `;
+  // Clear any existing content
+  statsHandle.empty();
+
+  // Create SVG element with namespace
+  const svgNS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(svgNS, "svg");
+  svg.setAttribute("class", "chronica-stats-handle-icon");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("stroke-width", "2");
+
+  // Create path element
+  const path = document.createElementNS(svgNS, "path");
+  path.setAttribute("d", "M18 20V10M12 20V4M6 20v-6");
+  svg.appendChild(path);
+
+  // Add SVG to the handle
+  statsHandle.appendChild(svg);
+
+  // Add text span
+  const span = document.createElement("span");
+  span.textContent = "Statistics";
+  statsHandle.appendChild(span);
 
     statsHandle.setAttribute(
       "title",
@@ -5293,7 +5376,8 @@ class ChronosTimelineView extends ItemView {
       cls: "chronica-progress-bar-fill",
     });
 
-    progressFill.style.width = `${livedPercentage}%`;
+    progressFill.style.setProperty('--progress-width', `${livedPercentage}%`);
+    progressFill.addClass("chronica-progress-dynamic");
 
     barContainer.createEl("div", {
       cls: "chronica-stat-subtitle",
@@ -6820,8 +6904,8 @@ class ChronosTimelineView extends ItemView {
 
           // Apply color if specified in frontmatter
           if (eventData.color) {
-            cell.style.backgroundColor = eventData.color;
-            cell.style.border = `2px solid ${eventData.color}`;
+            cell.style.setProperty('--custom-color', eventData.color);
+            cell.addClass("chronica-event-custom");
           } else {
             // Default color based on type
             let defaultColor = "#4CAF50"; // Default to green (Major Life)
@@ -6881,7 +6965,6 @@ class ChronosTimelineView extends ItemView {
         }
         return false;
       } catch (error) {
-        console.log("Error checking note event:", error);
         return false;
       }
     };
