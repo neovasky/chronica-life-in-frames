@@ -3165,7 +3165,12 @@ class ChronicaWelcomeModal extends Modal {
     const iconEl = headerEl.createEl("div", {
       cls: "chronica-welcome-icon",
     });
-    iconEl.innerHTML = CHRONOS_ICON;
+
+    const parser = new DOMParser();
+    const svgDoc = parser.parseFromString(CHRONOS_ICON, "image/svg+xml");
+    const svgNode = svgDoc.documentElement;
+    iconEl.appendChild(svgNode);
+
 
     // Add title
     headerEl.createEl("h1", {
@@ -3818,14 +3823,21 @@ class ChronosTimelineView extends ItemView {
       cls: "chronica-btn chronica-zoom-button",
       attr: { title: "Zoom Out" },
     });
-    zoomOutBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="11" cy="11" r="8"></circle>
-      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-      <line x1="8" y1="11" x2="14" y2="11"></line>
-    </svg>`;
+    // append “zoom out” SVG icon without using innerHTML
+    const parserZoomOut = new DOMParser();
+    const zoomOutSvgDoc = parserZoomOut.parseFromString(
+      `<svg xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        <line x1="8" y1="11" x2="14" y2="11"></line>
+      </svg>`,
+      "image/svg+xml"
+    );
+    zoomOutBtn.appendChild(zoomOutSvgDoc.documentElement);
     zoomOutBtn.addEventListener("click", () => {
       this.zoomOut();
     });
+
 
     // Add zoom level indicator
     const zoomInput = zoomControlsDiv.createEl("input", {
@@ -3857,12 +3869,18 @@ class ChronosTimelineView extends ItemView {
       cls: "chronica-btn chronica-zoom-button",
       attr: { title: "Zoom In" },
     });
-    zoomInBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="11" cy="11" r="8"></circle>
-      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-      <line x1="11" y1="8" x2="11" y2="14"></line>
-      <line x1="8" y1="11" x2="14" y2="11"></line>
-    </svg>`;
+    // append “zoom in” SVG icon without using innerHTML
+    const parserZoomIn = new DOMParser();
+    const zoomInSvgDoc = parserZoomIn.parseFromString(
+      `<svg xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        <line x1="11" y1="8" x2="11" y2="14"></line>
+        <line x1="8" y1="11" x2="14" y2="11"></line>
+      </svg>`,
+      "image/svg+xml"
+    );
+    zoomInBtn.appendChild(zoomInSvgDoc.documentElement);
     zoomInBtn.addEventListener("click", () => {
       this.zoomIn();
     });
@@ -4460,8 +4478,10 @@ collapsedToggle.appendChild(collapsedSvg);
       const cakeEl = birthdayMarkerContainer.createEl("div", {
         cls: "birthday-cake-marker",
       });
-
-      cakeEl.innerHTML = cakeSvg;
+      // append cake SVG icon without using innerHTML
+      const parserCake = new DOMParser();
+      const cakeSvgDoc = parserCake.parseFromString(cakeSvg, "image/svg+xml");
+      cakeEl.appendChild(cakeSvgDoc.documentElement);
       cakeEl.setAttribute(
         "title",
         `${birthMonthName} ${birthDay}, ${birthYear} (Your Birthday)`
@@ -4633,7 +4653,7 @@ collapsedToggle.appendChild(collapsedSvg);
         }
 
         // Special styling for birth month
-        if (monthIndex === birthMonth && !markerEl.innerHTML.includes("svg")) {
+        if (monthIndex === birthMonth && !markerEl.querySelector("svg")) {
           markerEl.style.color = "#e91e63"; // Pink color
           markerEl.style.fontWeight = "500";
         }
@@ -5372,17 +5392,51 @@ collapsedToggle.appendChild(collapsedSvg);
 
     const progressValue = Math.round(livedPercentage);
 
-    circleContainer.innerHTML = `
-    <svg width="60" height="60" viewBox="0 0 80 80">
-      <circle cx="40" cy="40" r="35" fill="none" stroke="var(--background-modifier-border)" stroke-width="5"></circle>
-      <circle cx="40" cy="40" r="35" fill="none" stroke="var(--interactive-accent)" stroke-width="5"
-        stroke-dasharray="220" stroke-dashoffset="${
-          220 - (220 * livedPercentage) / 100
-        }"
-        transform="rotate(-90 40 40)"></circle>
-    </svg>
-    <div class="chronica-circular-progress-text">${progressValue}%</div>
-  `;
+    // Clear any existing content
+    circleContainer.empty();
+
+    // Create SVG element with namespace
+    const svgNS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(svgNS, "svg");
+    svg.setAttribute("width", "60");
+    svg.setAttribute("height", "60");
+    svg.setAttribute("viewBox", "0 0 80 80");
+
+    // Create background circle
+    const backgroundCircle = document.createElementNS(svgNS, "circle");
+    backgroundCircle.setAttribute("cx", "40");
+    backgroundCircle.setAttribute("cy", "40");
+    backgroundCircle.setAttribute("r", "35");
+    backgroundCircle.setAttribute("fill", "none");
+    backgroundCircle.setAttribute("stroke", "var(--background-modifier-border)");
+    backgroundCircle.setAttribute("stroke-width", "5");
+
+    // Create progress circle
+    const progressCircle = document.createElementNS(svgNS, "circle");
+    progressCircle.setAttribute("cx", "40");
+    progressCircle.setAttribute("cy", "40");
+    progressCircle.setAttribute("r", "35");
+    progressCircle.setAttribute("fill", "none");
+    progressCircle.setAttribute("stroke", "var(--interactive-accent)");
+    progressCircle.setAttribute("stroke-width", "5");
+    progressCircle.setAttribute("stroke-dasharray", "220");
+    progressCircle.setAttribute("stroke-dashoffset", (220 - (220 * livedPercentage) / 100).toString());
+    progressCircle.setAttribute("transform", "rotate(-90 40 40)");
+
+    // Add circles to SVG
+    svg.appendChild(backgroundCircle);
+    svg.appendChild(progressCircle);
+
+    // Add SVG to container
+    circleContainer.appendChild(svg);
+
+    // Create percentage text
+    const percentText = document.createElement("div");
+    percentText.className = "chronica-circular-progress-text";
+    percentText.textContent = `${progressValue}%`;
+
+    // Add text to container
+    circleContainer.appendChild(percentText);
 
     // Create bar and text on the right
     const barContainer = progressContainer.createEl("div", {
