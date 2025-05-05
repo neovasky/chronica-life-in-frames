@@ -3720,9 +3720,30 @@ class ChronosTimelineView extends ItemView {
       sidebarEl.classList.toggle("expanded", this.isSidebarOpen);
 
       // Update toggle icon
-      sidebarToggle.innerHTML = this.isSidebarOpen
-        ? `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>`
-        : `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>`;
+      sidebarToggle.empty();
+
+      // Create SVG element with namespace
+      const sidebarSvgNS = "http://www.w3.org/2000/svg";
+      const sidebarSvg = document.createElementNS(sidebarSvgNS, "svg");
+      sidebarSvg.setAttribute("width", "18");
+      sidebarSvg.setAttribute("height", "18");
+      sidebarSvg.setAttribute("viewBox", "0 0 24 24");
+      sidebarSvg.setAttribute("fill", "none");
+      sidebarSvg.setAttribute("stroke", "currentColor");
+      sidebarSvg.setAttribute("stroke-width", "2");
+      sidebarSvg.setAttribute("stroke-linecap", "round");
+      sidebarSvg.setAttribute("stroke-linejoin", "round");
+
+      // Create path element based on sidebar state
+      const sidebarPath = document.createElementNS(sidebarSvgNS, "path");
+      sidebarPath.setAttribute(
+        "d",
+        this.isSidebarOpen ? "M15 18l-6-6 6-6" : "M9 18l6-6-6-6"
+      );
+      sidebarSvg.appendChild(sidebarPath);
+
+      // Add SVG to the button
+      sidebarToggle.appendChild(sidebarSvg);
 
       sidebarToggle.setAttribute(
         "title",
