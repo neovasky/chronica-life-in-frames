@@ -1100,6 +1100,21 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
         return { week: weekNumber, year: weekYear };
     }
     /**
+     * Check if a year has 53 ISO weeks
+     * @param year - Calendar year to check
+     * @returns True if the year has 53 ISO weeks, false if it has 52
+     */
+    hasISOWeek53(year) {
+        // A year has 53 weeks if:
+        // 1. The year starts on a Thursday, OR
+        // 2. The year starts on a Wednesday and it's a leap year
+        const jan1 = new Date(year, 0, 1);
+        const jan1DayOfWeek = jan1.getDay(); // 0-6, 0 = Sunday, 4 = Thursday
+        // Check if it's a leap year
+        const isLeapYear = new Date(year, 1, 29).getMonth() === 1;
+        return jan1DayOfWeek === 4 || (jan1DayOfWeek === 3 && isLeapYear);
+    }
+    /**
      * Get the ISO week and year for a given date following strict ISO 8601 standard
      * @param date - Date to calculate for
      * @returns Object with week number and correct ISO year
@@ -1143,6 +1158,26 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
      */
     getISOWeekNumber(date) {
         return this.getISOWeekData(date).week;
+    }
+    /**
+     * Get all ISO week numbers in a year
+     * @param year - Calendar year to check
+     * @returns Array of all ISO week numbers that appear in the year
+     */
+    getISOWeeksInYear(year) {
+        const weeks = new Set();
+        // Check every day of the year
+        const startDate = new Date(year, 0, 1); // Jan 1
+        const endDate = new Date(year, 11, 31); // Dec 31
+        // Iterate through each day
+        const currentDate = new Date(startDate);
+        while (currentDate <= endDate) {
+            const { week } = this.getISOWeekData(currentDate);
+            weeks.add(week);
+            // Move to next day
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
+        return Array.from(weeks).sort((a, b) => a - b);
     }
     /**
      * Get week key in YYYY-WXX format from date with corrected year
@@ -1282,9 +1317,10 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
     /**
      * Calculate date range for a given week key
      * @param weekKey - Week key in YYYY-WXX format
+     * @param adjustedRange - Whether to use adjusted range for cells in 53-week years
      * @returns String with formatted date range
      */
-    getWeekDateRange(weekKey) {
+    getWeekDateRange(weekKey, adjustedRange = false) {
         const parts = weekKey.split("-W");
         if (parts.length !== 2)
             return "";
@@ -1297,9 +1333,27 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
         // Calculate the first day of the target week
         const firstDayOfWeek = new Date(week1Start);
         firstDayOfWeek.setDate(week1Start.getDate() + (week - 1) * 7);
-        // Calculate the last day of the week (Sunday)
+        // Calculate the last day of the week (Sunday for standard 7-day week)
         const lastDayOfWeek = new Date(firstDayOfWeek);
-        lastDayOfWeek.setDate(firstDayOfWeek.getDate() + 6);
+        // If using adjusted ranges for 53-week years
+        if (adjustedRange && this.hasISOWeek53(year)) {
+            // Extend to cover slightly more than 7 days if needed
+            // This handles the case of an 8-day cell in 53-week years
+            lastDayOfWeek.setDate(firstDayOfWeek.getDate() + 7);
+            // Check if this date is actually in the next ISO week
+            const nextDayISOWeek = this.getISOWeekYearNumber(lastDayOfWeek);
+            const nextWeekStr = `${nextDayISOWeek.year}-W${nextDayISOWeek.week
+                .toString()
+                .padStart(2, "0")}`;
+            // If it's in the next week, adjust back by one day
+            if (nextWeekStr !== weekKey) {
+                lastDayOfWeek.setDate(lastDayOfWeek.getDate() - 1);
+            }
+        }
+        else {
+            // Standard 7-day week
+            lastDayOfWeek.setDate(firstDayOfWeek.getDate() + 6);
+        }
         // Format the dates
         const formatDate = (date) => {
             const months = [
@@ -3454,28 +3508,65 @@ class ChronosTimelineView extends obsidian.ItemView {
         const birthdayDate = new Date(year, month - 1, day); // Month is 0-indexed in JavaScript
         const ageInWeeks = this.plugin.getFullWeekAge(birthdayDate, now);
         const currentWeekKey = this.plugin.getWeekKeyFromDate(now);
-        // For each year of life (column)
+        /**
+         * Calculate weeks based on the birthday anniversary, not ISO calendar weeks
+         * This ensures we always have exactly 52 cells per year with no gaps
+         */
         for (let year = 0; year < this.plugin.settings.lifespan; year++) {
             // Get calendar year to display (birth year + year)
             const displayYear = birthdayDate.getFullYear() + year;
-            // Get birthday week information for this year
-            const birthdayWeekInfo = this.plugin.getBirthdayWeekForYear(displayYear);
-            // For each week in this year
-            for (let week = 0; week < 52; week++) {
-                const weekIndex = year * 52 + week;
+            // Create date for the person's birthday in this display year
+            const yearBirthday = new Date(birthdayDate);
+            yearBirthday.setFullYear(displayYear);
+            // Find the week containing the birthday
+            const startDayOfWeek = this.plugin.settings.startWeekOnMonday ? 1 : 0; // 0 = Sunday, 1 = Monday
+            // Find the first day of the week containing the birthday
+            const birthdayWeekStart = new Date(yearBirthday);
+            const birthdayDayOfWeek = birthdayWeekStart.getDay(); // 0-6, 0 = Sunday
+            // Calculate days to subtract to get to start of the week
+            let daysToSubtract = birthdayDayOfWeek - startDayOfWeek;
+            if (daysToSubtract < 0)
+                daysToSubtract += 7;
+            birthdayWeekStart.setDate(birthdayWeekStart.getDate() - daysToSubtract);
+            // Create date for the person's next birthday
+            const nextBirthday = new Date(birthdayDate);
+            nextBirthday.setFullYear(displayYear + 1);
+            // For each week in this year (always 52 cells)
+            for (let cellIndex = 0; cellIndex < 52; cellIndex++) {
+                const weekIndex = year * 52 + cellIndex;
                 const cell = gridEl.createEl("div", { cls: "chronica-grid-cell" });
-                // Calculate the date for this week relative to the birthday week start
-                const cellDate = new Date(birthdayWeekInfo.weekStart);
-                cellDate.setDate(cellDate.getDate() + week * 7);
-                // Get calendar information for display
-                const { week: cellWeek, year: isoYear } = this.plugin.getISOWeekYearNumber(cellDate);
-                const weekKey = `${isoYear}-W${cellWeek.toString().padStart(2, "0")}`;
+                // Calculate start date for this cell
+                const cellStartDate = new Date(birthdayWeekStart);
+                cellStartDate.setDate(birthdayWeekStart.getDate() + cellIndex * 7);
+                // Calculate end date for this cell (6 days later = full week)
+                const cellEndDate = new Date(cellStartDate);
+                cellEndDate.setDate(cellStartDate.getDate() + 6);
+                // For years with 53 weeks, special handling for the last few cells
+                const totalDays = Math.round((nextBirthday.getTime() - birthdayWeekStart.getTime()) /
+                    (1000 * 60 * 60 * 24));
+                // If we're near the end of the year and there are more than 52*7 days
+                // in this year, we need to adjust the last cell to cover the remainder
+                if (cellIndex === 51 && totalDays > 52 * 7) {
+                    // Extend the last cell to include remaining days before next birthday
+                    const lastCellStart = new Date(birthdayWeekStart);
+                    lastCellStart.setDate(birthdayWeekStart.getDate() + 51 * 7);
+                    // The last cell extends to the day before the next birthday week starts
+                    const nextBirthdayWeekStart = new Date(nextBirthday);
+                    const nextBirthdayDayOfWeek = nextBirthdayWeekStart.getDay();
+                    let nextDaysToSubtract = nextBirthdayDayOfWeek - startDayOfWeek;
+                    if (nextDaysToSubtract < 0)
+                        nextDaysToSubtract += 7;
+                    nextBirthdayWeekStart.setDate(nextBirthdayWeekStart.getDate() - nextDaysToSubtract);
+                    // Set the cell end date to the day before the next birthday week
+                    cellEndDate.setTime(nextBirthdayWeekStart.getTime() - 24 * 60 * 60 * 1000);
+                }
+                // Get the ISO week information for visualization and note linking
+                const isoWeekInfo = this.plugin.getISOWeekData(cellStartDate);
+                const weekKey = `${isoWeekInfo.year}-W${isoWeekInfo.week
+                    .toString()
+                    .padStart(2, "0")}`;
                 cell.dataset.weekKey = weekKey;
-                // Calculate the date range directly from the actual cell date
-                const firstDayOfWeek = new Date(cellDate);
-                const lastDayOfWeek = new Date(cellDate);
-                lastDayOfWeek.setDate(firstDayOfWeek.getDate() + 6);
-                // Format the dates
+                // Format the dates for display
                 const formatDate = (date) => {
                     const months = [
                         "Jan",
@@ -3493,14 +3584,14 @@ class ChronosTimelineView extends obsidian.ItemView {
                     ];
                     return `${months[date.getMonth()]} ${date.getDate()}`;
                 };
-                const dateRange = `${formatDate(firstDayOfWeek)} - ${formatDate(lastDayOfWeek)}`;
-                cell.setAttribute("title", `Week ${cellWeek}, ${isoYear}\n${dateRange}`);
+                const dateRange = `${formatDate(cellStartDate)} - ${formatDate(cellEndDate)}`;
+                cell.setAttribute("title", `Week ${isoWeekInfo.week}, ${isoWeekInfo.year}\n${dateRange}`);
                 // Position the cell with absolute positioning
                 cell.style.position = "absolute";
                 // Calculate year position with decade spacing
                 const yearPos = this.plugin.calculateYearPosition(year, cellSize, regularGap);
-                // Calculate week position (simple)
-                const weekPos = week * (cellSize + regularGap);
+                // Calculate week position
+                const weekPos = cellIndex * (cellSize + regularGap);
                 // Position based on orientation
                 if (this.plugin.settings.gridOrientation === "landscape") {
                     // Landscape mode (default): years as columns, weeks as rows
@@ -3512,7 +3603,7 @@ class ChronosTimelineView extends obsidian.ItemView {
                     cell.style.left = `${weekPos}px`;
                     cell.style.top = `${yearPos}px`;
                 }
-                // Explicitly set width and height (previously handled by grid)
+                // Explicitly set width and height
                 cell.style.width = `${cellSize}px`;
                 cell.style.height = `${cellSize}px`;
                 // Color coding (past, present, future)
@@ -3522,7 +3613,7 @@ class ChronosTimelineView extends obsidian.ItemView {
                 if (isCurrentWeek) {
                     cell.addClass("present");
                 }
-                else if (cellDate < now) {
+                else if (cellStartDate < now) {
                     cell.addClass("past");
                 }
                 else {
@@ -3533,14 +3624,16 @@ class ChronosTimelineView extends obsidian.ItemView {
                     if (isCurrentWeek) {
                         cell.style.backgroundColor = this.plugin.settings.presentCellColor;
                     }
-                    else if (cellDate < now) {
+                    else if (cellStartDate < now) {
                         cell.style.backgroundColor = this.plugin.settings.pastCellColor;
                     }
                     else {
                         cell.style.backgroundColor = this.plugin.settings.futureCellColor;
                     }
                 }
+                // Keep the event handlers the same
                 cell.addEventListener("click", async (event) => {
+                    // Event handling code remains the same
                     if (!this.plugin.settings.hasSeenFolders) {
                         const modal = new ChronosFolderSelectionModal(this.app, this.plugin);
                         modal.open();
