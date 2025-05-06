@@ -581,7 +581,12 @@
   position: absolute;
   left: var(--position-left);
   top: var(--position-top);
+  right: var(--position-right);
   transform: var(--transform-value);
+}
+
+.chronica-transformed {
+  transform: none !important;
 }
 
 /* Elements with dynamic sizes */
@@ -940,6 +945,17 @@
   height: var(--top-offset);
   display: block; /* Change from flex to block */
   padding-top: 5px;
+}
+
+.chronica-status-indicator {
+  font-style: italic;
+  margin-top: 5px;
+  color: var(--text-muted);
+}
+
+/* Birth‐month highlight (also handles font weight) */
+.chronica-month-marker.birth-month {
+  font-weight: 500;
 }
 
 /* -----------------------------------------------------------------------------

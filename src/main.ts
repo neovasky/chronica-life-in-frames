@@ -61,6 +61,10 @@ interface ChronosSettings {
   /** Travel events */
   blueEvents: string[];
 
+  /** Enable Zoom */
+
+  enableZoom: boolean;
+
   /** Current zoom level (1.0 is default, higher values = larger cells) */
   zoomLevel: number;
 
@@ -256,6 +260,7 @@ const DEFAULT_SETTINGS: ChronosSettings = {
   autoFillDay: 1, // Monday by default
   filledWeeks: [],
   startWeekOnMonday: true,
+  enableZoom: true,
   zoomLevel: 1.0,
   defaultFitToScreen: false,
   isSidebarOpen: false,
@@ -441,6 +446,15 @@ export default class ChronosTimelinePlugin extends Plugin {
    * Plugin initialization on load
    */
   async onload(): Promise<void> {
+
+    const styleEl = document.createElement("style");
+    styleEl.textContent = [
+      '.chronica-color-major-life { background-color: #4CAF50; }',
+      '.chronica-color-travel { background-color: #2196F3; }',
+      '.chronica-color-relationship { background-color: #E91E63; }',
+      '.chronica-color-education-career { background-color: #D2B55B; }',
+    ].join("\n");
+    document.head.appendChild(styleEl);
 
     // 1) Register the timeline view exactly once
     try {
@@ -2621,9 +2635,8 @@ class ChronosEventModal extends Modal {
 
     // Container for date range inputs
     const rangeDateContainer = contentEl.createDiv({
-      cls: "range-date-container",
+      cls: "range-date-container chronica-hidden",
     });
-    rangeDateContainer.style.display = "none";
 
     const startDateSetting = new Setting(rangeDateContainer)
       .setName("Start Date")
@@ -2664,21 +2677,21 @@ class ChronosEventModal extends Modal {
     });
 
     // Add listeners to toggle between single date and range inputs
-    singleDateRadio.addEventListener("change", () => {
-      if (singleDateRadio.checked) {
-        this.isDateRange = false;
-        singleDateContainer.style.display = "block";
-        rangeDateContainer.style.display = "none";
-      }
-    });
+      singleDateRadio.addEventListener("change", () => {
+        if (singleDateRadio.checked) {
+          this.isDateRange = false;
+          singleDateContainer.classList.remove("chronica-hidden");
+          rangeDateContainer.classList.add("chronica-hidden");
+        }
+      });
 
-    rangeDateRadio.addEventListener("change", () => {
-      if (rangeDateRadio.checked) {
-        this.isDateRange = true;
-        singleDateContainer.style.display = "none";
-        rangeDateContainer.style.display = "block";
-      }
-    });
+      rangeDateRadio.addEventListener("change", () => {
+        if (rangeDateRadio.checked) {
+          this.isDateRange = true;
+          singleDateContainer.classList.add("chronica-hidden");
+          rangeDateContainer.classList.remove("chronica-hidden");
+        }
+      });
 
     contentEl.appendChild(singleDateContainer);
     contentEl.appendChild(rangeDateContainer);
@@ -2752,11 +2765,11 @@ class ChronosEventModal extends Modal {
         radioBtn.checked = true;
       }
 
+      const className = `chronica-color-${type.name.replace(/\s+/g, "-").toLowerCase()}`;
       const colorBox = radioLabel.createEl("span", {
-        cls: "chronica-color-box",
+        cls: ["chronica-color-box", className],
       });
 
-      colorBox.style.backgroundColor = type.color;
       radioLabel.createEl("span", { text: type.name });
 
       radioBtn.addEventListener("change", () => {
@@ -2787,12 +2800,9 @@ class ChronosEventModal extends Modal {
       }
     });
 
-    // Custom type settings (initially hidden)
     const customTypeSettings = contentEl.createDiv({
-      cls: "chronica-custom-type-settings",
+      cls: "chronica-custom-type-settings chronica-hidden",
     });
-
-    customTypeSettings.style.display = "none";
 
     new Setting(customTypeSettings)
       .setName("Custom Type Name")
@@ -2838,7 +2848,8 @@ class ChronosEventModal extends Modal {
     );
 
     if (customSettings) {
-      (customSettings as HTMLElement).style.display = show ? "block" : "none";
+      const el = customSettings as HTMLElement;
+      el.classList.toggle("chronica-hidden", !show);
     }
   }
 
@@ -3367,9 +3378,6 @@ class ChronosTimelineView extends ItemView {
         "--stats-panel-width",
         `${newWidth}px`
       );
-      statsPanel.style.width = `${newWidth}px`;
-      statsPanel.style.minWidth = `${newWidth}px`;
-      statsPanel.style.maxWidth = `${newWidth}px`;
 
       this.plugin.settings.statsPanelWidth = newWidth;
     };
@@ -3394,9 +3402,6 @@ class ChronosTimelineView extends ItemView {
         "--stats-panel-width",
         `${newWidth}px`
       );
-      statsPanel.style.width = `${newWidth}px`;
-      statsPanel.style.minWidth = `${newWidth}px`;
-      statsPanel.style.maxWidth = `${newWidth}px`;
 
       this.plugin.settings.statsPanelWidth = newWidth;
     };
@@ -3825,14 +3830,12 @@ class ChronosTimelineView extends ItemView {
     });
     // append “zoom out” SVG icon without using innerHTML
     const parserZoomOut = new DOMParser();
-    const zoomOutSvgDoc = parserZoomOut.parseFromString(
-      `<svg xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="11" cy="11" r="8"></circle>
-        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-        <line x1="8" y1="11" x2="14" y2="11"></line>
-      </svg>`,
-      "image/svg+xml"
-    );
+    const zoomOutSvgString = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="11" cy="11" r="8"></circle>
+      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      <line x1="8" y1="11" x2="14" y2="11"></line>
+    </svg>`;
+    const zoomOutSvgDoc = parserZoomOut.parseFromString(zoomOutSvgString, "image/svg+xml");
     zoomOutBtn.appendChild(zoomOutSvgDoc.documentElement);
     zoomOutBtn.addEventListener("click", () => {
       this.zoomOut();
@@ -3871,16 +3874,15 @@ class ChronosTimelineView extends ItemView {
     });
     // append “zoom in” SVG icon without using innerHTML
     const parserZoomIn = new DOMParser();
-    const zoomInSvgDoc = parserZoomIn.parseFromString(
-      `<svg xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="11" cy="11" r="8"></circle>
-        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-        <line x1="11" y1="8" x2="11" y2="14"></line>
-        <line x1="8" y1="11" x2="14" y2="11"></line>
-      </svg>`,
-      "image/svg+xml"
-    );
+    const zoomInSvgString = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="11" cy="11" r="8"></circle>
+      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      <line x1="11" y1="8" x2="11" y2="14"></line>
+      <line x1="8" y1="11" x2="14" y2="11"></line>
+    </svg>`;
+    const zoomInSvgDoc = parserZoomIn.parseFromString(zoomInSvgString, "image/svg+xml");
     zoomInBtn.appendChild(zoomInSvgDoc.documentElement);
+
     zoomInBtn.addEventListener("click", () => {
       this.zoomIn();
     });
@@ -4319,8 +4321,8 @@ collapsedToggle.appendChild(collapsedSvg);
       ".chronica-decade-markers"
     ) as HTMLElement;
 
-    if (gridEl) gridEl.style.transform = "";
-    if (decadeMarkers) decadeMarkers.style.transform = "";
+    if (gridEl) gridEl.classList.remove("chronica-transformed");
+    if (decadeMarkers) decadeMarkers.classList.remove("chronica-transformed");
   }
 
   /**
@@ -4358,7 +4360,7 @@ collapsedToggle.appendChild(collapsedSvg);
       if (gridEl) (gridEl as HTMLElement).style.transform = "";
       if (decadeMarkers) (decadeMarkers as HTMLElement).style.transform = "";
       if (verticalMarkers)
-        (verticalMarkers as HTMLElement).style.transform = "";
+        (verticalMarkers as HTMLElement).classList.remove("chronica-transformed");
 
       // Clear the view and re-render
       viewEl.empty();
@@ -4396,21 +4398,19 @@ collapsedToggle.appendChild(collapsedSvg);
         cls: `chronica-decade-markers ${isPortrait ? "portrait-mode" : ""}`,
       });
 
-      if (!isPortrait) {
-        decadeMarkersContainer.style.setProperty('--position-left', `${leftOffset}px`);
-        decadeMarkersContainer.addClass("chronica-position-dynamic");
-      }
-
       // Add decade markers starting from 10 (skipping 0)
       // Create decade markers container (horizontal markers above the grid)
-      if (this.plugin.settings.showDecadeMarkers) {
+    if (this.plugin.settings.showDecadeMarkers) {
         const isPortrait = this.plugin.settings.gridOrientation === "portrait";
         const decadeMarkersContainer = container.createEl("div", {
           cls: `chronica-decade-markers ${isPortrait ? "portrait-mode" : ""}`,
         });
 
         if (!isPortrait) {
-          decadeMarkersContainer.style.setProperty('--position-left', `${leftOffset}px`);
+          decadeMarkersContainer.style.setProperty(
+            "--position-left",
+            `${leftOffset}px`
+          );
           decadeMarkersContainer.addClass("chronica-position-dynamic");
         }
 
@@ -4468,10 +4468,6 @@ collapsedToggle.appendChild(collapsedSvg);
         cls: "chronica-birthday-marker-container",
       });
 
-      // Position the container near the grid
-      birthdayMarkerContainer.style.position = "absolute";
-      birthdayMarkerContainer.style.zIndex = "15"; // Ensure visibility above other elements
-
       // Create cake icon for birthday
       const cakeSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f48fb1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8"/><path d="M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4 2 2-1 2-1"/><path d="M2 21h20"/><path d="M7 8v2"/><path d="M12 8v2"/><path d="M17 8v2"/><path d="M7 4h.01"/><path d="M12 4h.01"/><path d="M17 4h.01"/></svg>`;
 
@@ -4519,15 +4515,18 @@ collapsedToggle.appendChild(collapsedSvg);
           cellSize / 2 -
           (cellSize + cellGap) -
           (cellSize + cellGap);
-        if (isPortrait) {
-          marker.style.left = `${position + 6.5}px`;
-          marker.style.top = "10px"; // Fixed position from the top
-          marker.style.transform = "none"; // Remove any transforms
-        } else {
-          marker.style.top = `${position}px`;
-          marker.style.left = "auto";
-          marker.style.right = "4px";
-        }
+          if (isPortrait) {
+            marker.classList.add("chronica-position-dynamic");
+            marker.style.setProperty("--position-left", `${position + 6.5}px`);
+            marker.style.setProperty("--position-top", "10px");
+            marker.style.setProperty("--transform-value", "none");
+          } else {
+            marker.classList.add("chronica-position-dynamic");
+            marker.style.setProperty("--position-top",  `${position}px`);
+            marker.style.setProperty("--position-left", "auto");
+            marker.style.setProperty("--position-right","4px");
+            marker.style.setProperty("--transform-value","none");
+          }
       }
     }
 
@@ -4629,14 +4628,17 @@ collapsedToggle.appendChild(collapsedSvg);
         if (isPortrait) {
           if (marker.monthNumber !== undefined) {
             // Calculate position based on month number for even spacing
-            const weekPosition = marker.weekIndex % 52;
-            markerEl.style.left = `${
-              weekPosition * (cellSize + cellGap) +
-              (cellSize + cellGap) +
-              cellSize / 2
-            }px`;
-            markerEl.style.top = `10px`; // Fixed distance from the top
-            markerEl.style.transform = "translateX(-50%)"; // Center marker on its position
+            markerEl.classList.add("chronica-position-dynamic");
+            markerEl.style.setProperty(
+              "--position-left",
+              `${
+                marker.monthNumber! * (cellSize + cellGap) +
+                (cellSize + cellGap) +
+                cellSize / 2
+              }px`
+            );
+            markerEl.style.setProperty("--position-top", "10px");
+            markerEl.style.setProperty("--transform-value", "translateX(-50%)");
           } else {
             // Original landscape positioning logic
             markerEl.style.top = `${
@@ -4644,8 +4646,13 @@ collapsedToggle.appendChild(collapsedSvg);
             }px`;
           }
 
-          markerEl.style.top = `${leftOffset - 80}px`;
-          markerEl.style.transform = "translateX(0)"; // Changed from 110% to prevent overlap
+            // update CSS vars for the shifted marker
+            markerEl.style.setProperty(
+              "--position-top",
+              `${leftOffset - 80}px`
+            );
+            markerEl.style.setProperty("--transform-value", "translateX(0)");
+
         } else {
           markerEl.style.top = `${
             marker.weekIndex * (cellSize + cellGap) + cellSize / 2
@@ -4654,8 +4661,7 @@ collapsedToggle.appendChild(collapsedSvg);
 
         // Special styling for birth month
         if (monthIndex === birthMonth && !markerEl.querySelector("svg")) {
-          markerEl.style.color = "#e91e63"; // Pink color
-          markerEl.style.fontWeight = "500";
+          markerEl.classList.add("birth-month");
         }
       }
     }
@@ -5222,7 +5228,7 @@ collapsedToggle.appendChild(collapsedSvg);
       );
 
       // Update panel height and position
-      statsPanel.style.height = `${newHeight}px`;
+      statsPanel.style.setProperty("--chronica-height", `${newHeight}px`);
       statsPanel.style.transform = `translateX(calc(-50% + ${newOffset}px))`;
 
       // Update the handle position to match
@@ -5304,13 +5310,7 @@ collapsedToggle.appendChild(collapsedSvg);
 
     // Set height based on panel state
     if (this.isStatsOpen) {
-      contentArea.classList.add("stats-expanded");
-      statsPanel.style.height = `${panelHeight}px`;
-      statsPanel.style.width = `${this.plugin.settings.statsPanelWidth}px`;
     } else {
-      contentArea.classList.remove("stats-expanded");
-      statsPanel.style.height = "0";
-      contentArea.style.paddingBottom = "0";
     }
   }
 
@@ -7404,7 +7404,7 @@ class MarkerSettingsModal extends Modal {
     // Show or hide frequency dropdown based on month markers toggle
     monthMarkerSetting.setClass("month-marker-frequency");
     if (!this.plugin.settings.showMonthMarkers) {
-      monthMarkerSetting.settingEl.style.display = "none";
+      monthMarkerSetting.settingEl.addClass("chronica-hidden");
     }
 
     // Close button
@@ -7859,7 +7859,7 @@ class ChronosSettingTab extends PluginSettingTab {
       });
     // Hide event folder selector if separate folders not enabled
     if (!this.plugin.settings.useSeparateFolders) {
-      eventFolderSetting.settingEl.style.display = "none";
+      eventFolderSetting.settingEl.classList.add("chronica-hidden");
     }
 
     // Quote setting
@@ -7921,13 +7921,14 @@ class ChronosSettingTab extends PluginSettingTab {
             this.refreshAllViews();
 
             // Show/hide month marker frequency setting based on toggle state
-            const freqSetting = containerEl.querySelector(
+            const freqEl = containerEl.querySelector(
               ".month-marker-frequency"
-            );
-            if (freqSetting) {
-              (freqSetting as HTMLElement).style.display = value
-                ? "flex"
-                : "none";
+            ) as HTMLElement;
+            if (freqEl) {
+              freqEl.classList.toggle(
+                "chronica-hidden",
+                !this.plugin.settings.showMonthMarkers
+              );
             }
           })
       );
@@ -8024,13 +8025,14 @@ class ChronosSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
 
             // Show/hide day selector based on toggle state
-            const daySelector = containerEl.querySelector(
+            const dayEl = containerEl.querySelector(
               ".auto-fill-day-selector"
-            );
-            if (daySelector) {
-              (daySelector as HTMLElement).style.display = value
-                ? "flex"
-                : "none";
+            ) as HTMLElement;
+            if (dayEl) {
+              dayEl.classList.toggle(
+                "chronica-hidden",
+                !this.plugin.settings.enableAutoFill
+              );
             }
 
             // Add status indicator text
@@ -8047,9 +8049,7 @@ class ChronosSettingTab extends PluginSettingTab {
                   ? "Auto-fill is active. Weeks will be filled automatically."
                   : "Manual fill is active. Right-click on future weeks to mark them as filled.",
               });
-              statusEl.style.fontStyle = "italic";
-              statusEl.style.marginTop = "5px";
-              statusEl.style.color = "var(--text-muted)";
+              statusEl.classList.add("chronica-status-indicator");
             }
 
             this.refreshAllViews();
@@ -8276,9 +8276,11 @@ class ChronosSettingTab extends PluginSettingTab {
                 ".auto-fill-day-selector"
               );
               if (daySelector) {
-                (daySelector as HTMLElement).style.display = value
-                  ? "flex"
-                  : "none";
+                const daySelectorSetting = daySelector as unknown as Setting;
+                daySelectorSetting.settingEl.classList.toggle(
+                  "chronica-hidden",
+                  !this.plugin.settings.showMonthMarkers
+                );
               }
             })
         );
@@ -8388,8 +8390,9 @@ class ChronosSettingTab extends PluginSettingTab {
 
       // Hide zoom setting if fit to screen is enabled
       if (this.plugin.settings.defaultFitToScreen) {
-        zoomSetting.settingEl.style.display = "none";
-      }
+        const zoomEl = zoomSetting.settingEl as HTMLElement;
+        zoomEl.classList.toggle("chronica-hidden", !this.plugin.settings.enableZoom);
+            }
 
       new Setting(containerEl)
         .setName("Grid Orientation")

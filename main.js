@@ -83,6 +83,7 @@ const DEFAULT_SETTINGS = {
     autoFillDay: 1,
     filledWeeks: [],
     startWeekOnMonday: true,
+    enableZoom: true,
     zoomLevel: 1.0,
     defaultFitToScreen: false,
     isSidebarOpen: false,
@@ -239,6 +240,14 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
      * Plugin initialization on load
      */
     async onload() {
+        const styleEl = document.createElement("style");
+        styleEl.textContent = [
+            '.chronica-color-major-life { background-color: #4CAF50; }',
+            '.chronica-color-travel { background-color: #2196F3; }',
+            '.chronica-color-relationship { background-color: #E91E63; }',
+            '.chronica-color-education-career { background-color: #D2B55B; }',
+        ].join("\n");
+        document.head.appendChild(styleEl);
         // 1) Register the timeline view exactly once
         try {
             this.registerView(TIMELINE_VIEW_TYPE, (leaf) => new ChronosTimelineView(leaf, this));
@@ -1979,9 +1988,8 @@ class ChronosEventModal extends obsidian.Modal {
         });
         // Container for date range inputs
         const rangeDateContainer = contentEl.createDiv({
-            cls: "range-date-container",
+            cls: "range-date-container chronica-hidden",
         });
-        rangeDateContainer.style.display = "none";
         const startDateSetting = new obsidian.Setting(rangeDateContainer)
             .setName("Start Date")
             .setDesc("Enter the first date of the event range");
@@ -2018,15 +2026,15 @@ class ChronosEventModal extends obsidian.Modal {
         singleDateRadio.addEventListener("change", () => {
             if (singleDateRadio.checked) {
                 this.isDateRange = false;
-                singleDateContainer.style.display = "block";
-                rangeDateContainer.style.display = "none";
+                singleDateContainer.classList.remove("chronica-hidden");
+                rangeDateContainer.classList.add("chronica-hidden");
             }
         });
         rangeDateRadio.addEventListener("change", () => {
             if (rangeDateRadio.checked) {
                 this.isDateRange = true;
-                singleDateContainer.style.display = "none";
-                rangeDateContainer.style.display = "block";
+                singleDateContainer.classList.add("chronica-hidden");
+                rangeDateContainer.classList.remove("chronica-hidden");
             }
         });
         contentEl.appendChild(singleDateContainer);
@@ -2083,10 +2091,10 @@ class ChronosEventModal extends obsidian.Modal {
             if (type.name === this.selectedEventType) {
                 radioBtn.checked = true;
             }
-            const colorBox = radioLabel.createEl("span", {
-                cls: "chronica-color-box",
+            const className = `chronica-color-${type.name.replace(/\s+/g, "-").toLowerCase()}`;
+            radioLabel.createEl("span", {
+                cls: ["chronica-color-box", className],
             });
-            colorBox.style.backgroundColor = type.color;
             radioLabel.createEl("span", { text: type.name });
             radioBtn.addEventListener("change", () => {
                 if (radioBtn.checked) {
@@ -2112,11 +2120,9 @@ class ChronosEventModal extends obsidian.Modal {
                 this.updateCustomTypeVisibility(contentEl, true);
             }
         });
-        // Custom type settings (initially hidden)
         const customTypeSettings = contentEl.createDiv({
-            cls: "chronica-custom-type-settings",
+            cls: "chronica-custom-type-settings chronica-hidden",
         });
-        customTypeSettings.style.display = "none";
         new obsidian.Setting(customTypeSettings)
             .setName("Custom Type Name")
             .setDesc("Enter a name for your custom event type")
@@ -2150,7 +2156,8 @@ class ChronosEventModal extends obsidian.Modal {
     updateCustomTypeVisibility(contentEl, show) {
         const customSettings = contentEl.querySelector(".chronica-custom-type-settings");
         if (customSettings) {
-            customSettings.style.display = show ? "block" : "none";
+            const el = customSettings;
+            el.classList.toggle("chronica-hidden", !show);
         }
     }
     /**
@@ -2918,11 +2925,12 @@ class ChronosTimelineView extends obsidian.ItemView {
         });
         // append “zoom out” SVG icon without using innerHTML
         const parserZoomOut = new DOMParser();
-        const zoomOutSvgDoc = parserZoomOut.parseFromString(`<svg xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="11" cy="11" r="8"></circle>
-        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-        <line x1="8" y1="11" x2="14" y2="11"></line>
-      </svg>`, "image/svg+xml");
+        const zoomOutSvgString = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="11" cy="11" r="8"></circle>
+      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      <line x1="8" y1="11" x2="14" y2="11"></line>
+    </svg>`;
+        const zoomOutSvgDoc = parserZoomOut.parseFromString(zoomOutSvgString, "image/svg+xml");
         zoomOutBtn.appendChild(zoomOutSvgDoc.documentElement);
         zoomOutBtn.addEventListener("click", () => {
             this.zoomOut();
@@ -2958,12 +2966,13 @@ class ChronosTimelineView extends obsidian.ItemView {
         });
         // append “zoom in” SVG icon without using innerHTML
         const parserZoomIn = new DOMParser();
-        const zoomInSvgDoc = parserZoomIn.parseFromString(`<svg xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="11" cy="11" r="8"></circle>
-        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-        <line x1="11" y1="8" x2="11" y2="14"></line>
-        <line x1="8" y1="11" x2="14" y2="11"></line>
-      </svg>`, "image/svg+xml");
+        const zoomInSvgString = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="11" cy="11" r="8"></circle>
+      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      <line x1="11" y1="8" x2="11" y2="14"></line>
+      <line x1="8" y1="11" x2="14" y2="11"></line>
+    </svg>`;
+        const zoomInSvgDoc = parserZoomIn.parseFromString(zoomInSvgString, "image/svg+xml");
         zoomInBtn.appendChild(zoomInSvgDoc.documentElement);
         zoomInBtn.addEventListener("click", () => {
             this.zoomIn();
@@ -3311,9 +3320,9 @@ class ChronosTimelineView extends obsidian.ItemView {
         const gridEl = viewEl.querySelector(".chronica-grid");
         const decadeMarkers = viewEl.querySelector(".chronica-decade-markers");
         if (gridEl)
-            gridEl.style.transform = "";
+            gridEl.classList.remove("chronica-transformed");
         if (decadeMarkers)
-            decadeMarkers.style.transform = "";
+            decadeMarkers.classList.remove("chronica-transformed");
     }
     /**
      * Update zoom-affected elements with adjusted positioning
@@ -3343,7 +3352,7 @@ class ChronosTimelineView extends obsidian.ItemView {
             if (decadeMarkers)
                 decadeMarkers.style.transform = "";
             if (verticalMarkers)
-                verticalMarkers.style.transform = "";
+                verticalMarkers.classList.remove("chronica-transformed");
             // Clear the view and re-render
             viewEl.empty();
             this.renderWeeksGrid(viewEl);
@@ -3547,27 +3556,27 @@ class ChronosTimelineView extends obsidian.ItemView {
                 if (isPortrait) {
                     if (marker.monthNumber !== undefined) {
                         // Calculate position based on month number for even spacing
-                        const weekPosition = marker.weekIndex % 52;
-                        markerEl.style.left = `${weekPosition * (cellSize + cellGap) +
+                        markerEl.classList.add("chronica-position-dynamic");
+                        markerEl.style.setProperty("--position-left", `${marker.monthNumber * (cellSize + cellGap) +
                             (cellSize + cellGap) +
-                            cellSize / 2}px`;
-                        markerEl.style.top = `10px`; // Fixed distance from the top
-                        markerEl.style.transform = "translateX(-50%)"; // Center marker on its position
+                            cellSize / 2}px`);
+                        markerEl.style.setProperty("--position-top", "10px");
+                        markerEl.style.setProperty("--transform-value", "translateX(-50%)");
                     }
                     else {
                         // Original landscape positioning logic
                         markerEl.style.top = `${marker.weekIndex * (cellSize + cellGap) + cellSize / 2}px`;
                     }
-                    markerEl.style.top = `${leftOffset - 80}px`;
-                    markerEl.style.transform = "translateX(0)"; // Changed from 110% to prevent overlap
+                    // update CSS vars for the shifted marker
+                    markerEl.style.setProperty("--position-top", `${leftOffset - 80}px`);
+                    markerEl.style.setProperty("--transform-value", "translateX(0)");
                 }
                 else {
                     markerEl.style.top = `${marker.weekIndex * (cellSize + cellGap) + cellSize / 2}px`;
                 }
                 // Special styling for birth month
                 if (monthIndex === birthMonth && !markerEl.querySelector("svg")) {
-                    markerEl.style.color = "#e91e63"; // Pink color
-                    markerEl.style.fontWeight = "500";
+                    markerEl.classList.add("birth-month");
                 }
             }
         }
@@ -3998,7 +4007,7 @@ class ChronosTimelineView extends obsidian.ItemView {
             // Update CSS variable for height
             document.documentElement.style.setProperty("--stats-panel-height", `${newHeight}px`);
             // Update panel height and position
-            statsPanel.style.height = `${newHeight}px`;
+            statsPanel.style.setProperty("--chronica-height", `${newHeight}px`);
             statsPanel.style.transform = `translateX(calc(-50% + ${newOffset}px))`;
             // Update the handle position to match
             const statsHandle = this.containerEl.querySelector(".chronica-stats-handle");
@@ -6001,7 +6010,7 @@ class ChronosSettingTab extends obsidian.PluginSettingTab {
         });
         // Hide event folder selector if separate folders not enabled
         if (!this.plugin.settings.useSeparateFolders) {
-            eventFolderSetting.settingEl.style.display = "none";
+            eventFolderSetting.settingEl.classList.add("chronica-hidden");
         }
         // Quote setting
         new obsidian.Setting(containerEl)
@@ -6050,11 +6059,9 @@ class ChronosSettingTab extends obsidian.PluginSettingTab {
             await this.plugin.saveSettings();
             this.refreshAllViews();
             // Show/hide month marker frequency setting based on toggle state
-            const freqSetting = containerEl.querySelector(".month-marker-frequency");
-            if (freqSetting) {
-                freqSetting.style.display = value
-                    ? "flex"
-                    : "none";
+            const freqEl = containerEl.querySelector(".month-marker-frequency");
+            if (freqEl) {
+                freqEl.classList.toggle("chronica-hidden", !this.plugin.settings.showMonthMarkers);
             }
         }));
         // Month marker frequency setting
@@ -6128,11 +6135,9 @@ class ChronosSettingTab extends obsidian.PluginSettingTab {
             this.plugin.settings.enableManualFill = !value;
             await this.plugin.saveSettings();
             // Show/hide day selector based on toggle state
-            const daySelector = containerEl.querySelector(".auto-fill-day-selector");
-            if (daySelector) {
-                daySelector.style.display = value
-                    ? "flex"
-                    : "none";
+            const dayEl = containerEl.querySelector(".auto-fill-day-selector");
+            if (dayEl) {
+                dayEl.classList.toggle("chronica-hidden", !this.plugin.settings.enableAutoFill);
             }
             // Add status indicator text
             const statusIndicator = containerEl.querySelector(".fill-mode-status");
@@ -6148,9 +6153,7 @@ class ChronosSettingTab extends obsidian.PluginSettingTab {
                         ? "Auto-fill is active. Weeks will be filled automatically."
                         : "Manual fill is active. Right-click on future weeks to mark them as filled.",
                 });
-                statusEl.style.fontStyle = "italic";
-                statusEl.style.marginTop = "5px";
-                statusEl.style.color = "var(--text-muted)";
+                statusEl.classList.add("chronica-status-indicator");
             }
             this.refreshAllViews();
         }));
@@ -6334,9 +6337,8 @@ class ChronosSettingTab extends obsidian.PluginSettingTab {
                 // Show/hide day selector based on toggle state
                 const daySelector = containerEl.querySelector(".auto-fill-day-selector");
                 if (daySelector) {
-                    daySelector.style.display = value
-                        ? "flex"
-                        : "none";
+                    const daySelectorSetting = daySelector;
+                    daySelectorSetting.settingEl.classList.toggle("chronica-hidden", !this.plugin.settings.showMonthMarkers);
                 }
             }));
             // Auto-fill day selector
@@ -6424,7 +6426,8 @@ class ChronosSettingTab extends obsidian.PluginSettingTab {
             }));
             // Hide zoom setting if fit to screen is enabled
             if (this.plugin.settings.defaultFitToScreen) {
-                zoomSetting.settingEl.style.display = "none";
+                const zoomEl = zoomSetting.settingEl;
+                zoomEl.classList.toggle("chronica-hidden", !this.plugin.settings.enableZoom);
             }
             new obsidian.Setting(containerEl)
                 .setName("Grid Orientation")
