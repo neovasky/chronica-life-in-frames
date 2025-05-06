@@ -65,6 +65,10 @@ const DEFAULT_SETTINGS = {
     pastCellColor: "#6A7BA3",
     presentCellColor: "#a882ff",
     futureCellColor: "#d8e2e6",
+    majorLifeColor: "#4CAF50",
+    travelColor: "#2196F3",
+    RelationshipColor: "#e91e63",
+    CareerColor: "#d2b55b",
     greenEvents: [],
     blueEvents: [],
     pinkEvents: [],
@@ -101,10 +105,9 @@ const DEFAULT_SETTINGS = {
     eventNotesFolder: "",
     hasSeenWelcome: false,
     hasSeenFolders: false,
-    debugMode: false,
 };
 /** SVG icon for the Chronica Timeline */
-const CHRONOS_ICON = `<svg viewBox="0 0 100 100" width="100" height="100" xmlns="http://www.w3.org/2000/svg">
+const CHRONICA_ICON = `<svg viewBox="0 0 100 100" width="100" height="100" xmlns="http://www.w3.org/2000/svg">
   <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" stroke-width="4"/>
   <line x1="50" y1="15" x2="50" y2="50" stroke="currentColor" stroke-width="4"/>
   <line x1="50" y1="50" x2="75" y2="60" stroke="currentColor" stroke-width="4"/>
@@ -240,12 +243,19 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
      * Plugin initialization on load
      */
     async onload() {
+        // First, create CSS custom properties for colors
+        document.documentElement.style.setProperty('--chronica-event-major-life', this.settings.majorLifeColor);
+        document.documentElement.style.setProperty('--chronica-event-travel', this.settings.travelColor);
+        document.documentElement.style.setProperty('--chronica-event-relationship', this.settings.RelationshipColor);
+        document.documentElement.style.setProperty('--chronica-event-education-career', this.settings.CareerColor);
+        // Then update the style element to use these custom properties
         const styleEl = document.createElement("style");
         styleEl.textContent = [
-            '.chronica-color-major-life { background-color: #4CAF50; }',
-            '.chronica-color-travel { background-color: #2196F3; }',
-            '.chronica-color-relationship { background-color: #E91E63; }',
-            '.chronica-color-education-career { background-color: #D2B55B; }',
+            '.chronica-color-major-life { background-color: var(--chronica-event-major-life); }',
+            '.chronica-color-travel { background-color: var(--chronica-event-travel); }',
+            '.chronica-color-relationship { background-color: var(--chronica-event-relationship); }',
+            '.chronica-color-education-career { background-color: var(--chronica-event-education-career); }',
+            '.chronica-event-custom { border-width: 2px; border-style: solid; background-color: var(--custom-color); border-color: var(--custom-color); }',
         ].join("\n");
         document.head.appendChild(styleEl);
         // 1) Register the timeline view exactly once
@@ -315,8 +325,13 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
             }, 500);
         }
         // 4) Now your regular setup
-        obsidian.addIcon("chronica-icon", CHRONOS_ICON);
+        obsidian.addIcon("chronica-icon", CHRONICA_ICON);
         await this.loadSettings();
+        // Re-apply colors after loading settings to ensure they're up to date
+        document.documentElement.style.setProperty('--chronica-event-major-life', this.settings.majorLifeColor);
+        document.documentElement.style.setProperty('--chronica-event-travel', this.settings.travelColor);
+        document.documentElement.style.setProperty('--chronica-event-relationship', this.settings.RelationshipColor);
+        document.documentElement.style.setProperty('--chronica-event-education-career', this.settings.CareerColor);
         await this.scanVaultForEvents();
         this.addRibbonIcon("chronica-icon", "Open Chronica Timeline", () => {
             this.activateView();
@@ -2421,7 +2436,7 @@ class ChronicaWelcomeModal extends obsidian.Modal {
             cls: "chronica-welcome-icon",
         });
         const parser = new DOMParser();
-        const svgDoc = parser.parseFromString(CHRONOS_ICON, "image/svg+xml");
+        const svgDoc = parser.parseFromString(CHRONICA_ICON, "image/svg+xml");
         const svgNode = svgDoc.documentElement;
         iconEl.appendChild(svgNode);
         // Add title
@@ -2575,9 +2590,6 @@ class ChronosTimelineView extends obsidian.ItemView {
             const deltaX = startX - e.clientX;
             const newWidth = Math.max(400, Math.min(1200, startWidth + deltaX));
             document.documentElement.style.setProperty("--stats-panel-width", `${newWidth}px`);
-            statsPanel.style.width = `${newWidth}px`;
-            statsPanel.style.minWidth = `${newWidth}px`;
-            statsPanel.style.maxWidth = `${newWidth}px`;
             this.plugin.settings.statsPanelWidth = newWidth;
         };
         // Right handle drag (increases width)
@@ -2594,9 +2606,6 @@ class ChronosTimelineView extends obsidian.ItemView {
             const deltaX = e.clientX - startX;
             const newWidth = Math.max(400, Math.min(1200, startWidth + deltaX));
             document.documentElement.style.setProperty("--stats-panel-width", `${newWidth}px`);
-            statsPanel.style.width = `${newWidth}px`;
-            statsPanel.style.minWidth = `${newWidth}px`;
-            statsPanel.style.maxWidth = `${newWidth}px`;
             this.plugin.settings.statsPanelWidth = newWidth;
         };
         const onMouseUp = () => {
@@ -2923,15 +2932,37 @@ class ChronosTimelineView extends obsidian.ItemView {
             cls: "chronica-btn chronica-zoom-button",
             attr: { title: "Zoom Out" },
         });
-        // append “zoom out” SVG icon without using innerHTML
-        const parserZoomOut = new DOMParser();
-        const zoomOutSvgString = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="11" cy="11" r="8"></circle>
-      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-      <line x1="8" y1="11" x2="14" y2="11"></line>
-    </svg>`;
-        const zoomOutSvgDoc = parserZoomOut.parseFromString(zoomOutSvgString, "image/svg+xml");
-        zoomOutBtn.appendChild(zoomOutSvgDoc.documentElement);
+        // Create SVG element using DOM API
+        const zoomOutSvgNS = "http://www.w3.org/2000/svg";
+        const zoomOutSvg = document.createElementNS(zoomOutSvgNS, "svg");
+        zoomOutSvg.setAttribute("viewBox", "0 0 24 24");
+        zoomOutSvg.setAttribute("fill", "none");
+        zoomOutSvg.setAttribute("stroke", "currentColor");
+        zoomOutSvg.setAttribute("stroke-width", "2");
+        zoomOutSvg.setAttribute("stroke-linecap", "round");
+        zoomOutSvg.setAttribute("stroke-linejoin", "round");
+        // Create circle element
+        const zoomOutCircle = document.createElementNS(zoomOutSvgNS, "circle");
+        zoomOutCircle.setAttribute("cx", "11");
+        zoomOutCircle.setAttribute("cy", "11");
+        zoomOutCircle.setAttribute("r", "8");
+        zoomOutSvg.appendChild(zoomOutCircle);
+        // Create first line element
+        const zoomOutLine1 = document.createElementNS(zoomOutSvgNS, "line");
+        zoomOutLine1.setAttribute("x1", "21");
+        zoomOutLine1.setAttribute("y1", "21");
+        zoomOutLine1.setAttribute("x2", "16.65");
+        zoomOutLine1.setAttribute("y2", "16.65");
+        zoomOutSvg.appendChild(zoomOutLine1);
+        // Create second line element (minus sign)
+        const zoomOutLine2 = document.createElementNS(zoomOutSvgNS, "line");
+        zoomOutLine2.setAttribute("x1", "8");
+        zoomOutLine2.setAttribute("y1", "11");
+        zoomOutLine2.setAttribute("x2", "14");
+        zoomOutLine2.setAttribute("y2", "11");
+        zoomOutSvg.appendChild(zoomOutLine2);
+        // Add SVG to the button
+        zoomOutBtn.appendChild(zoomOutSvg);
         zoomOutBtn.addEventListener("click", () => {
             this.zoomOut();
         });
@@ -2964,16 +2995,44 @@ class ChronosTimelineView extends obsidian.ItemView {
             cls: "chronica-btn chronica-zoom-button",
             attr: { title: "Zoom In" },
         });
-        // append “zoom in” SVG icon without using innerHTML
-        const parserZoomIn = new DOMParser();
-        const zoomInSvgString = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="11" cy="11" r="8"></circle>
-      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-      <line x1="11" y1="8" x2="11" y2="14"></line>
-      <line x1="8" y1="11" x2="14" y2="11"></line>
-    </svg>`;
-        const zoomInSvgDoc = parserZoomIn.parseFromString(zoomInSvgString, "image/svg+xml");
-        zoomInBtn.appendChild(zoomInSvgDoc.documentElement);
+        // Create SVG element using DOM API
+        const zoomInSvgNS = "http://www.w3.org/2000/svg";
+        const zoomInSvg = document.createElementNS(zoomInSvgNS, "svg");
+        zoomInSvg.setAttribute("viewBox", "0 0 24 24");
+        zoomInSvg.setAttribute("fill", "none");
+        zoomInSvg.setAttribute("stroke", "currentColor");
+        zoomInSvg.setAttribute("stroke-width", "2");
+        zoomInSvg.setAttribute("stroke-linecap", "round");
+        zoomInSvg.setAttribute("stroke-linejoin", "round");
+        // Create circle element
+        const zoomInCircle = document.createElementNS(zoomInSvgNS, "circle");
+        zoomInCircle.setAttribute("cx", "11");
+        zoomInCircle.setAttribute("cy", "11");
+        zoomInCircle.setAttribute("r", "8");
+        zoomInSvg.appendChild(zoomInCircle);
+        // Create first line element
+        const zoomInLine1 = document.createElementNS(zoomInSvgNS, "line");
+        zoomInLine1.setAttribute("x1", "21");
+        zoomInLine1.setAttribute("y1", "21");
+        zoomInLine1.setAttribute("x2", "16.65");
+        zoomInLine1.setAttribute("y2", "16.65");
+        zoomInSvg.appendChild(zoomInLine1);
+        // Create vertical line element (for plus sign)
+        const zoomInLine2 = document.createElementNS(zoomInSvgNS, "line");
+        zoomInLine2.setAttribute("x1", "11");
+        zoomInLine2.setAttribute("y1", "8");
+        zoomInLine2.setAttribute("x2", "11");
+        zoomInLine2.setAttribute("y2", "14");
+        zoomInSvg.appendChild(zoomInLine2);
+        // Create horizontal line element (for plus sign)
+        const zoomInLine3 = document.createElementNS(zoomInSvgNS, "line");
+        zoomInLine3.setAttribute("x1", "8");
+        zoomInLine3.setAttribute("y1", "11");
+        zoomInLine3.setAttribute("x2", "14");
+        zoomInLine3.setAttribute("y2", "11");
+        zoomInSvg.appendChild(zoomInLine3);
+        // Add SVG to the button
+        zoomInBtn.appendChild(zoomInSvg);
         zoomInBtn.addEventListener("click", () => {
             this.zoomIn();
         });
@@ -3133,7 +3192,7 @@ class ChronosTimelineView extends obsidian.ItemView {
             cls: "chronica-collapsed-toggle",
             attr: { title: "Expand Sidebar" },
         });
-        // Clear any existing content
+        // Collapse Toggle
         collapsedToggle.empty();
         // Create SVG element with namespace
         const collapsedSvgNS = "http://www.w3.org/2000/svg";
@@ -3378,13 +3437,9 @@ class ChronosTimelineView extends obsidian.ItemView {
         // Create decade markers container (horizontal markers above the grid)
         if (this.plugin.settings.showDecadeMarkers) {
             const isPortrait = this.plugin.settings.gridOrientation === "portrait";
-            const decadeMarkersContainer = container.createEl("div", {
+            container.createEl("div", {
                 cls: `chronica-decade-markers ${isPortrait ? "portrait-mode" : ""}`,
             });
-            if (!isPortrait) {
-                decadeMarkersContainer.style.setProperty('--position-left', `${leftOffset}px`);
-                decadeMarkersContainer.addClass("chronica-position-dynamic");
-            }
             // Add decade markers starting from 10 (skipping 0)
             // Create decade markers container (horizontal markers above the grid)
             if (this.plugin.settings.showDecadeMarkers) {
@@ -3393,7 +3448,7 @@ class ChronosTimelineView extends obsidian.ItemView {
                     cls: `chronica-decade-markers ${isPortrait ? "portrait-mode" : ""}`,
                 });
                 if (!isPortrait) {
-                    decadeMarkersContainer.style.setProperty('--position-left', `${leftOffset}px`);
+                    decadeMarkersContainer.style.setProperty("--position-left", `${leftOffset}px`);
                     decadeMarkersContainer.addClass("chronica-position-dynamic");
                 }
                 // Add decade markers starting from 10 (skipping 0)
@@ -3436,18 +3491,40 @@ class ChronosTimelineView extends obsidian.ItemView {
             const birthdayMarkerContainer = container.createEl("div", {
                 cls: "chronica-birthday-marker-container",
             });
-            // Position the container near the grid
-            birthdayMarkerContainer.style.position = "absolute";
-            birthdayMarkerContainer.style.zIndex = "15"; // Ensure visibility above other elements
             // Create cake icon for birthday
-            const cakeSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f48fb1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8"/><path d="M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4 2 2-1 2-1"/><path d="M2 21h20"/><path d="M7 8v2"/><path d="M12 8v2"/><path d="M17 8v2"/><path d="M7 4h.01"/><path d="M12 4h.01"/><path d="M17 4h.01"/></svg>`;
             const cakeEl = birthdayMarkerContainer.createEl("div", {
                 cls: "birthday-cake-marker",
             });
-            // append cake SVG icon without using innerHTML
-            const parserCake = new DOMParser();
-            const cakeSvgDoc = parserCake.parseFromString(cakeSvg, "image/svg+xml");
-            cakeEl.appendChild(cakeSvgDoc.documentElement);
+            // Create SVG element using DOM API
+            const cakeSvgNS = "http://www.w3.org/2000/svg";
+            const cakeSvg = document.createElementNS(cakeSvgNS, "svg");
+            cakeSvg.setAttribute("width", "20");
+            cakeSvg.setAttribute("height", "20");
+            cakeSvg.setAttribute("viewBox", "0 0 24 24");
+            cakeSvg.setAttribute("fill", "none");
+            cakeSvg.setAttribute("stroke", "#f48fb1");
+            cakeSvg.setAttribute("stroke-width", "2");
+            cakeSvg.setAttribute("stroke-linecap", "round");
+            cakeSvg.setAttribute("stroke-linejoin", "round");
+            // Create cake paths
+            const paths = [
+                "M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8",
+                "M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4 2 2-1 2-1",
+                "M2 21h20",
+                "M7 8v2",
+                "M12 8v2",
+                "M17 8v2",
+                "M7 4h.01",
+                "M12 4h.01",
+                "M17 4h.01"
+            ];
+            paths.forEach(pathData => {
+                const path = document.createElementNS(cakeSvgNS, "path");
+                path.setAttribute("d", pathData);
+                cakeSvg.appendChild(path);
+            });
+            // Add SVG to the cake element
+            cakeEl.appendChild(cakeSvg);
             cakeEl.setAttribute("title", `${birthMonthName} ${birthDay}, ${birthYear} (Your Birthday)`);
         }
         // Create markers container with structured layout
@@ -3477,14 +3554,17 @@ class ChronosTimelineView extends obsidian.ItemView {
                     (cellSize + cellGap) -
                     (cellSize + cellGap);
                 if (isPortrait) {
-                    marker.style.left = `${position + 6.5}px`;
-                    marker.style.top = "10px"; // Fixed position from the top
-                    marker.style.transform = "none"; // Remove any transforms
+                    marker.classList.add("chronica-position-dynamic");
+                    marker.style.setProperty("--position-left", `${position + 6.5}px`);
+                    marker.style.setProperty("--position-top", "10px");
+                    marker.style.setProperty("--transform-value", "none");
                 }
                 else {
-                    marker.style.top = `${position}px`;
-                    marker.style.left = "auto";
-                    marker.style.right = "4px";
+                    marker.classList.add("chronica-position-dynamic");
+                    marker.style.setProperty("--position-top", `${position}px`);
+                    marker.style.setProperty("--position-left", "auto");
+                    marker.style.setProperty("--position-right", "4px");
+                    marker.style.setProperty("--transform-value", "none");
                 }
             }
         }
@@ -3674,26 +3754,25 @@ class ChronosTimelineView extends obsidian.ItemView {
                 };
                 const dateRange = `${formatDate(cellStartDate)} - ${formatDate(cellEndDate)}`;
                 cell.setAttribute("title", `Week ${isoWeekInfo.week}, ${isoWeekInfo.year}\n${dateRange}`);
-                // Position the cell with absolute positioning
-                cell.style.position = "absolute";
                 // Calculate year position with decade spacing
                 const yearPos = this.plugin.calculateYearPosition(year, cellSize, regularGap);
                 // Calculate week position
                 const weekPos = cellIndex * (cellSize + regularGap);
-                // Position based on orientation
+                // Position based on orientation using CSS variables
                 if (this.plugin.settings.gridOrientation === "landscape") {
                     // Landscape mode (default): years as columns, weeks as rows
-                    cell.style.left = `${yearPos}px`;
-                    cell.style.top = `${weekPos}px`;
+                    cell.style.setProperty('--position-left', `${yearPos}px`);
+                    cell.style.setProperty('--position-top', `${weekPos}px`);
                 }
                 else {
                     // Portrait mode: years as rows, weeks as columns
-                    cell.style.left = `${weekPos}px`;
-                    cell.style.top = `${yearPos}px`;
+                    cell.style.setProperty('--position-left', `${weekPos}px`);
+                    cell.style.setProperty('--position-top', `${yearPos}px`);
                 }
-                // Explicitly set width and height
+                // Set width and height using CSS variables
                 cell.style.setProperty('--element-width', `${cellSize}px`);
                 cell.style.setProperty('--element-height', `${cellSize}px`);
+                cell.addClass("chronica-position-dynamic");
                 cell.addClass("chronica-size-dynamic");
                 // Color coding (past, present, future)
                 const isCurrentWeek = weekKey === currentWeekKey;
@@ -4055,16 +4134,7 @@ class ChronosTimelineView extends obsidian.ItemView {
         statsPanel.style.transform = `translateX(calc(-50% + ${horizontalOffset}px))`;
         statsHandle.style.transform = `translateX(calc(-50% + ${horizontalOffset}px))`;
         // Set height based on panel state
-        if (this.isStatsOpen) {
-            contentArea.classList.add("stats-expanded");
-            statsPanel.style.height = `${panelHeight}px`;
-            statsPanel.style.width = `${this.plugin.settings.statsPanelWidth}px`;
-        }
-        else {
-            contentArea.classList.remove("stats-expanded");
-            statsPanel.style.height = "0";
-            contentArea.style.paddingBottom = "0";
-        }
+        if (this.isStatsOpen) ;
     }
     /**
      * Render the Overview tab content
@@ -6120,6 +6190,17 @@ class ChronosSettingTab extends obsidian.PluginSettingTab {
             this.plugin.settings.futureCellColor = value;
             await this.plugin.saveSettings();
             this.refreshAllViews();
+        }));
+        // Event Color picker
+        new obsidian.Setting(containerEl)
+            .setName("Major Life Event Color")
+            .setDesc("Choose color for major life events")
+            .addColorPicker(cp => cp
+            .setValue(this.plugin.settings.majorLifeColor)
+            .onChange(async (value) => {
+            this.plugin.settings.majorLifeColor = value;
+            document.documentElement.style.setProperty('--chronica-event-major-life', value);
+            await this.plugin.saveSettings();
         }));
         // Find the "Week Filling Options" section in your code
         containerEl.createEl("h3", { text: "Week Filling Options" });

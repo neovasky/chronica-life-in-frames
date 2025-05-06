@@ -585,6 +585,7 @@
   transform: var(--transform-value);
 }
 
+
 .chronica-transformed {
   transform: none !important;
 }

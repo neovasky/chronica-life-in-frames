@@ -55,21 +55,23 @@ interface ChronosSettings {
   /** Color for future weeks */
   futureCellColor: string;
 
+  /** Color for major life events */
+  majorLifeColor: string;
+
+  /** Color for travel events */
+  travelColor: string;
+
+  /** Color for Relationship events */
+  RelationshipColor: string;
+
+  /** Color for Career events */
+  CareerColor: string;
+
   /** Major life events */
   greenEvents: string[];
 
   /** Travel events */
   blueEvents: string[];
-
-  /** Enable Zoom */
-
-  enableZoom: boolean;
-
-  /** Current zoom level (1.0 is default, higher values = larger cells) */
-  zoomLevel: number;
-
-  /** Whether to automatically fit the grid to the screen when opening the view */
-  defaultFitToScreen: boolean;
 
   /** Relationship events */
   pinkEvents: string[];
@@ -82,6 +84,15 @@ interface ChronosSettings {
 
   /** Events organized by custom type */
   customEvents: Record<string, string[]>;
+
+    /** Enable Zoom */
+    enableZoom: boolean;
+
+    /** Current zoom level (1.0 is default, higher values = larger cells) */
+    zoomLevel: number;
+  
+    /** Whether to automatically fit the grid to the screen when opening the view */
+    defaultFitToScreen: boolean;
 
   /** Inspirational quote to display at the bottom */
   quote: string;
@@ -158,8 +169,6 @@ interface ChronosSettings {
   /** Whether user has completed folder selection on first cell‐click */
   hasSeenFolders: boolean;
 
-    /** Enable debug logs in console */
-    debugMode: boolean;
 }
 
 /** Interface for custom event types */
@@ -242,6 +251,10 @@ const DEFAULT_SETTINGS: ChronosSettings = {
   pastCellColor: "#6A7BA3",
   presentCellColor: "#a882ff",
   futureCellColor: "#d8e2e6",
+  majorLifeColor: "#4CAF50",
+  travelColor: "#2196F3",
+  RelationshipColor: "#e91e63",
+  CareerColor: "#d2b55b",
   greenEvents: [],
   blueEvents: [],
   pinkEvents: [],
@@ -279,11 +292,10 @@ const DEFAULT_SETTINGS: ChronosSettings = {
   eventNotesFolder: "",
   hasSeenWelcome: false,
   hasSeenFolders: false,
-  debugMode: false,
 };
 
 /** SVG icon for the Chronica Timeline */
-const CHRONOS_ICON = `<svg viewBox="0 0 100 100" width="100" height="100" xmlns="http://www.w3.org/2000/svg">
+const CHRONICA_ICON = `<svg viewBox="0 0 100 100" width="100" height="100" xmlns="http://www.w3.org/2000/svg">
   <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" stroke-width="4"/>
   <line x1="50" y1="15" x2="50" y2="50" stroke="currentColor" stroke-width="4"/>
   <line x1="50" y1="50" x2="75" y2="60" stroke="currentColor" stroke-width="4"/>
@@ -446,16 +458,23 @@ export default class ChronosTimelinePlugin extends Plugin {
    * Plugin initialization on load
    */
   async onload(): Promise<void> {
-
+    // First, create CSS custom properties for colors
+    document.documentElement.style.setProperty('--chronica-event-major-life', this.settings.majorLifeColor);
+    document.documentElement.style.setProperty('--chronica-event-travel', this.settings.travelColor);
+    document.documentElement.style.setProperty('--chronica-event-relationship', this.settings.RelationshipColor);
+    document.documentElement.style.setProperty('--chronica-event-education-career', this.settings.CareerColor);
+  
+    // Then update the style element to use these custom properties
     const styleEl = document.createElement("style");
     styleEl.textContent = [
-      '.chronica-color-major-life { background-color: #4CAF50; }',
-      '.chronica-color-travel { background-color: #2196F3; }',
-      '.chronica-color-relationship { background-color: #E91E63; }',
-      '.chronica-color-education-career { background-color: #D2B55B; }',
+      '.chronica-color-major-life { background-color: var(--chronica-event-major-life); }',
+      '.chronica-color-travel { background-color: var(--chronica-event-travel); }',
+      '.chronica-color-relationship { background-color: var(--chronica-event-relationship); }',
+      '.chronica-color-education-career { background-color: var(--chronica-event-education-career); }',
+      '.chronica-event-custom { border-width: 2px; border-style: solid; background-color: var(--custom-color); border-color: var(--custom-color); }',
     ].join("\n");
     document.head.appendChild(styleEl);
-
+  
     // 1) Register the timeline view exactly once
     try {
       this.registerView(
@@ -465,30 +484,30 @@ export default class ChronosTimelinePlugin extends Plugin {
     } catch (e) {
       // already registered on hot-reload—ignore
     }
-
+  
     // 2) Re-draw whenever a new weekly note appears
     this.registerEvent(
       this.app.vault.on("create", (file) => {
         // Register potential sync operation for ALL files
         this.registerPotentialSyncOperation();
-
+  
         // Only continue processing for Chronica-related files
         if (!this.isChronicaRelatedFile(file)) {
           return;
         }
-
+  
         // Only refresh if not during a likely sync operation
         if (!this.isSyncOperation) {
           this.refreshAllViews();
         }
       })
     );
-
+  
     this.registerEvent(
       this.app.vault.on("modify", (file) => {
         // Register potential sync operation for ALL files
         this.registerPotentialSyncOperation();
-
+  
         // Protect against sync-triggered modifications
         if (this.isSyncOperation) {
           console.debug(
@@ -497,33 +516,33 @@ export default class ChronosTimelinePlugin extends Plugin {
           );
           return;
         }
-
+  
         // Skip if not a Chronica-related file
         if (!this.isChronicaRelatedFile(file)) {
           return;
         }
-
+  
         // Safe to proceed with normal modification handling for Chronica files
         // (The existing code just registered sync, but didn't do anything else)
       })
     );
-
+  
     // 3) On deletion of a week- or event-note, re-scan vault & refresh timeline
     this.registerEvent(
       this.app.vault.on("delete", async (file) => {
         // Only care about actual files in our grid
         if (!(file instanceof TFile)) return;
         if (!this.isChronicaRelatedFile(file)) return;
-
+  
         // Skip if this delete was triggered by our own sync logic
         if (this.isSyncOperation) return;
-
+  
         // Rebuild all events from the remaining notes
         await this.scanVaultForEvents();
-
+  
         // Persist the newly rebuilt event lists
         await this.saveSettings();
-
+  
         // Immediately re-draw every open timeline so the cell vanishes
         this.app.workspace
           .getLeavesOfType(TIMELINE_VIEW_TYPE)
@@ -534,7 +553,7 @@ export default class ChronosTimelinePlugin extends Plugin {
           });
       })
     );
-
+  
     // Check if we should show welcome modal
     if (!this.settings.hasSeenWelcome) {
       // Delay showing welcome modal to ensure UI is fully loaded
@@ -543,15 +562,22 @@ export default class ChronosTimelinePlugin extends Plugin {
         welcomeModal.open();
       }, 500);
     }
-
+  
     // 4) Now your regular setup
-    addIcon("chronica-icon", CHRONOS_ICON);
+    addIcon("chronica-icon", CHRONICA_ICON);
     await this.loadSettings();
+    
+    // Re-apply colors after loading settings to ensure they're up to date
+    document.documentElement.style.setProperty('--chronica-event-major-life', this.settings.majorLifeColor);
+    document.documentElement.style.setProperty('--chronica-event-travel', this.settings.travelColor);
+    document.documentElement.style.setProperty('--chronica-event-relationship', this.settings.RelationshipColor);
+    document.documentElement.style.setProperty('--chronica-event-education-career', this.settings.CareerColor);
+    
     await this.scanVaultForEvents();
     this.addRibbonIcon("chronica-icon", "Open Chronica Timeline", () => {
       this.activateView();
     });
-
+  
     // Add command to open timeline
     this.addCommand({
       id: "open-chronica-timeline",
@@ -560,7 +586,7 @@ export default class ChronosTimelinePlugin extends Plugin {
         this.activateView();
       },
     });
-
+  
     // Command to create/open weekly note
     this.addCommand({
       id: "create-weekly-note",
@@ -569,19 +595,19 @@ export default class ChronosTimelinePlugin extends Plugin {
         this.createOrOpenWeekNote();
       },
     });
-
+  
     // Add settings tab
     this.addSettingTab(new ChronosSettingTab(this.app, this));
-
+  
     // Check for auto-fill on plugin load
     this.checkAndAutoFill();
-
+  
     // Register interval to check for auto-fill (check every hour)
     this.registerInterval(
       window.setInterval(() => this.checkAndAutoFill(), 1000 * 60 * 60)
     );
   }
-
+  
   /**
    * Public method to check if a sync operation is in progress
    * @returns whether a sync operation is currently detected
@@ -3178,7 +3204,7 @@ class ChronicaWelcomeModal extends Modal {
     });
 
     const parser = new DOMParser();
-    const svgDoc = parser.parseFromString(CHRONOS_ICON, "image/svg+xml");
+    const svgDoc = parser.parseFromString(CHRONICA_ICON, "image/svg+xml");
     const svgNode = svgDoc.documentElement;
     iconEl.appendChild(svgNode);
 
@@ -3828,15 +3854,42 @@ class ChronosTimelineView extends ItemView {
       cls: "chronica-btn chronica-zoom-button",
       attr: { title: "Zoom Out" },
     });
-    // append “zoom out” SVG icon without using innerHTML
-    const parserZoomOut = new DOMParser();
-    const zoomOutSvgString = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="11" cy="11" r="8"></circle>
-      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-      <line x1="8" y1="11" x2="14" y2="11"></line>
-    </svg>`;
-    const zoomOutSvgDoc = parserZoomOut.parseFromString(zoomOutSvgString, "image/svg+xml");
-    zoomOutBtn.appendChild(zoomOutSvgDoc.documentElement);
+
+    // Create SVG element using DOM API
+    const zoomOutSvgNS = "http://www.w3.org/2000/svg";
+    const zoomOutSvg = document.createElementNS(zoomOutSvgNS, "svg");
+    zoomOutSvg.setAttribute("viewBox", "0 0 24 24");
+    zoomOutSvg.setAttribute("fill", "none");
+    zoomOutSvg.setAttribute("stroke", "currentColor");
+    zoomOutSvg.setAttribute("stroke-width", "2");
+    zoomOutSvg.setAttribute("stroke-linecap", "round");
+    zoomOutSvg.setAttribute("stroke-linejoin", "round");
+
+    // Create circle element
+    const zoomOutCircle = document.createElementNS(zoomOutSvgNS, "circle");
+    zoomOutCircle.setAttribute("cx", "11");
+    zoomOutCircle.setAttribute("cy", "11");
+    zoomOutCircle.setAttribute("r", "8");
+    zoomOutSvg.appendChild(zoomOutCircle);
+
+    // Create first line element
+    const zoomOutLine1 = document.createElementNS(zoomOutSvgNS, "line");
+    zoomOutLine1.setAttribute("x1", "21");
+    zoomOutLine1.setAttribute("y1", "21");
+    zoomOutLine1.setAttribute("x2", "16.65");
+    zoomOutLine1.setAttribute("y2", "16.65");
+    zoomOutSvg.appendChild(zoomOutLine1);
+
+    // Create second line element (minus sign)
+    const zoomOutLine2 = document.createElementNS(zoomOutSvgNS, "line");
+    zoomOutLine2.setAttribute("x1", "8");
+    zoomOutLine2.setAttribute("y1", "11");
+    zoomOutLine2.setAttribute("x2", "14");
+    zoomOutLine2.setAttribute("y2", "11");
+    zoomOutSvg.appendChild(zoomOutLine2);
+
+    // Add SVG to the button
+    zoomOutBtn.appendChild(zoomOutSvg);
     zoomOutBtn.addEventListener("click", () => {
       this.zoomOut();
     });
@@ -3872,16 +3925,50 @@ class ChronosTimelineView extends ItemView {
       cls: "chronica-btn chronica-zoom-button",
       attr: { title: "Zoom In" },
     });
-    // append “zoom in” SVG icon without using innerHTML
-    const parserZoomIn = new DOMParser();
-    const zoomInSvgString = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="11" cy="11" r="8"></circle>
-      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-      <line x1="11" y1="8" x2="11" y2="14"></line>
-      <line x1="8" y1="11" x2="14" y2="11"></line>
-    </svg>`;
-    const zoomInSvgDoc = parserZoomIn.parseFromString(zoomInSvgString, "image/svg+xml");
-    zoomInBtn.appendChild(zoomInSvgDoc.documentElement);
+
+    // Create SVG element using DOM API
+    const zoomInSvgNS = "http://www.w3.org/2000/svg";
+    const zoomInSvg = document.createElementNS(zoomInSvgNS, "svg");
+    zoomInSvg.setAttribute("viewBox", "0 0 24 24");
+    zoomInSvg.setAttribute("fill", "none");
+    zoomInSvg.setAttribute("stroke", "currentColor");
+    zoomInSvg.setAttribute("stroke-width", "2");
+    zoomInSvg.setAttribute("stroke-linecap", "round");
+    zoomInSvg.setAttribute("stroke-linejoin", "round");
+
+    // Create circle element
+    const zoomInCircle = document.createElementNS(zoomInSvgNS, "circle");
+    zoomInCircle.setAttribute("cx", "11");
+    zoomInCircle.setAttribute("cy", "11");
+    zoomInCircle.setAttribute("r", "8");
+    zoomInSvg.appendChild(zoomInCircle);
+
+    // Create first line element
+    const zoomInLine1 = document.createElementNS(zoomInSvgNS, "line");
+    zoomInLine1.setAttribute("x1", "21");
+    zoomInLine1.setAttribute("y1", "21");
+    zoomInLine1.setAttribute("x2", "16.65");
+    zoomInLine1.setAttribute("y2", "16.65");
+    zoomInSvg.appendChild(zoomInLine1);
+
+    // Create vertical line element (for plus sign)
+    const zoomInLine2 = document.createElementNS(zoomInSvgNS, "line");
+    zoomInLine2.setAttribute("x1", "11");
+    zoomInLine2.setAttribute("y1", "8");
+    zoomInLine2.setAttribute("x2", "11");
+    zoomInLine2.setAttribute("y2", "14");
+    zoomInSvg.appendChild(zoomInLine2);
+
+    // Create horizontal line element (for plus sign)
+    const zoomInLine3 = document.createElementNS(zoomInSvgNS, "line");
+    zoomInLine3.setAttribute("x1", "8");
+    zoomInLine3.setAttribute("y1", "11");
+    zoomInLine3.setAttribute("x2", "14");
+    zoomInLine3.setAttribute("y2", "11");
+    zoomInSvg.appendChild(zoomInLine3);
+
+    // Add SVG to the button
+    zoomInBtn.appendChild(zoomInSvg);
 
     zoomInBtn.addEventListener("click", () => {
       this.zoomIn();
@@ -4084,28 +4171,28 @@ class ChronosTimelineView extends ItemView {
       attr: { title: "Expand Sidebar" },
     });
 
-// Clear any existing content
-collapsedToggle.empty();
+      // Collapse Toggle
+      collapsedToggle.empty();
 
-// Create SVG element with namespace
-const collapsedSvgNS = "http://www.w3.org/2000/svg";
-const collapsedSvg = document.createElementNS(collapsedSvgNS, "svg");
-collapsedSvg.setAttribute("width", "18");
-collapsedSvg.setAttribute("height", "18");
-collapsedSvg.setAttribute("viewBox", "0 0 24 24");
-collapsedSvg.setAttribute("fill", "none");
-collapsedSvg.setAttribute("stroke", "currentColor");
-collapsedSvg.setAttribute("stroke-width", "2");
-collapsedSvg.setAttribute("stroke-linecap", "round");
-collapsedSvg.setAttribute("stroke-linejoin", "round");
+      // Create SVG element with namespace
+      const collapsedSvgNS = "http://www.w3.org/2000/svg";
+      const collapsedSvg = document.createElementNS(collapsedSvgNS, "svg");
+      collapsedSvg.setAttribute("width", "18");
+      collapsedSvg.setAttribute("height", "18");
+      collapsedSvg.setAttribute("viewBox", "0 0 24 24");
+      collapsedSvg.setAttribute("fill", "none");
+      collapsedSvg.setAttribute("stroke", "currentColor");
+      collapsedSvg.setAttribute("stroke-width", "2");
+      collapsedSvg.setAttribute("stroke-linecap", "round");
+      collapsedSvg.setAttribute("stroke-linejoin", "round");
 
-// Create path element
-const collapsedPath = document.createElementNS(collapsedSvgNS, "path");
-collapsedPath.setAttribute("d", "M9 18l6-6-6-6");
-collapsedSvg.appendChild(collapsedPath);
+      // Create path element
+      const collapsedPath = document.createElementNS(collapsedSvgNS, "path");
+      collapsedPath.setAttribute("d", "M9 18l6-6-6-6");
+      collapsedSvg.appendChild(collapsedPath);
 
-// Add SVG to the toggle
-collapsedToggle.appendChild(collapsedSvg);
+      // Add SVG to the toggle
+      collapsedToggle.appendChild(collapsedSvg);
 
 
     collapsedToggle.addEventListener("click", () => {
@@ -4469,15 +4556,43 @@ collapsedToggle.appendChild(collapsedSvg);
       });
 
       // Create cake icon for birthday
-      const cakeSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f48fb1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8"/><path d="M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4 2 2-1 2-1"/><path d="M2 21h20"/><path d="M7 8v2"/><path d="M12 8v2"/><path d="M17 8v2"/><path d="M7 4h.01"/><path d="M12 4h.01"/><path d="M17 4h.01"/></svg>`;
-
       const cakeEl = birthdayMarkerContainer.createEl("div", {
         cls: "birthday-cake-marker",
       });
-      // append cake SVG icon without using innerHTML
-      const parserCake = new DOMParser();
-      const cakeSvgDoc = parserCake.parseFromString(cakeSvg, "image/svg+xml");
-      cakeEl.appendChild(cakeSvgDoc.documentElement);
+      
+      // Create SVG element using DOM API
+      const cakeSvgNS = "http://www.w3.org/2000/svg";
+      const cakeSvg = document.createElementNS(cakeSvgNS, "svg");
+      cakeSvg.setAttribute("width", "20");
+      cakeSvg.setAttribute("height", "20");
+      cakeSvg.setAttribute("viewBox", "0 0 24 24");
+      cakeSvg.setAttribute("fill", "none");
+      cakeSvg.setAttribute("stroke", "#f48fb1");
+      cakeSvg.setAttribute("stroke-width", "2");
+      cakeSvg.setAttribute("stroke-linecap", "round");
+      cakeSvg.setAttribute("stroke-linejoin", "round");
+      
+      // Create cake paths
+      const paths = [
+        "M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8",
+        "M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4 2 2-1 2-1",
+        "M2 21h20",
+        "M7 8v2",
+        "M12 8v2",
+        "M17 8v2",
+        "M7 4h.01",
+        "M12 4h.01",
+        "M17 4h.01"
+      ];
+      
+      paths.forEach(pathData => {
+        const path = document.createElementNS(cakeSvgNS, "path");
+        path.setAttribute("d", pathData);
+        cakeSvg.appendChild(path);
+      });
+      
+      // Add SVG to the cake element
+      cakeEl.appendChild(cakeSvg);
       cakeEl.setAttribute(
         "title",
         `${birthMonthName} ${birthDay}, ${birthYear} (Your Birthday)`
@@ -4795,34 +4910,32 @@ collapsedToggle.appendChild(collapsedSvg);
           `Week ${isoWeekInfo.week}, ${isoWeekInfo.year}\n${dateRange}`
         );
 
-        // Position the cell with absolute positioning
-        cell.style.position = "absolute";
+      // Calculate year position with decade spacing
+      const yearPos = this.plugin.calculateYearPosition(
+        year,
+        cellSize,
+        regularGap
+      );
 
-        // Calculate year position with decade spacing
-        const yearPos = this.plugin.calculateYearPosition(
-          year,
-          cellSize,
-          regularGap
-        );
+      // Calculate week position
+      const weekPos = cellIndex * (cellSize + regularGap);
 
-        // Calculate week position
-        const weekPos = cellIndex * (cellSize + regularGap);
+      // Position based on orientation using CSS variables
+      if (this.plugin.settings.gridOrientation === "landscape") {
+        // Landscape mode (default): years as columns, weeks as rows
+        cell.style.setProperty('--position-left', `${yearPos}px`);
+        cell.style.setProperty('--position-top', `${weekPos}px`);
+      } else {
+        // Portrait mode: years as rows, weeks as columns
+        cell.style.setProperty('--position-left', `${weekPos}px`);
+        cell.style.setProperty('--position-top', `${yearPos}px`);
+      }
 
-        // Position based on orientation
-        if (this.plugin.settings.gridOrientation === "landscape") {
-          // Landscape mode (default): years as columns, weeks as rows
-          cell.style.left = `${yearPos}px`;
-          cell.style.top = `${weekPos}px`;
-        } else {
-          // Portrait mode: years as rows, weeks as columns
-          cell.style.left = `${weekPos}px`;
-          cell.style.top = `${yearPos}px`;
-        }
-
-        // Explicitly set width and height
-        cell.style.setProperty('--element-width', `${cellSize}px`);
-        cell.style.setProperty('--element-height', `${cellSize}px`);
-        cell.addClass("chronica-size-dynamic");
+      // Set width and height using CSS variables
+      cell.style.setProperty('--element-width', `${cellSize}px`);
+      cell.style.setProperty('--element-height', `${cellSize}px`);
+      cell.addClass("chronica-position-dynamic");
+      cell.addClass("chronica-size-dynamic");
 
         // Color coding (past, present, future)
         const isCurrentWeek = weekKey === currentWeekKey;
@@ -4993,25 +5106,25 @@ collapsedToggle.appendChild(collapsedSvg);
         cls: "chronica-stats-handle",
       });
 
-  // Clear any existing content
-  statsHandle.empty();
+    // Clear any existing content
+    statsHandle.empty();
 
-  // Create SVG element with namespace
-  const svgNS = "http://www.w3.org/2000/svg";
-  const svg = document.createElementNS(svgNS, "svg");
-  svg.setAttribute("class", "chronica-stats-handle-icon");
-  svg.setAttribute("viewBox", "0 0 24 24");
-  svg.setAttribute("fill", "none");
-  svg.setAttribute("stroke", "currentColor");
-  svg.setAttribute("stroke-width", "2");
+    // Create SVG element with namespace
+    const svgNS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(svgNS, "svg");
+    svg.setAttribute("class", "chronica-stats-handle-icon");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("fill", "none");
+    svg.setAttribute("stroke", "currentColor");
+    svg.setAttribute("stroke-width", "2");
 
-  // Create path element
-  const path = document.createElementNS(svgNS, "path");
-  path.setAttribute("d", "M18 20V10M12 20V4M6 20v-6");
-  svg.appendChild(path);
+    // Create path element
+    const path = document.createElementNS(svgNS, "path");
+    path.setAttribute("d", "M18 20V10M12 20V4M6 20v-6");
+    svg.appendChild(path);
 
-  // Add SVG to the handle
-  statsHandle.appendChild(svg);
+    // Add SVG to the handle
+    statsHandle.appendChild(svg);
 
   // Add text span
   const span = document.createElement("span");
@@ -8005,6 +8118,20 @@ class ChronosSettingTab extends PluginSettingTab {
             this.refreshAllViews();
           })
       );
+
+      // Event Color picker
+      new Setting(containerEl)
+      .setName("Major Life Event Color")
+      .setDesc("Choose color for major life events")
+      .addColorPicker(cp => cp
+        .setValue(this.plugin.settings.majorLifeColor)
+        .onChange(async (value) => {
+          this.plugin.settings.majorLifeColor = value;
+          document.documentElement.style.setProperty('--chronica-event-major-life', value);
+          await this.plugin.saveSettings();
+        })
+      );
+
 
     // Find the "Week Filling Options" section in your code
     containerEl.createEl("h3", { text: "Week Filling Options" });
