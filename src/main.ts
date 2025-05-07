@@ -85,14 +85,14 @@ interface ChronosSettings {
   /** Events organized by custom type */
   customEvents: Record<string, string[]>;
 
-    /** Enable Zoom */
-    enableZoom: boolean;
+  /** Enable Zoom */
+  enableZoom: boolean;
 
-    /** Current zoom level (1.0 is default, higher values = larger cells) */
-    zoomLevel: number;
-  
-    /** Whether to automatically fit the grid to the screen when opening the view */
-    defaultFitToScreen: boolean;
+  /** Current zoom level (1.0 is default, higher values = larger cells) */
+  zoomLevel: number;
+
+  /** Whether to automatically fit the grid to the screen when opening the view */
+  defaultFitToScreen: boolean;
 
   /** Inspirational quote to display at the bottom */
   quote: string;
@@ -168,7 +168,6 @@ interface ChronosSettings {
 
   /** Whether user has completed folder selection on first cell‐click */
   hasSeenFolders: boolean;
-
 }
 
 /** Interface for custom event types */
@@ -459,22 +458,23 @@ export default class ChronosTimelinePlugin extends Plugin {
    */
   async onload(): Promise<void> {
     // First, create CSS custom properties for colors
-    document.documentElement.style.setProperty('--chronica-event-major-life', this.settings.majorLifeColor);
-    document.documentElement.style.setProperty('--chronica-event-travel', this.settings.travelColor);
-    document.documentElement.style.setProperty('--chronica-event-relationship', this.settings.RelationshipColor);
-    document.documentElement.style.setProperty('--chronica-event-education-career', this.settings.CareerColor);
-  
-    // Then update the style element to use these custom properties
-    const styleEl = document.createElement("style");
-    styleEl.textContent = [
-      '.chronica-color-major-life { background-color: var(--chronica-event-major-life); }',
-      '.chronica-color-travel { background-color: var(--chronica-event-travel); }',
-      '.chronica-color-relationship { background-color: var(--chronica-event-relationship); }',
-      '.chronica-color-education-career { background-color: var(--chronica-event-education-career); }',
-      '.chronica-event-custom { border-width: 2px; border-style: solid; background-color: var(--custom-color); border-color: var(--custom-color); }',
-    ].join("\n");
-    document.head.appendChild(styleEl);
-  
+    document.documentElement.style.setProperty(
+      "--chronica-event-major-life",
+      this.settings.majorLifeColor
+    );
+    document.documentElement.style.setProperty(
+      "--chronica-event-travel",
+      this.settings.travelColor
+    );
+    document.documentElement.style.setProperty(
+      "--chronica-event-relationship",
+      this.settings.RelationshipColor
+    );
+    document.documentElement.style.setProperty(
+      "--chronica-event-education-career",
+      this.settings.CareerColor
+    );
+
     // 1) Register the timeline view exactly once
     try {
       this.registerView(
@@ -484,65 +484,58 @@ export default class ChronosTimelinePlugin extends Plugin {
     } catch (e) {
       // already registered on hot-reload—ignore
     }
-  
+
     // 2) Re-draw whenever a new weekly note appears
     this.registerEvent(
       this.app.vault.on("create", (file) => {
         // Register potential sync operation for ALL files
         this.registerPotentialSyncOperation();
-  
+
         // Only continue processing for Chronica-related files
         if (!this.isChronicaRelatedFile(file)) {
           return;
         }
-  
+
         // Only refresh if not during a likely sync operation
         if (!this.isSyncOperation) {
           this.refreshAllViews();
         }
       })
     );
-  
+
     this.registerEvent(
       this.app.vault.on("modify", (file) => {
         // Register potential sync operation for ALL files
         this.registerPotentialSyncOperation();
-  
+
         // Protect against sync-triggered modifications
         if (this.isSyncOperation) {
-          console.debug(
-            "Chronica: File modification during sync, deferring actions",
-            file.path
-          );
           return;
         }
-  
+
         // Skip if not a Chronica-related file
         if (!this.isChronicaRelatedFile(file)) {
           return;
         }
-  
-        // Safe to proceed with normal modification handling for Chronica files
-        // (The existing code just registered sync, but didn't do anything else)
       })
     );
-  
+
     // 3) On deletion of a week- or event-note, re-scan vault & refresh timeline
     this.registerEvent(
       this.app.vault.on("delete", async (file) => {
         // Only care about actual files in our grid
         if (!(file instanceof TFile)) return;
         if (!this.isChronicaRelatedFile(file)) return;
-  
+
         // Skip if this delete was triggered by our own sync logic
         if (this.isSyncOperation) return;
-  
+
         // Rebuild all events from the remaining notes
         await this.scanVaultForEvents();
-  
+
         // Persist the newly rebuilt event lists
         await this.saveSettings();
-  
+
         // Immediately re-draw every open timeline so the cell vanishes
         this.app.workspace
           .getLeavesOfType(TIMELINE_VIEW_TYPE)
@@ -553,7 +546,7 @@ export default class ChronosTimelinePlugin extends Plugin {
           });
       })
     );
-  
+
     // Check if we should show welcome modal
     if (!this.settings.hasSeenWelcome) {
       // Delay showing welcome modal to ensure UI is fully loaded
@@ -562,22 +555,34 @@ export default class ChronosTimelinePlugin extends Plugin {
         welcomeModal.open();
       }, 500);
     }
-  
+
     // 4) Now your regular setup
     addIcon("chronica-icon", CHRONICA_ICON);
     await this.loadSettings();
-    
+
     // Re-apply colors after loading settings to ensure they're up to date
-    document.documentElement.style.setProperty('--chronica-event-major-life', this.settings.majorLifeColor);
-    document.documentElement.style.setProperty('--chronica-event-travel', this.settings.travelColor);
-    document.documentElement.style.setProperty('--chronica-event-relationship', this.settings.RelationshipColor);
-    document.documentElement.style.setProperty('--chronica-event-education-career', this.settings.CareerColor);
-    
+    document.documentElement.style.setProperty(
+      "--chronica-event-major-life",
+      this.settings.majorLifeColor
+    );
+    document.documentElement.style.setProperty(
+      "--chronica-event-travel",
+      this.settings.travelColor
+    );
+    document.documentElement.style.setProperty(
+      "--chronica-event-relationship",
+      this.settings.RelationshipColor
+    );
+    document.documentElement.style.setProperty(
+      "--chronica-event-education-career",
+      this.settings.CareerColor
+    );
+
     await this.scanVaultForEvents();
     this.addRibbonIcon("chronica-icon", "Open Chronica Timeline", () => {
       this.activateView();
     });
-  
+
     // Add command to open timeline
     this.addCommand({
       id: "open-chronica-timeline",
@@ -586,7 +591,7 @@ export default class ChronosTimelinePlugin extends Plugin {
         this.activateView();
       },
     });
-  
+
     // Command to create/open weekly note
     this.addCommand({
       id: "create-weekly-note",
@@ -595,19 +600,19 @@ export default class ChronosTimelinePlugin extends Plugin {
         this.createOrOpenWeekNote();
       },
     });
-  
+
     // Add settings tab
     this.addSettingTab(new ChronosSettingTab(this.app, this));
-  
+
     // Check for auto-fill on plugin load
     this.checkAndAutoFill();
-  
+
     // Register interval to check for auto-fill (check every hour)
     this.registerInterval(
       window.setInterval(() => this.checkAndAutoFill(), 1000 * 60 * 60)
     );
   }
-  
+
   /**
    * Public method to check if a sync operation is in progress
    * @returns whether a sync operation is currently detected
@@ -1468,8 +1473,7 @@ export default class ChronosTimelinePlugin extends Plugin {
             if (!folderExists) {
               await this.app.vault.createFolder(this.settings.notesFolder);
             }
-          } catch (err) {
-          }
+          } catch (err) {}
         }
 
         // Check if any events exist for this week in the plugin settings
@@ -2146,8 +2150,7 @@ export default class ChronosTimelinePlugin extends Plugin {
           if (!folderExists) {
             await this.app.vault.createFolder(this.settings.notesFolder);
           }
-        } catch (err) {
-        }
+        } catch (err) {}
       }
 
       // Create file
@@ -2452,11 +2455,6 @@ export default class ChronosTimelinePlugin extends Plugin {
       this.isSyncOperation = false;
       this.syncOperationTimer = null;
     }, 5000);
-
-    // Log sync operation detection for debugging
-    console.debug(
-      "Chronica: Potential sync operation detected, operations paused"
-    );
   }
 
   public async cleanInvalidEvents(): Promise<void> {
@@ -2703,21 +2701,21 @@ class ChronosEventModal extends Modal {
     });
 
     // Add listeners to toggle between single date and range inputs
-      singleDateRadio.addEventListener("change", () => {
-        if (singleDateRadio.checked) {
-          this.isDateRange = false;
-          singleDateContainer.classList.remove("chronica-hidden");
-          rangeDateContainer.classList.add("chronica-hidden");
-        }
-      });
+    singleDateRadio.addEventListener("change", () => {
+      if (singleDateRadio.checked) {
+        this.isDateRange = false;
+        singleDateContainer.classList.remove("chronica-hidden");
+        rangeDateContainer.classList.add("chronica-hidden");
+      }
+    });
 
-      rangeDateRadio.addEventListener("change", () => {
-        if (rangeDateRadio.checked) {
-          this.isDateRange = true;
-          singleDateContainer.classList.add("chronica-hidden");
-          rangeDateContainer.classList.remove("chronica-hidden");
-        }
-      });
+    rangeDateRadio.addEventListener("change", () => {
+      if (rangeDateRadio.checked) {
+        this.isDateRange = true;
+        singleDateContainer.classList.add("chronica-hidden");
+        rangeDateContainer.classList.remove("chronica-hidden");
+      }
+    });
 
     contentEl.appendChild(singleDateContainer);
     contentEl.appendChild(rangeDateContainer);
@@ -2791,7 +2789,9 @@ class ChronosEventModal extends Modal {
         radioBtn.checked = true;
       }
 
-      const className = `chronica-color-${type.name.replace(/\s+/g, "-").toLowerCase()}`;
+      const className = `chronica-color-${type.name
+        .replace(/\s+/g, "-")
+        .toLowerCase()}`;
       const colorBox = radioLabel.createEl("span", {
         cls: ["chronica-color-box", className],
       });
@@ -3088,8 +3088,7 @@ class ChronosEventModal extends Modal {
           if (!folderExists) {
             await this.app.vault.createFolder(this.plugin.settings.notesFolder);
           }
-        } catch (err) {
-        }
+        } catch (err) {}
       }
 
       // Create event note file with frontmatter and content
@@ -3207,7 +3206,6 @@ class ChronicaWelcomeModal extends Modal {
     const svgDoc = parser.parseFromString(CHRONICA_ICON, "image/svg+xml");
     const svgNode = svgDoc.documentElement;
     iconEl.appendChild(svgNode);
-
 
     // Add title
     headerEl.createEl("h1", {
@@ -3795,7 +3793,7 @@ class ChronosTimelineView extends ItemView {
           collapsedToggle.addClass("chronica-visible");
           collapsedToggle.removeClass("chronica-hidden");
         }
-            }
+      }
 
       this.updateStatsPanelLayout();
     });
@@ -3893,7 +3891,6 @@ class ChronosTimelineView extends ItemView {
     zoomOutBtn.addEventListener("click", () => {
       this.zoomOut();
     });
-
 
     // Add zoom level indicator
     const zoomInput = zoomControlsDiv.createEl("input", {
@@ -4171,29 +4168,28 @@ class ChronosTimelineView extends ItemView {
       attr: { title: "Expand Sidebar" },
     });
 
-      // Collapse Toggle
-      collapsedToggle.empty();
+    // Collapse Toggle
+    collapsedToggle.empty();
 
-      // Create SVG element with namespace
-      const collapsedSvgNS = "http://www.w3.org/2000/svg";
-      const collapsedSvg = document.createElementNS(collapsedSvgNS, "svg");
-      collapsedSvg.setAttribute("width", "18");
-      collapsedSvg.setAttribute("height", "18");
-      collapsedSvg.setAttribute("viewBox", "0 0 24 24");
-      collapsedSvg.setAttribute("fill", "none");
-      collapsedSvg.setAttribute("stroke", "currentColor");
-      collapsedSvg.setAttribute("stroke-width", "2");
-      collapsedSvg.setAttribute("stroke-linecap", "round");
-      collapsedSvg.setAttribute("stroke-linejoin", "round");
+    // Create SVG element with namespace
+    const collapsedSvgNS = "http://www.w3.org/2000/svg";
+    const collapsedSvg = document.createElementNS(collapsedSvgNS, "svg");
+    collapsedSvg.setAttribute("width", "18");
+    collapsedSvg.setAttribute("height", "18");
+    collapsedSvg.setAttribute("viewBox", "0 0 24 24");
+    collapsedSvg.setAttribute("fill", "none");
+    collapsedSvg.setAttribute("stroke", "currentColor");
+    collapsedSvg.setAttribute("stroke-width", "2");
+    collapsedSvg.setAttribute("stroke-linecap", "round");
+    collapsedSvg.setAttribute("stroke-linejoin", "round");
 
-      // Create path element
-      const collapsedPath = document.createElementNS(collapsedSvgNS, "path");
-      collapsedPath.setAttribute("d", "M9 18l6-6-6-6");
-      collapsedSvg.appendChild(collapsedPath);
+    // Create path element
+    const collapsedPath = document.createElementNS(collapsedSvgNS, "path");
+    collapsedPath.setAttribute("d", "M9 18l6-6-6-6");
+    collapsedSvg.appendChild(collapsedPath);
 
-      // Add SVG to the toggle
-      collapsedToggle.appendChild(collapsedSvg);
-
+    // Add SVG to the toggle
+    collapsedToggle.appendChild(collapsedSvg);
 
     collapsedToggle.addEventListener("click", () => {
       this.isSidebarOpen = true;
@@ -4212,7 +4208,7 @@ class ChronosTimelineView extends ItemView {
       if (sidebarToggle) {
         // Clear existing content
         sidebarToggle.empty();
-        
+
         // Create SVG with DOM API
         const listenerSvgNS = "http://www.w3.org/2000/svg";
         const listenerSvg = document.createElementNS(listenerSvgNS, "svg");
@@ -4224,12 +4220,12 @@ class ChronosTimelineView extends ItemView {
         listenerSvg.setAttribute("stroke-width", "2");
         listenerSvg.setAttribute("stroke-linecap", "round");
         listenerSvg.setAttribute("stroke-linejoin", "round");
-        
+
         // Create path
         const listenerPath = document.createElementNS(listenerSvgNS, "path");
         listenerPath.setAttribute("d", "M15 18l-6-6 6-6");
         listenerSvg.appendChild(listenerPath);
-        
+
         // Add to button
         sidebarToggle.appendChild(listenerSvg);
         sidebarToggle.setAttribute("title", "Collapse Sidebar");
@@ -4447,7 +4443,9 @@ class ChronosTimelineView extends ItemView {
       if (gridEl) (gridEl as HTMLElement).style.transform = "";
       if (decadeMarkers) (decadeMarkers as HTMLElement).style.transform = "";
       if (verticalMarkers)
-        (verticalMarkers as HTMLElement).classList.remove("chronica-transformed");
+        (verticalMarkers as HTMLElement).classList.remove(
+          "chronica-transformed"
+        );
 
       // Clear the view and re-render
       viewEl.empty();
@@ -4487,7 +4485,7 @@ class ChronosTimelineView extends ItemView {
 
       // Add decade markers starting from 10 (skipping 0)
       // Create decade markers container (horizontal markers above the grid)
-    if (this.plugin.settings.showDecadeMarkers) {
+      if (this.plugin.settings.showDecadeMarkers) {
         const isPortrait = this.plugin.settings.gridOrientation === "portrait";
         const decadeMarkersContainer = container.createEl("div", {
           cls: `chronica-decade-markers ${isPortrait ? "portrait-mode" : ""}`,
@@ -4529,13 +4527,19 @@ class ChronosTimelineView extends ItemView {
           const leftPosition = decadePosition + cellSize / 2;
 
           if (isPortrait) {
-            marker.style.setProperty('--position-top', `${leftPosition}px`);
-            marker.style.setProperty('--position-left', `${topOffset}px`);
-            marker.style.setProperty('--transform-value', 'translate(-50%, -50%)');
+            marker.style.setProperty("--position-top", `${leftPosition}px`);
+            marker.style.setProperty("--position-left", `${topOffset}px`);
+            marker.style.setProperty(
+              "--transform-value",
+              "translate(-50%, -50%)"
+            );
           } else {
-            marker.style.setProperty('--position-left', `${leftPosition}px`);
-            marker.style.setProperty('--position-top', `${topOffset / 2}px`);
-            marker.style.setProperty('--transform-value', 'translate(-50%, -50%)');
+            marker.style.setProperty("--position-left", `${leftPosition}px`);
+            marker.style.setProperty("--position-top", `${topOffset / 2}px`);
+            marker.style.setProperty(
+              "--transform-value",
+              "translate(-50%, -50%)"
+            );
           }
         }
       }
@@ -4559,7 +4563,7 @@ class ChronosTimelineView extends ItemView {
       const cakeEl = birthdayMarkerContainer.createEl("div", {
         cls: "birthday-cake-marker",
       });
-      
+
       // Create SVG element using DOM API
       const cakeSvgNS = "http://www.w3.org/2000/svg";
       const cakeSvg = document.createElementNS(cakeSvgNS, "svg");
@@ -4571,7 +4575,7 @@ class ChronosTimelineView extends ItemView {
       cakeSvg.setAttribute("stroke-width", "2");
       cakeSvg.setAttribute("stroke-linecap", "round");
       cakeSvg.setAttribute("stroke-linejoin", "round");
-      
+
       // Create cake paths
       const paths = [
         "M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8",
@@ -4582,15 +4586,15 @@ class ChronosTimelineView extends ItemView {
         "M17 8v2",
         "M7 4h.01",
         "M12 4h.01",
-        "M17 4h.01"
+        "M17 4h.01",
       ];
-      
-      paths.forEach(pathData => {
+
+      paths.forEach((pathData) => {
         const path = document.createElementNS(cakeSvgNS, "path");
         path.setAttribute("d", pathData);
         cakeSvg.appendChild(path);
       });
-      
+
       // Add SVG to the cake element
       cakeEl.appendChild(cakeSvg);
       cakeEl.setAttribute(
@@ -4630,18 +4634,18 @@ class ChronosTimelineView extends ItemView {
           cellSize / 2 -
           (cellSize + cellGap) -
           (cellSize + cellGap);
-          if (isPortrait) {
-            marker.classList.add("chronica-position-dynamic");
-            marker.style.setProperty("--position-left", `${position + 6.5}px`);
-            marker.style.setProperty("--position-top", "10px");
-            marker.style.setProperty("--transform-value", "none");
-          } else {
-            marker.classList.add("chronica-position-dynamic");
-            marker.style.setProperty("--position-top",  `${position}px`);
-            marker.style.setProperty("--position-left", "auto");
-            marker.style.setProperty("--position-right","4px");
-            marker.style.setProperty("--transform-value","none");
-          }
+        if (isPortrait) {
+          marker.classList.add("chronica-position-dynamic");
+          marker.style.setProperty("--position-left", `${position + 6.5}px`);
+          marker.style.setProperty("--position-top", "10px");
+          marker.style.setProperty("--transform-value", "none");
+        } else {
+          marker.classList.add("chronica-position-dynamic");
+          marker.style.setProperty("--position-top", `${position}px`);
+          marker.style.setProperty("--position-left", "auto");
+          marker.style.setProperty("--position-right", "4px");
+          marker.style.setProperty("--transform-value", "none");
+        }
       }
     }
 
@@ -4761,13 +4765,9 @@ class ChronosTimelineView extends ItemView {
             }px`;
           }
 
-            // update CSS vars for the shifted marker
-            markerEl.style.setProperty(
-              "--position-top",
-              `${leftOffset - 80}px`
-            );
-            markerEl.style.setProperty("--transform-value", "translateX(0)");
-
+          // update CSS vars for the shifted marker
+          markerEl.style.setProperty("--position-top", `${leftOffset - 80}px`);
+          markerEl.style.setProperty("--transform-value", "translateX(0)");
         } else {
           markerEl.style.top = `${
             marker.weekIndex * (cellSize + cellGap) + cellSize / 2
@@ -4910,32 +4910,32 @@ class ChronosTimelineView extends ItemView {
           `Week ${isoWeekInfo.week}, ${isoWeekInfo.year}\n${dateRange}`
         );
 
-      // Calculate year position with decade spacing
-      const yearPos = this.plugin.calculateYearPosition(
-        year,
-        cellSize,
-        regularGap
-      );
+        // Calculate year position with decade spacing
+        const yearPos = this.plugin.calculateYearPosition(
+          year,
+          cellSize,
+          regularGap
+        );
 
-      // Calculate week position
-      const weekPos = cellIndex * (cellSize + regularGap);
+        // Calculate week position
+        const weekPos = cellIndex * (cellSize + regularGap);
 
-      // Position based on orientation using CSS variables
-      if (this.plugin.settings.gridOrientation === "landscape") {
-        // Landscape mode (default): years as columns, weeks as rows
-        cell.style.setProperty('--position-left', `${yearPos}px`);
-        cell.style.setProperty('--position-top', `${weekPos}px`);
-      } else {
-        // Portrait mode: years as rows, weeks as columns
-        cell.style.setProperty('--position-left', `${weekPos}px`);
-        cell.style.setProperty('--position-top', `${yearPos}px`);
-      }
+        // Position based on orientation using CSS variables
+        if (this.plugin.settings.gridOrientation === "landscape") {
+          // Landscape mode (default): years as columns, weeks as rows
+          cell.style.setProperty("--position-left", `${yearPos}px`);
+          cell.style.setProperty("--position-top", `${weekPos}px`);
+        } else {
+          // Portrait mode: years as rows, weeks as columns
+          cell.style.setProperty("--position-left", `${weekPos}px`);
+          cell.style.setProperty("--position-top", `${yearPos}px`);
+        }
 
-      // Set width and height using CSS variables
-      cell.style.setProperty('--element-width', `${cellSize}px`);
-      cell.style.setProperty('--element-height', `${cellSize}px`);
-      cell.addClass("chronica-position-dynamic");
-      cell.addClass("chronica-size-dynamic");
+        // Set width and height using CSS variables
+        cell.style.setProperty("--element-width", `${cellSize}px`);
+        cell.style.setProperty("--element-height", `${cellSize}px`);
+        cell.addClass("chronica-position-dynamic");
+        cell.addClass("chronica-size-dynamic");
 
         // Color coding (past, present, future)
         const isCurrentWeek = weekKey === currentWeekKey;
@@ -5046,8 +5046,7 @@ class ChronosTimelineView extends ItemView {
                     this.plugin.settings.notesFolder
                   );
                 }
-              } catch (err) {
-              }
+              } catch (err) {}
             }
 
             // Add empty frontmatter
@@ -5095,16 +5094,16 @@ class ChronosTimelineView extends ItemView {
     }
   }
 
-    /**
-     * Render the statistics panel
-     * @param container - Container to render panel in
-     */
+  /**
+   * Render the statistics panel
+   * @param container - Container to render panel in
+   */
 
-    renderStatsPanel(container: HTMLElement): void {
-      // Create the stats handle (always visible)
-      const statsHandle = container.createEl("div", {
-        cls: "chronica-stats-handle",
-      });
+  renderStatsPanel(container: HTMLElement): void {
+    // Create the stats handle (always visible)
+    const statsHandle = container.createEl("div", {
+      cls: "chronica-stats-handle",
+    });
 
     // Clear any existing content
     statsHandle.empty();
@@ -5126,10 +5125,10 @@ class ChronosTimelineView extends ItemView {
     // Add SVG to the handle
     statsHandle.appendChild(svg);
 
-  // Add text span
-  const span = document.createElement("span");
-  span.textContent = "Statistics";
-  statsHandle.appendChild(span);
+    // Add text span
+    const span = document.createElement("span");
+    span.textContent = "Statistics";
+    statsHandle.appendChild(span);
 
     statsHandle.setAttribute(
       "title",
@@ -5521,7 +5520,10 @@ class ChronosTimelineView extends ItemView {
     backgroundCircle.setAttribute("cy", "40");
     backgroundCircle.setAttribute("r", "35");
     backgroundCircle.setAttribute("fill", "none");
-    backgroundCircle.setAttribute("stroke", "var(--background-modifier-border)");
+    backgroundCircle.setAttribute(
+      "stroke",
+      "var(--background-modifier-border)"
+    );
     backgroundCircle.setAttribute("stroke-width", "5");
 
     // Create progress circle
@@ -5533,7 +5535,10 @@ class ChronosTimelineView extends ItemView {
     progressCircle.setAttribute("stroke", "var(--interactive-accent)");
     progressCircle.setAttribute("stroke-width", "5");
     progressCircle.setAttribute("stroke-dasharray", "220");
-    progressCircle.setAttribute("stroke-dashoffset", (220 - (220 * livedPercentage) / 100).toString());
+    progressCircle.setAttribute(
+      "stroke-dashoffset",
+      (220 - (220 * livedPercentage) / 100).toString()
+    );
     progressCircle.setAttribute("transform", "rotate(-90 40 40)");
 
     // Add circles to SVG
@@ -5564,7 +5569,7 @@ class ChronosTimelineView extends ItemView {
       cls: "chronica-progress-bar-fill",
     });
 
-    progressFill.style.setProperty('--progress-width', `${livedPercentage}%`);
+    progressFill.style.setProperty("--progress-width", `${livedPercentage}%`);
     progressFill.addClass("chronica-progress-dynamic");
 
     barContainer.createEl("div", {
@@ -7045,6 +7050,11 @@ class ChronosTimelineView extends ItemView {
           cell.classList.remove("travel-event");
           cell.classList.remove("relationship-event");
           cell.classList.remove("education-career-event");
+          cell.classList.remove("chronica-event-major-life");
+          cell.classList.remove("chronica-event-travel");
+          cell.classList.remove("chronica-event-relationship");
+          cell.classList.remove("chronica-event-education-career");
+          cell.classList.remove("chronica-event-custom");
           cell.style.backgroundColor = "";
           cell.style.border = "";
 
@@ -7054,15 +7064,32 @@ class ChronosTimelineView extends ItemView {
           const cellDate = new Date(year, 0, 1);
           cellDate.setDate(cellDate.getDate() + (weekNum - 1) * 7);
 
+          // Remove any previous styling classes
+          cell.classList.remove("chronica-cell-present");
+          cell.classList.remove("chronica-cell-past");
+          cell.classList.remove("chronica-cell-future");
+
           // Reapply appropriate base styling
           const isCurrentWeek =
             weekKey === this.plugin.getWeekKeyFromDate(new Date());
           if (isCurrentWeek) {
-            cell.style.backgroundColor = this.plugin.settings.presentCellColor;
+            cell.classList.add("chronica-cell-present");
+            document.documentElement.style.setProperty(
+              "--present-color",
+              this.plugin.settings.presentCellColor
+            );
           } else if (cellDate < now) {
-            cell.style.backgroundColor = this.plugin.settings.pastCellColor;
+            cell.classList.add("chronica-cell-past");
+            document.documentElement.style.setProperty(
+              "--past-color",
+              this.plugin.settings.pastCellColor
+            );
           } else {
-            cell.style.backgroundColor = this.plugin.settings.futureCellColor;
+            cell.classList.add("chronica-cell-future");
+            document.documentElement.style.setProperty(
+              "--future-color",
+              this.plugin.settings.futureCellColor
+            );
           }
 
           return false;
@@ -7092,7 +7119,7 @@ class ChronosTimelineView extends ItemView {
 
           // Apply color if specified in frontmatter
           if (eventData.color) {
-            cell.style.setProperty('--custom-color', eventData.color);
+            cell.style.setProperty("--custom-color", eventData.color);
             cell.addClass("chronica-event-custom");
           } else {
             // Default color based on type
@@ -7182,15 +7209,32 @@ class ChronosTimelineView extends ItemView {
           const cellDate = new Date(year, 0, 1);
           cellDate.setDate(cellDate.getDate() + (weekNum - 1) * 7);
 
+          // Remove any previous styling classes
+          cell.classList.remove("chronica-cell-present");
+          cell.classList.remove("chronica-cell-past");
+          cell.classList.remove("chronica-cell-future");
+
           // Make sure appropriate base styling is applied
           const isCurrentWeek =
             weekKey === this.plugin.getWeekKeyFromDate(new Date());
           if (isCurrentWeek) {
-            cell.style.backgroundColor = this.plugin.settings.presentCellColor;
+            cell.classList.add("chronica-cell-present");
+            document.documentElement.style.setProperty(
+              "--present-color",
+              this.plugin.settings.presentCellColor
+            );
           } else if (cellDate < now) {
-            cell.style.backgroundColor = this.plugin.settings.pastCellColor;
+            cell.classList.add("chronica-cell-past");
+            document.documentElement.style.setProperty(
+              "--past-color",
+              this.plugin.settings.pastCellColor
+            );
           } else {
-            cell.style.backgroundColor = this.plugin.settings.futureCellColor;
+            cell.classList.add("chronica-cell-future");
+            document.documentElement.style.setProperty(
+              "--future-color",
+              this.plugin.settings.futureCellColor
+            );
           }
         }
       }
@@ -7233,8 +7277,21 @@ class ChronosTimelineView extends ItemView {
           if (eventWeekKey === weekKey) {
             // Apply styles
             cell.classList.add("event");
-            cell.style.backgroundColor = defaultColor;
-            cell.style.border = `2px solid ${defaultColor}`;
+
+            // Add appropriate class based on event type
+            if (defaultColor === "#4CAF50") {
+              cell.classList.add("chronica-event-major-life");
+            } else if (defaultColor === "#2196F3") {
+              cell.classList.add("chronica-event-travel");
+            } else if (defaultColor === "#E91E63") {
+              cell.classList.add("chronica-event-relationship");
+            } else if (defaultColor === "#D2B55B") {
+              cell.classList.add("chronica-event-education-career");
+            } else {
+              // For custom colors, we still need to use inline style
+              cell.style.setProperty("--custom-color", defaultColor);
+              cell.classList.add("chronica-event-custom");
+            }
 
             // Build tooltip
             const eventDesc = description || defaultDesc;
@@ -7291,10 +7348,21 @@ class ChronosTimelineView extends ItemView {
             if (isInRange) {
               // Apply styles
               cell.classList.add("event");
-              cell.style.backgroundColor = defaultColor;
-              cell.style.borderColor = defaultColor;
-              cell.style.borderWidth = "2px";
-              cell.style.borderStyle = "solid";
+
+              // Add appropriate class based on event type
+              if (defaultColor === "#4CAF50") {
+                cell.classList.add("chronica-event-major-life");
+              } else if (defaultColor === "#2196F3") {
+                cell.classList.add("chronica-event-travel");
+              } else if (defaultColor === "#E91E63") {
+                cell.classList.add("chronica-event-relationship");
+              } else if (defaultColor === "#D2B55B") {
+                cell.classList.add("chronica-event-education-career");
+              } else {
+                // For custom colors, we still need to use inline style
+                cell.style.setProperty("--custom-color", defaultColor);
+                cell.classList.add("chronica-event-custom");
+              }
 
               // Add specific event type class based on color
               if (defaultColor === "#4CAF50") {
@@ -8119,19 +8187,22 @@ class ChronosSettingTab extends PluginSettingTab {
           })
       );
 
-      // Event Color picker
-      new Setting(containerEl)
+    // Event Color picker
+    new Setting(containerEl)
       .setName("Major Life Event Color")
       .setDesc("Choose color for major life events")
-      .addColorPicker(cp => cp
-        .setValue(this.plugin.settings.majorLifeColor)
-        .onChange(async (value) => {
-          this.plugin.settings.majorLifeColor = value;
-          document.documentElement.style.setProperty('--chronica-event-major-life', value);
-          await this.plugin.saveSettings();
-        })
+      .addColorPicker((cp) =>
+        cp
+          .setValue(this.plugin.settings.majorLifeColor)
+          .onChange(async (value) => {
+            this.plugin.settings.majorLifeColor = value;
+            document.documentElement.style.setProperty(
+              "--chronica-event-major-life",
+              value
+            );
+            await this.plugin.saveSettings();
+          })
       );
-
 
     // Find the "Week Filling Options" section in your code
     containerEl.createEl("h3", { text: "Week Filling Options" });
@@ -8518,8 +8589,11 @@ class ChronosSettingTab extends PluginSettingTab {
       // Hide zoom setting if fit to screen is enabled
       if (this.plugin.settings.defaultFitToScreen) {
         const zoomEl = zoomSetting.settingEl as HTMLElement;
-        zoomEl.classList.toggle("chronica-hidden", !this.plugin.settings.enableZoom);
-            }
+        zoomEl.classList.toggle(
+          "chronica-hidden",
+          !this.plugin.settings.enableZoom
+        );
+      }
 
       new Setting(containerEl)
         .setName("Grid Orientation")

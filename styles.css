@@ -575,7 +575,6 @@
   display: block;
 }
 
-
 /* Elements with dynamic positions */
 .chronica-position-dynamic {
   position: absolute;
@@ -584,7 +583,6 @@
   right: var(--position-right);
   transform: var(--transform-value);
 }
-
 
 .chronica-transformed {
   transform: none !important;
@@ -2127,4 +2125,38 @@
   background-color: var(--background-secondary);
   color: var(--text-normal);
   border: 1px solid var(--background-modifier-border);
+}
+
+/* Event type-specific styling classes */
+.chronica-event-major-life {
+  background-color: var(--chronica-event-major-life);
+  border: 2px solid var(--chronica-event-major-life);
+}
+
+.chronica-event-travel {
+  background-color: var(--chronica-event-travel);
+  border: 2px solid var(--chronica-event-travel);
+}
+
+.chronica-event-relationship {
+  background-color: var(--chronica-event-relationship);
+  border: 2px solid var(--chronica-event-relationship);
+}
+
+.chronica-event-education-career {
+  background-color: var(--chronica-event-education-career);
+  border: 2px solid var(--chronica-event-education-career);
+}
+
+/* For applying specific event colors through classes */
+.chronica-cell-present {
+  background-color: var(--present-color);
+}
+
+.chronica-cell-past {
+  background-color: var(--past-color);
+}
+
+.chronica-cell-future {
+  background-color: var(--future-color);
 }
