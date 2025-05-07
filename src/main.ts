@@ -5917,9 +5917,21 @@ class ChronosTimelineView extends ItemView {
         const colorDot = eventItem.createEl("div", {
           cls: "chronica-event-color-dot",
         });
-        colorDot.style.backgroundColor = event.color;
+
+        if (event.color && event.color.startsWith("#")) {
+          colorDot.style.setProperty("--event-specific-color", event.color);
+          // Add a class to indicate this dot uses a specific color variable
+          colorDot.addClass("chronica-event-dot-specific-color");
+        } else {
+          // Fallback or could add a class based on event.type if colors are standardized by type
+          // For example, if event.type is 'Major Life', it could get a class 'chronica-event-dot-major-life'
+          // and CSS would handle the color.
+          // For a generic approach, we assume a CSS rule will target .chronica-event-color-dot
+          // or a type-specific class added elsewhere.
+        }
 
         let dateRange = event.weekKey;
+
         if (event.isRange && event.endWeekKey) {
           dateRange = `${event.weekKey} → ${event.endWeekKey}`;
         }

@@ -846,6 +846,56 @@
 }
 
 /* -----------------------------------------------------------------------------
+   EVENT SPECIFIC STYLES (NEW OR EXISTING SECTION)
+   ----------------------------------------------------------------------------- */
+
+/* Default style for event color dots if no specific color is applied via JS/data-attributes */
+.chronica-event-color-dot {
+  /* Define a default color or leave it to be overridden by more specific rules */
+  background-color: var(
+    --text-faint
+  ); /* Using a faint color as a general default */
+  width: 12px; /* Ensuring it has a size, matching other dot styles */
+  height: 12px;
+  border-radius: 50%; /* Assuming dots are circular, adjust if they are square */
+  flex-shrink: 0; /* Prevent shrinking in flex container */
+  margin-right: 10px; /* Consistent with .chronica-event-color-dot in renderEventsTab */
+}
+
+/* Style for event dots that have a specific color set via a CSS variable */
+.chronica-event-dot-specific-color {
+  background-color: var(
+    --event-specific-color,
+    var(--text-muted)
+  ); /* Fallback to a muted color */
+}
+
+/* You can also add specific classes for your predefined event types here if not already present
+   and if you decide to add these classes in the main.ts where the colorDot is created.
+   For example:
+*/
+.chronica-event-dot-major-life {
+  background-color: var(
+    --chronica-event-major-life
+  ); /* Uses existing CSS variable */
+}
+.chronica-event-dot-travel {
+  background-color: var(--chronica-event-travel);
+}
+.chronica-event-dot-relationship {
+  background-color: var(--chronica-event-relationship);
+}
+.chronica-event-dot-education-career {
+  background-color: var(--chronica-event-education-career);
+}
+
+/* Add similar rules for your custom event types if they have standardized colors
+   that can be represented by a CSS class rather than a dynamic inline style.
+   This is more for future-proofing if users can define event types with specific colors
+   that you want to map to CSS classes.
+*/
+
+/* -----------------------------------------------------------------------------
          RESPONSIVE DESIGN
          ----------------------------------------------------------------------------- */
 
