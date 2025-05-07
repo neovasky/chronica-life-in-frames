@@ -5481,53 +5481,36 @@ class ChronosTimelineView extends obsidian.ItemView {
                 // Continue with normal event checking
                 const eventData = await this.plugin.getEventFromNote(weekKey);
                 if (eventData && eventData.event) {
-                    // Apply styling based on note frontmatter
+                    // Apply styling based on note front‑matter
                     cell.classList.add("event");
-                    // Add specific event type class based on type
+                    // ── Built‑in event‑type classes (no inline colors)
+                    cell.classList.remove("chronica-event-major-life", "chronica-event-travel", "chronica-event-relationship", "chronica-event-education-career");
                     switch (eventData.type) {
                         case "Major Life":
-                            cell.classList.add("major-life-event");
+                            cell.classList.add("chronica-event-major-life");
                             break;
                         case "Travel":
-                            cell.classList.add("travel-event");
+                            cell.classList.add("chronica-event-travel");
                             break;
                         case "Relationship":
-                            cell.classList.add("relationship-event");
+                            cell.classList.add("chronica-event-relationship");
                             break;
                         case "Education/Career":
-                            cell.classList.add("education-career-event");
+                            cell.classList.add("chronica-event-education-career");
                             break;
                     }
-                    // Apply color if specified in frontmatter
+                    // ── Custom color via front‑matter or custom type
                     if (eventData.color) {
                         cell.style.setProperty("--custom-color", eventData.color);
-                        cell.addClass("chronica-event-custom");
+                        cell.classList.add("chronica-event-custom");
                     }
                     else {
-                        // Default color based on type
-                        let defaultColor = "#4CAF50"; // Default to green (Major Life)
-                        switch (eventData.type) {
-                            case "Major Life":
-                                defaultColor = "#4CAF50";
-                                break;
-                            case "Travel":
-                                defaultColor = "#2196F3";
-                                break;
-                            case "Relationship":
-                                defaultColor = "#E91E63";
-                                break;
-                            case "Education/Career":
-                                defaultColor = "#D2B55B";
-                                break;
-                            default:
-                                // Check if it's a custom type
-                                const customType = this.plugin.settings.customEventTypes.find((t) => t.name === eventData.type);
-                                if (customType) {
-                                    defaultColor = customType.color;
-                                }
+                        // If it's a user‑defined custom type, set --custom-color once and use .chronica-event-custom
+                        const customType = this.plugin.settings.customEventTypes.find((t) => t.name === eventData.type);
+                        if (customType) {
+                            cell.style.setProperty("--custom-color", customType.color);
+                            cell.classList.add("chronica-event-custom");
                         }
-                        cell.style.backgroundColor = defaultColor;
-                        cell.style.border = `2px solid ${defaultColor}`;
                     }
                     // Build tooltip
                     const eventName = eventData.name || eventData.event;
