@@ -196,7 +196,7 @@ class ChronosFolderSelectionModal extends obsidian.Modal {
         });
         footerDiv.createEl("strong", {
             text: "Please create your dedicated folders in your vault before selecting them here.",
-            attr: { style: "font-size: 13px;" },
+            cls: "chronica-legend-type",
         });
         container.createEl("div", {
             cls: "chronica-welcome-footer",
@@ -244,20 +244,10 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
      */
     async onload() {
         // First, create CSS custom properties for colors
-        document.documentElement.style.setProperty('--chronica-event-major-life', this.settings.majorLifeColor);
-        document.documentElement.style.setProperty('--chronica-event-travel', this.settings.travelColor);
-        document.documentElement.style.setProperty('--chronica-event-relationship', this.settings.RelationshipColor);
-        document.documentElement.style.setProperty('--chronica-event-education-career', this.settings.CareerColor);
-        // Then update the style element to use these custom properties
-        const styleEl = document.createElement("style");
-        styleEl.textContent = [
-            '.chronica-color-major-life { background-color: var(--chronica-event-major-life); }',
-            '.chronica-color-travel { background-color: var(--chronica-event-travel); }',
-            '.chronica-color-relationship { background-color: var(--chronica-event-relationship); }',
-            '.chronica-color-education-career { background-color: var(--chronica-event-education-career); }',
-            '.chronica-event-custom { border-width: 2px; border-style: solid; background-color: var(--custom-color); border-color: var(--custom-color); }',
-        ].join("\n");
-        document.head.appendChild(styleEl);
+        document.documentElement.style.setProperty("--chronica-event-major-life", this.settings.majorLifeColor);
+        document.documentElement.style.setProperty("--chronica-event-travel", this.settings.travelColor);
+        document.documentElement.style.setProperty("--chronica-event-relationship", this.settings.RelationshipColor);
+        document.documentElement.style.setProperty("--chronica-event-education-career", this.settings.CareerColor);
         // 1) Register the timeline view exactly once
         try {
             this.registerView(TIMELINE_VIEW_TYPE, (leaf) => new ChronosTimelineView(leaf, this));
@@ -283,15 +273,12 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
             this.registerPotentialSyncOperation();
             // Protect against sync-triggered modifications
             if (this.isSyncOperation) {
-                console.debug("Chronica: File modification during sync, deferring actions", file.path);
                 return;
             }
             // Skip if not a Chronica-related file
             if (!this.isChronicaRelatedFile(file)) {
                 return;
             }
-            // Safe to proceed with normal modification handling for Chronica files
-            // (The existing code just registered sync, but didn't do anything else)
         }));
         // 3) On deletion of a week- or event-note, re-scan vault & refresh timeline
         this.registerEvent(this.app.vault.on("delete", async (file) => {
@@ -328,10 +315,10 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
         obsidian.addIcon("chronica-icon", CHRONICA_ICON);
         await this.loadSettings();
         // Re-apply colors after loading settings to ensure they're up to date
-        document.documentElement.style.setProperty('--chronica-event-major-life', this.settings.majorLifeColor);
-        document.documentElement.style.setProperty('--chronica-event-travel', this.settings.travelColor);
-        document.documentElement.style.setProperty('--chronica-event-relationship', this.settings.RelationshipColor);
-        document.documentElement.style.setProperty('--chronica-event-education-career', this.settings.CareerColor);
+        document.documentElement.style.setProperty("--chronica-event-major-life", this.settings.majorLifeColor);
+        document.documentElement.style.setProperty("--chronica-event-travel", this.settings.travelColor);
+        document.documentElement.style.setProperty("--chronica-event-relationship", this.settings.RelationshipColor);
+        document.documentElement.style.setProperty("--chronica-event-education-career", this.settings.CareerColor);
         await this.scanVaultForEvents();
         this.addRibbonIcon("chronica-icon", "Open Chronica Timeline", () => {
             this.activateView();
@@ -1049,8 +1036,7 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
                             await this.app.vault.createFolder(this.settings.notesFolder);
                         }
                     }
-                    catch (err) {
-                    }
+                    catch (err) { }
                 }
                 // Check if any events exist for this week in the plugin settings
                 let content = "";
@@ -1586,8 +1572,7 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
                         await this.app.vault.createFolder(this.settings.notesFolder);
                     }
                 }
-                catch (err) {
-                }
+                catch (err) { }
             }
             // Create file
             await this.app.vault.create(fullPath, content);
@@ -1840,8 +1825,6 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
             this.isSyncOperation = false;
             this.syncOperationTimer = null;
         }, 5000);
-        // Log sync operation detection for debugging
-        console.debug("Chronica: Potential sync operation detected, operations paused");
     }
     async cleanInvalidEvents() {
         const removeInvalid = (events) => events.filter((entry) => {
@@ -2106,7 +2089,9 @@ class ChronosEventModal extends obsidian.Modal {
             if (type.name === this.selectedEventType) {
                 radioBtn.checked = true;
             }
-            const className = `chronica-color-${type.name.replace(/\s+/g, "-").toLowerCase()}`;
+            const className = `chronica-color-${type.name
+                .replace(/\s+/g, "-")
+                .toLowerCase()}`;
             radioLabel.createEl("span", {
                 cls: ["chronica-color-box", className],
             });
@@ -2337,8 +2322,7 @@ class ChronosEventModal extends obsidian.Modal {
                         await this.app.vault.createFolder(this.plugin.settings.notesFolder);
                     }
                 }
-                catch (err) {
-                }
+                catch (err) { }
             }
             // Create event note file with frontmatter and content
             let content = "";
@@ -3247,7 +3231,7 @@ class ChronosTimelineView extends obsidian.ItemView {
             this.updateStatsPanelLayout();
         });
         // Show/hide the toggle button based on sidebar state
-        collapsedToggle.style.display = this.isSidebarOpen ? "none" : "block";
+        collapsedToggle.classList.toggle("chronica-hidden", this.isSidebarOpen);
         // Create the view container
         const viewEl = contentAreaEl.createEl("div", { cls: "chronica-view" });
         // Render the weeks grid
@@ -3466,14 +3450,14 @@ class ChronosTimelineView extends obsidian.ItemView {
                     // Position marker at the CENTER of the column, not past it
                     const leftPosition = decadePosition + cellSize / 2;
                     if (isPortrait) {
-                        marker.style.setProperty('--position-top', `${leftPosition}px`);
-                        marker.style.setProperty('--position-left', `${topOffset}px`);
-                        marker.style.setProperty('--transform-value', 'translate(-50%, -50%)');
+                        marker.style.setProperty("--position-top", `${leftPosition}px`);
+                        marker.style.setProperty("--position-left", `${topOffset}px`);
+                        marker.style.setProperty("--transform-value", "translate(-50%, -50%)");
                     }
                     else {
-                        marker.style.setProperty('--position-left', `${leftPosition}px`);
-                        marker.style.setProperty('--position-top', `${topOffset / 2}px`);
-                        marker.style.setProperty('--transform-value', 'translate(-50%, -50%)');
+                        marker.style.setProperty("--position-left", `${leftPosition}px`);
+                        marker.style.setProperty("--position-top", `${topOffset / 2}px`);
+                        marker.style.setProperty("--transform-value", "translate(-50%, -50%)");
                     }
                 }
             }
@@ -3516,9 +3500,9 @@ class ChronosTimelineView extends obsidian.ItemView {
                 "M17 8v2",
                 "M7 4h.01",
                 "M12 4h.01",
-                "M17 4h.01"
+                "M17 4h.01",
             ];
-            paths.forEach(pathData => {
+            paths.forEach((pathData) => {
                 const path = document.createElementNS(cakeSvgNS, "path");
                 path.setAttribute("d", pathData);
                 cakeSvg.appendChild(path);
@@ -3761,17 +3745,17 @@ class ChronosTimelineView extends obsidian.ItemView {
                 // Position based on orientation using CSS variables
                 if (this.plugin.settings.gridOrientation === "landscape") {
                     // Landscape mode (default): years as columns, weeks as rows
-                    cell.style.setProperty('--position-left', `${yearPos}px`);
-                    cell.style.setProperty('--position-top', `${weekPos}px`);
+                    cell.style.setProperty("--position-left", `${yearPos}px`);
+                    cell.style.setProperty("--position-top", `${weekPos}px`);
                 }
                 else {
                     // Portrait mode: years as rows, weeks as columns
-                    cell.style.setProperty('--position-left', `${weekPos}px`);
-                    cell.style.setProperty('--position-top', `${yearPos}px`);
+                    cell.style.setProperty("--position-left", `${weekPos}px`);
+                    cell.style.setProperty("--position-top", `${yearPos}px`);
                 }
                 // Set width and height using CSS variables
-                cell.style.setProperty('--element-width', `${cellSize}px`);
-                cell.style.setProperty('--element-height', `${cellSize}px`);
+                cell.style.setProperty("--element-width", `${cellSize}px`);
+                cell.style.setProperty("--element-height", `${cellSize}px`);
                 cell.addClass("chronica-position-dynamic");
                 cell.addClass("chronica-size-dynamic");
                 // Color coding (past, present, future)
@@ -3867,8 +3851,7 @@ class ChronosTimelineView extends obsidian.ItemView {
                                     await this.app.vault.createFolder(this.plugin.settings.notesFolder);
                                 }
                             }
-                            catch (err) {
-                            }
+                            catch (err) { }
                         }
                         // Add empty frontmatter
                         let content = this.plugin.formatFrontmatter({});
@@ -4029,11 +4012,10 @@ class ChronosTimelineView extends obsidian.ItemView {
             statsPanel.classList.toggle("collapsed", !this.isStatsOpen);
             // Important: Set explicit panel height when expanding
             if (this.isStatsOpen) {
-                statsPanel.style.height = `${this.plugin.settings.statsPanelHeight}px`;
                 document.documentElement.style.setProperty("--stats-panel-height", `${this.plugin.settings.statsPanelHeight}px`);
             }
             else {
-                statsPanel.style.height = "0";
+                document.documentElement.style.setProperty("--stats-panel-height", "0px");
             }
             // Update content area padding
             const contentArea = this.containerEl.querySelector(".chronica-content-area");
@@ -4245,7 +4227,7 @@ class ChronosTimelineView extends obsidian.ItemView {
         const progressFill = progressBar.createEl("div", {
             cls: "chronica-progress-bar-fill",
         });
-        progressFill.style.setProperty('--progress-width', `${livedPercentage}%`);
+        progressFill.style.setProperty("--progress-width", `${livedPercentage}%`);
         progressFill.addClass("chronica-progress-dynamic");
         barContainer.createEl("div", {
             cls: "chronica-stat-subtitle",
@@ -4432,8 +4414,10 @@ class ChronosTimelineView extends obsidian.ItemView {
             const barEl = barContainer.createEl("div", {
                 cls: "chronica-chart-bar",
             });
-            barEl.style.width = `${(event.count / maxCount) * 100}%`;
-            barEl.style.backgroundColor = event.color;
+            // width & color now via CSS variables + class
+            barEl.style.setProperty("--chronica-bar-width", `${(event.count / maxCount) * 100}%`);
+            barEl.style.setProperty("--chronica-bar-color", event.color);
+            barEl.classList.add("chronica-event-bar");
             barContainer.createEl("div", {
                 cls: "chronica-chart-count",
                 text: event.count.toString(),
@@ -4519,7 +4503,11 @@ class ChronosTimelineView extends obsidian.ItemView {
                 const colorDot = eventItem.createEl("div", {
                     cls: "chronica-event-color-dot",
                 });
-                colorDot.style.backgroundColor = event.color;
+                if (event.color && event.color.startsWith("#")) {
+                    colorDot.style.setProperty("--event-specific-color", event.color);
+                    // Add a class to indicate this dot uses a specific color variable
+                    colorDot.addClass("chronica-event-dot-specific-color");
+                }
                 let dateRange = event.weekKey;
                 if (event.isRange && event.endWeekKey) {
                     dateRange = `${event.weekKey} → ${event.endWeekKey}`;
@@ -5458,6 +5446,11 @@ class ChronosTimelineView extends obsidian.ItemView {
                     cell.classList.remove("travel-event");
                     cell.classList.remove("relationship-event");
                     cell.classList.remove("education-career-event");
+                    cell.classList.remove("chronica-event-major-life");
+                    cell.classList.remove("chronica-event-travel");
+                    cell.classList.remove("chronica-event-relationship");
+                    cell.classList.remove("chronica-event-education-career");
+                    cell.classList.remove("chronica-event-custom");
                     cell.style.backgroundColor = "";
                     cell.style.border = "";
                     // Restore appropriate base styling
@@ -5465,16 +5458,23 @@ class ChronosTimelineView extends obsidian.ItemView {
                     const [year, weekNum] = weekKey.split("-W").map((n) => parseInt(n));
                     const cellDate = new Date(year, 0, 1);
                     cellDate.setDate(cellDate.getDate() + (weekNum - 1) * 7);
+                    // Remove any previous styling classes
+                    cell.classList.remove("chronica-cell-present");
+                    cell.classList.remove("chronica-cell-past");
+                    cell.classList.remove("chronica-cell-future");
                     // Reapply appropriate base styling
                     const isCurrentWeek = weekKey === this.plugin.getWeekKeyFromDate(new Date());
                     if (isCurrentWeek) {
-                        cell.style.backgroundColor = this.plugin.settings.presentCellColor;
+                        cell.classList.add("chronica-cell-present");
+                        document.documentElement.style.setProperty("--present-color", this.plugin.settings.presentCellColor);
                     }
                     else if (cellDate < now) {
-                        cell.style.backgroundColor = this.plugin.settings.pastCellColor;
+                        cell.classList.add("chronica-cell-past");
+                        document.documentElement.style.setProperty("--past-color", this.plugin.settings.pastCellColor);
                     }
                     else {
-                        cell.style.backgroundColor = this.plugin.settings.futureCellColor;
+                        cell.classList.add("chronica-cell-future");
+                        document.documentElement.style.setProperty("--future-color", this.plugin.settings.futureCellColor);
                     }
                     return false;
                 }
@@ -5500,7 +5500,7 @@ class ChronosTimelineView extends obsidian.ItemView {
                     }
                     // Apply color if specified in frontmatter
                     if (eventData.color) {
-                        cell.style.setProperty('--custom-color', eventData.color);
+                        cell.style.setProperty("--custom-color", eventData.color);
                         cell.addClass("chronica-event-custom");
                     }
                     else {
@@ -5575,16 +5575,23 @@ class ChronosTimelineView extends obsidian.ItemView {
                     const [year, weekNum] = weekKey.split("-W").map((n) => parseInt(n));
                     const cellDate = new Date(year, 0, 1);
                     cellDate.setDate(cellDate.getDate() + (weekNum - 1) * 7);
+                    // Remove any previous styling classes
+                    cell.classList.remove("chronica-cell-present");
+                    cell.classList.remove("chronica-cell-past");
+                    cell.classList.remove("chronica-cell-future");
                     // Make sure appropriate base styling is applied
                     const isCurrentWeek = weekKey === this.plugin.getWeekKeyFromDate(new Date());
                     if (isCurrentWeek) {
-                        cell.style.backgroundColor = this.plugin.settings.presentCellColor;
+                        cell.classList.add("chronica-cell-present");
+                        document.documentElement.style.setProperty("--present-color", this.plugin.settings.presentCellColor);
                     }
                     else if (cellDate < now) {
-                        cell.style.backgroundColor = this.plugin.settings.pastCellColor;
+                        cell.classList.add("chronica-cell-past");
+                        document.documentElement.style.setProperty("--past-color", this.plugin.settings.pastCellColor);
                     }
                     else {
-                        cell.style.backgroundColor = this.plugin.settings.futureCellColor;
+                        cell.classList.add("chronica-cell-future");
+                        document.documentElement.style.setProperty("--future-color", this.plugin.settings.futureCellColor);
                     }
                 }
             }
@@ -5616,8 +5623,24 @@ class ChronosTimelineView extends obsidian.ItemView {
                     if (eventWeekKey === weekKey) {
                         // Apply styles
                         cell.classList.add("event");
-                        cell.style.backgroundColor = defaultColor;
-                        cell.style.border = `2px solid ${defaultColor}`;
+                        // Add appropriate class based on event type
+                        if (defaultColor === "#4CAF50") {
+                            cell.classList.add("chronica-event-major-life");
+                        }
+                        else if (defaultColor === "#2196F3") {
+                            cell.classList.add("chronica-event-travel");
+                        }
+                        else if (defaultColor === "#E91E63") {
+                            cell.classList.add("chronica-event-relationship");
+                        }
+                        else if (defaultColor === "#D2B55B") {
+                            cell.classList.add("chronica-event-education-career");
+                        }
+                        else {
+                            // For custom colors, we still need to use inline style
+                            cell.style.setProperty("--custom-color", defaultColor);
+                            cell.classList.add("chronica-event-custom");
+                        }
                         // Build tooltip
                         const eventDesc = description || defaultDesc;
                         const prevTitle = cell.getAttribute("title") || "";
@@ -5658,10 +5681,24 @@ class ChronosTimelineView extends obsidian.ItemView {
                         if (isInRange) {
                             // Apply styles
                             cell.classList.add("event");
-                            cell.style.backgroundColor = defaultColor;
-                            cell.style.borderColor = defaultColor;
-                            cell.style.borderWidth = "2px";
-                            cell.style.borderStyle = "solid";
+                            // Add appropriate class based on event type
+                            if (defaultColor === "#4CAF50") {
+                                cell.classList.add("chronica-event-major-life");
+                            }
+                            else if (defaultColor === "#2196F3") {
+                                cell.classList.add("chronica-event-travel");
+                            }
+                            else if (defaultColor === "#E91E63") {
+                                cell.classList.add("chronica-event-relationship");
+                            }
+                            else if (defaultColor === "#D2B55B") {
+                                cell.classList.add("chronica-event-education-career");
+                            }
+                            else {
+                                // For custom colors, we still need to use inline style
+                                cell.style.setProperty("--custom-color", defaultColor);
+                                cell.classList.add("chronica-event-custom");
+                            }
                             // Add specific event type class based on color
                             if (defaultColor === "#4CAF50") {
                                 cell.classList.add("major-life-event");
@@ -6153,9 +6190,7 @@ class ChronosSettingTab extends obsidian.PluginSettingTab {
             });
         });
         // Hide frequency setting if month markers are disabled
-        if (!this.plugin.settings.showMonthMarkers) {
-            freqSetting.settingEl.style.display = "none";
-        }
+        freqSetting.settingEl.classList.toggle("chronica-hidden", !this.plugin.settings.showMonthMarkers);
         // Color settings section
         containerEl.createEl("h3", { text: "Colors" });
         // Past cells color
@@ -6195,11 +6230,11 @@ class ChronosSettingTab extends obsidian.PluginSettingTab {
         new obsidian.Setting(containerEl)
             .setName("Major Life Event Color")
             .setDesc("Choose color for major life events")
-            .addColorPicker(cp => cp
+            .addColorPicker((cp) => cp
             .setValue(this.plugin.settings.majorLifeColor)
             .onChange(async (value) => {
             this.plugin.settings.majorLifeColor = value;
-            document.documentElement.style.setProperty('--chronica-event-major-life', value);
+            document.documentElement.style.setProperty("--chronica-event-major-life", value);
             await this.plugin.saveSettings();
         }));
         // Find the "Week Filling Options" section in your code
@@ -6264,9 +6299,7 @@ class ChronosSettingTab extends obsidian.PluginSettingTab {
             });
         });
         // Hide day selector if auto-fill is disabled
-        if (!this.plugin.settings.enableAutoFill) {
-            daySelector.settingEl.style.display = "none";
-        }
+        daySelector.settingEl.classList.toggle("chronica-hidden", !this.plugin.settings.enableAutoFill);
         // Add initial status indicator
         const statusEl = containerEl.createEl("div", {
             cls: "fill-mode-status",
@@ -6274,9 +6307,7 @@ class ChronosSettingTab extends obsidian.PluginSettingTab {
                 ? "Auto-fill is active. Weeks will be filled automatically."
                 : "Manual fill is active. Right-click on future weeks to mark them as filled.",
         });
-        statusEl.style.fontStyle = "italic";
-        statusEl.style.marginTop = "5px";
-        statusEl.style.color = "var(--text-muted)";
+        statusEl.classList.add("chronica-status-indicator");
         // Event types management section
         containerEl.createEl("h3", { text: "Event Types" });
         new obsidian.Setting(containerEl)
@@ -6423,7 +6454,7 @@ class ChronosSettingTab extends obsidian.PluginSettingTab {
                 }
             }));
             // Auto-fill day selector
-            const daySelector = new obsidian.Setting(containerEl)
+            new obsidian.Setting(containerEl)
                 .setName("Auto-Fill Day")
                 .setDesc("Day of the week when auto-fill should occur")
                 .setClass("auto-fill-day-selector")
@@ -6447,10 +6478,6 @@ class ChronosSettingTab extends obsidian.PluginSettingTab {
                     await this.plugin.saveSettings();
                 });
             });
-            // Hide day selector if auto-fill is disabled
-            if (!this.plugin.settings.enableAutoFill) {
-                daySelector.settingEl.style.display = "none";
-            }
             // Week start day setting
             new obsidian.Setting(containerEl)
                 .setName("Start Week On Monday")

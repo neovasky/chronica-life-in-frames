@@ -400,7 +400,7 @@ class ChronosFolderSelectionModal extends Modal {
     });
     footerDiv.createEl("strong", {
       text: "Please create your dedicated folders in your vault before selecting them here.",
-      attr: { style: "font-size: 13px;" },
+      cls: "chronica-legend-type",
     });
 
     container.createEl("div", {
@@ -4235,7 +4235,7 @@ class ChronosTimelineView extends ItemView {
     });
 
     // Show/hide the toggle button based on sidebar state
-    collapsedToggle.style.display = this.isSidebarOpen ? "none" : "block";
+    collapsedToggle.classList.toggle("chronica-hidden", this.isSidebarOpen);
 
     // Create the view container
     const viewEl = contentAreaEl.createEl("div", { cls: "chronica-view" });
@@ -5254,13 +5254,15 @@ class ChronosTimelineView extends ItemView {
 
       // Important: Set explicit panel height when expanding
       if (this.isStatsOpen) {
-        statsPanel.style.height = `${this.plugin.settings.statsPanelHeight}px`;
         document.documentElement.style.setProperty(
           "--stats-panel-height",
           `${this.plugin.settings.statsPanelHeight}px`
         );
       } else {
-        statsPanel.style.height = "0";
+        document.documentElement.style.setProperty(
+          "--stats-panel-height",
+          "0px"
+        );
       }
 
       // Update content area padding
@@ -5804,8 +5806,13 @@ class ChronosTimelineView extends ItemView {
         cls: "chronica-chart-bar",
       });
 
-      barEl.style.width = `${(event.count / maxCount) * 100}%`;
-      barEl.style.backgroundColor = event.color;
+      // width & color now via CSS variables + class
+      barEl.style.setProperty(
+        "--chronica-bar-width",
+        `${(event.count / maxCount) * 100}%`
+      );
+      barEl.style.setProperty("--chronica-bar-color", event.color);
+      barEl.classList.add("chronica-event-bar");
 
       const countEl = barContainer.createEl("div", {
         cls: "chronica-chart-count",
@@ -8150,9 +8157,10 @@ class ChronosSettingTab extends PluginSettingTab {
       });
 
     // Hide frequency setting if month markers are disabled
-    if (!this.plugin.settings.showMonthMarkers) {
-      freqSetting.settingEl.style.display = "none";
-    }
+    freqSetting.settingEl.classList.toggle(
+      "chronica-hidden",
+      !this.plugin.settings.showMonthMarkers
+    );
 
     // Color settings section
     containerEl.createEl("h3", { text: "Colors" });
@@ -8294,9 +8302,10 @@ class ChronosSettingTab extends PluginSettingTab {
       });
 
     // Hide day selector if auto-fill is disabled
-    if (!this.plugin.settings.enableAutoFill) {
-      daySelector.settingEl.style.display = "none";
-    }
+    daySelector.settingEl.classList.toggle(
+      "chronica-hidden",
+      !this.plugin.settings.enableAutoFill
+    );
 
     // Add initial status indicator
     const statusEl = containerEl.createEl("div", {
@@ -8305,9 +8314,7 @@ class ChronosSettingTab extends PluginSettingTab {
         ? "Auto-fill is active. Weeks will be filled automatically."
         : "Manual fill is active. Right-click on future weeks to mark them as filled.",
     });
-    statusEl.style.fontStyle = "italic";
-    statusEl.style.marginTop = "5px";
-    statusEl.style.color = "var(--text-muted)";
+    statusEl.classList.add("chronica-status-indicator");
 
     // Event types management section
     containerEl.createEl("h3", { text: "Event Types" });
@@ -8521,11 +8528,6 @@ class ChronosSettingTab extends PluginSettingTab {
               await this.plugin.saveSettings();
             });
         });
-
-      // Hide day selector if auto-fill is disabled
-      if (!this.plugin.settings.enableAutoFill) {
-        daySelector.settingEl.style.display = "none";
-      }
 
       // Week start day setting
       new Setting(containerEl)

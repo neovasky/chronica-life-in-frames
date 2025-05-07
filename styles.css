@@ -25,7 +25,7 @@
   --present-color: var(--text-accent);
   --future-event-color: rgba(255, 215, 0, 0.5);
   --relationship-color: #e91e63;
-  --travel-color: #2196f3;
+  --travel-color: #3f51b5;
   --education-career-color: #d2b55b;
   --major-life-color: #4caf50;
   --stats-panel-height: 170px;
@@ -39,6 +39,24 @@
   --element-height: auto;
   --transform-value: none;
   --progress-width: 0%;
+}
+
+/* -----------------------------------------------------------------------------
+   GLOBAL HELPERS
+   ----------------------------------------------------------------------------- */
+.chronica-hidden {
+  display: none !important;
+}
+
+.chronica-status-indicator {
+  font-style: italic;
+  margin-top: 5px;
+  color: var(--text-muted);
+}
+
+.chronica-legend-type {
+  font-size: 13px;
+  font-weight: 500;
 }
 
 /* -----------------------------------------------------------------------------
@@ -870,10 +888,6 @@
   ); /* Fallback to a muted color */
 }
 
-/* You can also add specific classes for your predefined event types here if not already present
-   and if you decide to add these classes in the main.ts where the colorDot is created.
-   For example:
-*/
 .chronica-event-dot-major-life {
   background-color: var(
     --chronica-event-major-life
@@ -888,12 +902,6 @@
 .chronica-event-dot-education-career {
   background-color: var(--chronica-event-education-career);
 }
-
-/* Add similar rules for your custom event types if they have standardized colors
-   that can be represented by a CSS class rather than a dynamic inline style.
-   This is more for future-proofing if users can define event types with specific colors
-   that you want to map to CSS classes.
-*/
 
 /* -----------------------------------------------------------------------------
          RESPONSIVE DESIGN
@@ -2177,36 +2185,58 @@
   border: 1px solid var(--background-modifier-border);
 }
 
-/* Event type-specific styling classes */
+/* -----------------------------------------------------------------------------
+   EVENT COLORS
+   ----------------------------------------------------------------------------- */
+
 .chronica-event-major-life {
   background-color: var(--chronica-event-major-life);
   border: 2px solid var(--chronica-event-major-life);
 }
-
 .chronica-event-travel {
   background-color: var(--chronica-event-travel);
   border: 2px solid var(--chronica-event-travel);
 }
-
 .chronica-event-relationship {
   background-color: var(--chronica-event-relationship);
   border: 2px solid var(--chronica-event-relationship);
 }
-
 .chronica-event-education-career {
   background-color: var(--chronica-event-education-career);
   border: 2px solid var(--chronica-event-education-career);
 }
-
-/* For applying specific event colors through classes */
-.chronica-cell-present {
-  background-color: var(--present-color);
+.chronica-event-custom {
+  border-width: 2px;
+  border-style: solid;
+  background-color: var(--custom-color);
+  border-color: var(--custom-color);
 }
 
-.chronica-cell-past {
-  background-color: var(--past-color);
+.chronica-color-major-life {
+  background-color: var(--chronica-event-major-life);
+}
+.chronica-color-travel {
+  background-color: var(--chronica-event-travel);
+}
+.chronica-color-relationship {
+  background-color: var(--chronica-event-relationship);
+}
+.chronica-color-education-career {
+  background-color: var(--chronica-event-education-career);
+}
+.chronica-event-custom {
+  border-width: 2px;
+  border-style: solid;
+  background-color: var(--custom-color);
+  border-color: var(--custom-color);
 }
 
-.chronica-cell-future {
-  background-color: var(--future-color);
+/* -----------------------------------------------------------------------------
+   NEW: EVENT BARS (Events‑tab histogram)
+   ----------------------------------------------------------------------------- */
+.chronica-event-bar {
+  height: 100%;
+  width: var(--chronica-bar-width);
+  background-color: var(--chronica-bar-color);
+  border-radius: 4px;
 }
