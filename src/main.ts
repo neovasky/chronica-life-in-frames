@@ -7679,13 +7679,9 @@ class ChornicaSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
 
             // Show/hide event folder selector based on toggle state
-            const eventFolderSetting = containerEl.querySelector(
-              ".event-folder-selector"
-            );
-            if (eventFolderSetting) {
-              (eventFolderSetting as HTMLElement).style.display = value
-                ? "flex"
-                : "none";
+            // Note: 'eventFolderSetting' is the Setting instance defined later
+            if (eventFolderSetting && eventFolderSetting.settingEl) {
+              eventFolderSetting.settingEl.classList.toggle("hidden", !value);
             }
           })
       );
@@ -7715,9 +7711,9 @@ class ChornicaSettingTab extends PluginSettingTab {
         // Pass the plugin instance to FolderSuggest
         new FolderSuggest(this.app, search.inputEl, this.plugin);
       });
-    // Hide event folder selector if separate folders not enabled
+    // Hide event folder selector initially if separate folders not enabled
     if (!this.plugin.settings.useSeparateFolders) {
-      eventFolderSetting.settingEl.style.display = "none";
+      eventFolderSetting.settingEl.classList.add("hidden");
     }
 
     // Quote setting
@@ -7779,13 +7775,9 @@ class ChornicaSettingTab extends PluginSettingTab {
             this.refreshAllViews();
 
             // Show/hide month marker frequency setting based on toggle state
-            const freqSetting = containerEl.querySelector(
-              ".month-marker-frequency"
-            );
-            if (freqSetting) {
-              (freqSetting as HTMLElement).style.display = value
-                ? "flex"
-                : "none";
+            // Note: 'freqSetting' is the Setting instance defined later in the code
+            if (freqSetting && freqSetting.settingEl) {
+              freqSetting.settingEl.classList.toggle("hidden", !value);
             }
           })
       );
@@ -7813,9 +7805,9 @@ class ChornicaSettingTab extends PluginSettingTab {
           });
       });
 
-    // Hide frequency setting if month markers are disabled
+    // Hide frequency setting initially if month markers are disabled
     if (!this.plugin.settings.showMonthMarkers) {
-      freqSetting.settingEl.style.display = "none";
+      freqSetting.settingEl.classList.add("hidden");
     }
 
     // Color settings section
@@ -8214,13 +8206,10 @@ class ChornicaSettingTab extends PluginSettingTab {
               await this.plugin.saveSettings();
 
               // Show/hide the zoom level setting based on this value
-              const zoomSetting = containerEl.querySelector(
-                ".zoom-level-setting"
-              );
-              if (zoomSetting) {
-                (zoomSetting as HTMLElement).style.display = value
-                  ? "none"
-                  : "flex";
+              // Note: 'zoomSetting' is the Setting instance defined later
+              if (zoomSetting && zoomSetting.settingEl) {
+                // Note: We hide zoom when Fit to Screen is ON (value is true)
+                zoomSetting.settingEl.classList.toggle("hidden", value);
               }
             })
         );
@@ -8244,9 +8233,9 @@ class ChornicaSettingTab extends PluginSettingTab {
             })
         );
 
-      // Hide zoom setting if fit to screen is enabled
+      // Hide zoom setting initially if fit to screen is enabled
       if (this.plugin.settings.defaultFitToScreen) {
-        zoomSetting.settingEl.style.display = "none";
+        zoomSetting.settingEl.classList.add("hidden");
       }
 
       new Setting(containerEl)
