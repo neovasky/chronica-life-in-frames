@@ -4012,15 +4012,40 @@ class ChornicaTimelineView extends obsidian.ItemView {
             cls: "chronica-circular-progress",
         });
         const progressValue = Math.round(livedPercentage);
-        circleContainer.innerHTML = `
-    <svg width="60" height="60" viewBox="0 0 80 80">
-      <circle cx="40" cy="40" r="35" fill="none" stroke="var(--background-modifier-border)" stroke-width="5"></circle>
-      <circle cx="40" cy="40" r="35" fill="none" stroke="var(--interactive-accent)" stroke-width="5"
-        stroke-dasharray="220" stroke-dashoffset="${220 - (220 * livedPercentage) / 100}"
-        transform="rotate(-90 40 40)"></circle>
-    </svg>
-    <div class="chronica-circular-progress-text">${progressValue}%</div>
-  `;
+        // Create SVG element
+        const svgNS = "http://www.w3.org/2000/svg";
+        const svg = document.createElementNS(svgNS, "svg");
+        svg.setAttribute("width", "60");
+        svg.setAttribute("height", "60");
+        svg.setAttribute("viewBox", "0 0 80 80");
+        // Create background circle
+        const bgCircle = document.createElementNS(svgNS, "circle");
+        bgCircle.setAttribute("cx", "40");
+        bgCircle.setAttribute("cy", "40");
+        bgCircle.setAttribute("r", "35");
+        bgCircle.setAttribute("fill", "none");
+        bgCircle.setAttribute("stroke", "var(--background-modifier-border)");
+        bgCircle.setAttribute("stroke-width", "5");
+        svg.appendChild(bgCircle);
+        // Create progress circle
+        const progressCircle = document.createElementNS(svgNS, "circle");
+        progressCircle.setAttribute("cx", "40");
+        progressCircle.setAttribute("cy", "40");
+        progressCircle.setAttribute("r", "35");
+        progressCircle.setAttribute("fill", "none");
+        progressCircle.setAttribute("stroke", "var(--interactive-accent)");
+        progressCircle.setAttribute("stroke-width", "5");
+        progressCircle.setAttribute("stroke-dasharray", "220"); // Circumference approx 2 * PI * 35
+        progressCircle.setAttribute("stroke-dashoffset", `${220 - (220 * livedPercentage) / 100}`);
+        progressCircle.setAttribute("transform", "rotate(-90 40 40)");
+        svg.appendChild(progressCircle);
+        // Append SVG to container
+        circleContainer.appendChild(svg);
+        // Create and append text element separately
+        circleContainer.createEl("div", {
+            cls: "chronica-circular-progress-text",
+            text: `${progressValue}%`,
+        });
         // Create bar and text on the right
         const barContainer = progressContainer.createEl("div", {
             cls: "chronica-bar-container",
