@@ -2137,14 +2137,14 @@ class ChornicaEventModal extends obsidian.Modal {
         }));
     }
     /**
-     * Show or hide custom type settings
+     * Show or hide custom type settings using CSS classes
      * @param contentEl - Modal content element
      * @param show - Whether to show or hide settings
      */
     updateCustomTypeVisibility(contentEl, show) {
         const customSettings = contentEl.querySelector(".chronica-custom-type-settings");
         if (customSettings) {
-            customSettings.style.display = show ? "block" : "none";
+            customSettings.classList.toggle("hidden", !show);
         }
     }
     /**

@@ -2808,7 +2808,7 @@ class ChornicaEventModal extends Modal {
   }
 
   /**
-   * Show or hide custom type settings
+   * Show or hide custom type settings using CSS classes
    * @param contentEl - Modal content element
    * @param show - Whether to show or hide settings
    */
@@ -2818,7 +2818,7 @@ class ChornicaEventModal extends Modal {
     );
 
     if (customSettings) {
-      (customSettings as HTMLElement).style.display = show ? "block" : "none";
+      customSettings.classList.toggle("hidden", !show);
     }
   }
 

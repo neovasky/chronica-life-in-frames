@@ -913,6 +913,10 @@
   cursor: pointer;
 }
 
+.hidden {
+  display: none !important;
+}
+
 .chronica-confirm-button {
   background-color: var(--interactive-accent);
   color: var(--text-on-accent);
