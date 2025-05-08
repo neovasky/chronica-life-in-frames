@@ -405,6 +405,14 @@ Exp .chronica-sidebar-toggle:hover {
   background-color: var(--background-secondary);
 }
 
+.chronica-fill-mode-status {
+  font-style: italic;
+  margin-top: 5px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller); /* Optional: make text slightly smaller */
+  padding-left: 20px; /* Optional: Indent slightly like setting descriptions */
+}
+
 .chronica-color-box {
   width: 12px;
   height: 12px;

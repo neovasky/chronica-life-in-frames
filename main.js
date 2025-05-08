@@ -5999,30 +5999,35 @@ class ChornicaSettingTab extends obsidian.PluginSettingTab {
             // If auto-fill is enabled, manual fill should be disabled
             this.plugin.settings.enableManualFill = !value;
             await this.plugin.saveSettings();
-            // Show/hide day selector based on toggle state
-            const daySelector = containerEl.querySelector(".auto-fill-day-selector");
-            if (daySelector) {
-                daySelector.style.display = value
-                    ? "flex"
-                    : "none";
+            // Find the setting element for the day selector using its class
+            const daySelectorEl = containerEl.querySelector(".auto-fill-day-selector");
+            if (daySelectorEl) {
+                // Toggle the hidden class directly on the element
+                daySelectorEl.classList.toggle("hidden", !value);
             }
-            // Add status indicator text
-            const statusIndicator = containerEl.querySelector(".fill-mode-status");
+            // Update status indicator text
+            let statusIndicator = containerEl.querySelector(".chronica-fill-mode-status");
+            const statusText = value
+                ? "Auto-fill is active. Weeks will be filled automatically."
+                : "Manual fill is active. Right-click on future weeks to mark them as filled.";
             if (statusIndicator) {
-                statusIndicator.textContent = value
-                    ? "Auto-fill is active. Weeks will be filled automatically."
-                    : "Manual fill is active. Right-click on future weeks to mark them as filled.";
+                // If element exists, just update text
+                statusIndicator.textContent = statusText;
             }
             else {
-                const statusEl = containerEl.createEl("div", {
-                    cls: "fill-mode-status",
-                    text: value
-                        ? "Auto-fill is active. Weeks will be filled automatically."
-                        : "Manual fill is active. Right-click on future weeks to mark them as filled.",
+                // If element doesn't exist, create it
+                statusIndicator = containerEl.createEl("div", {
+                    cls: "chronica-fill-mode-status",
+                    text: statusText,
                 });
-                statusEl.style.fontStyle = "italic";
-                statusEl.style.marginTop = "5px";
-                statusEl.style.color = "var(--text-muted)";
+                // Try to insert it after the day selector element if found,
+                // otherwise, just append to the container (less ideal but safe)
+                if (daySelectorEl) {
+                    daySelectorEl.insertAdjacentElement("afterend", statusIndicator);
+                }
+                else {
+                    containerEl.appendChild(statusIndicator);
+                }
             }
             this.refreshAllViews();
         }));
@@ -6055,16 +6060,26 @@ class ChornicaSettingTab extends obsidian.PluginSettingTab {
         if (!this.plugin.settings.enableAutoFill) {
             daySelector.settingEl.style.display = "none";
         }
-        // Add initial status indicator
+        // Add initial status indicator AFTER the daySelector is defined
+        const initialStatusText = this.plugin.settings.enableAutoFill
+            ? "Auto-fill is active. Weeks will be filled automatically."
+            : "Manual fill is active. Right-click on future weeks to mark them as filled.";
         const statusEl = containerEl.createEl("div", {
-            cls: "fill-mode-status",
-            text: this.plugin.settings.enableAutoFill
-                ? "Auto-fill is active. Weeks will be filled automatically."
-                : "Manual fill is active. Right-click on future weeks to mark them as filled.",
+            cls: "chronica-fill-mode-status",
+            text: initialStatusText,
         });
-        statusEl.style.fontStyle = "italic";
-        statusEl.style.marginTop = "5px";
-        statusEl.style.color = "var(--text-muted)";
+        // Place the status element directly after the daySelector's main element
+        if (daySelector && daySelector.settingEl) {
+            daySelector.settingEl.insertAdjacentElement("afterend", statusEl);
+        }
+        else {
+            // Fallback if daySelector wasn't created for some reason
+            containerEl.appendChild(statusEl);
+        }
+        // Hide day selector initially if auto-fill is disabled (this remains correct)
+        if (!this.plugin.settings.enableAutoFill) {
+            daySelector.settingEl.classList.add("hidden");
+        }
         // Event types management section
         containerEl.createEl("h3", { text: "Event Types" });
         new obsidian.Setting(containerEl)
