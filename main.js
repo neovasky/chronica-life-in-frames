@@ -59,45 +59,69 @@ class FolderSuggest extends obsidian.AbstractInputSuggest {
 }
 /** Default plugin settings */
 const DEFAULT_SETTINGS = {
+    // --- Core Settings ---
     birthday: "2000-01-01",
     lifespan: 90,
+    settingsVersion: 1,
+    // --- Unified Event Data ---
+    eventTypes: [
+        {
+            id: "preset_major_life",
+            name: "Major Life",
+            color: "#4CAF50",
+            isPreset: true,
+        },
+        { id: "preset_travel", name: "Travel", color: "#2196F3", isPreset: true },
+        {
+            id: "preset_relationship",
+            name: "Relationship",
+            color: "#E91E63",
+            isPreset: true,
+        },
+        {
+            id: "preset_education_career",
+            name: "Education/Career",
+            color: "#D2B55B",
+            isPreset: true,
+        },
+    ],
+    events: [],
+    // --- Display & Appearance ---
     defaultView: "weeks",
+    cellShape: "square",
+    gridOrientation: "landscape",
     pastCellColor: "#6A7BA3",
     presentCellColor: "#a882ff",
     futureCellColor: "#d8e2e6",
-    greenEvents: [],
-    blueEvents: [],
-    pinkEvents: [],
-    purpleEvents: [],
-    customEventTypes: [],
-    customEvents: {},
     quote: "the only true luxury is time.",
-    notesFolder: "",
     showDecadeMarkers: true,
     showWeekMarkers: true,
     showMonthMarkers: true,
     showBirthdayMarker: true,
     monthMarkerFrequency: "year",
+    zoomLevel: 1.0,
+    defaultFitToScreen: false,
+    // --- Notes & Folders ---
+    notesFolder: "",
+    useSeparateFolders: true,
+    eventNotesFolder: "",
+    weekNoteTemplate: "${year}-W${week}",
+    eventNoteTemplate: "${eventName}_${startDate}_${year}-W${week}",
+    rangeNoteTemplate: "${eventName}_${startDate}_${startYear}-W${startWeek}_to_${endYear}-W${endWeek}",
+    // --- Filling & Interaction ---
     enableManualFill: false,
     enableAutoFill: true,
     autoFillDay: 1,
     filledWeeks: [],
     startWeekOnMonday: true,
-    zoomLevel: 1.0,
-    defaultFitToScreen: false,
+    // --- UI State ---
     isSidebarOpen: false,
-    cellShape: "square",
-    gridOrientation: "landscape",
     isStatsOpen: false,
     activeStatsTab: "overview",
     statsPanelHeight: 470,
     statsPanelHorizontalOffset: 0,
     statsPanelWidth: 700,
-    weekNoteTemplate: "${year}-W${week}",
-    eventNoteTemplate: "${eventName}_${startDate}_${year}-W${week}",
-    rangeNoteTemplate: "${eventName}_${startDate}_${startYear}-W${startWeek}_to_${endYear}-W${endWeek}",
-    useSeparateFolders: true,
-    eventNotesFolder: "",
+    // --- Onboarding ---
     hasSeenWelcome: false,
     hasSeenFolders: false,
 };
@@ -385,250 +409,192 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
             eventRangePattern.test(fileBasename));
     }
     /**
-     * Scan vault for notes with event metadata and populate plugin settings
+     * Scan vault for notes with event metadata and populate the unified events array.
      */
     async scanVaultForEvents() {
-        // — reset every event bucket so we’ll rebuild from scratch —
-        this.settings.greenEvents = [];
-        this.settings.blueEvents = [];
-        this.settings.pinkEvents = [];
-        this.settings.purpleEvents = [];
-        if (this.settings.customEventTypes && this.settings.customEvents) {
-            for (const t of this.settings.customEventTypes) {
-                this.settings.customEvents[t.name] = [];
+        console.log("Chronica: Scanning vault for events...");
+        // Ensure settings (especially eventTypes) are loaded before scanning
+        if (!this.settings ||
+            !this.settings.eventTypes ||
+            this.settings.eventTypes.length === 0) {
+            console.error("Chronica: Settings (eventTypes) not loaded or empty before scanVaultForEvents was called. Attempting reload.");
+            await this.loadSettings(); // Attempt to load/migrate settings first
+            if (!this.settings ||
+                !this.settings.eventTypes ||
+                this.settings.eventTypes.length === 0) {
+                console.error("Chronica: Failed to load settings/eventTypes during scan. Aborting scan.");
+                // Maybe notify user here?
+                return;
             }
         }
-        // persist the cleared-out state immediately
-        await this.saveSettings();
-        // Get all markdown files in the vault
-        let files = this.app.vault.getMarkdownFiles();
-        // …rest of method…
-        // Filter files based on folders
+        // --- Clear ONLY the events array ---
+        const scannedEvents = []; // Build new list here
+        // DO NOT save settings here yet, wait until scan is complete
+        // --- Find Files to Process ---
+        const files = this.app.vault.getMarkdownFiles();
         const filesToProcess = [];
-        // If no folders are specified, use all files
-        if ((!this.settings.notesFolder || this.settings.notesFolder.trim() === "") &&
-            (!this.settings.useSeparateFolders ||
-                !this.settings.eventNotesFolder ||
-                this.settings.eventNotesFolder.trim() === "")) {
-            filesToProcess.push(...files);
-        }
-        else {
-            // Otherwise, filter based on specified folders
-            // Add files from main notes folder if specified
-            if (this.settings.notesFolder &&
-                this.settings.notesFolder.trim() !== "") {
-                const normalizedFolder = this.settings.notesFolder.endsWith("/")
-                    ? this.settings.notesFolder
-                    : this.settings.notesFolder + "/";
-                const notesFiles = files.filter((file) => file.path.startsWith(normalizedFolder));
-                filesToProcess.push(...notesFiles);
+        const notesFolderPath = this.settings.notesFolder?.trim();
+        const eventNotesFolderPath = this.settings.eventNotesFolder?.trim();
+        const useSeparateFolders = this.settings.useSeparateFolders;
+        const normalizedNotesFolder = notesFolderPath
+            ? notesFolderPath.endsWith("/")
+                ? notesFolderPath
+                : notesFolderPath + "/"
+            : null;
+        const normalizedEventFolder = eventNotesFolderPath
+            ? eventNotesFolderPath.endsWith("/")
+                ? eventNotesFolderPath
+                : eventNotesFolderPath + "/"
+            : null;
+        console.log(`Chronica: Scanning with NotesFolder='${notesFolderPath}', EventFolder='${eventNotesFolderPath}', Separate=${useSeparateFolders}`);
+        for (const file of files) {
+            let includeFile = false;
+            if (!normalizedNotesFolder && !normalizedEventFolder) {
+                includeFile = true; // No folders specified, include all
             }
-            // Add files from event folder if using separate folders
-            if (this.settings.useSeparateFolders &&
-                this.settings.eventNotesFolder &&
-                this.settings.eventNotesFolder.trim() !== "") {
-                const normalizedEventFolder = this.settings.eventNotesFolder.endsWith("/")
-                    ? this.settings.eventNotesFolder
-                    : this.settings.eventNotesFolder + "/";
-                const eventFiles = files.filter((file) => file.path.startsWith(normalizedEventFolder));
-                // Only add files that aren't already included
-                for (const file of eventFiles) {
-                    if (!filesToProcess.some((f) => f.path === file.path)) {
-                        filesToProcess.push(file);
-                    }
+            else if (useSeparateFolders && normalizedEventFolder) {
+                // Separate folders: include if in event folder OR in notes folder (if different)
+                if (file.path.startsWith(normalizedEventFolder)) {
+                    includeFile = true;
+                }
+                else if (normalizedNotesFolder &&
+                    normalizedNotesFolder !== normalizedEventFolder &&
+                    file.path.startsWith(normalizedNotesFolder)) {
+                    includeFile = true;
                 }
             }
+            else if (normalizedNotesFolder) {
+                // Only notes folder specified
+                if (file.path.startsWith(normalizedNotesFolder)) {
+                    includeFile = true;
+                }
+            }
+            // Note: If separate is false but event folder has value, event folder is ignored.
+            if (includeFile) {
+                filesToProcess.push(file);
+            }
         }
-        // Track how many event notes we find
+        // Remove duplicates if a file ended up matching multiple criteria
+        const uniqueFilesToProcess = [
+            ...new Map(filesToProcess.map((file) => [file.path, file])).values(),
+        ];
+        console.log(`Chronica: Processing ${uniqueFilesToProcess.length} potential event files.`);
+        // --- Process Files ---
         let eventCount = 0;
-        // Map to track range events so we can parse them fully
-        const rangeEventMap = new Map();
-        // Process each file
-        for (const file of filesToProcess) {
+        for (const file of uniqueFilesToProcess) {
             try {
-                // Convert basename to a consistent format - handle both "2023-W15" and "2023--W15" formats
-                let normalizedBasename = file.basename;
-                normalizedBasename = normalizedBasename.replace(/--W/, "-W"); // Convert 2023--W15 to 2023-W15
-                // Check if the filename matches our weekly note pattern (both potential formats)
-                // Regular week format (single week): 2023-W15.md or 2023--W15.md
-                const weekPattern = /(\d{4}-W\d{2})/;
-                // Range format: 2023-W15_to_2023-W20.md or 2023--W15_to_2023--W20.md
-                const rangePattern = /(\d{4}-W\d{2})_to_(\d{4}-W\d{2})/;
-                let weekKey = null;
-                let endWeekKey = null;
-                let isRange = false;
-                // Check for single week pattern
-                const weekMatch = normalizedBasename.match(weekPattern);
-                if (weekMatch) {
-                    weekKey = weekMatch[1];
-                }
-                // Check for range pattern
-                const rangeMatch = normalizedBasename.match(rangePattern);
-                if (rangeMatch) {
-                    weekKey = rangeMatch[1];
-                    endWeekKey = rangeMatch[2];
-                    isRange = true;
-                }
-                // If it's neither a week nor a range, skip
-                if (!weekKey)
-                    continue;
-                // Read file content
-                const content = await this.app.vault.read(file);
-                // Check for YAML frontmatter
-                const frontmatterMatch = content.match(/^---\s+([\s\S]*?)\s+---/);
-                if (!frontmatterMatch)
-                    continue;
-                // Parse frontmatter
-                const frontmatter = frontmatterMatch[1];
-                const metadata = {};
-                frontmatter.split("\n").forEach((line) => {
-                    const match = line.match(/^([^:]+):\s*(.+)$/);
-                    if (match) {
-                        const [_, key, value] = match;
-                        metadata[key.trim()] = value.trim().replace(/^"(.*)"$/, "$1");
-                    }
-                });
-                // If no event or type, skip
-                if (!metadata.event && !metadata.name)
-                    continue;
-                const eventName = metadata.event || metadata.name;
-                const eventType = metadata.type || "Major Life";
-                const description = metadata.description || eventName;
-                // Check if this is part of a range event by looking at startDate and endDate in metadata
-                if (metadata.startDate && metadata.endDate && !isRange) {
-                    // This is a single week note that's part of a range event
-                    const startDate = new Date(metadata.startDate);
-                    const endDate = new Date(metadata.endDate);
-                    // Generate a unique ID for this range event
-                    const rangeId = `${eventName}-${startDate.toISOString()}-${endDate.toISOString()}`;
-                    // If we haven't seen this range before, create it
-                    if (!rangeEventMap.has(rangeId)) {
-                        // Convert dates to week keys
-                        const startWeek = this.getWeekKeyFromDate(startDate);
-                        const endWeek = this.getWeekKeyFromDate(endDate);
-                        rangeEventMap.set(rangeId, {
-                            startWeek,
-                            endWeek,
-                            description,
-                            type: eventType,
-                            color: metadata.color || "",
-                        });
-                    }
-                    // We'll process this note as part of a range later
+                const fileCache = this.app.metadataCache.getFileCache(file);
+                const frontmatter = fileCache?.frontmatter;
+                // Skip if no frontmatter (basic check, could be more robust)
+                // We need at least *some* relevant info (type, event, name) OR a date
+                if (!frontmatter ||
+                    (!frontmatter.type &&
+                        !frontmatter.event &&
+                        !frontmatter.name &&
+                        !frontmatter.startDate)) {
                     continue;
                 }
-                // Format event string based on whether it's a range
-                let eventString = "";
-                if (isRange && endWeekKey) {
-                    eventString = `${weekKey}:${endWeekKey}:${description}`;
+                const eventName = frontmatter.event || frontmatter.name || file.basename; // Use filename as fallback name
+                const eventTypeFromName = frontmatter.type || "Major Life"; // Default type if missing, ensure string
+                const description = frontmatter.description || eventName; // Use eventName if description missing
+                // --- Find Type ID ---
+                let typeId = "";
+                // Find the type definition by matching the name from frontmatter
+                const foundType = this.settings.eventTypes.find((et) => et.name.toLowerCase() === eventTypeFromName.toLowerCase());
+                if (foundType) {
+                    typeId = foundType.id;
                 }
                 else {
-                    eventString = `${weekKey}:${description}`;
+                    // Type name from frontmatter not found in settings, use fallback
+                    console.warn(`Chronica: Event type "${eventTypeFromName}" in note "${file.path}" not found in settings. Assigning to 'Major Life'.`);
+                    typeId = "preset_major_life"; // Default to Major Life preset ID
+                    // Ensure the fallback type actually exists
+                    if (!this.settings.eventTypes.some((et) => et.id === typeId)) {
+                        console.error(`Chronica: Fallback type ID '${typeId}' does not exist! Skipping event.`);
+                        continue;
+                    }
                 }
-                // Add to appropriate collection if not already present
-                let added = false;
-                switch (eventType) {
-                    case "Major Life":
-                        if (!this.settings.greenEvents.includes(eventString)) {
-                            this.settings.greenEvents.push(eventString);
-                            added = true;
-                        }
-                        break;
-                    case "Travel":
-                        if (!this.settings.blueEvents.includes(eventString)) {
-                            this.settings.blueEvents.push(eventString);
-                            added = true;
-                        }
-                        break;
-                    case "Relationship":
-                        if (!this.settings.pinkEvents.includes(eventString)) {
-                            this.settings.pinkEvents.push(eventString);
-                            added = true;
-                        }
-                        break;
-                    case "Education/Career":
-                        if (!this.settings.purpleEvents.includes(eventString)) {
-                            this.settings.purpleEvents.push(eventString);
-                            added = true;
-                        }
-                        break;
-                    default:
-                        // Handle custom event types
-                        if (this.settings.customEventTypes) {
-                            const customType = this.settings.customEventTypes.find((t) => t.name === eventType);
-                            if (customType) {
-                                if (!this.settings.customEvents[eventType]) {
-                                    this.settings.customEvents[eventType] = [];
-                                }
-                                if (!this.settings.customEvents[eventType].includes(eventString)) {
-                                    this.settings.customEvents[eventType].push(eventString);
-                                    added = true;
+                // --- Determine Week Keys ---
+                let weekKey = null;
+                let endWeekKey = null;
+                // Priority 1: Use startDate/endDate from frontmatter if available
+                if (frontmatter.startDate) {
+                    try {
+                        // Handle potential variations in date string format if necessary
+                        const startDate = new Date(frontmatter.startDate);
+                        if (isNaN(startDate.getTime()))
+                            throw new Error("Invalid start date format"); // Check if date is valid
+                        weekKey = this.getWeekKeyFromDate(startDate); // <<< CORRECTED: Use 'this.' directly
+                        if (frontmatter.endDate) {
+                            const endDate = new Date(frontmatter.endDate);
+                            if (isNaN(endDate.getTime()))
+                                throw new Error("Invalid end date format");
+                            // Ensure end date is after start date
+                            if (endDate >= startDate) {
+                                endWeekKey = this.getWeekKeyFromDate(endDate); // <<< CORRECTED: Use 'this.' directly
+                                // If start and end are same week, treat as single event
+                                if (weekKey === endWeekKey) {
+                                    endWeekKey = null;
                                 }
                             }
-                        }
-                        break;
-                }
-                if (added) {
-                    eventCount++;
-                }
-            }
-            catch (error) {
-                console.error("Error processing file:", file.path, error);
-            }
-        }
-        // Process the range events we collected
-        for (const rangeEvent of rangeEventMap.values()) {
-            const eventString = `${rangeEvent.startWeek}:${rangeEvent.endWeek}:${rangeEvent.description}`;
-            // Add to appropriate collection if not already present
-            let added = false;
-            switch (rangeEvent.type) {
-                case "Major Life":
-                    if (!this.settings.greenEvents.includes(eventString)) {
-                        this.settings.greenEvents.push(eventString);
-                        added = true;
-                    }
-                    break;
-                case "Travel":
-                    if (!this.settings.blueEvents.includes(eventString)) {
-                        this.settings.blueEvents.push(eventString);
-                        added = true;
-                    }
-                    break;
-                case "Relationship":
-                    if (!this.settings.pinkEvents.includes(eventString)) {
-                        this.settings.pinkEvents.push(eventString);
-                        added = true;
-                    }
-                    break;
-                case "Education/Career":
-                    if (!this.settings.purpleEvents.includes(eventString)) {
-                        this.settings.purpleEvents.push(eventString);
-                        added = true;
-                    }
-                    break;
-                default:
-                    // Handle custom event types
-                    if (this.settings.customEventTypes) {
-                        const customType = this.settings.customEventTypes.find((t) => t.name === rangeEvent.type);
-                        if (customType) {
-                            if (!this.settings.customEvents[rangeEvent.type]) {
-                                this.settings.customEvents[rangeEvent.type] = [];
-                            }
-                            if (!this.settings.customEvents[rangeEvent.type].includes(eventString)) {
-                                this.settings.customEvents[rangeEvent.type].push(eventString);
-                                added = true;
+                            else {
+                                console.warn(`Chronica: End date is before start date in note "${file.path}". Treating as single week event.`);
+                                endWeekKey = null; // Treat as single week
                             }
                         }
                     }
-                    break;
-            }
-            if (added) {
+                    catch (e) {
+                        console.warn(`Chronica: Could not parse startDate/endDate in note "${file.path}". ${e.message}. Attempting filename parse.`);
+                        weekKey = null; // Reset weekKey so filename parse is attempted
+                        endWeekKey = null;
+                    }
+                }
+                // Priority 2: Use filename convention if no dates in frontmatter or parsing failed
+                if (!weekKey) {
+                    let normalizedBasename = file.basename.replace(/--W/g, "-W"); // Normalize '--W' to '-W'
+                    const rangeMatch = normalizedBasename.match(/(\d{4}-W\d{2})_to_(\d{4}-W\d{2})/);
+                    const singleWeekMatch = normalizedBasename.match(/(\d{4}-W\d{2})/); // Match single after range
+                    if (rangeMatch) {
+                        weekKey = rangeMatch[1];
+                        endWeekKey = rangeMatch[2];
+                        console.log(`Chronica: Parsed range ${weekKey} to ${endWeekKey} from filename ${file.name}`);
+                    }
+                    else if (singleWeekMatch) {
+                        weekKey = singleWeekMatch[1];
+                        console.log(`Chronica: Parsed single week ${weekKey} from filename ${file.name}`);
+                    }
+                }
+                // If no valid weekKey found from either source, skip this file
+                if (!weekKey || !/\d{4}-W\d{2}/.test(weekKey)) {
+                    // console.warn(`Chronica: Could not determine a valid weekKey for note "${file.path}". Skipping event.`);
+                    continue; // Skip if no week key found
+                }
+                // --- Create and Store Event Object ---
+                const newEvent = {
+                    weekKey: weekKey,
+                    description: description,
+                    typeId: typeId,
+                    notePath: file.path, // Store path to link later
+                };
+                if (endWeekKey && /\d{4}-W\d{2}/.test(endWeekKey)) {
+                    // Validate endWeekKey format
+                    newEvent.endWeekKey = endWeekKey;
+                }
+                // Add to temporary events array
+                scannedEvents.push(newEvent);
                 eventCount++;
             }
-        }
-        if (eventCount > 0) {
-            await this.saveSettings();
-        }
+            catch (error) {
+                console.error(`Chronica: Error processing file "${file.path}":`, error);
+            }
+        } // End of file processing loop
+        console.log(`Chronica: Scanned and processed ${eventCount} events.`);
+        // Replace the settings events array with the newly scanned ones
+        this.settings.events = scannedEvents;
+        // Persist the newly built events list (important!)
+        await this.saveSettings();
+        // Optional: Refresh views immediately after scan? Or let load sequence handle it.
+        this.refreshAllViews(); // Refresh views now that scan is done
     }
     refreshAllViews() {
         // Skip refreshing during likely sync operations
@@ -834,49 +800,220 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
         }
     }
     /**
-     * Load settings from storage
+     * Load settings from storage and perform migration if necessary.
      */
     async loadSettings() {
-        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
-        // Initialize empty arrays/objects if they don't exist
-        if (!this.settings.customEventTypes) {
-            this.settings.customEventTypes = [];
+        console.log("Chronica: Loading settings...");
+        let loadedData = await this.loadData();
+        // Check if migration is needed (settingsVersion < 1 or old fields exist)
+        const currentSettingsVersion = 1; // Target version for this migration
+        let needsSaveAfterLoad = false; // Flag to save at the end if changes were made
+        if (!loadedData) {
+            // No data saved yet, use defaults
+            this.settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS)); // Deep copy defaults
+            console.log("Chronica: No saved settings found, using defaults.");
+            needsSaveAfterLoad = true; // Save the defaults
         }
-        if (!this.settings.customEvents) {
-            this.settings.customEvents = {};
+        else {
+            // Start with default settings structure for merging
+            let currentSettings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+            // Merge loaded data onto defaults (preserves settings not touched by migration)
+            currentSettings = Object.assign(currentSettings, loadedData);
+            this.settings = currentSettings; // Assign partially merged settings
+            // Check if migration to version 1 is needed
+            if (!this.settings.settingsVersion ||
+                this.settings.settingsVersion < currentSettingsVersion) {
+                console.log(`Chronica: Old settings format detected (Version: ${this.settings.settingsVersion || 0}). Migrating to Version ${currentSettingsVersion}...`);
+                // Ensure new arrays exist (might be redundant due to defaults, but safe)
+                this.settings.eventTypes = this.settings.eventTypes || [];
+                this.settings.events = this.settings.events || [];
+                // --- Migration Logic ---
+                const migratedEvents = []; // Store migrated events temporarily
+                const migratedEventTypes = new Map();
+                // Add default presets to map (ensure they exist)
+                DEFAULT_SETTINGS.eventTypes.forEach((pt) => {
+                    if (!this.settings.eventTypes.some((et) => et.id === pt.id)) {
+                        this.settings.eventTypes.push({ ...pt }); // Add if missing
+                    }
+                    migratedEventTypes.set(pt.id, this.settings.eventTypes.find((et) => et.id === pt.id));
+                });
+                const parseEventString = (eventStr) => {
+                    const parts = eventStr.split(":");
+                    if (parts.length === 2 && parts[0].includes("W")) {
+                        return { weekKey: parts[0], description: parts[1] };
+                    }
+                    else if (parts.length === 3 &&
+                        parts[0].includes("W") &&
+                        parts[1].includes("W")) {
+                        return {
+                            weekKey: parts[0],
+                            endWeekKey: parts[1],
+                            description: parts[2],
+                        };
+                    }
+                    console.warn(`Chronica Migration: Could not parse event string: ${eventStr}`);
+                    return null;
+                };
+                // 1. Migrate old preset events
+                const oldPresetMap = {
+                    greenEvents: "preset_major_life",
+                    blueEvents: "preset_travel",
+                    pinkEvents: "preset_relationship",
+                    purpleEvents: "preset_education_career",
+                };
+                for (const oldKey in oldPresetMap) {
+                    const oldDataArray = loadedData[oldKey]; // Access directly from loadedData
+                    if (oldDataArray && Array.isArray(oldDataArray)) {
+                        const typeId = oldPresetMap[oldKey];
+                        oldDataArray.forEach((eventStr) => {
+                            const parsed = parseEventString(eventStr);
+                            if (parsed)
+                                migratedEvents.push({ ...parsed, typeId });
+                        });
+                        console.log(`Chronica Migration: Prepared ${oldDataArray.length} events from ${oldKey}.`);
+                    }
+                }
+                // 2. Migrate old custom event types
+                const customTypeNameToId = new Map();
+                if (loadedData.customEventTypes &&
+                    Array.isArray(loadedData.customEventTypes)) {
+                    loadedData.customEventTypes.forEach((oldType) => {
+                        if (oldType.name) {
+                            // Check if name conflicts with an existing preset ID's name
+                            const existingPreset = DEFAULT_SETTINGS.eventTypes.find((et) => et.name.toLowerCase() === oldType.name.toLowerCase());
+                            let finalId = "";
+                            let finalName = oldType.name;
+                            if (existingPreset) {
+                                // Name collision with a preset, map to the preset ID
+                                finalId = existingPreset.id;
+                                customTypeNameToId.set(oldType.name, finalId); // Map old name to preset ID
+                                console.log(`Chronica Migration: Custom type name '${oldType.name}' matches preset, mapping to ID '${finalId}'.`);
+                            }
+                            else {
+                                // No collision, create a new custom type if it doesn't exist by name already
+                                if (!this.settings.eventTypes.some((et) => et.name.toLowerCase() === oldType.name.toLowerCase())) {
+                                    finalId = `custom_${Date.now()}_${Math.random()
+                                        .toString(36)
+                                        .substring(2, 7)}`;
+                                    const newType = {
+                                        id: finalId,
+                                        name: finalName,
+                                        color: oldType.color || "#FF9800",
+                                        isPreset: false,
+                                    };
+                                    this.settings.eventTypes.push(newType);
+                                    customTypeNameToId.set(oldType.name, finalId);
+                                    console.log(`Chronica Migration: Migrated custom type '${oldType.name}' to ID '${finalId}'.`);
+                                }
+                                else {
+                                    // Custom type with this name already exists (maybe from default merge?), find its ID
+                                    finalId = this.settings.eventTypes.find((et) => et.name.toLowerCase() === oldType.name.toLowerCase()).id;
+                                    customTypeNameToId.set(oldType.name, finalId);
+                                    console.log(`Chronica Migration: Custom type name '${oldType.name}' already exists, mapping to ID '${finalId}'.`);
+                                }
+                            }
+                        }
+                    });
+                }
+                // 3. Migrate old custom events
+                if (loadedData.customEvents &&
+                    typeof loadedData.customEvents === "object") {
+                    for (const oldTypeName in loadedData.customEvents) {
+                        const eventsArray = loadedData.customEvents[oldTypeName];
+                        const newTypeId = customTypeNameToId.get(oldTypeName); // Find ID from map
+                        if (newTypeId && Array.isArray(eventsArray)) {
+                            eventsArray.forEach((eventStr) => {
+                                const parsed = parseEventString(eventStr);
+                                if (parsed)
+                                    migratedEvents.push({ ...parsed, typeId: newTypeId });
+                            });
+                            console.log(`Chronica Migration: Prepared ${eventsArray.length} events for migrated custom type '${oldTypeName}' (ID: ${newTypeId}).`);
+                        }
+                        else {
+                            console.warn(`Chronica Migration: Could not find new type ID for old custom type '${oldTypeName}'. ${eventsArray?.length || 0} events not migrated.`);
+                        }
+                    }
+                }
+                // Assign migrated events (replace empty default)
+                this.settings.events = migratedEvents;
+                // Clean up deprecated fields from the object *being saved*
+                delete this.settings.greenEvents;
+                delete this.settings.blueEvents;
+                delete this.settings.pinkEvents;
+                delete this.settings.purpleEvents;
+                delete this.settings.customEventTypes;
+                delete this.settings.customEvents;
+                // Update version
+                this.settings.settingsVersion = currentSettingsVersion;
+                needsSaveAfterLoad = true; // Mark for saving
+                console.log("Chronica: Migration complete.");
+            }
+            else {
+                // Settings are already up-to-date or new, just ensure defaults are present
+                this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedData);
+                // Ensure new arrays exist and presets are there
+                this.settings.eventTypes = this.settings.eventTypes || [];
+                this.settings.events = this.settings.events || [];
+                let presetsAdded = false;
+                DEFAULT_SETTINGS.eventTypes.forEach((defaultType) => {
+                    if (!this.settings.eventTypes.some((existingType) => existingType.id === defaultType.id)) {
+                        this.settings.eventTypes.push({ ...defaultType });
+                        presetsAdded = true;
+                    }
+                });
+                if (presetsAdded) {
+                    console.warn("Chronica: Re-added missing preset event types.");
+                    needsSaveAfterLoad = true;
+                }
+                console.log(`Chronica: Settings loaded (Version: ${this.settings.settingsVersion || "Unknown"}).`);
+            }
         }
-        // Initialize new marker settings if they don't exist
-        if (this.settings.showDecadeMarkers === undefined) {
+        // --- Initialize other non-event settings ---
+        // (Keep the initialization checks for other settings like showDecadeMarkers, etc.)
+        if (this.settings.showDecadeMarkers === undefined)
             this.settings.showDecadeMarkers = DEFAULT_SETTINGS.showDecadeMarkers;
-        }
-        if (this.settings.showWeekMarkers === undefined) {
+        if (this.settings.showWeekMarkers === undefined)
             this.settings.showWeekMarkers = DEFAULT_SETTINGS.showWeekMarkers;
-        }
-        if (this.settings.showMonthMarkers === undefined) {
+        if (this.settings.showMonthMarkers === undefined)
             this.settings.showMonthMarkers = DEFAULT_SETTINGS.showMonthMarkers;
-        }
-        if (this.settings.showBirthdayMarker === undefined) {
+        if (this.settings.showBirthdayMarker === undefined)
             this.settings.showBirthdayMarker = DEFAULT_SETTINGS.showBirthdayMarker;
-        }
-        if (this.settings.monthMarkerFrequency === undefined) {
+        if (this.settings.monthMarkerFrequency === undefined)
             this.settings.monthMarkerFrequency =
                 DEFAULT_SETTINGS.monthMarkerFrequency;
-            // Initialize new fill settings if they don't exist
-            if (this.settings.enableManualFill === undefined) {
-                this.settings.enableManualFill = DEFAULT_SETTINGS.enableManualFill;
-            }
-            if (this.settings.enableAutoFill === undefined) {
-                this.settings.enableAutoFill = DEFAULT_SETTINGS.enableAutoFill;
-            }
-            if (this.settings.autoFillDay === undefined) {
-                this.settings.autoFillDay = DEFAULT_SETTINGS.autoFillDay;
-            }
-            if (this.settings.filledWeeks === undefined) {
-                this.settings.filledWeeks = DEFAULT_SETTINGS.filledWeeks;
-            }
-            if (this.settings.startWeekOnMonday === undefined) {
-                this.settings.startWeekOnMonday = DEFAULT_SETTINGS.startWeekOnMonday;
-            }
+        if (this.settings.enableManualFill === undefined)
+            this.settings.enableManualFill = DEFAULT_SETTINGS.enableManualFill;
+        // Ensure auto/manual fill are consistent
+        if (this.settings.enableAutoFill === undefined)
+            this.settings.enableAutoFill = DEFAULT_SETTINGS.enableAutoFill;
+        this.settings.enableManualFill = !this.settings.enableAutoFill; // Force manual opposite of auto
+        if (this.settings.autoFillDay === undefined)
+            this.settings.autoFillDay = DEFAULT_SETTINGS.autoFillDay;
+        if (this.settings.filledWeeks === undefined)
+            this.settings.filledWeeks = [];
+        if (this.settings.startWeekOnMonday === undefined)
+            this.settings.startWeekOnMonday = DEFAULT_SETTINGS.startWeekOnMonday;
+        if (this.settings.isStatsOpen === undefined)
+            this.settings.isStatsOpen = DEFAULT_SETTINGS.isStatsOpen;
+        if (this.settings.activeStatsTab === undefined)
+            this.settings.activeStatsTab = DEFAULT_SETTINGS.activeStatsTab;
+        if (this.settings.statsPanelHeight === undefined)
+            this.settings.statsPanelHeight = DEFAULT_SETTINGS.statsPanelHeight;
+        if (this.settings.statsPanelHorizontalOffset === undefined)
+            this.settings.statsPanelHorizontalOffset =
+                DEFAULT_SETTINGS.statsPanelHorizontalOffset;
+        if (this.settings.statsPanelWidth === undefined)
+            this.settings.statsPanelWidth = DEFAULT_SETTINGS.statsPanelWidth;
+        // Ensure note templates have defaults if missing
+        if (this.settings.weekNoteTemplate === undefined)
+            this.settings.weekNoteTemplate = DEFAULT_SETTINGS.weekNoteTemplate;
+        if (this.settings.eventNoteTemplate === undefined)
+            this.settings.eventNoteTemplate = DEFAULT_SETTINGS.eventNoteTemplate;
+        if (this.settings.rangeNoteTemplate === undefined)
+            this.settings.rangeNoteTemplate = DEFAULT_SETTINGS.rangeNoteTemplate;
+        // Save if migration happened or defaults were added/fixed
+        if (needsSaveAfterLoad) {
+            await this.saveSettings();
         }
     }
     /**
@@ -1025,38 +1162,8 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
                     }
                     catch (err) { }
                 }
-                // Check if any events exist for this week in the plugin settings
-                let content = "";
-                let eventMeta = null;
-                // Check built-in event types
-                const eventTypes = [
-                    {
-                        events: this.settings.greenEvents,
-                        type: "Major Life",
-                        color: "#4CAF50",
-                    },
-                    {
-                        events: this.settings.blueEvents,
-                        type: "Travel",
-                        color: "#2196F3",
-                    },
-                    {
-                        events: this.settings.pinkEvents,
-                        type: "Relationship",
-                        color: "#E91E63",
-                    },
-                    {
-                        events: this.settings.purpleEvents,
-                        type: "Education/Career",
-                        color: "#D2B55B",
-                    },
-                ];
-                // Add frontmatter if event exists
-                if (eventMeta) ;
-                else {
-                    // Add empty frontmatter
-                    content = this.formatFrontmatter({});
-                }
+                // Create basic content with empty frontmatter
+                let content = this.formatFrontmatter({}); // Add empty frontmatter
                 // Add note template
                 content += `# Week ${weekNum}, ${year}\n\n## Reflections\n\n## Tasks\n\n## Notes\n`;
                 const newFile = await this.app.vault.create(fullPath, content);
@@ -1591,160 +1698,38 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
         return frontmatter;
     }
     /**
-     * Handle file deletion and remove any associated events
+     * Handle file deletion. Removes events linked to the deleted file path.
      * @param file - File that was deleted
      */
     async handleFileDelete(file) {
-        // Check if the file is a week or event note
-        const filePath = file.path;
-        const fileName = filePath.split("/").pop() || "";
-        // Check if it matches our event file naming pattern
-        const weekPattern = /(\d{4}(-|--)[Ww]\d{2})\.md$/i;
-        const rangePattern = /(\d{4}(-|--)[Ww]\d{2})_to_(\d{4}(-|--)[Ww]\d{2})\.md$/i;
-        let weekKeys = [];
-        // Single week file
-        const weekMatch = fileName.match(weekPattern);
-        if (weekMatch) {
-            // Normalize weekKey format (replace -- with - and ensure W is uppercase)
-            const rawWeekKey = weekMatch[1];
-            const weekKey = rawWeekKey.replace(/--/g, "-").replace(/w/i, "W");
-            weekKeys.push(weekKey);
-        }
-        // Range week file
-        const rangeMatch = fileName.match(rangePattern);
-        if (rangeMatch) {
-            // Normalize both start and end keys
-            const startRawKey = rangeMatch[1];
-            const endRawKey = rangeMatch[3];
-            const startWeekKey = startRawKey.replace(/--/g, "-").replace(/w/i, "W");
-            const endWeekKey = endRawKey.replace(/--/g, "-").replace(/w/i, "W");
-            // For range events, we need to get all weeks in the range
-            try {
-                // Parse dates from week keys
-                const startYear = parseInt(startWeekKey.split("-W")[0]);
-                const startWeek = parseInt(startWeekKey.split("-W")[1]);
-                const endYear = parseInt(endWeekKey.split("-W")[0]);
-                const endWeek = parseInt(endWeekKey.split("-W")[1]);
-                // Create actual dates
-                const startDate = new Date(startYear, 0, 1);
-                startDate.setDate(startDate.getDate() + (startWeek - 1) * 7);
-                const endDate = new Date(endYear, 0, 1);
-                endDate.setDate(endDate.getDate() + (endWeek - 1) * 7 + 6);
-                // Get all week keys in the range
-                weekKeys = this.getWeekKeysBetweenDates(startDate, endDate);
-            }
-            catch (error) {
-                console.error("Error processing week range for deletion:", error);
-                // Still try to handle the start and end weeks directly
-                weekKeys = [startWeekKey, endWeekKey];
-            }
-        }
-        // If no matching week keys found, exit
-        if (weekKeys.length === 0)
+        // Ensure settings and events are loaded
+        if (!this.settings || !this.settings.events) {
+            console.warn("Chronica: Settings or events not loaded during file delete handling.");
             return;
-        // Check each of our event collections and remove matching events
-        let needsSave = false;
-        // Helper function to filter events - handles both single events and ranges
-        const filterEvents = (events) => {
-            return events.filter((eventData) => {
-                const parts = eventData.split(":");
-                // Single event (format: weekKey:description)
-                if (parts.length === 2) {
-                    return !weekKeys.includes(parts[0]);
-                }
-                // Range event (format: startWeekKey:endWeekKey:description)
-                if (parts.length === 3) {
-                    const [startKey, endKey] = parts;
-                    // Remove if either start or end key is in our deleted weekKeys
-                    // OR if any week in the deleted keys falls between the start and end
-                    if (weekKeys.includes(startKey) || weekKeys.includes(endKey)) {
-                        return false;
-                    }
-                    // Check if any week in the range matches our deleted weeks
-                    try {
-                        // Parse start and end dates of the event range
-                        const eventStartYear = parseInt(startKey.split("-W")[0]);
-                        const eventStartWeek = parseInt(startKey.split("-W")[1]);
-                        const eventEndYear = parseInt(endKey.split("-W")[0]);
-                        const eventEndWeek = parseInt(endKey.split("-W")[1]);
-                        // Create actual dates
-                        const eventStartDate = new Date(eventStartYear, 0, 1);
-                        eventStartDate.setDate(eventStartDate.getDate() + (eventStartWeek - 1) * 7);
-                        const eventEndDate = new Date(eventEndYear, 0, 1);
-                        eventEndDate.setDate(eventEndDate.getDate() + (eventEndWeek - 1) * 7 + 6);
-                        // Check if any of our deleted weeks falls within this date range
-                        for (const weekKey of weekKeys) {
-                            const [weekYear, weekNum] = weekKey
-                                .split("-W")
-                                .map((n) => parseInt(n));
-                            const weekDate = new Date(weekYear, 0, 1);
-                            weekDate.setDate(weekDate.getDate() + (weekNum - 1) * 7);
-                            if (weekDate >= eventStartDate && weekDate <= eventEndDate) {
-                                return false; // Remove the event
-                            }
-                        }
-                    }
-                    catch (error) {
-                        console.error("Error checking event range for deletion:", error);
-                    }
-                }
-                return true; // Keep any event we don't explicitly filter out
-            });
-        };
-        // Filter standard event types
-        const newGreenEvents = filterEvents(this.settings.greenEvents);
-        if (newGreenEvents.length !== this.settings.greenEvents.length) {
-            this.settings.greenEvents = newGreenEvents;
-            needsSave = true;
         }
-        const newBlueEvents = filterEvents(this.settings.blueEvents);
-        if (newBlueEvents.length !== this.settings.blueEvents.length) {
-            this.settings.blueEvents = newBlueEvents;
-            needsSave = true;
-        }
-        const newPinkEvents = filterEvents(this.settings.pinkEvents);
-        if (newPinkEvents.length !== this.settings.pinkEvents.length) {
-            this.settings.pinkEvents = newPinkEvents;
-            needsSave = true;
-        }
-        const newPurpleEvents = filterEvents(this.settings.purpleEvents);
-        if (newPurpleEvents.length !== this.settings.purpleEvents.length) {
-            this.settings.purpleEvents = newPurpleEvents;
-            needsSave = true;
-        }
-        // Filter custom events
-        if (this.settings.customEventTypes && this.settings.customEvents) {
-            for (const type of this.settings.customEventTypes) {
-                if (this.settings.customEvents[type.name]) {
-                    const newCustomEvents = filterEvents(this.settings.customEvents[type.name]);
-                    if (newCustomEvents.length !==
-                        this.settings.customEvents[type.name].length) {
-                        this.settings.customEvents[type.name] = newCustomEvents;
-                        needsSave = true;
-                    }
-                }
+        const deletedPath = file.path;
+        let eventsRemovedCount = 0;
+        // Filter out events whose notePath matches the deleted file's path
+        this.settings.events.length;
+        this.settings.events = this.settings.events.filter(event => {
+            if (event.notePath === deletedPath) {
+                eventsRemovedCount++;
+                return false; // Remove this event
             }
-        }
-        // If we made changes, save settings and refresh views
-        if (needsSave) {
+            return true; // Keep this event
+        });
+        // If events were removed, save settings and refresh views
+        if (eventsRemovedCount > 0) {
+            console.log(`Chronica: Removed ${eventsRemovedCount} event(s) linked to deleted note: ${deletedPath}`);
             await this.saveSettings();
-            // Refresh all timeline views
-            this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE).forEach((leaf) => {
-                const view = leaf.view;
-                // Clear any cached event data
-                view.clearCachedEventData();
-                view.renderView();
-            });
-            new obsidian.Notice(`Event removed from timeline grid`);
+            this.refreshAllViews(); // Update timeline to remove visual markers
+            new obsidian.Notice(`Removed ${eventsRemovedCount} event link(s) from timeline.`);
         }
+        // If the deleted file was potentially a weekly note itself (not linked via event notePath),
+        // a simple refresh might be enough, handled by the generic delete handler in onload.
+        // However, explicitly refreshing ensures the view updates if the deleted note *was* the source.
         else {
-            // Weekly‐note file was deleted (no settings event removed) — still need to repaint
-            this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE).forEach((leaf) => {
-                const view = leaf.view;
-                // Clear any cached event data
-                view.clearCachedEventData();
-                view.renderView();
-            });
+            this.refreshAllViews();
         }
     }
     /**
@@ -1813,119 +1798,112 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
             this.syncOperationTimer = null;
         }, 5000);
     }
+    /**
+     * Removes events from settings whose linked notePath no longer exists.
+     */
     async cleanInvalidEvents() {
-        const removeInvalid = (events) => events.filter((entry) => {
-            const [key] = entry.split(":");
-            const fileName = key.replace("W", "-W") + ".md";
-            const fullPath = this.getFullPath(fileName, true);
-            const file = this.app.vault.getAbstractFileByPath(fullPath);
-            return file instanceof obsidian.TFile;
-        });
-        this.settings.greenEvents = removeInvalid(this.settings.greenEvents);
-        this.settings.blueEvents = removeInvalid(this.settings.blueEvents);
-        this.settings.pinkEvents = removeInvalid(this.settings.pinkEvents);
-        this.settings.purpleEvents = removeInvalid(this.settings.purpleEvents);
-        if (this.settings.customEventTypes && this.settings.customEvents) {
-            for (const type of this.settings.customEventTypes) {
-                if (this.settings.customEvents[type.name]) {
-                    this.settings.customEvents[type.name] = removeInvalid(this.settings.customEvents[type.name]);
+        // Ensure settings and events are loaded
+        if (!this.settings || !this.settings.events) {
+            console.warn("Chronica: Settings or events not loaded during cleanInvalidEvents.");
+            return;
+        }
+        let invalidRemovedCount = 0;
+        this.settings.events.length;
+        // Keep only events that either have no notePath or whose notePath exists
+        this.settings.events = this.settings.events.filter(event => {
+            if (event.notePath) {
+                const fileExists = this.app.vault.getAbstractFileByPath(event.notePath);
+                if (!fileExists) {
+                    invalidRemovedCount++;
+                    console.log(`Chronica: Removing event linked to non-existent note: ${event.notePath} (Desc: ${event.description})`);
+                    return false; // Remove event with invalid path
                 }
             }
+            return true; // Keep event if no path or path is valid
+        });
+        // If invalid events were removed, save settings and refresh
+        if (invalidRemovedCount > 0) {
+            console.log(`Chronica: Cleaned ${invalidRemovedCount} event(s) with invalid note paths.`);
+            await this.saveSettings();
+            this.refreshAllViews();
+            new obsidian.Notice(`Cleaned ${invalidRemovedCount} invalid event link(s).`);
         }
-        await this.saveSettings();
-        this.refreshAllViews();
+        else {
+            console.log("Chronica: No invalid event links found during cleaning.");
+        }
     }
 }
 // -----------------------------------------------------------------------
 // EVENT MODAL CLASS
 // -----------------------------------------------------------------------
 /**
- * Modal dialog for adding life events to the timeline
+ * Modal dialog for adding life events to the timeline using the unified event structure.
  */
 class ChornicaEventModal extends obsidian.Modal {
-    /** Reference to the main plugin */
+    // ... (full class code as provided before) ...
     plugin;
-    /** Selected date/week (YYYY-WXX format) */
-    selectedDate = "";
-    /** Selected end date for range (YYYY-WXX format) */
-    selectedEndDate = "";
-    /** Flag to indicate if using a date range */
+    selectedWeekKey = ""; // Renamed from selectedDate for clarity
+    selectedEndWeekKey = "";
     isDateRange = false;
-    /** Selected color for the event */
-    selectedColor = "#4CAF50";
-    /** Description of the event */
     eventDescription = "";
-    /** Name of the event */
-    eventName = "";
-    /** Currently selected date input field reference */
+    eventName = ""; // Keep event name for note title generation
+    selectedTypeId = "preset_major_life"; // Default to Major Life ID
+    // Input element references
     singleDateInput;
-    /** Start date input field reference */
     startDateInput;
-    /** End date input field reference */
     endDateInput;
-    /** Currently selected event type */
-    selectedEventType = "Major Life";
-    /** Name for custom event type */
-    customEventName = "";
-    /** Flag if custom type is selected */
-    isCustomType = false;
-    /**
-     * Create a new event modal
-     * @param app - Obsidian App instance
-     * @param plugin - ChornicaTimelinePlugin instance
-     * @param preselectedDate - Optional date to preselect
-     */
-    constructor(app, plugin, preselectedDate = null) {
+    eventTypeDropdown; // Changed from radio/color
+    constructor(app, plugin, preselectedWeekKey = null // Expecting YYYY-WXX format now
+    ) {
         super(app);
         this.plugin = plugin;
-        if (preselectedDate) {
-            if (preselectedDate.includes("W")) {
-                this.selectedDate = preselectedDate;
-            }
-            else {
-                const date = new Date(preselectedDate);
-                if (!isNaN(date.getTime())) {
-                    this.selectedDate = plugin.getWeekKeyFromDate(date);
-                }
-            }
+        if (preselectedWeekKey) {
+            // Assume preselected is already in correct YYYY-WXX format
+            this.selectedWeekKey = preselectedWeekKey;
+        }
+        // Ensure eventTypes is loaded and default selectedTypeId exists
+        if (!this.plugin.settings.eventTypes ||
+            this.plugin.settings.eventTypes.length === 0) {
+            console.error("Chronica: No event types available in settings!");
+            this.selectedTypeId = ""; // No valid default
+        }
+        else if (!this.plugin.settings.eventTypes.some((et) => et.id === this.selectedTypeId)) {
+            // If default Major Life is missing for some reason, select the first available type
+            this.selectedTypeId = this.plugin.settings.eventTypes[0].id;
         }
     }
-    /**
-     * Convert a week key (YYYY-WXX) to an approximate date (YYYY-MM-DD)
-     * @param weekKey - Week key to convert
-     * @returns Date string in YYYY-MM-DD format
-     */
+    // Keep convertWeekToDate as it's used to set initial input values
     convertWeekToDate(weekKey) {
         const parts = weekKey.split("-W");
         if (parts.length !== 2)
             return "";
-        const year = parseInt(parts[0]);
-        const week = parseInt(parts[1]);
-        const date = new Date(year, 0, 1);
-        const dayOfWeek = date.getDay();
-        let daysToAdd = (week - 1) * 7;
-        if (dayOfWeek <= 4) {
-            daysToAdd += 1 - dayOfWeek;
+        try {
+            const year = parseInt(parts[0]);
+            const week = parseInt(parts[1]);
+            // Calculate date based on ISO week definition (Monday of the week)
+            const simpleDate = new Date(year, 0, 1 + (week - 1) * 7);
+            // Adjust to the 4th day (Thursday) which is always in week 1 of the ISO year
+            const dayOfWeekJan1 = new Date(year, 0, 1).getDay(); // 0=Sun..6=Sat
+            const daysToJan4 = dayOfWeekJan1 <= 4 ? 4 - dayOfWeekJan1 : 11 - dayOfWeekJan1; // Days from Jan 1 to Jan 4
+            const firstWeekThursday = new Date(year, 0, 1 + daysToJan4);
+            const targetWeekMonday = new Date(firstWeekThursday);
+            targetWeekMonday.setDate(firstWeekThursday.getDate() + (week - 1) * 7 - 3); // Adjust from Thursday to Monday
+            return targetWeekMonday.toISOString().split("T")[0];
         }
-        else {
-            daysToAdd += 8 - dayOfWeek;
+        catch (e) {
+            console.error("Error converting week key to date:", e);
+            return new Date().toISOString().split("T")[0]; // Fallback
         }
-        date.setDate(date.getDate() + daysToAdd);
-        return date.toISOString().split("T")[0];
     }
-    /**
-     * Build the modal UI when opened
-     */
     onOpen() {
         const { contentEl } = this;
         contentEl.empty();
         contentEl.createEl("h2", { text: "Add Life Event" });
-        // Date picker section
+        // --- Date selection ---
         const dateContainer = contentEl.createDiv({
             cls: "chronica-date-picker-container",
         });
-        dateContainer.createEl("h3", { text: "Select Date" });
-        // Add an option to toggle between single date and date range
+        dateContainer.createEl("h3", { text: "Select Date(s)" });
         const dateTypeContainer = dateContainer.createDiv({
             cls: "date-type-selector",
         });
@@ -1934,86 +1912,112 @@ class ChornicaEventModal extends obsidian.Modal {
         });
         const singleDateRadio = singleDateOption.createEl("input", {
             type: "radio",
-            attr: { name: "date-type", value: "single" },
+            attr: { name: "date-type", value: "single", checked: !this.isDateRange },
         });
-        singleDateRadio.checked = true;
         singleDateOption.createEl("span", { text: "Single Date" });
         const rangeDateOption = dateTypeContainer.createEl("label", {
             cls: "date-option",
         });
         const rangeDateRadio = rangeDateOption.createEl("input", {
             type: "radio",
-            attr: { name: "date-type", value: "range" },
+            attr: { name: "date-type", value: "range", checked: this.isDateRange },
         });
         rangeDateOption.createEl("span", { text: "Date Range" });
-        // Container for single date input
         const singleDateContainer = contentEl.createDiv({
             cls: "single-date-container",
         });
-        const singleDateSetting = new obsidian.Setting(singleDateContainer)
-            .setName("Date")
-            .setDesc("Enter the exact date of the event");
+        const singleDateSetting = new obsidian.Setting(singleDateContainer).setName("Date");
         this.singleDateInput = singleDateSetting.controlEl.createEl("input", {
             type: "date",
-            value: this.selectedDate
-                ? this.convertWeekToDate(this.selectedDate)
+            value: this.selectedWeekKey
+                ? this.convertWeekToDate(this.selectedWeekKey)
                 : new Date().toISOString().split("T")[0],
         });
         this.singleDateInput.addEventListener("change", () => {
-            const specificDate = this.singleDateInput.value;
-            if (specificDate) {
-                const date = new Date(specificDate);
-                this.selectedDate = this.plugin.getWeekKeyFromDate(date);
-                // If using date range, initialize end date to same as start if not set
-                if (this.isDateRange && !this.endDateInput.value) {
-                    this.endDateInput.value = specificDate;
-                    this.selectedEndDate = this.selectedDate;
+            if (!this.isDateRange) {
+                const specificDate = this.singleDateInput.value;
+                if (specificDate) {
+                    try {
+                        this.selectedWeekKey = this.plugin.getWeekKeyFromDate(new Date(specificDate));
+                    }
+                    catch { }
+                    this.updateWeekInfo(contentEl);
                 }
             }
         });
-        // Container for date range inputs
         const rangeDateContainer = contentEl.createDiv({
             cls: "range-date-container",
         });
-        rangeDateContainer.style.display = "none";
-        const startDateSetting = new obsidian.Setting(rangeDateContainer)
-            .setName("Start Date")
-            .setDesc("Enter the first date of the event range");
+        rangeDateContainer.style.display = this.isDateRange ? "block" : "none"; // Use style initially
+        const startDateSetting = new obsidian.Setting(rangeDateContainer).setName("Start Date");
         this.startDateInput = startDateSetting.controlEl.createEl("input", {
             type: "date",
-            value: this.selectedDate
-                ? this.convertWeekToDate(this.selectedDate)
+            value: this.selectedWeekKey
+                ? this.convertWeekToDate(this.selectedWeekKey)
                 : new Date().toISOString().split("T")[0],
         });
         this.startDateInput.addEventListener("change", () => {
             const specificDate = this.startDateInput.value;
             if (specificDate) {
-                const date = new Date(specificDate);
-                this.selectedDate = this.plugin.getWeekKeyFromDate(date);
+                try {
+                    this.selectedWeekKey = this.plugin.getWeekKeyFromDate(new Date(specificDate));
+                }
+                catch { }
+                if (!this.endDateInput.value ||
+                    new Date(this.endDateInput.value) < new Date(specificDate)) {
+                    this.endDateInput.value = specificDate;
+                    try {
+                        this.selectedEndWeekKey = this.plugin.getWeekKeyFromDate(new Date(specificDate));
+                    }
+                    catch { }
+                }
+                this.endDateInput.min = this.startDateInput.value; // Update min for end date
+                this.updateWeekInfo(contentEl);
             }
         });
-        const endDateSetting = new obsidian.Setting(rangeDateContainer)
-            .setName("End Date")
-            .setDesc("Enter the last date of the event range");
+        const endDateSetting = new obsidian.Setting(rangeDateContainer).setName("End Date");
         this.endDateInput = endDateSetting.controlEl.createEl("input", {
             type: "date",
-            value: this.selectedEndDate
-                ? this.convertWeekToDate(this.selectedEndDate)
+            value: this.selectedEndWeekKey
+                ? this.convertWeekToDate(this.selectedEndWeekKey)
                 : this.startDateInput.value,
         });
+        this.endDateInput.min = this.startDateInput.value; // Set initial min
         this.endDateInput.addEventListener("change", () => {
             const specificDate = this.endDateInput.value;
-            if (specificDate) {
-                const date = new Date(specificDate);
-                this.selectedEndDate = this.plugin.getWeekKeyFromDate(date);
+            const startDateVal = this.startDateInput.value;
+            if (specificDate &&
+                startDateVal &&
+                new Date(specificDate) >= new Date(startDateVal)) {
+                try {
+                    this.selectedEndWeekKey = this.plugin.getWeekKeyFromDate(new Date(specificDate));
+                }
+                catch { }
+                this.updateWeekInfo(contentEl);
+            }
+            else if (startDateVal) {
+                this.endDateInput.value = startDateVal;
+                try {
+                    this.selectedEndWeekKey = this.plugin.getWeekKeyFromDate(new Date(startDateVal));
+                }
+                catch { }
+                new obsidian.Notice("End date cannot be before start date.");
+                this.updateWeekInfo(contentEl);
             }
         });
-        // Add listeners to toggle between single date and range inputs
+        // Event listeners to toggle containers
         singleDateRadio.addEventListener("change", () => {
             if (singleDateRadio.checked) {
                 this.isDateRange = false;
                 singleDateContainer.style.display = "block";
                 rangeDateContainer.style.display = "none";
+                const specificDate = this.singleDateInput.value;
+                if (specificDate)
+                    try {
+                        this.selectedWeekKey = this.plugin.getWeekKeyFromDate(new Date(specificDate));
+                    }
+                    catch { }
+                this.updateWeekInfo(contentEl);
             }
         });
         rangeDateRadio.addEventListener("change", () => {
@@ -2021,114 +2025,70 @@ class ChornicaEventModal extends obsidian.Modal {
                 this.isDateRange = true;
                 singleDateContainer.style.display = "none";
                 rangeDateContainer.style.display = "block";
+                const startDateVal = this.startDateInput.value;
+                const endDateVal = this.endDateInput.value;
+                if (startDateVal)
+                    try {
+                        this.selectedWeekKey = this.plugin.getWeekKeyFromDate(new Date(startDateVal));
+                    }
+                    catch { }
+                if (endDateVal)
+                    try {
+                        this.selectedEndWeekKey = this.plugin.getWeekKeyFromDate(new Date(endDateVal));
+                    }
+                    catch { }
+                this.updateWeekInfo(contentEl);
             }
         });
         contentEl.appendChild(singleDateContainer);
         contentEl.appendChild(rangeDateContainer);
         contentEl.createEl("small", {
-            text: "Select the date(s) of your event. The system determines the week(s) automatically.",
+            text: "Select the date(s). The system determines the week(s) automatically.",
             cls: "chronica-helper-text",
         });
-        if (this.selectedDate) {
-            contentEl.createEl("p", {
-                text: this.isDateRange
-                    ? `This event spans from week ${this.selectedDate} to ${this.selectedEndDate || this.selectedDate}`
-                    : `This date falls in week: ${this.selectedDate}`,
-            });
-        }
-        // Event name field - This should be OUTSIDE of any conditional blocks
+        contentEl.createDiv({ cls: "chronica-week-info" }); // Placeholder for week info
+        this.updateWeekInfo(contentEl); // Initial update
+        // --- Event Details ---
         new obsidian.Setting(contentEl)
-            .setName("Event Name")
-            .setDesc("Short title for this event")
-            .addText((text) => text.setPlaceholder("Event name").onChange((value) => {
+            .setName("Event Name / Title")
+            .setDesc("Short title (used for note name if created)")
+            .addText((text) => text
+            .setPlaceholder("e.g., Trip to Paris, Project Launch")
+            .onChange((value) => {
             this.eventName = value;
         }));
-        // Event description field
         new obsidian.Setting(contentEl)
             .setName("Description")
-            .setDesc("Brief description of this event")
-            .addText((text) => text.setPlaceholder("Event description").onChange((value) => {
+            .setDesc("Details about the event (shown on hover)")
+            .addText((text) => text
+            .setPlaceholder("e.g., Explored museums, finished phase 1")
+            .onChange((value) => {
             this.eventDescription = value;
         }));
-        // Event Type Selection using radio buttons
-        const eventTypeContainer = contentEl.createDiv();
-        eventTypeContainer.createEl("h3", { text: "Event Type" });
-        const presetTypes = [
-            { name: "Major Life", color: "#4CAF50" },
-            { name: "Travel", color: "#2196F3" },
-            { name: "Relationship", color: "#E91E63" },
-            { name: "Education/Career", color: "#D2B55B" },
-        ];
-        const typeSettingContainer = new obsidian.Setting(contentEl)
-            .setName("Select Event Type")
-            .setDesc("Choose a preset type or create your own");
-        const radioContainer = typeSettingContainer.controlEl.createDiv({
-            cls: "chronica-radio-container",
+        // --- Event Type Selection (Dropdown) ---
+        const typeSetting = new obsidian.Setting(contentEl).setName("Event Type");
+        this.eventTypeDropdown = typeSetting.controlEl.createEl("select", {
+            cls: "chronica-select",
         });
-        // Create radio buttons for preset event types
-        for (const type of presetTypes) {
-            const radioLabel = radioContainer.createEl("label", {
-                cls: "chronica-radio-label",
-            });
-            const radioBtn = radioLabel.createEl("input");
-            radioBtn.type = "radio";
-            radioBtn.name = "eventType";
-            radioBtn.value = type.name;
-            if (type.name === this.selectedEventType) {
-                radioBtn.checked = true;
-            }
-            const colorBox = radioLabel.createEl("span", {
-                cls: "chronica-color-box",
-            });
-            colorBox.style.backgroundColor = type.color;
-            radioLabel.createEl("span", { text: type.name });
-            radioBtn.addEventListener("change", () => {
-                if (radioBtn.checked) {
-                    this.selectedEventType = type.name;
-                    this.selectedColor = type.color;
-                    this.isCustomType = false;
-                    this.updateCustomTypeVisibility(contentEl, false);
-                }
+        if (this.plugin.settings.eventTypes &&
+            this.plugin.settings.eventTypes.length > 0) {
+            this.plugin.settings.eventTypes.forEach((type) => {
+                const option = this.eventTypeDropdown.createEl("option");
+                option.value = type.id;
+                option.text = type.name;
+                if (type.id === this.selectedTypeId)
+                    option.selected = true;
             });
         }
-        // Custom event type option
-        const customLabel = radioContainer.createEl("label", {
-            cls: "chronica-radio-label",
+        else {
+            const option = this.eventTypeDropdown.createEl("option");
+            option.text = "No types configured";
+            option.disabled = true;
+        }
+        this.eventTypeDropdown.addEventListener("change", () => {
+            this.selectedTypeId = this.eventTypeDropdown.value;
         });
-        const customRadio = customLabel.createEl("input");
-        customRadio.type = "radio";
-        customRadio.name = "eventType";
-        customRadio.value = "custom";
-        customLabel.createEl("span", { text: "Custom Type" });
-        customRadio.addEventListener("change", () => {
-            if (customRadio.checked) {
-                this.isCustomType = true;
-                this.updateCustomTypeVisibility(contentEl, true);
-            }
-        });
-        // Custom type settings (initially hidden)
-        const customTypeSettings = contentEl.createDiv({
-            cls: "chronica-custom-type-settings",
-        });
-        customTypeSettings.style.display = "none";
-        new obsidian.Setting(customTypeSettings)
-            .setName("Custom Type Name")
-            .setDesc("Enter a name for your custom event type")
-            .addText((text) => text.setPlaceholder("Type name").onChange((value) => {
-            this.customEventName = value;
-        }));
-        new obsidian.Setting(customTypeSettings)
-            .setName("Custom Color")
-            .setDesc("Select a color for this event type")
-            .addColorPicker((picker) => {
-            picker.setValue("#FF9800").onChange((value) => {
-                this.selectedColor = value;
-            });
-            this.selectedColor = "#FF9800";
-        });
-        // Append custom settings to content
-        contentEl.appendChild(customTypeSettings);
-        // Save button
+        // --- Save Button ---
         new obsidian.Setting(contentEl).addButton((btn) => btn
             .setButtonText("Save Event")
             .setCta()
@@ -2136,245 +2096,350 @@ class ChornicaEventModal extends obsidian.Modal {
             this.saveEvent();
         }));
     }
-    /**
-     * Show or hide custom type settings using CSS classes
-     * @param contentEl - Modal content element
-     * @param show - Whether to show or hide settings
-     */
-    updateCustomTypeVisibility(contentEl, show) {
-        const customSettings = contentEl.querySelector(".chronica-custom-type-settings");
-        if (customSettings) {
-            customSettings.classList.toggle("hidden", !show);
+    /** Helper to update the displayed week info */
+    updateWeekInfo(contentEl) {
+        const infoEl = contentEl.querySelector(".chronica-week-info");
+        if (!infoEl)
+            return;
+        if (this.isDateRange) {
+            if (this.selectedWeekKey && this.selectedEndWeekKey) {
+                infoEl.textContent =
+                    this.selectedWeekKey === this.selectedEndWeekKey
+                        ? `Selected week: ${this.selectedWeekKey}`
+                        : `Selected range: ${this.selectedWeekKey} to ${this.selectedEndWeekKey}`;
+            }
+            else {
+                infoEl.textContent = "Select start and end dates.";
+            }
+        }
+        else {
+            if (this.selectedWeekKey) {
+                infoEl.textContent = `Selected week: ${this.selectedWeekKey}`;
+            }
+            else {
+                infoEl.textContent = "Select a date.";
+            }
         }
     }
-    /**
-     * Save the event to settings and create a note
-     */
     async saveEvent() {
-        // Validate inputs
-        if (!this.selectedDate && this.startDateInput) {
-            new obsidian.Notice("Please select a date");
-            return;
-        }
-        if (!this.eventName) {
+        const finalEventName = this.eventName.trim();
+        const finalDescription = this.eventDescription.trim() || finalEventName;
+        if (!finalEventName) {
             new obsidian.Notice("Please add an event name");
             return;
         }
-        // For date range, validate end date
-        if (this.isDateRange &&
-            (!this.selectedEndDate || !this.endDateInput?.value)) {
-            new obsidian.Notice("Please select an end date for the range");
+        if (!finalDescription) {
+            new obsidian.Notice("Please add an event description");
             return;
         }
-        // Handle adding custom event type if needed
-        if (this.isCustomType && this.customEventName) {
-            const existingIndex = this.plugin.settings.customEventTypes.findIndex((type) => type.name === this.customEventName);
-            if (existingIndex === -1) {
-                this.plugin.settings.customEventTypes.push({
-                    name: this.customEventName,
-                    color: this.selectedColor,
-                });
-                this.plugin.settings.customEvents[this.customEventName] = [];
-            }
-            this.selectedEventType = this.customEventName;
+        if (!this.selectedTypeId) {
+            new obsidian.Notice("Please select an event type");
+            return;
         }
-        // If using date range, create events for all weeks in the range
-        if (this.isDateRange && this.selectedEndDate) {
-            // Get start and end dates
-            const startDate = new Date(this.startDateInput.value);
-            const endDate = new Date(this.endDateInput.value);
-            // Get all week keys in the range
-            const weekKeys = this.plugin.getWeekKeysBetweenDates(startDate, endDate);
-            // Create filename for the note using template
-            const startWeekKey = this.plugin.getWeekKeyFromDate(startDate);
-            const endWeekKey = this.plugin.getWeekKeyFromDate(endDate);
-            const startDateStr = startDate.toISOString().split("T")[0]; // YYYY-MM-DD
-            const startYear = startWeekKey.split("-")[0];
-            const startWeek = startWeekKey.split("-W")[1];
-            const endYear = endWeekKey.split("-")[0];
-            const endWeek = endWeekKey.split("-W")[1];
-            // Sanitize event name for file name
-            const sanitizedEventName = this.eventName
-                .replace(/[/\\?%*:|"<>]/g, "-") // Replace invalid file chars
-                .replace(/\s+/g, "_"); // Replace spaces with underscores
-            // Use the template to format the file name
-            const fileName = this.plugin.formatFileName(this.plugin.settings.rangeNoteTemplate, {
-                eventName: sanitizedEventName,
-                startDate: startDateStr,
-                startYear: startYear,
-                startWeek: startWeek,
-                endYear: endYear,
-                endWeek: endWeek,
-            });
-            // Format date range event data with range markers
-            const eventData = `${startWeekKey}:${endWeekKey}:${this.eventDescription}`;
-            // Add event to appropriate collection
-            this.addEventToCollection(eventData);
-            // Create a note for the event (for the range)
-            this.createEventNote(fileName, startDate, endDate);
-            // Save settings
-            this.plugin.saveSettings().then(() => {
-                new obsidian.Notice(`Event added: ${this.eventDescription} (${weekKeys.length} weeks)`);
-                this.close();
-                this.refreshViews();
-            });
+        let startDate;
+        let endDate = undefined;
+        if (this.isDateRange) {
+            if (!this.startDateInput.value || !this.endDateInput.value) {
+                new obsidian.Notice("Please select a start and end date");
+                return;
+            }
+            startDate = new Date(this.startDateInput.value);
+            endDate = new Date(this.endDateInput.value);
+            if (endDate < startDate) {
+                new obsidian.Notice("End date cannot be before start date");
+                return;
+            }
+            try {
+                this.selectedWeekKey = this.plugin.getWeekKeyFromDate(startDate);
+            }
+            catch {
+                new obsidian.Notice("Invalid start date format");
+                return;
+            }
+            try {
+                this.selectedEndWeekKey = this.plugin.getWeekKeyFromDate(endDate);
+            }
+            catch {
+                new obsidian.Notice("Invalid end date format");
+                return;
+            }
         }
         else {
-            const eventDate = new Date(this.singleDateInput.value);
-            const weekKey = this.plugin.getWeekKeyFromDate(eventDate);
-            const dateStr = eventDate.toISOString().split("T")[0]; // YYYY-MM-DD
-            const year = weekKey.split("-")[0];
-            const week = weekKey.split("-W")[1];
-            // Sanitize event name for file name
-            const sanitizedEventName = this.eventName
-                .replace(/[/\\?%*:|"<>]/g, "-") // Replace invalid file chars
-                .replace(/\s+/g, "_"); // Replace spaces with underscores
-            // Use the template to format the file name
-            const fileName = this.plugin.formatFileName(this.plugin.settings.eventNoteTemplate, {
+            if (!this.singleDateInput.value) {
+                new obsidian.Notice("Please select a date");
+                return;
+            }
+            startDate = new Date(this.singleDateInput.value);
+            try {
+                this.selectedWeekKey = this.plugin.getWeekKeyFromDate(startDate);
+            }
+            catch {
+                new obsidian.Notice("Invalid date format");
+                return;
+            }
+            this.selectedEndWeekKey = ""; // Clear end key
+        }
+        if (!this.selectedWeekKey) {
+            new obsidian.Notice("Could not determine week key");
+            return;
+        }
+        const newEvent = {
+            weekKey: this.selectedWeekKey,
+            description: finalDescription,
+            typeId: this.selectedTypeId,
+        };
+        if (this.isDateRange &&
+            this.selectedEndWeekKey &&
+            this.selectedEndWeekKey !== this.selectedWeekKey) {
+            newEvent.endWeekKey = this.selectedEndWeekKey;
+        }
+        this.plugin.settings.events.push(newEvent); // Add to unified array
+        let noteCreatedOrFound = false;
+        try {
+            noteCreatedOrFound = await this.createOrUpdateEventNote(newEvent, finalEventName, startDate, endDate);
+            // Optional: Link note path back even if note existed?
+            // We stored path inside createOrUpdateEventNote now
+        }
+        catch (e) {
+            console.error("Chronica: Failed to create/update event note.", e);
+            new obsidian.Notice("Event saved to settings, but failed to create/update note.");
+        }
+        await this.plugin.saveSettings();
+        new obsidian.Notice(`Event "${finalDescription}" added.`);
+        this.close();
+        this.refreshViews();
+    }
+    /** Creates an event note if it doesn't exist, or updates frontmatter if it does. */
+    async createOrUpdateEventNote(event, eventName, startDate, endDate) {
+        const eventType = this.plugin.settings.eventTypes.find((et) => et.id === event.typeId);
+        if (!eventType) {
+            console.error(`Cannot find type definition for ID ${event.typeId}`);
+            return false;
+        }
+        const sanitizedEventName = eventName
+            .replace(/[/\\?%*:|"<>]/g, "-")
+            .replace(/\s+/g, "_");
+        const dateStr = startDate.toISOString().split("T")[0];
+        const year = event.weekKey.split("-")[0];
+        const week = event.weekKey.split("-W")[1];
+        let fileName = "";
+        let defaultNoteContent = "";
+        const metadata = {
+            event: eventName,
+            name: eventName,
+            description: event.description,
+            type: eventType.name,
+            startDate: dateStr,
+        };
+        if (event.endWeekKey && endDate) {
+            const endWeekYear = event.endWeekKey.split("-")[0];
+            const endWeekNum = event.endWeekKey.split("-W")[1];
+            const endDateStr = endDate.toISOString().split("T")[0];
+            metadata.endDate = endDateStr;
+            fileName = this.plugin.formatFileName(this.plugin.settings.rangeNoteTemplate, {
+                eventName: sanitizedEventName,
+                startDate: dateStr,
+                startYear: year,
+                startWeek: week,
+                endYear: endWeekYear,
+                endWeek: endWeekNum,
+            });
+            const startDisp = event.weekKey.replace("W", "--W");
+            const endDisp = event.endWeekKey.replace("W", "--W");
+            defaultNoteContent = `# ${startDisp}_to_${endDisp} (${eventName})\n\nStart Date: ${dateStr}\nEnd Date: ${endDateStr}\nType: ${eventType.name}\nDescription: ${event.description}\n\n## Notes\n\n`;
+        }
+        else {
+            fileName = this.plugin.formatFileName(this.plugin.settings.eventNoteTemplate, {
                 eventName: sanitizedEventName,
                 startDate: dateStr,
                 year: year,
                 week: week,
             });
-            const eventData = `${weekKey}:${this.eventDescription}`;
-            // Add to existing event collections
-            this.addEventToCollection(eventData);
-            // Create a note for the event
-            this.createEventNote(fileName, eventDate);
-            this.plugin.saveSettings().then(() => {
-                new obsidian.Notice(`Event added: ${this.eventDescription}`);
-                this.close();
-                this.refreshViews();
-            });
-        }
-    }
-    /**
-     * Add event to the appropriate collection based on event type
-     * @param eventData - Event data string
-     */
-    addEventToCollection(eventData) {
-        switch (this.selectedEventType) {
-            case "Major Life":
-                this.plugin.settings.greenEvents.push(eventData);
-                break;
-            case "Travel":
-                this.plugin.settings.blueEvents.push(eventData);
-                break;
-            case "Relationship":
-                this.plugin.settings.pinkEvents.push(eventData);
-                break;
-            case "Education/Career":
-                this.plugin.settings.purpleEvents.push(eventData);
-                break;
-            default:
-                // Custom event type
-                if (!this.plugin.settings.customEvents[this.selectedEventType]) {
-                    this.plugin.settings.customEvents[this.selectedEventType] = [];
-                }
-                this.plugin.settings.customEvents[this.selectedEventType].push(eventData);
-        }
-    }
-    /**
-     * Create a note file for the event
-     * @param fileName - Name of the file
-     * @param startDate - Start date of the event
-     * @param endDate - Optional end date for range events
-     */
-    async createEventNote(fileName, startDate, endDate) {
-        // First, check if the filename uses the template format
-        if (fileName.includes("${")) {
-            // This is the templated filename with placeholders
-            // Let's create a better filename based on the event name
-            const sanitizedEventName = this.eventName
-                .replace(/[/\\?%*:|"<>]/g, "-") // Replace invalid file chars
-                .replace(/\s+/g, "_"); // Replace spaces with underscores
-            // Create a simpler filename format: EventName_YYYY-WXX.md
-            const weekKey = this.plugin.getWeekKeyFromDate(startDate);
-            fileName = `${sanitizedEventName}_${weekKey}.md`;
-            if (endDate) {
-                // For range events, include both week keys
-                const endWeekKey = this.plugin.getWeekKeyFromDate(endDate);
-                fileName = `${sanitizedEventName}_${weekKey}_to_${endWeekKey}.md`;
-            }
+            const weekDisp = event.weekKey.replace("W", "--W");
+            defaultNoteContent = `# ${weekDisp} (${eventName})\n\nDate: ${dateStr}\nType: ${eventType.name}\nDescription: ${event.description}\n\n## Notes\n\n`;
         }
         const fullPath = this.plugin.getFullPath(fileName, true);
-        const fileExists = this.plugin.app.vault.getAbstractFileByPath(fullPath) instanceof obsidian.TFile;
-        if (!fileExists) {
-            // Create folder if needed
-            if (this.plugin.settings.notesFolder &&
-                this.plugin.settings.notesFolder.trim() !== "") {
+        let file = this.app.vault.getAbstractFileByPath(fullPath);
+        if (file instanceof obsidian.TFile) {
+            console.log(`Chronica: Event note exists at ${fullPath}. Updating frontmatter.`);
+            await this.app.fileManager.processFrontMatter(file, (fm) => {
+                // Merge new metadata into existing frontmatter
+                Object.assign(fm, metadata);
+            });
+            event.notePath = file.path; // Ensure event object has path
+            return true; // Note exists (updated or not)
+        }
+        else {
+            let folderPath = this.plugin.settings.useSeparateFolders
+                ? this.plugin.settings.eventNotesFolder
+                : this.plugin.settings.notesFolder;
+            if (folderPath && folderPath.trim() !== "") {
+                /* ... Folder creation logic ... */
                 try {
-                    const folderExists = this.app.vault.getAbstractFileByPath(this.plugin.settings.notesFolder);
-                    if (!folderExists) {
-                        await this.app.vault.createFolder(this.plugin.settings.notesFolder);
-                    }
+                    if (!(await this.app.vault.adapter.exists(folderPath)))
+                        await this.app.vault.createFolder(folderPath);
                 }
-                catch (err) { }
+                catch (err) {
+                    console.error(`Chronica: Failed to create folder ${folderPath}`, err);
+                    new obsidian.Notice(`Error creating folder: ${folderPath}. Note saved in vault root.`);
+                }
             }
-            // Create event note file with frontmatter and content
-            let content = "";
-            if (endDate) {
-                // Range event
-                const startDateStr = startDate.toISOString().split("T")[0];
-                const endDateStr = endDate.toISOString().split("T")[0];
-                // Get week keys for title
-                const startWeekKey = this.plugin.getWeekKeyFromDate(startDate);
-                const endWeekKey = this.plugin.getWeekKeyFromDate(endDate);
-                const startWeekDisplayName = startWeekKey.replace("W", "--W");
-                const endWeekDisplayName = endWeekKey.replace("W", "--W");
-                // Add frontmatter
-                const metadata = {
-                    event: this.eventName,
-                    name: this.eventName,
-                    description: this.eventDescription,
-                    type: this.selectedEventType,
-                    color: this.selectedColor,
-                    startDate: startDateStr,
-                    endDate: endDateStr,
-                };
-                content = this.plugin.formatFrontmatter(metadata);
-                // Add note content with updated title
-                content += `# ${startWeekDisplayName}_to_${endWeekDisplayName} (${this.eventName})\n\nStart Date: ${startDateStr}\nEnd Date: ${endDateStr}\nType: ${this.selectedEventType}\nDescription: ${this.eventDescription}\n\n## Notes\n\n`;
-            }
-            else {
-                // Single date event
-                const dateStr = startDate.toISOString().split("T")[0];
-                // Get week key for title
-                const weekKey = this.plugin.getWeekKeyFromDate(startDate);
-                const weekDisplayName = weekKey.replace("W", "--W");
-                // Add frontmatter
-                const metadata = {
-                    event: this.eventName,
-                    name: this.eventName,
-                    description: this.eventDescription,
-                    type: this.selectedEventType,
-                    color: this.selectedColor,
-                    startDate: dateStr,
-                };
-                content = this.plugin.formatFrontmatter(metadata);
-                // Add note content with updated title
-                content += `# ${weekDisplayName} (${this.eventName})\n\nDate: ${dateStr}\nType: ${this.selectedEventType}\nDescription: ${this.eventDescription}\n\n## Notes\n\n`;
-            }
-            await this.app.vault.create(fullPath, content);
+            const finalContent = this.plugin.formatFrontmatter(metadata) + defaultNoteContent;
+            const newFile = await this.app.vault.create(fullPath, finalContent);
+            console.log(`Chronica: Created event note at ${newFile.path}`);
+            event.notePath = newFile.path; // Store path in event object
+            return true; // Note was created
         }
     }
-    /**
-     * Refresh all timeline views
-     */
     refreshViews() {
+        /* ... keep refresh logic ... */
         this.plugin.app.workspace
             .getLeavesOfType(TIMELINE_VIEW_TYPE)
             .forEach((leaf) => {
             const view = leaf.view;
-            view.renderView();
+            if (view?.renderView)
+                view.renderView();
         });
     }
-    /**
-     * Clean up on modal close
-     */
     onClose() {
         this.contentEl.empty();
     }
+} // End of ChornicaEventModal class
+/**
+ * Modal for managing all event types (presets and custom).
+ * Handles adding, editing (name/color), and deleting (custom only).
+ */
+class ManageEventTypesModal extends obsidian.Modal {
+    // ... (full class code as provided before) ...
+    plugin;
+    typesListContainer; // Container for the list of types
+    constructor(app, plugin) { super(app); this.plugin = plugin; }
+    onOpen() {
+        const { contentEl } = this;
+        contentEl.empty();
+        contentEl.addClass("chronica-manage-types-modal");
+        contentEl.createEl("h2", { text: "Manage Event Types" });
+        contentEl.createEl("h3", { text: "Event Types" });
+        contentEl.createEl("p", { text: "Edit names/colors. Presets cannot be deleted." });
+        this.typesListContainer = contentEl.createDiv({ cls: "existing-types-list-container" });
+        this.renderTypesList();
+        const addSection = contentEl.createDiv({ cls: "event-type-add-section" });
+        addSection.createEl("h3", { text: "Add New Custom Type" });
+        const nameSetting = new obsidian.Setting(addSection).setName("Name").addText(text => text.setPlaceholder("New type name"));
+        const nameInput = nameSetting.controlEl.querySelector('input');
+        const colorSetting = new obsidian.Setting(addSection).setName("Color").addColorPicker(picker => picker.setValue("#FF9800"));
+        const colorInput = colorSetting.controlEl.querySelector('input[type="color"]');
+        new obsidian.Setting(addSection).addButton(button => button.setButtonText("Add Type").setCta().onClick(async () => {
+            if (!nameInput || !colorInput)
+                return;
+            const name = nameInput.value.trim();
+            const color = colorInput.value;
+            if (!name) {
+                new obsidian.Notice("Please enter a name.");
+                return;
+            }
+            if (!this.plugin.settings.eventTypes)
+                this.plugin.settings.eventTypes = [];
+            if (this.plugin.settings.eventTypes.some(type => type.name.toLowerCase() === name.toLowerCase())) {
+                new obsidian.Notice(`Type "${name}" already exists.`);
+                return;
+            }
+            const newId = `custom_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+            const newType = { id: newId, name: name, color: color, isPreset: false };
+            this.plugin.settings.eventTypes.push(newType);
+            await this.plugin.saveSettings();
+            new obsidian.Notice(`Event type "${name}" added.`);
+            this.renderTypesList();
+            nameInput.value = "";
+            colorInput.value = "#FF9800";
+            this.plugin.refreshAllViews();
+        }));
+        new obsidian.Setting(contentEl).addButton(btn => btn.setButtonText("Close").onClick(() => { this.close(); }));
+    }
+    renderTypesList() {
+        const container = this.typesListContainer;
+        container.empty();
+        if (!this.plugin.settings.eventTypes || this.plugin.settings.eventTypes.length === 0) {
+            container.createEl("p", { text: "No event types found. Resetting to defaults." });
+            this.plugin.settings.eventTypes = JSON.parse(JSON.stringify(DEFAULT_SETTINGS.eventTypes));
+            this.plugin.saveSettings();
+        }
+        const sortedTypes = [...this.plugin.settings.eventTypes].sort((a, b) => { if (a.isPreset && !b.isPreset)
+            return -1; if (!a.isPreset && b.isPreset)
+            return 1; return a.name.localeCompare(b.name); });
+        for (const type of sortedTypes) {
+            const typeItem = container.createEl("div", { cls: `event-type-item ${type.isPreset ? 'preset-type' : 'custom-type'}` });
+            const colorBox = typeItem.createEl("span", { cls: "event-type-color" });
+            colorBox.style.backgroundColor = type.color;
+            const nameEl = typeItem.createEl("span", { text: type.name, cls: "event-type-name" });
+            if (type.isPreset)
+                nameEl.setAttribute("title", "Preset type (cannot be deleted)");
+            const buttonContainer = typeItem.createEl("div", { cls: "event-type-actions" });
+            const editButton = buttonContainer.createEl("button", { text: "", cls: "edit-type-button clickable-icon", attr: { title: `Edit '${type.name}'` } });
+            obsidian.setIcon(editButton, "pencil");
+            editButton.style.marginLeft = "auto"; // Default margin
+            editButton.addEventListener("click", () => { this.showEditTypeModal(type); });
+            if (!type.isPreset) {
+                const deleteButton = buttonContainer.createEl("button", { text: "", cls: "delete-type-button clickable-icon", attr: { title: `Delete '${type.name}'` } });
+                obsidian.setIcon(deleteButton, "trash-2");
+                editButton.style.marginLeft = "0"; // Adjust margin when delete button present
+                // deleteButton.style.marginLeft = "auto"; // Push delete button right (or adjust layout via CSS flex)
+                deleteButton.addEventListener("click", async () => {
+                    if (confirm(`Delete type "${type.name}"?\nEvents using it will be reassigned to "Major Life".`)) {
+                        const defaultTypeId = 'preset_major_life';
+                        let reassignedCount = 0;
+                        if (!this.plugin.settings.events)
+                            this.plugin.settings.events = []; // Ensure exists
+                        this.plugin.settings.events = this.plugin.settings.events.map(event => { if (event.typeId === type.id) {
+                            reassignedCount++;
+                            return { ...event, typeId: defaultTypeId };
+                        } return event; });
+                        this.plugin.settings.eventTypes = this.plugin.settings.eventTypes.filter(t => t.id !== type.id);
+                        await this.plugin.saveSettings();
+                        new obsidian.Notice(`Type "${type.name}" deleted. ${reassignedCount} event(s) reassigned.`);
+                        this.renderTypesList();
+                        this.plugin.refreshAllViews();
+                    }
+                });
+            }
+        }
+    }
+    showEditTypeModal(type) {
+        const modal = new obsidian.Modal(this.app);
+        modal.contentEl.addClass("chronica-edit-type-modal");
+        modal.titleEl.setText(`Edit Type: ${type.name}`);
+        let currentName = type.name;
+        let currentColor = type.color;
+        new obsidian.Setting(modal.contentEl).setName("Name").addText(text => { text.setValue(currentName).onChange(value => { currentName = value.trim(); }); });
+        new obsidian.Setting(modal.contentEl).setName("Color").addColorPicker(picker => { picker.setValue(currentColor).onChange(value => { currentColor = value; }); });
+        new obsidian.Setting(modal.contentEl).addButton(btn => btn.setButtonText("Save Changes").setCta().onClick(async () => {
+            if (!currentName) {
+                new obsidian.Notice("Name cannot be empty.");
+                return;
+            }
+            if (!this.plugin.settings.eventTypes)
+                this.plugin.settings.eventTypes = [];
+            if (this.plugin.settings.eventTypes.some(t => t.id !== type.id && t.name.toLowerCase() === currentName.toLowerCase())) {
+                new obsidian.Notice(`Type "${currentName}" already exists.`);
+                return;
+            }
+            const typeIndex = this.plugin.settings.eventTypes.findIndex(t => t.id === type.id);
+            if (typeIndex !== -1) {
+                this.plugin.settings.eventTypes[typeIndex].name = currentName;
+                this.plugin.settings.eventTypes[typeIndex].color = currentColor;
+                await this.plugin.saveSettings();
+                new obsidian.Notice(`Type "${currentName}" updated.`);
+                modal.close();
+                this.renderTypesList();
+                this.plugin.refreshAllViews();
+            }
+            else {
+                new obsidian.Notice(`Error: Could not find type with ID ${type.id}.`);
+            }
+        })).addButton(btn => btn.setButtonText("Cancel").onClick(() => { modal.close(); }));
+        modal.open();
+    }
+    onClose() { this.contentEl.empty(); this.plugin.refreshAllViews(); } // Refresh on close
 }
 /**
  * Welcome modal shown to new users
@@ -2638,27 +2703,33 @@ class ChornicaTimelineView extends obsidian.ItemView {
         headerEl.addEventListener("mousedown", onMouseDown);
     }
     /**
-     * Clear any cached event data to ensure clean re-rendering
+     * Clear any cached event data and event-specific classes from grid cells.
      */
     clearCachedEventData() {
-        // Find all grid cells
         const cells = this.containerEl.querySelectorAll(".chronica-grid-cell");
-        // Clear event-related attributes and data from each cell
         cells.forEach((cell) => {
             const cellEl = cell;
-            // Clear data attributes that might cache event info
-            delete cellEl.dataset.checkingEvents;
+            // Clear data attributes
+            delete cellEl.dataset.checkingEvents; // Still relevant if async checks happen
             delete cellEl.dataset.eventFile;
-            // Remove event-related classes
-            cellEl.classList.remove("event");
-            cellEl.classList.remove("major-life-event");
-            cellEl.classList.remove("travel-event");
-            cellEl.classList.remove("relationship-event");
-            cellEl.classList.remove("education-career-event");
-            cellEl.classList.remove("future-event-highlight");
-            // Clear inline styles
+            // Clear generic event class and future highlight
+            cellEl.classList.remove("event", "future-event-highlight");
+            // Remove *any* class starting with "event-type-"
+            const classesToRemove = [];
+            for (let i = 0; i < cellEl.classList.length; i++) {
+                if (cellEl.classList[i].startsWith("event-type-")) {
+                    classesToRemove.push(cellEl.classList[i]);
+                }
+            }
+            if (classesToRemove.length > 0) {
+                cellEl.classList.remove(...classesToRemove);
+            }
+            // Clear only event-related inline styles (leave positioning intact)
             cellEl.style.backgroundColor = "";
-            cellEl.style.border = "";
+            cellEl.style.borderColor = "";
+            cellEl.style.borderWidth = "";
+            cellEl.style.borderStyle = "";
+            // Do NOT clear: cell.style.position, top, left, width, height
         });
     }
     /**
@@ -2769,335 +2840,135 @@ class ChornicaTimelineView extends obsidian.ItemView {
         contentEl.empty();
     }
     /**
-     * Render the timeline view with all components
+     * Render the timeline view with all components using the new event structure.
      */
     renderView() {
         // Clear content
         const contentEl = this.containerEl.children[1];
         contentEl.empty();
+        contentEl.addClass("chronica-timeline-container");
         // Create main container with flexbox layout
         const mainContainer = contentEl.createEl("div", {
             cls: "chronica-main-container",
         });
-        // Create sidebar
+        // --- Create Sidebar ---
         const sidebarEl = mainContainer.createEl("div", {
             cls: `chronica-sidebar ${this.isSidebarOpen ? "expanded" : "collapsed"}`,
         });
-        // Add sidebar header with title and toggle
-        const sidebarHeader = sidebarEl.createEl("div", {
-            cls: "chronica-sidebar-header",
-        });
-        // Create title in sidebar header
-        sidebarHeader.createEl("div", {
-            cls: "chronica-title",
-            text: "life in frames",
-        });
-        // Create sidebar toggle as part of the sidebar itself
-        const sidebarToggle = sidebarHeader.createEl("button", {
-            cls: "chronica-sidebar-toggle",
-            attr: {
-                title: this.isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar",
-            },
-        });
-        // Use the directly imported setIcon helper function
-        obsidian.setIcon(sidebarToggle, this.isSidebarOpen ? "chevron-left" : "chevron-right"); // <<< Fixed: no 'obsidian.' prefix
+        const sidebarHeader = sidebarEl.createEl("div", { cls: "chronica-sidebar-header" });
+        sidebarHeader.createEl("div", { cls: "chronica-title", text: "life in frames" });
+        const sidebarToggle = sidebarHeader.createEl("button", { cls: "chronica-sidebar-toggle", attr: { title: this.isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar" } });
+        obsidian.setIcon(sidebarToggle, this.isSidebarOpen ? "chevron-left" : "chevron-right");
+        // Sidebar toggle listener (uses hidden class)
         sidebarToggle.addEventListener("click", () => {
             this.isSidebarOpen = !this.isSidebarOpen;
-            // Save state to plugin settings
             this.plugin.settings.isSidebarOpen = this.isSidebarOpen;
             this.plugin.saveSettings();
-            // Update UI
             sidebarEl.classList.toggle("collapsed", !this.isSidebarOpen);
             sidebarEl.classList.toggle("expanded", this.isSidebarOpen);
-            // Update toggle icon using setIcon directly
-            obsidian.setIcon(sidebarToggle, this.isSidebarOpen ? "chevron-left" : "chevron-right"); // <<< Fixed: no 'obsidian.' prefix
+            obsidian.setIcon(sidebarToggle, this.isSidebarOpen ? "chevron-left" : "chevron-right");
             sidebarToggle.setAttribute("title", this.isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar");
-            // Toggle visibility of the collapsed toggle button
-            const collapsedToggle = contentAreaEl.querySelector(".chronica-collapsed-toggle"); // Find the element again
-            if (collapsedToggle) {
+            const collapsedToggle = contentAreaEl?.querySelector(".chronica-collapsed-toggle");
+            if (collapsedToggle)
                 collapsedToggle.classList.toggle("hidden", this.isSidebarOpen);
-            }
             this.updateStatsPanelLayout();
         });
-        // DATA SECTION - For timeline content manipulation
-        const dataSection = sidebarEl.createEl("div", {
-            cls: "chronica-sidebar-section",
-        });
-        dataSection.createEl("h3", {
-            text: "TIMELINE DATA",
-            cls: "section-header",
-        });
-        const dataContainer = dataSection.createEl("div", {
-            cls: "chronica-controls",
-        });
-        // Plan event button
-        const planEventBtn = dataContainer.createEl("button", {
-            text: "Add Event",
-            cls: "chronica-btn chronica-btn-primary",
-        });
-        planEventBtn.addEventListener("click", () => {
-            this.showAddEventModal();
-        });
-        // Manage event types button
-        const manageTypesBtn = dataContainer.createEl("button", {
-            text: "Manage Event Types",
-            cls: "chronica-btn chronica-btn-primary",
-        });
-        manageTypesBtn.addEventListener("click", () => {
-            const modal = new ManageEventTypesModal(this.app, this.plugin);
-            modal.open();
-        });
-        // VIEW SECTION - For visualization options
-        const viewSection = sidebarEl.createEl("div", {
-            cls: "chronica-sidebar-section",
-        });
-        viewSection.createEl("h3", {
-            text: "VISUALIZATION",
-            cls: "section-header",
-        });
-        const viewContainer = viewSection.createEl("div", {
-            cls: "chronica-visual-controls",
-        });
-        // Zoom controls with 3-button layout
-        const zoomControlsDiv = viewContainer.createEl("div", {
-            cls: "chronica-zoom-controls",
-        });
-        // Zoom out button with SVG icon
-        const zoomOutBtn = zoomControlsDiv.createEl("button", {
-            cls: "chronica-btn chronica-zoom-button",
-            attr: { title: "Zoom Out" },
-        });
-        // Use the directly imported setIcon helper function
+        // --- Sidebar Sections ---
+        // Data Section
+        const dataSection = sidebarEl.createEl("div", { cls: "chronica-sidebar-section" });
+        dataSection.createEl("h3", { text: "TIMELINE DATA", cls: "section-header" });
+        const dataContainer = dataSection.createEl("div", { cls: "chronica-controls" });
+        const planEventBtn = dataContainer.createEl("button", { text: "Add Event", cls: "chronica-btn chronica-btn-primary" });
+        planEventBtn.addEventListener("click", () => { this.showAddEventModal(); });
+        const manageTypesBtn = dataContainer.createEl("button", { text: "Manage Event Types", cls: "chronica-btn chronica-btn-primary" });
+        manageTypesBtn.addEventListener("click", () => { new ManageEventTypesModal(this.app, this.plugin).open(); }); // Assumes ManageEventTypesModal class exists
+        // Visualization Section
+        const viewSection = sidebarEl.createEl("div", { cls: "chronica-sidebar-section" });
+        viewSection.createEl("h3", { text: "VISUALIZATION", cls: "section-header" });
+        const viewContainer = viewSection.createEl("div", { cls: "chronica-visual-controls" });
+        // (Keep Zoom controls, Fit to Screen button logic - unchanged)
+        const zoomControlsDiv = viewContainer.createEl("div", { cls: "chronica-zoom-controls", });
+        const zoomOutBtn = zoomControlsDiv.createEl("button", { cls: "chronica-btn chronica-zoom-button", attr: { title: "Zoom Out" }, });
         obsidian.setIcon(zoomOutBtn, "zoom-out");
-        // Adjust icon size if needed via CSS or direct style
-        // zoomOutBtn.style. // Add styles if necessary
-        zoomOutBtn.addEventListener("click", () => {
-            this.zoomOut();
-        });
-        // Add zoom level indicator
-        const zoomInput = zoomControlsDiv.createEl("input", {
-            cls: "chronica-zoom-input",
-            attr: {
-                type: "number",
-                min: "10",
-                max: "500",
-                step: "1",
-                value: `${Math.round(this.plugin.settings.zoomLevel * 100)}`,
-                title: "Enter zoom % and press ↵",
-            },
-        });
-        zoomInput.addEventListener("change", async (e) => {
-            const input = e.target;
-            let val = parseInt(input.value, 10);
-            if (isNaN(val))
-                val = Math.round(this.plugin.settings.zoomLevel * 100);
-            val = Math.min(500, Math.max(10, val));
-            this.plugin.settings.zoomLevel = val / 100;
-            await this.plugin.saveSettings();
-            this.updateZoomLevel();
-            // reflect any clamping back
-            input.value = `${Math.round(this.plugin.settings.zoomLevel * 100)}`;
-        });
-        // Zoom in button with SVG icon
-        const zoomInBtn = zoomControlsDiv.createEl("button", {
-            cls: "chronica-btn chronica-zoom-button",
-            attr: { title: "Zoom In" },
-        });
-        // Use the directly imported setIcon helper function
+        zoomOutBtn.addEventListener("click", () => { this.zoomOut(); });
+        const zoomInput = zoomControlsDiv.createEl("input", { cls: "chronica-zoom-input", attr: { type: "number", min: "10", max: "500", step: "1", value: `${Math.round(this.plugin.settings.zoomLevel * 100)}`, title: "Enter zoom % and press ↵", }, });
+        zoomInput.addEventListener("change", async (e) => { const input = e.target; let val = parseInt(input.value, 10); if (isNaN(val))
+            val = Math.round(this.plugin.settings.zoomLevel * 100); val = Math.min(500, Math.max(10, val)); this.plugin.settings.zoomLevel = val / 100; await this.plugin.saveSettings(); this.updateZoomLevel(); input.value = `${Math.round(this.plugin.settings.zoomLevel * 100)}`; });
+        const zoomInBtn = zoomControlsDiv.createEl("button", { cls: "chronica-btn chronica-zoom-button", attr: { title: "Zoom In" }, });
         obsidian.setIcon(zoomInBtn, "zoom-in");
-        // Adjust icon size if needed via CSS or direct style
-        // zoomInBtn.style. // Add styles if necessary
-        zoomInBtn.addEventListener("click", () => {
-            this.zoomIn();
-        });
-        // Fit to screen button
-        const fitToScreenBtn = viewContainer.createEl("button", {
-            cls: "chronica-btn chronica-fit-to-screen",
-            text: "Fit to Screen",
-            attr: { title: "Automatically adjust zoom to fit entire grid on screen" },
-        });
-        fitToScreenBtn.addEventListener("click", () => {
-            this.fitToScreen();
-        });
-        // DISPLAY SECTION - For display settings
-        const displaySection = sidebarEl.createEl("div", {
-            cls: "chronica-sidebar-section",
-        });
-        displaySection.createEl("h3", {
-            text: "DISPLAY SETTINGS",
-            cls: "section-header",
-        });
-        const displayContainer = displaySection.createEl("div", {
-            cls: "chronica-controls",
-        });
-        // Cell Shape dropdown
-        displayContainer.createEl("h4", {
-            // Changed from div to h4
-            cls: "subsection-header",
-            text: "Cell Shape",
-        });
-        // Select
-        const shapeSelect = displayContainer.createEl("select", {
-            cls: "chronica-select chronica-dropdown", // Added a class for styling
-        });
-        ["square", "circle", "diamond"].forEach((opt) => {
-            const option = shapeSelect.createEl("option", {
-                attr: { value: opt },
-                text: opt.charAt(0).toUpperCase() + opt.slice(1),
-            });
-            if (this.plugin.settings.cellShape === opt) {
-                option.selected = true;
-            }
-        });
-        shapeSelect.addEventListener("change", async () => {
-            this.plugin.settings.cellShape = shapeSelect.value;
-            await this.plugin.saveSettings();
-            this.updateZoomLevel();
-        });
-        // Grid Orientation subsection - also using the subsection styling
-        displayContainer.createEl("h4", {
-            cls: "subsection-header",
-            text: "Grid Orientation",
-        });
-        // Orientation toggle button
-        const orientationBtn = displayContainer.createEl("button", {
-            cls: "chronica-btn chronica-orientation-button",
-            text: this.plugin.settings.gridOrientation === "landscape"
-                ? "Switch to Portrait"
-                : "Switch to Landscape",
-            attr: {
-                title: this.plugin.settings.gridOrientation === "landscape"
-                    ? "Display years as rows, weeks as columns"
-                    : "Display years as columns, weeks as rows",
-            },
-        });
-        orientationBtn.addEventListener("click", async () => {
-            // Toggle the orientation
-            this.plugin.settings.gridOrientation =
-                this.plugin.settings.gridOrientation === "landscape"
-                    ? "portrait"
-                    : "landscape";
-            // Save settings
-            await this.plugin.saveSettings();
-            // Update button text
-            orientationBtn.textContent =
-                this.plugin.settings.gridOrientation === "landscape"
-                    ? "Switch to Portrait"
-                    : "Switch to Landscape";
-            orientationBtn.setAttribute("title", this.plugin.settings.gridOrientation === "landscape"
-                ? "Display years as rows, weeks as columns"
-                : "Display years as columns, weeks as rows");
-            // Re-render the grid with new orientation
-            this.updateZoomLevel();
-        });
-        // LEGEND section (keep existing, but move it down in hierarchy)
-        const legendSection = sidebarEl.createEl("div", {
-            cls: "chronica-sidebar-section",
-        });
+        zoomInBtn.addEventListener("click", () => { this.zoomIn(); });
+        const fitToScreenBtn = viewContainer.createEl("button", { cls: "chronica-btn chronica-fit-to-screen", text: "Fit to Screen", attr: { title: "Automatically adjust zoom to fit entire grid on screen" }, });
+        fitToScreenBtn.addEventListener("click", () => { this.fitToScreen(); });
+        // Display Settings Section
+        const displaySection = sidebarEl.createEl("div", { cls: "chronica-sidebar-section" });
+        displaySection.createEl("h3", { text: "DISPLAY SETTINGS", cls: "section-header" });
+        const displayContainer = displaySection.createEl("div", { cls: "chronica-controls" });
+        // (Keep Cell Shape and Grid Orientation controls - unchanged)
+        displayContainer.createEl("h4", { cls: "subsection-header", text: "Cell Shape", });
+        const shapeSelect = displayContainer.createEl("select", { cls: "chronica-select chronica-dropdown", });
+        ["square", "circle", "diamond"].forEach((opt) => { const option = shapeSelect.createEl("option", { attr: { value: opt }, text: opt.charAt(0).toUpperCase() + opt.slice(1), }); if (this.plugin.settings.cellShape === opt)
+            option.selected = true; });
+        shapeSelect.addEventListener("change", async () => { this.plugin.settings.cellShape = shapeSelect.value; await this.plugin.saveSettings(); this.updateZoomLevel(); });
+        displayContainer.createEl("h4", { cls: "subsection-header", text: "Grid Orientation", });
+        const orientationBtn = displayContainer.createEl("button", { cls: "chronica-btn chronica-orientation-button", text: this.plugin.settings.gridOrientation === "landscape" ? "Switch to Portrait" : "Switch to Landscape", attr: { title: this.plugin.settings.gridOrientation === "landscape" ? "Display years as rows, weeks as columns" : "Display years as columns, weeks as rows", }, });
+        orientationBtn.addEventListener("click", async () => { this.plugin.settings.gridOrientation = this.plugin.settings.gridOrientation === "landscape" ? "portrait" : "landscape"; await this.plugin.saveSettings(); orientationBtn.textContent = this.plugin.settings.gridOrientation === "landscape" ? "Switch to Portrait" : "Switch to Landscape"; orientationBtn.setAttribute("title", this.plugin.settings.gridOrientation === "landscape" ? "Display years as rows, weeks as columns" : "Display years as columns, weeks as rows"); this.updateZoomLevel(); });
+        // Legend Section (UPDATED to use new eventTypes)
+        const legendSection = sidebarEl.createEl("div", { cls: "chronica-sidebar-section" });
         legendSection.createEl("h3", { text: "LEGEND", cls: "section-header" });
         const legendEl = legendSection.createEl("div", { cls: "chronica-legend" });
-        // Standard event types for legend
-        const legendItems = [
-            { text: "Major Life Events", color: "#4CAF50" },
-            { text: "Travel", color: "#2196F3" },
-            { text: "Relationships", color: "#E91E63" },
-            { text: "Education/Career", color: "#9C27B0" },
-            {
-                text: "Upcoming Planned Event",
-                color: this.plugin.settings.futureCellColor,
-            },
-        ];
-        // Add standard legend items
-        legendItems.forEach((item) => {
-            const itemEl = legendEl.createEl("div", { cls: "chronica-legend-item" });
-            const colorEl = itemEl.createEl("div", { cls: "chronica-legend-color" });
-            colorEl.style.backgroundColor = item.color;
-            itemEl.createEl("span", { text: item.text });
-        });
-        // Render custom event type legends
-        if (this.plugin.settings.customEventTypes) {
-            this.plugin.settings.customEventTypes.forEach((customType) => {
-                const customLegendEl = legendEl.createEl("div", {
-                    cls: "chronica-legend-item",
-                });
-                const customColorEl = customLegendEl.createEl("div", {
-                    cls: "chronica-legend-color",
-                });
-                customColorEl.style.backgroundColor = customType.color;
-                customLegendEl.createEl("span", { text: customType.name });
+        // Add legend items for all defined event types
+        if (this.plugin.settings.eventTypes && this.plugin.settings.eventTypes.length > 0) {
+            this.plugin.settings.eventTypes.forEach((type) => {
+                const itemEl = legendEl.createEl("div", { cls: "chronica-legend-item" });
+                const colorEl = itemEl.createEl("div", { cls: "chronica-legend-color" });
+                colorEl.style.backgroundColor = type.color; // Use color from type definition
+                itemEl.createEl("span", { text: type.name }); // Use name from type definition
             });
         }
-        // Footer in sidebar
-        sidebarEl.createEl("div", {
-            cls: "chronica-footer",
-            text: this.plugin.settings.quote,
-        });
-        // Create content area
-        const contentAreaEl = mainContainer.createEl("div", {
-            cls: "chronica-content-area",
-        });
-        // Calculate basic statistics
-        const now = new Date();
-        const [year, month, day] = this.plugin.settings.birthday
-            .split("-")
-            .map(Number);
-        const birthdayDate = new Date(year, month - 1, day);
-        const ageInWeeks = this.plugin.getFullWeekAge(birthdayDate, now);
-        const totalWeeks = this.plugin.settings.lifespan * 52;
-        ((ageInWeeks / totalWeeks) * 100).toFixed(1);
-        // Count events
-        this.plugin.settings.greenEvents.length;
-        this.plugin.settings.blueEvents.length;
-        this.plugin.settings.pinkEvents.length;
-        this.plugin.settings.purpleEvents.length;
-        // Calculate custom event counts
-        let customEventCount = 0;
-        if (this.plugin.settings.customEventTypes &&
-            this.plugin.settings.customEvents) {
-            for (const eventType of this.plugin.settings.customEventTypes) {
-                if (this.plugin.settings.customEvents[eventType.name]) {
-                    customEventCount +=
-                        this.plugin.settings.customEvents[eventType.name].length;
-                }
-            }
+        else {
+            legendEl.createEl('p', { text: "No event types defined.", cls: 'text-muted' });
         }
-        // Always create collapsed sidebar indicator/toggle (but hide it when sidebar is open)
-        const collapsedToggle = contentAreaEl.createEl("button", {
-            cls: "chronica-collapsed-toggle",
-            attr: { title: "Expand Sidebar" },
-        });
-        // Use the directly imported setIcon helper function
+        // Optionally add legend for future event highlight if desired
+        const futureHighlightItem = legendEl.createEl("div", { cls: "chronica-legend-item" });
+        futureHighlightItem.createEl("div", { cls: "chronica-legend-color future-event-highlight-legend" }); // Use a specific class
+        // Style futureColorEl via CSS to show the border/style used for .future-event-highlight
+        // futureColorEl.style.border = `1px solid var(--future-event-color)`;
+        // futureColorEl.style.backgroundColor = `var(--future-cell-color)`; // Show base color
+        futureHighlightItem.createEl("span", { text: "Upcoming Event Highlight" });
+        // Footer in sidebar
+        sidebarEl.createEl("div", { cls: "chronica-footer", text: this.plugin.settings.quote });
+        // --- Create Content Area ---
+        const contentAreaEl = mainContainer.createEl("div", { cls: "chronica-content-area" });
+        // Apply class if stats panel should be open initially
+        if (this.plugin.settings.isStatsOpen) {
+            contentAreaEl.classList.add("stats-expanded");
+        }
+        // --- Create Collapsed Sidebar Toggle ---
+        const collapsedToggle = contentAreaEl.createEl("button", { cls: "chronica-collapsed-toggle", attr: { title: "Expand Sidebar" }, });
         obsidian.setIcon(collapsedToggle, "chevron-right");
+        collapsedToggle.classList.toggle("hidden", this.isSidebarOpen); // Use hidden class
         collapsedToggle.addEventListener("click", () => {
             this.isSidebarOpen = true;
-            // Save state to plugin settings
             this.plugin.settings.isSidebarOpen = true;
             this.plugin.saveSettings();
-            // Update the view without full re-render
-            // Need to find sidebarEl again as it was defined earlier in the function scope
-            const sidebarEl = mainContainer.querySelector(".chronica-sidebar");
-            if (sidebarEl) {
-                sidebarEl.classList.remove("collapsed");
-                sidebarEl.classList.add("expanded");
-                // Update sidebar toggle icon inside the expanded sidebar
-                const sidebarToggle = sidebarEl.querySelector(".chronica-sidebar-toggle");
-                if (sidebarToggle instanceof HTMLElement) {
-                    // Check if it's an HTMLElement
-                    obsidian.setIcon(sidebarToggle, "chevron-left");
-                    sidebarToggle.setAttribute("title", "Collapse Sidebar");
+            const sidebar = mainContainer.querySelector(".chronica-sidebar");
+            if (sidebar) {
+                sidebar.classList.remove("collapsed");
+                sidebar.classList.add("expanded");
+                const sideToggle = sidebar.querySelector(".chronica-sidebar-toggle");
+                if (sideToggle instanceof HTMLElement) {
+                    obsidian.setIcon(sideToggle, "chevron-left");
+                    sideToggle.setAttribute("title", "Collapse Sidebar");
                 }
             }
-            collapsedToggle.classList.add("hidden"); // Hide this toggle button using hidden class
+            collapsedToggle.classList.add("hidden"); // Use hidden class
             this.updateStatsPanelLayout();
         });
-        // Show/hide the toggle button based on initial sidebar state using hidden class
-        collapsedToggle.classList.toggle("hidden", this.isSidebarOpen);
-        // Create the view container
+        // --- Create Main View and Stats Panel ---
         const viewEl = contentAreaEl.createEl("div", { cls: "chronica-view" });
-        // Render the weeks grid
-        this.renderWeeksGrid(viewEl);
-        this.renderStatsPanel(contentAreaEl);
-    }
+        this.renderWeeksGrid(viewEl); // Render grid
+        this.renderStatsPanel(contentAreaEl); // Render stats panel (which reads new data structure internally now)
+    } // End of renderView
     /**
      * Show modal for adding an event
      */
@@ -3262,452 +3133,295 @@ class ChornicaTimelineView extends obsidian.ItemView {
         }
     }
     /**
-     * Render the main weeks grid visualization
+     * Render the main weeks grid visualization using the new event structure.
      * @param container - Container to render grid in
      */
     renderWeeksGrid(container) {
-        container.empty();
-        // Get the CSS variables for positioning and styling
+        container.empty(); // Clear previous grid
+        // Get necessary settings and calculated values
+        const { settings } = this.plugin;
+        const { birthday, lifespan, gridOrientation, cellShape, startWeekOnMonday } = settings;
         const root = document.documentElement;
-        const baseSize = parseInt(getComputedStyle(root).getPropertyValue("--base-cell-size")) ||
-            16;
-        const cellSize = Math.round(baseSize * this.plugin.settings.zoomLevel);
-        // Apply the zoomed cell size to the CSS variable
-        root.style.setProperty("--cell-size", `${cellSize}px`);
+        const baseSize = parseInt(getComputedStyle(root).getPropertyValue("--base-cell-size")) || 16;
+        const cellSize = Math.round(baseSize * settings.zoomLevel);
+        root.style.setProperty("--cell-size", `${cellSize}px`); // Ensure CSS var is set
         const cellGap = parseInt(getComputedStyle(root).getPropertyValue("--cell-gap")) || 2;
         const leftOffset = parseInt(getComputedStyle(root).getPropertyValue("--left-offset")) || 70;
         const topOffset = parseInt(getComputedStyle(root).getPropertyValue("--top-offset")) || 50;
-        const regularGap = cellGap; // Store the regular gap size
-        // Create decade markers container (horizontal markers above the grid)
-        if (this.plugin.settings.showDecadeMarkers) {
-            const isPortrait = this.plugin.settings.gridOrientation === "portrait";
-            const decadeMarkersContainer = container.createEl("div", {
-                cls: `chronica-decade-markers ${isPortrait ? "portrait-mode" : ""}`,
-            });
-            if (!isPortrait) {
+        const regularGap = cellGap;
+        const isPortrait = gridOrientation === "portrait";
+        // --- Create Markers ---
+        // Decade Markers
+        if (settings.showDecadeMarkers) {
+            const decadeMarkersContainer = container.createEl("div", { cls: `chronica-decade-markers ${isPortrait ? "portrait-mode" : ""}` });
+            if (!isPortrait)
                 decadeMarkersContainer.style.left = `${leftOffset}px`;
-            }
-            // Add decade markers starting from 10 (skipping 0)
-            // Create decade markers container (horizontal markers above the grid)
-            if (this.plugin.settings.showDecadeMarkers) {
-                const isPortrait = this.plugin.settings.gridOrientation === "portrait";
-                const decadeMarkersContainer = container.createEl("div", {
-                    cls: `chronica-decade-markers ${isPortrait ? "portrait-mode" : ""}`,
-                });
-                if (!isPortrait) {
-                    decadeMarkersContainer.style.left = `${leftOffset}px`;
-                }
-                // Add decade markers starting from 10 (skipping 0)
-                for (let decade = 10; decade <= this.plugin.settings.lifespan; decade += 10) {
-                    const marker = decadeMarkersContainer.createEl("div", {
-                        cls: `chronica-decade-marker ${isPortrait ? "portrait-mode" : ""}`,
-                        text: decade.toString(),
-                    });
-                    // Position each decade marker using the calculateYearPosition method
-                    marker.style.position = "absolute";
-                    // Calculate the position of last year of previous decade (e.g., year 9 for marker "10")
-                    const lastYearOfPreviousDecade = decade - 1;
-                    // Get position of this year - this will be the position of the column we want to place the marker above
-                    const decadePosition = this.plugin.calculateYearPosition(lastYearOfPreviousDecade, cellSize, regularGap);
-                    // Position marker at the CENTER of the column, not past it
-                    const leftPosition = decadePosition + cellSize / 2;
-                    if (isPortrait) {
-                        marker.style.top = `${leftPosition}px`;
-                        marker.style.left = `${topOffset}px`;
-                        marker.style.transform = "translate(-50%, -50%)"; // Keep centered
-                    }
-                    else {
-                        marker.style.left = `${leftPosition}px`;
-                        marker.style.top = `${topOffset / 2}px`;
-                        marker.style.transform = "translate(-50%, -50%)";
-                    }
-                }
-            }
-        }
-        // Add birthday cake marker (independent of month markers)
-        if (this.plugin.settings.showBirthdayMarker) {
-            const [year, month, day] = this.plugin.settings.birthday
-                .split("-")
-                .map(Number);
-            const birthdayDate = new Date(year, month - 1, day); // Month is 0-indexed in JavaScript
-            const birthMonth = birthdayDate.getMonth();
-            const birthDay = birthdayDate.getDate();
-            const birthYear = birthdayDate.getFullYear();
-            const birthMonthName = MONTH_NAMES[birthMonth];
-            const birthdayMarkerContainer = container.createEl("div", {
-                cls: "chronica-birthday-marker-container",
-            });
-            // Position the container near the grid
-            birthdayMarkerContainer.style.position = "absolute";
-            birthdayMarkerContainer.style.zIndex = "15"; // Ensure visibility above other elements
-            // Create cake icon for birthday
-            const cakeEl = birthdayMarkerContainer.createEl("div", {
-                cls: "birthday-cake-marker",
-            });
-            // Use setIcon with the appropriate Obsidian icon name for a cake
-            obsidian.setIcon(cakeEl, "cake"); // Use the built-in 'cake' icon
-            cakeEl.setAttribute("title", `${birthMonthName} ${birthDay}, ${birthYear} (Your Birthday)`);
-        }
-        // Create markers container with structured layout
-        const isPortrait = this.plugin.settings.gridOrientation === "portrait";
-        const markersContainer = container.createEl("div", {
-            cls: `chronica-vertical-markers ${isPortrait ? "portrait-mode" : ""}`,
-        });
-        // First, create the separate containers for week and month markers
-        const weekMarkersContainer = markersContainer.createEl("div", {
-            cls: "chronica-week-markers",
-        });
-        const monthMarkersContainer = markersContainer.createEl("div", {
-            cls: "chronica-month-markers",
-        });
-        // Add week markers (10, 20, 30, 40, 50) if enabled
-        if (this.plugin.settings.showWeekMarkers) {
-            for (let week = 0; week <= 50; week += 10) {
-                if (week === 0)
-                    continue; // Skip 0 to start with 10
-                const marker = weekMarkersContainer.createEl("div", {
-                    cls: `chronica-week-marker ${isPortrait ? "portrait-mode" : ""}`,
-                    text: week.toString(),
-                });
-                // Calculate the exact position - align to grid
-                const position = week * (cellSize + cellGap) +
-                    cellSize / 2 -
-                    (cellSize + cellGap) -
-                    (cellSize + cellGap);
+            for (let decade = 10; decade <= lifespan; decade += 10) {
+                const marker = decadeMarkersContainer.createEl("div", { cls: `chronica-decade-marker ${isPortrait ? "portrait-mode" : ""}`, text: decade.toString() });
+                marker.style.position = "absolute";
+                const lastYearOfPrevDecade = decade - 1;
+                const decadePosition = this.plugin.calculateYearPosition(lastYearOfPrevDecade, cellSize, regularGap);
+                const centerPosition = decadePosition + cellSize / 2;
                 if (isPortrait) {
-                    marker.style.left = `${position + 6.5}px`;
-                    marker.style.top = "10px"; // Fixed position from the top
-                    marker.style.transform = "none"; // Remove any transforms
-                }
+                    marker.style.top = `${centerPosition}px`;
+                    marker.style.left = '15px';
+                    marker.style.transform = "translateY(-50%)";
+                } // Adjust left for portrait
+                else {
+                    marker.style.left = `${centerPosition}px`;
+                    marker.style.top = '15px';
+                    marker.style.transform = "translateX(-50%)";
+                } // Adjust top
+            }
+        }
+        // Vertical Markers (Weeks & Months)
+        const markersContainer = container.createEl("div", { cls: `chronica-vertical-markers ${isPortrait ? "portrait-mode" : ""}` });
+        const weekMarkersContainer = markersContainer.createEl("div", { cls: "chronica-week-markers" });
+        const monthMarkersContainer = markersContainer.createEl("div", { cls: "chronica-month-markers" });
+        // Week Markers (Numbers 10, 20...)
+        if (settings.showWeekMarkers) {
+            for (let week = 10; week <= 50; week += 10) {
+                const marker = weekMarkersContainer.createEl("div", { cls: `chronica-week-marker ${isPortrait ? "portrait-mode" : ""}`, text: week.toString() });
+                // Position based on cellIndex (0-51), adjusting for center alignment
+                const position = (week - 1) * (cellSize + cellGap) + cellSize / 2; // Center on the week line
+                if (isPortrait) {
+                    marker.style.left = `${position}px`;
+                    marker.style.top = `${topOffset - 25}px`;
+                    marker.style.transform = "translateX(-50%)";
+                } // Position above grid
                 else {
                     marker.style.top = `${position}px`;
-                    marker.style.left = "auto";
                     marker.style.right = "4px";
-                }
+                    marker.style.transform = "translateY(-50%)";
+                } // Position left of grid
             }
         }
-        // Add month markers if enabled
-        if (this.plugin.settings.showMonthMarkers) {
-            const [year, month, day] = this.plugin.settings.birthday
-                .split("-")
-                .map(Number);
-            const birthdayDate = new Date(year, month - 1, day); // Month is 0-indexed in JavaScript
-            const birthMonth = birthdayDate.getMonth();
-            birthdayDate.getDate();
-            const birthYear = birthdayDate.getFullYear();
-            const birthMonthName = MONTH_NAMES[birthMonth];
-            // Calculate which week of the month the birthday falls in
-            // First, get first day of birth month
-            const firstDayOfBirthMonth = new Date(birthYear, birthMonth, 1);
-            // Calculate days between first of month and birthday
-            const daysBetween = (birthdayDate.getTime() - firstDayOfBirthMonth.getTime()) /
-                (1000 * 60 * 60 * 24);
-            // Calculate which week of the month (0-indexed) the birthday falls in
-            const birthWeekOfMonth = Math.floor(daysBetween / 7);
-            // Now calculate the position for the birth month marker
-            // If birthday is in week 3 of the month (0-indexed), place month marker at week 51 (second-to-last row)
-            // If birthday is in week 2 of the month, place month marker at week 0 (last row)
-            // If birthday is in week 1 of the month, place month marker at week 1 (first row)
-            const birthMonthMarkerWeek = (52 - birthWeekOfMonth) % 52;
-            // Calculate month markers from the plugin
-            const monthMarkers = this.plugin.calculateMonthMarkers(birthdayDate, this.plugin.settings.lifespan, this.plugin.settings.monthMarkerFrequency);
-            // Create a map to store one marker per month
-            const monthMarkersMap = new Map();
-            // Process all markers to find the best one for each month
-            for (const marker of monthMarkers) {
-                const monthIndex = MONTH_NAMES.indexOf(marker.label);
-                if (monthIndex === -1)
-                    continue; // Skip if not a valid month
-                // Skip if this is the birth month - we'll handle it separately
-                if (monthIndex === birthMonth)
-                    continue;
-                // Calculate the actual week position within the grid (0-51)
-                const weekPosition = marker.weekIndex % 52;
-                // Only add this month if we haven't seen it yet
-                if (!monthMarkersMap.has(monthIndex)) {
-                    monthMarkersMap.set(monthIndex, {
-                        label: marker.label,
-                        weekIndex: weekPosition,
-                        isFirstOfYear: marker.isFirstOfYear,
-                        fullLabel: marker.fullLabel,
-                        monthNumber: marker.monthNumber,
-                    });
-                }
+        // Birthday Marker (Cake Icon) - Placed relative to the *grid* start
+        if (settings.showBirthdayMarker) {
+            const [bYear, bMonth, bDay] = settings.birthday.split("-").map(Number);
+            const birthdayDate = new Date(bYear, bMonth - 1, bDay);
+            const birthWeekKey = this.plugin.getWeekKeyFromDate(birthdayDate);
+            this.plugin.settings.events.findIndex(e => e.weekKey === birthWeekKey); // Find event index if needed later
+            const weeksSinceBirthForFirstBirthday = this.plugin.getFullWeekAge(birthdayDate, new Date(bYear + 1, bMonth - 1, bDay));
+            const birthWeekGridIndex = weeksSinceBirthForFirstBirthday % 52; // Week index within the year (0-51)
+            const birthdayMarkerContainer = container.createEl("div", { cls: "chronica-birthday-marker-container" });
+            // Position near the vertical markers, aligned with the birthday week row/column
+            const birthWeekPosition = birthWeekGridIndex * (cellSize + cellGap) + cellSize / 2;
+            birthdayMarkerContainer.style.position = "absolute";
+            birthdayMarkerContainer.style.zIndex = "15";
+            if (isPortrait) {
+                birthdayMarkerContainer.style.left = `${birthWeekPosition}px`;
+                birthdayMarkerContainer.style.top = `${topOffset - 45}px`; // Above the month markers
+                birthdayMarkerContainer.style.transform = "translateX(-50%)";
             }
-            // Manually add the birth month marker at the calculated position
-            monthMarkersMap.set(birthMonth, {
-                label: birthMonthName,
-                weekIndex: birthMonthMarkerWeek,
-                isFirstOfYear: birthMonth === 0,
-                fullLabel: `${birthMonthName} ${birthYear} (Birth Month)`,
-                monthNumber: birthMonth,
-            });
-            // Render all month markers
-            for (const [monthIndex, marker] of monthMarkersMap.entries()) {
-                // Create marker element
-                const markerEl = monthMarkersContainer.createEl("div", {
-                    cls: `chronica-month-marker ${marker.isFirstOfYear ? "first-of-year" : ""} ${monthIndex === birthMonth ? "birth-month" : ""} ${isPortrait ? "portrait-mode" : ""}`,
-                });
-                // Add the month name
-                markerEl.textContent = marker.label;
-                // Position the marker based on orientation
-                if (isPortrait) {
-                    if (marker.monthNumber !== undefined) {
-                        // Calculate position based on month number for even spacing
-                        const weekPosition = marker.weekIndex % 52;
-                        markerEl.style.left = `${weekPosition * (cellSize + cellGap) +
-                            (cellSize + cellGap) +
-                            cellSize / 2}px`;
-                        markerEl.style.top = `10px`; // Fixed distance from the top
-                        markerEl.style.transform = "translateX(-50%)"; // Center marker on its position
-                    }
-                    else {
-                        // Original landscape positioning logic
-                        markerEl.style.top = `${marker.weekIndex * (cellSize + cellGap) + cellSize / 2}px`;
-                    }
-                    markerEl.style.top = `${leftOffset - 80}px`;
-                    markerEl.style.transform = "translateX(0)"; // Changed from 110% to prevent overlap
+            else {
+                birthdayMarkerContainer.style.top = `${birthWeekPosition}px`;
+                birthdayMarkerContainer.style.left = `${leftOffset - 25}px`; // Left of the month markers
+                birthdayMarkerContainer.style.transform = "translateY(-50%)";
+            }
+            const cakeEl = birthdayMarkerContainer.createEl("div", { cls: "birthday-cake-marker" });
+            obsidian.setIcon(cakeEl, "cake");
+            cakeEl.setAttribute("title", `${MONTH_NAMES[bMonth - 1]} ${bDay}, ${bYear} (Your Birthday)`);
+        }
+        // Month Markers (Text labels)
+        if (settings.showMonthMarkers) {
+            const [bYear, bMonth, bDay] = settings.birthday.split("-").map(Number);
+            const birthdayDate = new Date(bYear, bMonth - 1, bDay);
+            const monthMarkersData = this.plugin.calculateMonthMarkers(birthdayDate, lifespan, settings.monthMarkerFrequency);
+            // Filter unique month markers per grid row/column index
+            const uniqueGridIndexMarkers = new Map();
+            monthMarkersData.forEach(marker => {
+                const gridIndex = marker.weekIndex % 52; // 0-51
+                if (!uniqueGridIndexMarkers.has(gridIndex)) {
+                    uniqueGridIndexMarkers.set(gridIndex, marker);
                 }
                 else {
-                    markerEl.style.top = `${marker.weekIndex * (cellSize + cellGap) + cellSize / 2}px`;
+                    // Optional: Prioritize 'first-of-year' or 'birth-month' if multiple markers land on the same grid index
+                    const existing = uniqueGridIndexMarkers.get(gridIndex);
+                    if (marker.isFirstOfYear && !existing.isFirstOfYear)
+                        uniqueGridIndexMarkers.set(gridIndex, marker);
+                    // Birth month should be handled by the cake icon ideally
                 }
-            }
+            });
+            uniqueGridIndexMarkers.forEach((marker, gridIndex) => {
+                const markerEl = monthMarkersContainer.createEl("div", {
+                    cls: `chronica-month-marker ${marker.isFirstOfYear ? "first-of-year" : ""} ${marker.isBirthMonth ? "birth-month" : ""} ${isPortrait ? "portrait-mode" : ""}`,
+                    text: marker.label
+                });
+                const position = gridIndex * (cellSize + cellGap) + cellSize / 2; // Center on week line
+                markerEl.setAttribute("title", marker.fullLabel);
+                if (isPortrait) {
+                    markerEl.style.left = `${position}px`;
+                    markerEl.style.top = `${topOffset - 25}px`;
+                    markerEl.style.transform = "translateX(-50%)";
+                } // Position above grid
+                else {
+                    markerEl.style.top = `${position}px`;
+                    markerEl.style.left = "5px";
+                    markerEl.style.transform = "translateY(-50%)";
+                } // Position left of grid (inside marker area)
+            });
         }
-        // Create the grid container
+        // --- Create Grid ---
         const gridEl = container.createEl("div", { cls: "chronica-grid" });
-        gridEl.toggleClass("shape-circle", this.plugin.settings.cellShape === "circle");
-        gridEl.toggleClass("shape-diamond", this.plugin.settings.cellShape === "diamond");
-        // Use display block instead of grid, as we'll manually position each cell
-        gridEl.style.display = "block";
+        gridEl.toggleClass("shape-circle", cellShape === "circle");
+        gridEl.toggleClass("shape-diamond", cellShape === "diamond");
         gridEl.style.position = "absolute";
         gridEl.style.top = `${topOffset}px`;
         gridEl.style.left = `${leftOffset}px`;
         const now = new Date();
-        const [year, month, day] = this.plugin.settings.birthday
-            .split("-")
-            .map(Number);
-        const birthdayDate = new Date(year, month - 1, day); // Month is 0-indexed in JavaScript
-        const ageInWeeks = this.plugin.getFullWeekAge(birthdayDate, now);
+        const [birthYearNum, birthMonthNum, birthDayNum] = settings.birthday.split("-").map(Number);
+        const birthdayDate = new Date(birthYearNum, birthMonthNum - 1, birthDayNum);
+        this.plugin.getFullWeekAge(birthdayDate, now);
         const currentWeekKey = this.plugin.getWeekKeyFromDate(now);
-        /**
-         * Calculate weeks based on the birthday anniversary, not ISO calendar weeks
-         * This ensures we always have exactly 52 cells per year with no gaps
-         */
-        for (let year = 0; year < this.plugin.settings.lifespan; year++) {
-            // Get calendar year to display (birth year + year)
-            const displayYear = birthdayDate.getFullYear() + year;
-            // Create date for the person's birthday in this display year
+        // --- Create Cells ---
+        for (let yearIndex = 0; yearIndex < lifespan; yearIndex++) {
+            const displayYear = birthdayDate.getFullYear() + yearIndex;
             const yearBirthday = new Date(birthdayDate);
             yearBirthday.setFullYear(displayYear);
-            // Find the week containing the birthday
-            const startDayOfWeek = this.plugin.settings.startWeekOnMonday ? 1 : 0; // 0 = Sunday, 1 = Monday
-            // Find the first day of the week containing the birthday
+            const startDayOfWeekNum = startWeekOnMonday ? 1 : 0;
             const birthdayWeekStart = new Date(yearBirthday);
-            const birthdayDayOfWeek = birthdayWeekStart.getDay(); // 0-6, 0 = Sunday
-            // Calculate days to subtract to get to start of the week
-            let daysToSubtract = birthdayDayOfWeek - startDayOfWeek;
+            const birthdayDayOfWeek = birthdayWeekStart.getDay();
+            let daysToSubtract = birthdayDayOfWeek - startDayOfWeekNum;
             if (daysToSubtract < 0)
                 daysToSubtract += 7;
             birthdayWeekStart.setDate(birthdayWeekStart.getDate() - daysToSubtract);
-            // Create date for the person's next birthday
             const nextBirthday = new Date(birthdayDate);
             nextBirthday.setFullYear(displayYear + 1);
-            // For each week in this year (always 52 cells)
-            for (let cellIndex = 0; cellIndex < 52; cellIndex++) {
-                const weekIndex = year * 52 + cellIndex;
+            const totalDaysInYear = Math.round((nextBirthday.getTime() - birthdayWeekStart.getTime()) / (1000 * 60 * 60 * 24));
+            for (let cellIndex = 0; cellIndex < 52; cellIndex++) { // Always 52 cells visually per year row/column
                 const cell = gridEl.createEl("div", { cls: "chronica-grid-cell" });
-                // Calculate start date for this cell
+                // Calculate start/end dates for this specific cell's period
                 const cellStartDate = new Date(birthdayWeekStart);
                 cellStartDate.setDate(birthdayWeekStart.getDate() + cellIndex * 7);
-                // Calculate end date for this cell (6 days later = full week)
                 const cellEndDate = new Date(cellStartDate);
                 cellEndDate.setDate(cellStartDate.getDate() + 6);
-                // For years with 53 weeks, special handling for the last few cells
-                const totalDays = Math.round((nextBirthday.getTime() - birthdayWeekStart.getTime()) /
-                    (1000 * 60 * 60 * 24));
-                // If we're near the end of the year and there are more than 52*7 days
-                // in this year, we need to adjust the last cell to cover the remainder
-                if (cellIndex === 51 && totalDays > 52 * 7) {
-                    // Extend the last cell to include remaining days before next birthday
-                    const lastCellStart = new Date(birthdayWeekStart);
-                    lastCellStart.setDate(birthdayWeekStart.getDate() + 51 * 7);
-                    // The last cell extends to the day before the next birthday week starts
+                // Adjust last cell's end date if the year has > 364 days relative to birthday week start
+                if (cellIndex === 51 && totalDaysInYear > 364) {
                     const nextBirthdayWeekStart = new Date(nextBirthday);
-                    const nextBirthdayDayOfWeek = nextBirthdayWeekStart.getDay();
-                    let nextDaysToSubtract = nextBirthdayDayOfWeek - startDayOfWeek;
-                    if (nextDaysToSubtract < 0)
-                        nextDaysToSubtract += 7;
-                    nextBirthdayWeekStart.setDate(nextBirthdayWeekStart.getDate() - nextDaysToSubtract);
-                    // Set the cell end date to the day before the next birthday week
-                    cellEndDate.setTime(nextBirthdayWeekStart.getTime() - 24 * 60 * 60 * 1000);
+                    const nextBdayDayOfWeek = nextBirthdayWeekStart.getDay();
+                    let nextDaysToSub = nextBdayDayOfWeek - startDayOfWeekNum;
+                    if (nextDaysToSub < 0)
+                        nextDaysToSub += 7;
+                    nextBirthdayWeekStart.setDate(nextBirthdayWeekStart.getDate() - nextDaysToSub);
+                    // End date is day before next birthday week starts
+                    cellEndDate.setTime(nextBirthdayWeekStart.getTime() - (24 * 60 * 60 * 1000));
                 }
-                // Get the ISO week information for visualization and note linking
-                const isoWeekInfo = this.plugin.getISOWeekData(cellStartDate);
-                const weekKey = `${isoWeekInfo.year}-W${isoWeekInfo.week
-                    .toString()
-                    .padStart(2, "0")}`;
+                // Determine ISO week key for linking notes/events (might span across cell boundary)
+                // We use the start date of the cell's period to determine the primary week key
+                const weekKey = this.plugin.getWeekKeyFromDate(cellStartDate);
                 cell.dataset.weekKey = weekKey;
-                // Format the dates for display
-                const formatDate = (date) => {
-                    const months = [
-                        "Jan",
-                        "Feb",
-                        "Mar",
-                        "Apr",
-                        "May",
-                        "Jun",
-                        "Jul",
-                        "Aug",
-                        "Sep",
-                        "Oct",
-                        "Nov",
-                        "Dec",
-                    ];
-                    return `${months[date.getMonth()]} ${date.getDate()}`;
-                };
+                // Format dates for tooltip
+                const formatDate = (date) => { const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]; return `${months[date.getMonth()]} ${date.getDate()}`; };
                 const dateRange = `${formatDate(cellStartDate)} - ${formatDate(cellEndDate)}`;
+                const isoWeekInfo = this.plugin.getISOWeekData(cellStartDate);
                 cell.setAttribute("title", `Week ${isoWeekInfo.week}, ${isoWeekInfo.year}\n${dateRange}`);
-                // Position the cell with absolute positioning
+                // Positioning
                 cell.style.position = "absolute";
-                // Calculate year position with decade spacing
-                const yearPos = this.plugin.calculateYearPosition(year, cellSize, regularGap);
-                // Calculate week position
+                const yearPos = this.plugin.calculateYearPosition(yearIndex, cellSize, regularGap);
                 const weekPos = cellIndex * (cellSize + regularGap);
-                // Position based on orientation
-                if (this.plugin.settings.gridOrientation === "landscape") {
-                    // Landscape mode (default): years as columns, weeks as rows
-                    cell.style.left = `${yearPos}px`;
-                    cell.style.top = `${weekPos}px`;
-                }
-                else {
-                    // Portrait mode: years as rows, weeks as columns
+                if (isPortrait) {
                     cell.style.left = `${weekPos}px`;
                     cell.style.top = `${yearPos}px`;
                 }
-                // Explicitly set width and height
+                else {
+                    cell.style.left = `${yearPos}px`;
+                    cell.style.top = `${weekPos}px`;
+                }
                 cell.style.width = `${cellSize}px`;
                 cell.style.height = `${cellSize}px`;
-                // Color coding (past, present, future)
+                // --- Styling & Classes ---
                 const isCurrentWeek = weekKey === currentWeekKey;
-                this.applyEventStyling(cell, weekKey);
-                // Add appropriate class regardless of color
-                if (isCurrentWeek) {
+                // Base past/present/future class (CSS handles base background)
+                if (isCurrentWeek)
                     cell.addClass("present");
-                }
-                else if (cellStartDate < now) {
+                else if (cellStartDate < now)
                     cell.addClass("past");
-                }
-                else {
+                else
                     cell.addClass("future");
+                // Apply event styling (reads new structure, applies inline colors/borders)
+                this.applyEventStyling(cell, weekKey); // This now uses the refactored logic
+                // Apply filled week styling (only if not the current week and manual fill is on)
+                if (!isCurrentWeek && !settings.enableAutoFill && settings.filledWeeks?.includes(weekKey)) {
+                    cell.addClass("filled-week");
+                    // Background for filled is handled by CSS, border might be too
+                    // If specific styling is needed and NOT overridden by event, add here:
+                    // if (!cell.classList.contains('event')) { cell.style.backgroundColor = '#8bc34a'; }
                 }
-                // Keep the event handlers the same
+                // --- Event Handlers ---
                 cell.addEventListener("click", async (event) => {
-                    // Event handling code remains the same
+                    // Check for folder selection first
                     if (!this.plugin.settings.hasSeenFolders) {
-                        const modal = new ChornicaFolderSelectionModal(this.app, this.plugin);
-                        modal.open();
+                        new ChornicaFolderSelectionModal(this.app, this.plugin).open();
                         return;
                     }
-                    // If shift key is pressed, add an event
+                    // Shift+Click to add event
                     if (event.shiftKey) {
-                        const modal = new ChornicaEventModal(this.app, this.plugin, weekKey);
-                        modal.open();
+                        new ChornicaEventModal(this.app, this.plugin, weekKey).open();
                         return;
                     }
-                    // First check if there's an event note for this week
-                    if (cell.dataset.eventFile) {
-                        const stored = this.app.vault.getAbstractFileByPath(cell.dataset.eventFile);
-                        if (stored instanceof obsidian.TFile) {
-                            await this.plugin.safelyOpenFile(stored);
+                    // Check if event styling added a note path to the cell
+                    const linkedNotePath = cell.dataset.eventFile;
+                    if (linkedNotePath) {
+                        const noteFile = this.app.vault.getAbstractFileByPath(linkedNotePath);
+                        if (noteFile instanceof obsidian.TFile) {
+                            await this.plugin.safelyOpenFile(noteFile);
                             return;
                         }
                         else {
-                            // event file has been deleted/renamed: clean up
+                            console.warn(`Chronica: Linked note path not found: ${linkedNotePath}. Removing link.`);
                             delete cell.dataset.eventFile;
-                            await this.plugin.cleanInvalidEvents();
+                            // Optional: We could rescan here, but might be slow. Let next scan handle it.
+                            // await this.plugin.scanVaultForEvents();
                         }
                     }
-                    // Now look up the event normally
-                    const eventData = await this.plugin.getEventFromNote(weekKey);
-                    if (eventData && eventData.event) {
-                        const files = this.app.vault.getMarkdownFiles();
-                        let eventFile = null;
-                        for (const file of files) {
-                            // Match any event file whose name contains the exact weekKey (e.g. "2025-W15")
-                            if (file.basename.includes(weekKey)) {
-                                const content = await this.app.vault.read(file);
-                                const fm = content.match(/^---\s+([\s\S]*?)\s+---/);
-                                if (fm &&
-                                    (fm[1].includes("event:") || fm[1].includes("type:"))) {
-                                    eventFile = file;
-                                    break;
-                                }
-                            }
-                        }
-                        if (eventFile) {
-                            // cache for next time
-                            cell.dataset.eventFile = eventFile.path;
-                            await this.plugin.safelyOpenFile(eventFile);
-                            return;
-                        }
-                    }
-                    // If no event note was found, proceed with the normal week note handling
-                    const fileName = `${weekKey.replace("W", "-W")}.md`;
-                    const fullPath = this.plugin.getFullPath(fileName);
+                    // If no linked event note, handle as a weekly note
+                    const weekNoteName = settings.weekNoteTemplate
+                        .replace('${year}', isoWeekInfo.year.toString())
+                        .replace('${week}', isoWeekInfo.week.toString().padStart(2, '0'));
+                    const fullPath = this.plugin.getFullPath(`${weekNoteName}.md`, false); // false = not event folder
                     const existingFile = this.app.vault.getAbstractFileByPath(fullPath);
                     if (existingFile instanceof obsidian.TFile) {
                         await this.plugin.safelyOpenFile(existingFile);
                     }
                     else {
                         // Create folder if needed
-                        if (this.plugin.settings.notesFolder &&
-                            this.plugin.settings.notesFolder.trim() !== "") {
+                        const folderPath = settings.notesFolder;
+                        if (folderPath && folderPath.trim() !== "") {
                             try {
-                                const folderExists = this.app.vault.getAbstractFileByPath(this.plugin.settings.notesFolder);
-                                if (!folderExists) {
-                                    await this.app.vault.createFolder(this.plugin.settings.notesFolder);
-                                }
+                                if (!await this.app.vault.adapter.exists(folderPath))
+                                    await this.app.vault.createFolder(folderPath);
                             }
-                            catch (err) { }
+                            catch (err) {
+                                console.error(`Chronica: Error creating folder ${folderPath}`, err);
+                            }
                         }
-                        // Add empty frontmatter
-                        let content = this.plugin.formatFrontmatter({});
-                        // Add note template
-                        const weekNum = parseInt(weekKey.split("-W")[1]);
-                        const year = parseInt(weekKey.split("-")[0]);
-                        content += `# Week ${weekNum}, ${year}\n\n## Reflections\n\n## Tasks\n\n## Notes\n`;
+                        // Add basic template
+                        let content = this.plugin.formatFrontmatter({}); // Empty frontmatter
+                        content += `# Week ${isoWeekInfo.week}, ${isoWeekInfo.year}\n\n## Reflections\n\n## Tasks\n\n## Notes\n`;
                         const newFile = await this.app.vault.create(fullPath, content);
-                        // Use our safe method instead of directly opening in active leaf
                         await this.plugin.safelyOpenFile(newFile);
                     }
                 });
-                // Add context menu (right-click) event for manual fill
+                // Context menu for manual fill
                 cell.addEventListener("contextmenu", (event) => {
-                    // Only allow manual fill if auto-fill is disabled and for future weeks
-                    if (this.plugin.settings.enableAutoFill || weekIndex <= ageInWeeks) {
-                        return;
-                    }
-                    // Prevent default context menu
+                    if (settings.enableAutoFill || cellStartDate < now)
+                        return; // Allow manual only if enabled AND it's a future/present week
                     event.preventDefault();
-                    // Toggle filled status
-                    const filledIndex = this.plugin.settings.filledWeeks.indexOf(weekKey);
+                    const filledIndex = settings.filledWeeks.indexOf(weekKey);
                     if (filledIndex >= 0) {
-                        // Remove from filled weeks
-                        this.plugin.settings.filledWeeks.splice(filledIndex, 1);
+                        settings.filledWeeks.splice(filledIndex, 1);
                         cell.removeClass("filled-week");
                     }
                     else {
-                        // Add to filled weeks
-                        this.plugin.settings.filledWeeks.push(weekKey);
+                        settings.filledWeeks.push(weekKey);
                         cell.addClass("filled-week");
-                        cell.style.backgroundColor = "#8bc34a"; // Light green for filled weeks
                     }
-                    // Save settings
-                    this.plugin.saveSettings();
+                    this.plugin.saveSettings(); // Save immediately on change
                 });
-            }
-        }
-    }
+            } // End cellIndex loop
+        } // End yearIndex loop
+    } // End renderWeeksGrid
     /**
      * Render the statistics panel
      * @param container - Container to render panel in
@@ -3933,11 +3647,11 @@ class ChornicaTimelineView extends obsidian.ItemView {
         }
     }
     /**
-     * Render the Overview tab content
+     * Render the Overview tab content using the new unified event structure.
      * @param container - Container to render tab content in
      */
     renderOverviewTab(container) {
-        // Calculate statistics
+        // --- Basic Life Progress Calculations (Unaffected by event structure change) ---
         const now = new Date();
         const [year, month, day] = this.plugin.settings.birthday
             .split("-")
@@ -3947,36 +3661,37 @@ class ChornicaTimelineView extends obsidian.ItemView {
         const totalWeeks = this.plugin.settings.lifespan * 52;
         const livedPercentage = Math.min(100, Math.max(0, (ageInWeeks / totalWeeks) * 100));
         const remainingWeeks = Math.max(0, totalWeeks - ageInWeeks);
-        // Count events
-        const majorLifeEvents = this.plugin.settings.greenEvents.length;
-        const travelEvents = this.plugin.settings.blueEvents.length;
-        const relationshipEvents = this.plugin.settings.pinkEvents.length;
-        const educationCareerEvents = this.plugin.settings.purpleEvents.length;
-        // Calculate custom event counts
-        let customEventCount = 0;
-        if (this.plugin.settings.customEventTypes &&
-            this.plugin.settings.customEvents) {
-            for (const eventType of this.plugin.settings.customEventTypes) {
-                if (this.plugin.settings.customEvents[eventType.name]) {
-                    customEventCount +=
-                        this.plugin.settings.customEvents[eventType.name].length;
-                }
+        const yearsLived = Math.floor(ageInWeeks / 52);
+        const remainingWeeksInYear = ageInWeeks % 52;
+        const decadesLived = Math.floor(yearsLived / 10);
+        const yearsIntoCurrentDecade = yearsLived % 10;
+        // --- Event Count Calculations (Using NEW structure) ---
+        const totalEvents = this.plugin.settings.events.length;
+        const eventsByType = [];
+        // Count events for each type definition
+        this.plugin.settings.eventTypes.forEach((eventType) => {
+            const count = this.plugin.settings.events.filter((event) => event.typeId === eventType.id).length;
+            if (count > 0) {
+                eventsByType.push({ name: eventType.name, count: count });
             }
+        });
+        // Sort by count for the breakdown string
+        eventsByType.sort((a, b) => b.count - a.count);
+        // Create breakdown string
+        let eventBreakdown = eventsByType
+            .map((et) => `${et.count} ${et.name}`)
+            .join(", ");
+        if (!eventBreakdown) {
+            eventBreakdown = "No events added yet";
         }
-        const totalEvents = majorLifeEvents +
-            travelEvents +
-            relationshipEvents +
-            educationCareerEvents +
-            customEventCount;
-        // Create main container with grid layout
+        // --- Render UI ---
         const overviewGrid = container.createEl("div", {
             cls: "chronica-stats-grid",
         });
-        // Left side: Life progress section
+        // Life progress card (mostly unchanged)
         const progressSection = overviewGrid.createEl("div", {
             cls: "chronica-stat-section",
         });
-        // Life progress card
         const lifeSummary = progressSection.createEl("div", {
             cls: "chronica-stat-card chronica-stat-card-full",
         });
@@ -3984,50 +3699,48 @@ class ChornicaTimelineView extends obsidian.ItemView {
             cls: "chronica-stat-title",
             text: "Life Progress",
         });
-        // Create circular progress and bar in the same container
         const progressContainer = lifeSummary.createEl("div", {
             cls: "chronica-progress-container",
         });
-        // Create circular progress on the left
         const circleContainer = progressContainer.createEl("div", {
             cls: "chronica-circular-progress",
         });
         const progressValue = Math.round(livedPercentage);
-        // Create SVG element
+        // (Keep SVG rendering logic for circular progress bar - unchanged)
         const svgNS = "http://www.w3.org/2000/svg";
         const svg = document.createElementNS(svgNS, "svg");
         svg.setAttribute("width", "60");
         svg.setAttribute("height", "60");
         svg.setAttribute("viewBox", "0 0 80 80");
-        // Create background circle
         const bgCircle = document.createElementNS(svgNS, "circle");
-        bgCircle.setAttribute("cx", "40");
-        bgCircle.setAttribute("cy", "40");
-        bgCircle.setAttribute("r", "35");
-        bgCircle.setAttribute("fill", "none");
-        bgCircle.setAttribute("stroke", "var(--background-modifier-border)");
-        bgCircle.setAttribute("stroke-width", "5");
+        bgCircle.setAttrs({
+            cx: "40",
+            cy: "40",
+            r: "35",
+            fill: "none",
+            stroke: "var(--background-modifier-border)",
+            "stroke-width": "5",
+        });
         svg.appendChild(bgCircle);
-        // Create progress circle
         const progressCircle = document.createElementNS(svgNS, "circle");
-        progressCircle.setAttribute("cx", "40");
-        progressCircle.setAttribute("cy", "40");
-        progressCircle.setAttribute("r", "35");
-        progressCircle.setAttribute("fill", "none");
-        progressCircle.setAttribute("stroke", "var(--interactive-accent)");
-        progressCircle.setAttribute("stroke-width", "5");
-        progressCircle.setAttribute("stroke-dasharray", "220"); // Circumference approx 2 * PI * 35
-        progressCircle.setAttribute("stroke-dashoffset", `${220 - (220 * livedPercentage) / 100}`);
-        progressCircle.setAttribute("transform", "rotate(-90 40 40)");
+        progressCircle.setAttrs({
+            cx: "40",
+            cy: "40",
+            r: "35",
+            fill: "none",
+            stroke: "var(--interactive-accent)",
+            "stroke-width": "5",
+            "stroke-dasharray": "220",
+            "stroke-dashoffset": `${220 - (220 * livedPercentage) / 100}`,
+            transform: "rotate(-90 40 40)",
+        });
         svg.appendChild(progressCircle);
-        // Append SVG to container
         circleContainer.appendChild(svg);
-        // Create and append text element separately
         circleContainer.createEl("div", {
             cls: "chronica-circular-progress-text",
             text: `${progressValue}%`,
         });
-        // Create bar and text on the right
+        // Bar container (unchanged)
         const barContainer = progressContainer.createEl("div", {
             cls: "chronica-bar-container",
         });
@@ -4042,58 +3755,37 @@ class ChornicaTimelineView extends obsidian.ItemView {
             cls: "chronica-stat-subtitle",
             text: `${ageInWeeks} weeks lived, ${remainingWeeks} weeks remaining`,
         });
-        // Right side: Additional stats
-        // Current age card
-        const ageCard = overviewGrid.createEl("div", {
-            cls: "chronica-stat-card",
-        });
+        // Current age card (unchanged)
+        const ageCard = overviewGrid.createEl("div", { cls: "chronica-stat-card" });
         ageCard.createEl("div", {
             cls: "chronica-stat-title",
             text: "Current Age",
         });
-        const yearsLived = Math.floor(ageInWeeks / 52);
-        const remainingWeeksInYear = ageInWeeks % 52;
         ageCard.createEl("div", {
             cls: "chronica-stat-value",
             text: `${yearsLived} years, ${remainingWeeksInYear} weeks`,
         });
-        // Calculate decades lived
-        const decadesLived = Math.floor(yearsLived / 10);
-        const yearsIntoCurrentDecade = yearsLived % 10;
         ageCard.createEl("div", {
             cls: "chronica-stat-subtitle",
             text: `${decadesLived} decades + ${yearsIntoCurrentDecade} years`,
         });
-        // Events count card
+        // Events count card (UPDATED)
         const eventsCard = overviewGrid.createEl("div", {
             cls: "chronica-stat-card",
         });
         eventsCard.createEl("div", {
             cls: "chronica-stat-title",
-            text: "Total Events",
+            text: "Total Events Recorded",
         });
         eventsCard.createEl("div", {
             cls: "chronica-stat-value",
             text: totalEvents.toString(),
-        });
-        let eventBreakdown = "";
-        if (majorLifeEvents > 0)
-            eventBreakdown += `${majorLifeEvents} major, `;
-        if (travelEvents > 0)
-            eventBreakdown += `${travelEvents} travel, `;
-        if (relationshipEvents > 0)
-            eventBreakdown += `${relationshipEvents} relationship, `;
-        if (educationCareerEvents > 0)
-            eventBreakdown += `${educationCareerEvents} career, `;
-        if (customEventCount > 0)
-            eventBreakdown += `${customEventCount} custom`;
-        // Remove trailing comma and space
-        eventBreakdown = eventBreakdown.replace(/,\s*$/, "");
+        }); // Use new totalEvents
         eventsCard.createEl("div", {
             cls: "chronica-stat-subtitle",
-            text: eventBreakdown || "No events added yet",
-        });
-        // Birthday info card
+            text: eventBreakdown,
+        }); // Use new eventBreakdown string
+        // Birthday info card (unchanged)
         const birthdayCard = overviewGrid.createEl("div", {
             cls: "chronica-stat-card",
         });
@@ -4102,6 +3794,7 @@ class ChornicaTimelineView extends obsidian.ItemView {
             text: "Birthday",
         });
         const formatBirthday = (date) => {
+            /* ... keep formatting logic ... */
             const months = [
                 "January",
                 "February",
@@ -4124,7 +3817,6 @@ class ChornicaTimelineView extends obsidian.ItemView {
         });
         const nextBirthdayDate = new Date(birthdayDate);
         nextBirthdayDate.setFullYear(now.getFullYear());
-        // If this year's birthday has passed, look at next year's
         if (nextBirthdayDate < now) {
             nextBirthdayDate.setFullYear(now.getFullYear() + 1);
         }
@@ -4135,52 +3827,59 @@ class ChornicaTimelineView extends obsidian.ItemView {
         });
     }
     /**
-     * Render the Events tab content with visualizations and event lists
+     * Render the Events tab content with visualizations and event lists using the new unified event structure.
      * @param container - Container to render tab content in
      */
     renderEventsTab(container) {
-        // Create main header
-        container.createEl("h3", { text: "Event Statistics" });
-        // Get event counts
-        const majorLifeEvents = this.plugin.settings.greenEvents.length;
-        const travelEvents = this.plugin.settings.blueEvents.length;
-        const relationshipEvents = this.plugin.settings.pinkEvents.length;
-        const educationCareerEvents = this.plugin.settings.purpleEvents.length;
-        // Calculate custom event counts
-        let customEventCount = 0;
-        let customEvents = [];
-        if (this.plugin.settings.customEventTypes &&
-            this.plugin.settings.customEvents) {
-            for (const eventType of this.plugin.settings.customEventTypes) {
-                const count = this.plugin.settings.customEvents[eventType.name]?.length || 0;
-                customEventCount += count;
-                if (count > 0) {
-                    customEvents.push({
-                        name: eventType.name,
-                        count: count,
-                        color: eventType.color,
-                    });
-                }
-            }
-        }
-        const totalEvents = majorLifeEvents +
-            travelEvents +
-            relationshipEvents +
-            educationCareerEvents +
-            customEventCount;
-        // If there are no events, show a message
+        container.empty(); // Clear previous content
+        container.createEl("h3", { text: "Event Analysis" });
+        // --- Data Gathering (New Structure) ---
+        const allEvents = this.plugin.settings.events || [];
+        const eventTypes = this.plugin.settings.eventTypes || [];
+        const totalEvents = allEvents.length;
         if (totalEvents === 0) {
             container.createEl("div", {
                 cls: "chronica-empty-state",
-                text: "No events added yet. Add events to see statistics and distributions.",
+                text: "No events recorded yet. Add events via the sidebar or by shift-clicking weeks.",
             });
             return;
         }
+        // 1. Calculate counts per type for the bar chart
+        const countsByType = eventTypes
+            .map((type) => {
+            const count = allEvents.filter((event) => event.typeId === type.id).length;
+            return { name: type.name, count: count, color: type.color };
+        })
+            .filter((typeCount) => typeCount.count > 0) // Only include types with events
+            .sort((a, b) => b.count - a.count); // Sort highest count first
+        // 2. Get recent events for the list
+        // Helper to convert week key to a sortable number
+        const weekKeyToSortable = (weekKey) => {
+            try {
+                const [year, week] = weekKey.split("-W").map(Number);
+                return year * 100 + week; // Simple sortable number (e.g., 2023-W10 -> 202310)
+            }
+            catch {
+                return 0; // Fallback
+            }
+        };
+        const recentEvents = [...allEvents]
+            .sort((a, b) => {
+            return weekKeyToSortable(b.weekKey) - weekKeyToSortable(a.weekKey); // Sort descending
+        })
+            .slice(0, 10); // Get top 10
+        // 3. Calculate stats for the table
+        const allYears = allEvents.map((e) => parseInt(e.weekKey.split("-W")[0]));
+        const uniqueYears = [...new Set(allYears)].filter((y) => !isNaN(y)); // Filter out potential NaN
+        const eventsByYear = uniqueYears.length > 0
+            ? (totalEvents / uniqueYears.length).toFixed(1)
+            : "0";
+        const rangeEvents = allEvents.filter((e) => e.endWeekKey && e.endWeekKey !== e.weekKey).length;
+        const singleEvents = totalEvents - rangeEvents;
+        // --- Render UI ---
         // Create grid layout for stats
-        const statsGrid = container.createEl("div", {
-            cls: "chronica-stats-grid",
-        });
-        // Create distribution section
+        const statsGrid = container.createEl("div", { cls: "chronica-stats-grid" });
+        // Distribution Chart Card
         const distributionCard = statsGrid.createEl("div", {
             cls: "chronica-stat-card chronica-stat-card-full",
         });
@@ -4188,131 +3887,56 @@ class ChornicaTimelineView extends obsidian.ItemView {
             cls: "chronica-stat-title",
             text: "Event Type Distribution",
         });
-        // Create bar chart for event distribution
         const chartContainer = distributionCard.createEl("div", {
             cls: "chronica-event-chart-container",
         });
-        // Standard event types
-        const standardEvents = [
-            { name: "Major Life", count: majorLifeEvents, color: "#4CAF50" },
-            { name: "Travel", count: travelEvents, color: "#2196F3" },
-            { name: "Relationship", count: relationshipEvents, color: "#E91E63" },
-            {
-                name: "Education/Career",
-                count: educationCareerEvents,
-                color: "#D2B55B",
-            },
-        ];
-        // Combine standard and custom events
-        const allEvents = [...standardEvents, ...customEvents].filter((e) => e.count > 0);
-        // Sort by count (highest first)
-        allEvents.sort((a, b) => b.count - a.count);
-        // Create horizontal bar chart
-        const maxCount = Math.max(...allEvents.map((e) => e.count));
-        for (const event of allEvents) {
+        const maxCount = Math.max(...countsByType.map((t) => t.count), 1); // Avoid division by zero
+        for (const typeData of countsByType) {
             const barRow = chartContainer.createEl("div", {
                 cls: "chronica-chart-row",
             });
             barRow.createEl("div", {
                 cls: "chronica-chart-label",
-                text: event.name,
-            });
+                text: typeData.name,
+                attr: { title: typeData.name },
+            }); // Add title for long names
             const barContainer = barRow.createEl("div", {
                 cls: "chronica-chart-bar-container",
             });
-            const barEl = barContainer.createEl("div", {
-                cls: "chronica-chart-bar",
-            });
-            barEl.style.width = `${(event.count / maxCount) * 100}%`;
-            barEl.style.backgroundColor = event.color;
+            const barEl = barContainer.createEl("div", { cls: "chronica-chart-bar" });
+            barEl.style.width = `${(typeData.count / maxCount) * 100}%`;
+            barEl.style.backgroundColor = typeData.color; // Use color from type definition
             barContainer.createEl("div", {
                 cls: "chronica-chart-count",
-                text: event.count.toString(),
+                text: typeData.count.toString(),
             });
         }
-        // Create event list section
+        // Recent Events List Card
         const eventListCard = statsGrid.createEl("div", {
             cls: "chronica-stat-card chronica-stat-card-full",
         });
         eventListCard.createEl("div", {
             cls: "chronica-stat-title",
-            text: "Recent Events",
+            text: "Recent Events (Max 10)",
         });
-        // Function to parse week key
-        const parseWeekKey = (key) => {
-            const parts = key.split("-W");
-            return {
-                year: parseInt(parts[0]),
-                week: parseInt(parts[1]),
-            };
-        };
-        // Collect all events into a single array
-        let allEventsList = [];
-        // Add standard events
-        const addEvents = (events, type, color) => {
-            events.forEach((eventData) => {
-                const parts = eventData.split(":");
-                if (parts.length === 2) {
-                    // Single event
-                    allEventsList.push({
-                        weekKey: parts[0],
-                        description: parts[1],
-                        type: type,
-                        color: color,
-                    });
-                }
-                else if (parts.length === 3) {
-                    // Range event
-                    allEventsList.push({
-                        weekKey: parts[0],
-                        endWeekKey: parts[1],
-                        description: parts[2],
-                        type: type,
-                        color: color,
-                        isRange: true,
-                    });
-                }
-            });
-        };
-        // Add all event types
-        addEvents(this.plugin.settings.greenEvents, "Major Life", "#4CAF50");
-        addEvents(this.plugin.settings.blueEvents, "Travel", "#2196F3");
-        addEvents(this.plugin.settings.pinkEvents, "Relationship", "#E91E63");
-        addEvents(this.plugin.settings.purpleEvents, "Education/Career", "#D2B55B");
-        // Add custom events
-        if (this.plugin.settings.customEventTypes &&
-            this.plugin.settings.customEvents) {
-            for (const eventType of this.plugin.settings.customEventTypes) {
-                if (this.plugin.settings.customEvents[eventType.name]) {
-                    addEvents(this.plugin.settings.customEvents[eventType.name], eventType.name, eventType.color);
-                }
-            }
-        }
-        // Sort events by date (most recent first)
-        allEventsList.sort((a, b) => {
-            const aDate = parseWeekKey(a.weekKey);
-            const bDate = parseWeekKey(b.weekKey);
-            if (aDate.year !== bDate.year) {
-                return bDate.year - aDate.year; // Most recent year first
-            }
-            return bDate.week - aDate.week; // Most recent week first
-        });
-        // Show max 10 most recent events
-        const recentEvents = allEventsList.slice(0, 10);
         if (recentEvents.length > 0) {
             const eventListEl = eventListCard.createEl("div", {
                 cls: "chronica-event-list",
             });
             for (const event of recentEvents) {
+                // Find the type definition for this event
+                const eventType = eventTypes.find((et) => et.id === event.typeId);
+                const typeName = eventType?.name || "Unknown Type";
+                const typeColor = eventType?.color || "#888888"; // Fallback color
                 const eventItem = eventListEl.createEl("div", {
                     cls: "chronica-event-item",
                 });
                 const colorDot = eventItem.createEl("div", {
                     cls: "chronica-event-color-dot",
                 });
-                colorDot.style.backgroundColor = event.color;
+                colorDot.style.backgroundColor = typeColor; // Use looked-up color
                 let dateRange = event.weekKey;
-                if (event.isRange && event.endWeekKey) {
+                if (event.endWeekKey && event.endWeekKey !== event.weekKey) {
                     dateRange = `${event.weekKey} → ${event.endWeekKey}`;
                 }
                 const eventInfo = eventItem.createEl("div", {
@@ -4321,12 +3945,29 @@ class ChornicaTimelineView extends obsidian.ItemView {
                 eventInfo.createEl("div", {
                     cls: "chronica-event-name",
                     text: event.description,
+                    attr: { title: event.description },
                 });
                 eventInfo.createEl("div", {
                     cls: "chronica-event-meta",
-                    text: `${event.type} • ${dateRange}`,
-                });
+                    text: `${typeName} • ${dateRange}`,
+                }); // Use looked-up name
+                // Make item clickable to open note if path exists
+                if (event.notePath) {
+                    eventItem.addClass("clickable-event"); // Add class for potential hover/cursor styles
+                    eventItem.setAttribute("data-note-path", event.notePath);
+                    eventItem.addEventListener("click", () => {
+                        const note = this.app.vault.getAbstractFileByPath(event.notePath);
+                        if (note instanceof obsidian.TFile) {
+                            this.plugin.safelyOpenFile(note);
+                        }
+                        else {
+                            new obsidian.Notice("Associated note not found.");
+                        }
+                    });
+                }
             }
+            // Add CSS for clickable events if needed
+            // .clickable-event:hover { background-color: var(--background-modifier-hover); cursor: pointer; }
         }
         else {
             eventListCard.createEl("div", {
@@ -4334,23 +3975,14 @@ class ChornicaTimelineView extends obsidian.ItemView {
                 text: "No events found",
             });
         }
-        // Create event statistics card
+        // Event Statistics Table Card
         const eventStatsCard = statsGrid.createEl("div", {
             cls: "chronica-stat-card chronica-stat-card-full",
         });
         eventStatsCard.createEl("div", {
             cls: "chronica-stat-title",
-            text: "Event Statistics",
+            text: "Event Statistics Summary",
         });
-        // Calculate additional stats
-        const allYears = allEventsList.map((e) => parseWeekKey(e.weekKey).year);
-        const uniqueYears = [...new Set(allYears)];
-        const eventsByYear = uniqueYears.length > 0
-            ? (totalEvents / uniqueYears.length).toFixed(1)
-            : "0";
-        // Count range events
-        const rangeEvents = allEventsList.filter((e) => e.isRange).length;
-        const singleEvents = totalEvents - rangeEvents;
         const statsTable = eventStatsCard.createEl("table", {
             cls: "chronica-stats-table",
         });
@@ -4366,23 +3998,27 @@ class ChornicaTimelineView extends obsidian.ItemView {
         addStatRow("Multi-Week Events", rangeEvents.toString());
     }
     /**
-     * Render the Timeline tab content with life phases and milestone analysis
+     * Render the Timeline tab content with life phases and milestone analysis.
+     * Updated to use the new unified event structure for event counts.
      * @param container - Container to render tab content in
      */
     renderTimelineTab(container) {
-        // Calculate statistics
+        container.empty(); // Clear previous content
+        // --- Basic Life Progress Calculations ---
         const now = new Date();
         const [birthYear, birthMonth, birthDay] = this.plugin.settings.birthday
             .split("-")
             .map(Number);
         const birthdayDate = new Date(birthYear, birthMonth - 1, birthDay);
-        const ageInWeeks = this.plugin.getFullWeekAge(birthdayDate, now);
+        const ageInWeeks = this.plugin.getFullWeekAge(birthdayDate, now); // Defined here
         this.plugin.settings.lifespan * 52;
-        // Create main container with grid layout
+        const ageInYears = ageInWeeks / 52;
+        const pastWeeks = ageInWeeks; // Assign here for use later
+        // --- Render UI ---
         const timelineGrid = container.createEl("div", {
             cls: "chronica-stats-grid",
         });
-        // Create life phases card
+        // --- Life Phases Card (Unaffected by event structure change) ---
         const phasesCard = timelineGrid.createEl("div", {
             cls: "chronica-stat-card chronica-stat-card-full",
         });
@@ -4390,43 +4026,39 @@ class ChornicaTimelineView extends obsidian.ItemView {
             cls: "chronica-stat-title",
             text: "Life Phases",
         });
-        // Calculate current phase
-        const ageInYears = ageInWeeks / 52;
         let currentPhase = "";
         let phaseColor = "";
+        // (Phase calculation logic - unchanged)
         if (ageInYears < 5) {
             currentPhase = "Early Childhood";
-            phaseColor = "#8BC34A"; // Light green
+            phaseColor = "#8BC34A";
         }
         else if (ageInYears < 13) {
             currentPhase = "Childhood";
-            phaseColor = "#4CAF50"; // Green
+            phaseColor = "#4CAF50";
         }
         else if (ageInYears < 18) {
             currentPhase = "Adolescence";
-            phaseColor = "#009688"; // Teal
+            phaseColor = "#009688";
         }
         else if (ageInYears < 25) {
             currentPhase = "Young Adult";
-            phaseColor = "#00BCD4"; // Cyan
+            phaseColor = "#00BCD4";
         }
         else if (ageInYears < 40) {
             currentPhase = "Early Adulthood";
-            phaseColor = "#03A9F4"; // Light blue
+            phaseColor = "#03A9F4";
         }
         else if (ageInYears < 60) {
             currentPhase = "Middle Adulthood";
-            phaseColor = "#3F51B5"; // Indigo
+            phaseColor = "#3F51B5";
         }
         else {
             currentPhase = "Late Adulthood";
-            phaseColor = "#9C27B0"; // Purple
+            phaseColor = "#9C27B0";
         }
-        // Create phase visualization
-        const phaseBar = phasesCard.createEl("div", {
-            cls: "chronica-phase-bar",
-        });
-        // Define life phases - customize as needed
+        // Create phase visualization bar (Rendering logic - unchanged)
+        const phaseBar = phasesCard.createEl("div", { cls: "chronica-phase-bar" });
         const phases = [
             { name: "Childhood", end: 18, color: "#4CAF50" },
             { name: "Young Adult", end: 25, color: "#00BCD4" },
@@ -4438,65 +4070,38 @@ class ChornicaTimelineView extends obsidian.ItemView {
                 color: "#9C27B0",
             },
         ];
-        // Calculate total width for all phases
-        let totalWidth = 0;
-        phases.forEach((phase) => {
-            let phaseWidth;
-            if (phase.name === "Childhood") {
-                phaseWidth = phase.end;
-            }
-            else {
-                const prevPhase = phases[phases.indexOf(phase) - 1];
-                phaseWidth = phase.end - prevPhase.end;
-            }
-            totalWidth += phaseWidth;
-        });
-        phases.forEach((phase) => {
-            let phaseWidth;
-            if (phase.name === "Childhood") {
-                phaseWidth = phase.end;
-            }
-            else {
-                const prevPhase = phases[phases.indexOf(phase) - 1];
-                phaseWidth = phase.end - prevPhase.end;
-            }
-            const relativeWidth = (phaseWidth / totalWidth) * 100;
+        let totalPhaseLength = phases[phases.length - 1].end; // Use end year of last phase
+        phases.forEach((phase, index) => {
+            let phaseStartYear = index === 0 ? 0 : phases[index - 1].end;
+            let phaseLengthYears = phase.end - phaseStartYear;
+            const relativeWidth = (phaseLengthYears / totalPhaseLength) * 100;
             const phaseSegment = phaseBar.createEl("div", {
                 cls: "chronica-phase-segment",
             });
             phaseSegment.style.width = `${relativeWidth}%`;
             phaseSegment.style.backgroundColor = phase.color;
-            // Add label
             phaseSegment.createEl("div", {
                 cls: "chronica-phase-label",
                 text: phase.name,
             });
-            // Add age marker
             phaseSegment.createEl("div", {
                 cls: "chronica-phase-age",
                 text: phase.end.toString(),
             });
-            // Add current position marker if in this phase
-            if (ageInYears <= phase.end &&
-                (phase.name === "Childhood" ||
-                    ageInYears > phases[phases.indexOf(phase) - 1].end)) {
-                const markerPosition = phase.name === "Childhood"
-                    ? (ageInYears / phase.end) * 100
-                    : ((ageInYears - phases[phases.indexOf(phase) - 1].end) /
-                        phaseWidth) *
-                        100;
+            if (ageInYears >= phaseStartYear && ageInYears < phase.end) {
+                const markerPosition = ((ageInYears - phaseStartYear) / phaseLengthYears) * 100;
                 const currentMarker = phaseSegment.createEl("div", {
                     cls: "chronica-current-marker",
                 });
                 currentMarker.style.left = `${markerPosition}%`;
             }
+            phase.end; // Keep track for next iteration
         });
-        // Current phase information
         phasesCard.createEl("div", {
             cls: "chronica-current-phase",
             text: `Current phase: ${currentPhase} (${Math.floor(ageInYears)} years old)`,
         }).style.color = phaseColor;
-        // Milestones card
+        // --- Milestones Card (Unaffected by event structure change) ---
         const milestonesCard = timelineGrid.createEl("div", {
             cls: "chronica-stat-card chronica-stat-card-full",
         });
@@ -4504,70 +4109,66 @@ class ChornicaTimelineView extends obsidian.ItemView {
             cls: "chronica-stat-title",
             text: "Life Milestones",
         });
-        // Create milestone table
         const milestoneTable = milestonesCard.createEl("table", {
             cls: "chronica-milestone-table",
         });
-        // Header row
+        // (Table header rendering logic - unchanged)
         const headerRow = milestoneTable.createEl("tr");
         headerRow.createEl("th", { text: "Milestone" });
         headerRow.createEl("th", { text: "Age" });
         headerRow.createEl("th", { text: "Date" });
         headerRow.createEl("th", { text: "Status" });
-        // Add milestone rows
+        // (addMilestone function and calls - unchanged)
+        const formatDate = (date) => {
+            const months = [
+                "Jan",
+                "Feb",
+                "Mar",
+                "Apr",
+                "May",
+                "Jun",
+                "Jul",
+                "Aug",
+                "Sep",
+                "Oct",
+                "Nov",
+                "Dec",
+            ];
+            return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
+        };
         const addMilestone = (name, age) => {
             const milestoneDate = new Date(birthdayDate);
             milestoneDate.setFullYear(birthdayDate.getFullYear() + age);
             const row = milestoneTable.createEl("tr");
             row.createEl("td", { text: name });
             row.createEl("td", { text: age.toString() });
-            // Format date
-            const formatDate = (date) => {
-                const months = [
-                    "Jan",
-                    "Feb",
-                    "Mar",
-                    "Apr",
-                    "May",
-                    "Jun",
-                    "Jul",
-                    "Aug",
-                    "Sep",
-                    "Oct",
-                    "Nov",
-                    "Dec",
-                ];
-                return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
-            };
             row.createEl("td", { text: formatDate(milestoneDate) });
             const isPast = milestoneDate < now;
             const statusCell = row.createEl("td");
             statusCell.addClass(isPast ? "milestone-past" : "milestone-future");
             statusCell.textContent = isPast ? "Passed" : "Upcoming";
         };
-        // Add standard milestones - customize these as needed
         addMilestone("Childhood End", 18);
         addMilestone("Quarter Life", Math.round(this.plugin.settings.lifespan / 4));
         addMilestone("Half Life", Math.round(this.plugin.settings.lifespan / 2));
         addMilestone("Retirement Age", 65);
         addMilestone("Three-Quarter Life", Math.round(this.plugin.settings.lifespan * 0.75));
-        // Week completion card
+        // --- Week Completion Card (Uses new event count) ---
         const completionCard = timelineGrid.createEl("div", {
             cls: "chronica-stat-card chronica-stat-card-full",
         });
         completionCard.createEl("div", {
             cls: "chronica-stat-title",
-            text: "Week Completion",
+            text: "Week Completion & Events",
         });
-        // Calculate week completion statistics
-        const filledWeeks = this.plugin.settings.filledWeeks.length;
-        const pastWeeks = ageInWeeks;
+        // Calculate week completion stats (Unchanged)
+        const filledWeeks = this.plugin.settings.filledWeeks?.length || 0;
+        // Uses pastWeeks defined earlier
         const completionRate = pastWeeks > 0 ? (filledWeeks / pastWeeks) * 100 : 0;
         completionCard.createEl("div", {
             cls: "chronica-completion-stat",
-            text: `${filledWeeks} weeks filled out of ${Math.round(pastWeeks)} past weeks (${completionRate.toFixed(1)}%)`,
+            text: `${filledWeeks} weeks manually/auto filled out of ${Math.round(pastWeeks)} past weeks (${completionRate.toFixed(1)}%)`,
         });
-        // Week completion progress bar
         const completionBar = completionCard.createEl("div", {
             cls: "chronica-progress-bar",
         });
@@ -4575,104 +4176,64 @@ class ChornicaTimelineView extends obsidian.ItemView {
             cls: "chronica-progress-bar-fill",
         });
         completionFill.style.width = `${completionRate}%`;
-        // Get events for analysis
-        const greenEvents = this.plugin.settings.greenEvents.length;
-        const blueEvents = this.plugin.settings.blueEvents.length;
-        const pinkEvents = this.plugin.settings.pinkEvents.length;
-        const purpleEvents = this.plugin.settings.purpleEvents.length;
-        // Calculate custom event counts
-        let customEventCount = 0;
-        if (this.plugin.settings.customEventTypes &&
-            this.plugin.settings.customEvents) {
-            for (const eventType of this.plugin.settings.customEventTypes) {
-                if (this.plugin.settings.customEvents[eventType.name]) {
-                    customEventCount +=
-                        this.plugin.settings.customEvents[eventType.name].length;
-                }
-            }
-        }
-        const totalEvents = greenEvents + blueEvents + pinkEvents + purpleEvents + customEventCount;
+        // Calculate event stats using the NEW unified structure
+        const totalEvents = this.plugin.settings.events?.length || 0; // Get count directly
+        // Uses pastWeeks defined earlier
         const eventsPerWeek = pastWeeks > 0 ? totalEvents / pastWeeks : 0;
+        // Display the event count stat (Uses new totalEvents)
         completionCard.createEl("div", {
             cls: "chronica-completion-stat",
             text: `${totalEvents} events recorded (${eventsPerWeek.toFixed(3)} events/week)`,
         });
     }
     /**
-     * Render the Charts tab content with improved visualizations arranged in a grid
+     * Render the Charts tab content with improved visualizations using the new unified event structure.
      * @param container - Container to render tab content in
      */
     renderChartsTab(container) {
-        // Calculate statistics
+        container.empty(); // Clear previous content
+        // --- Data Gathering (New Structure) ---
+        const allEvents = this.plugin.settings.events || [];
+        const eventTypes = this.plugin.settings.eventTypes || [];
         const now = new Date();
-        this.plugin.settings.birthday
-            .split("-")
-            .map(Number);
+        // Helper to parse week key safely
+        const parseWeekKey = (key) => {
+            try {
+                const parts = key.split("-W");
+                if (parts.length !== 2)
+                    return { year: 0, week: 0 };
+                return { year: parseInt(parts[0], 10), week: parseInt(parts[1], 10) };
+            }
+            catch {
+                return { year: 0, week: 0 };
+            }
+        };
+        // Helper to get approximate date from week key
+        const getDateFromWeekKey = (weekKey) => {
+            const { year, week } = parseWeekKey(weekKey);
+            if (year <= 0 || week <= 0)
+                return null;
+            try {
+                const date = new Date(year, 0, 1 + (week - 1) * 7);
+                const dayOfWeek = date.getDay();
+                const isoDayOfWeek = dayOfWeek === 0 ? 7 : dayOfWeek;
+                date.setDate(date.getDate() - isoDayOfWeek + 1); // Adjust to Monday
+                return date;
+            }
+            catch {
+                return null;
+            }
+        };
         // Create main container with grid layout
         const chartsGridContainer = container.createEl("div", {
             cls: "chronica-charts-grid-container",
         });
-        // Collect all events
-        let allEvents = [];
-        // Function to parse week key
-        const parseWeekKey = (key) => {
-            const parts = key.split("-W");
-            if (parts.length !== 2)
-                return { year: 0, week: 0 };
-            return {
-                year: parseInt(parts[0], 10),
-                week: parseInt(parts[1], 10),
-            };
-        };
-        // Add standard events
-        const addEvents = (events, type, color) => {
-            events.forEach((eventData) => {
-                const parts = eventData.split(":");
-                if (parts.length === 2) {
-                    // Single event
-                    allEvents.push({
-                        weekKey: parts[0],
-                        description: parts[1],
-                        type: type,
-                        color: color,
-                    });
-                }
-                else if (parts.length === 3) {
-                    // Range event
-                    allEvents.push({
-                        weekKey: parts[0],
-                        endWeekKey: parts[1],
-                        description: parts[2],
-                        type: type,
-                        color: color,
-                        isRange: true,
-                    });
-                }
-            });
-        };
-        // Add all event types
-        addEvents(this.plugin.settings.greenEvents, "Major Life", "#4CAF50");
-        addEvents(this.plugin.settings.blueEvents, "Travel", "#2196F3");
-        addEvents(this.plugin.settings.pinkEvents, "Relationship", "#E91E63");
-        addEvents(this.plugin.settings.purpleEvents, "Education/Career", "#D2B55B");
-        // Add custom events
-        if (this.plugin.settings.customEventTypes &&
-            this.plugin.settings.customEvents) {
-            for (const eventType of this.plugin.settings.customEventTypes) {
-                if (this.plugin.settings.customEvents[eventType.name]) {
-                    addEvents(this.plugin.settings.customEvents[eventType.name], eventType.name, eventType.color);
-                }
-            }
-        }
-        // If no events, show a message
+        // If no events, show empty state
         if (allEvents.length === 0) {
             const emptyState = chartsGridContainer.createEl("div", {
                 cls: "chronica-empty-chart-state",
             });
-            emptyState.createEl("div", {
-                cls: "chronica-empty-icon",
-                text: "📊",
-            });
+            emptyState.createEl("div", { cls: "chronica-empty-icon", text: "📊" });
             emptyState.createEl("div", {
                 cls: "chronica-empty-message",
                 text: "No events added yet",
@@ -4683,7 +4244,7 @@ class ChornicaTimelineView extends obsidian.ItemView {
             });
             return;
         }
-        // ======== EVENT DISTRIBUTION BY TYPE CHART ========
+        // --- Chart 1: Event Distribution by Type (Donut Chart) ---
         const pieChartCard = chartsGridContainer.createEl("div", {
             cls: "chronica-chart-card",
         });
@@ -4691,129 +4252,108 @@ class ChornicaTimelineView extends obsidian.ItemView {
             cls: "chronica-chart-title",
             text: "Event Distribution by Type",
         });
-        // Count events by type
-        const eventsByType = {};
-        allEvents.forEach((event) => {
-            if (!eventsByType[event.type]) {
-                eventsByType[event.type] = {
-                    count: 0,
-                    color: event.color,
-                };
-            }
-            eventsByType[event.type].count++;
-        });
-        // Convert to array and sort by count (descending)
-        const typeData = Object.entries(eventsByType)
-            .map(([type, data]) => ({
-            type,
-            count: data.count,
-            color: data.color,
+        const eventsByType = eventTypes
+            .map((type) => ({
+            type: type.name,
+            count: allEvents.filter((event) => event.typeId === type.id).length,
+            color: type.color,
         }))
+            .filter((t) => t.count > 0)
             .sort((a, b) => b.count - a.count);
-        // Calculate total for percentages
-        const totalEvents = typeData.reduce((sum, item) => sum + item.count, 0);
-        // Create donut chart container
+        const totalEventsForPie = eventsByType.reduce((sum, item) => sum + item.count, 0);
         const pieChartContainer = pieChartCard.createEl("div", {
             cls: "chronica-donut-container",
         });
-        // Create legend container
         const legendContainer = pieChartContainer.createEl("div", {
             cls: "chronica-chart-legend",
         });
-        // Create the chart visualization area
         const chartArea = pieChartContainer.createEl("div", {
             cls: "chronica-donut-chart",
         });
-        // Create SVG for pie chart
+        // (Keep SVG rendering logic for donut chart - unchanged, as it uses the calculated eventsByType)
         const svgNS = "http://www.w3.org/2000/svg";
         const svg = document.createElementNS(svgNS, "svg");
         svg.setAttribute("viewBox", "0 0 100 100");
         chartArea.appendChild(svg);
-        // Create a group for the chart
         const g = document.createElementNS(svgNS, "g");
         g.setAttribute("transform", "translate(50,50)");
         svg.appendChild(g);
-        // Calculate pie segments
         let startAngle = 0;
-        typeData.forEach((item) => {
-            const percentage = (item.count / totalEvents) * 100;
-            const angleSize = (percentage / 100) * 360;
+        eventsByType.forEach((item) => {
+            const percentage = totalEventsForPie > 0 ? (item.count / totalEventsForPie) * 100 : 0;
+            const angleSize = percentage * 3.6;
             const endAngle = startAngle + angleSize;
-            // Convert angles to radians
             const startRad = ((startAngle - 90) * Math.PI) / 180;
             const endRad = ((endAngle - 90) * Math.PI) / 180;
-            // Calculate coordinates
             const x1 = 40 * Math.cos(startRad);
             const y1 = 40 * Math.sin(startRad);
             const x2 = 40 * Math.cos(endRad);
             const y2 = 40 * Math.sin(endRad);
-            // Create path for arc
             const path = document.createElementNS(svgNS, "path");
-            // Determine if the arc is greater than 180 degrees
             const largeArcFlag = angleSize > 180 ? 1 : 0;
-            // SVG path for an arc
             const d = [
                 `M ${x1},${y1}`,
                 `A 40,40 0 ${largeArcFlag},1 ${x2},${y2}`,
                 `L 0,0`,
-                `Z`, // Close path
+                `Z`,
             ].join(" ");
             path.setAttribute("d", d);
             path.setAttribute("fill", item.color);
             path.setAttribute("title", `${item.type}: ${item.count} (${percentage.toFixed(1)}%)`);
             g.appendChild(path);
-            // Add legend item
             const legendItem = legendContainer.createEl("div", {
                 cls: "chronica-legend-item",
             });
-            // Color swatch
             const colorSwatch = legendItem.createEl("div", {
                 cls: "chronica-legend-swatch",
             });
             colorSwatch.style.backgroundColor = item.color;
-            // Text content with type and count
             const legendText = legendItem.createEl("div", {
                 cls: "chronica-legend-text",
             });
             legendText.createEl("span", {
                 cls: "chronica-legend-type",
                 text: item.type,
+                attr: { title: item.type },
             });
             legendText.createEl("span", {
                 cls: "chronica-legend-count",
                 text: `${item.count} (${percentage.toFixed(1)}%)`,
             });
-            // Update for next segment
             startAngle = endAngle;
         });
-        // Add inner circle for donut hole
         const circle = document.createElementNS(svgNS, "circle");
-        circle.setAttribute("cx", "0");
-        circle.setAttribute("cy", "0");
-        circle.setAttribute("r", "25");
-        circle.setAttribute("fill", "var(--background-secondary)");
+        circle.setAttrs({
+            cx: "0",
+            cy: "0",
+            r: "25",
+            fill: "var(--background-secondary)",
+        });
         g.appendChild(circle);
-        // Add total count in the middle
         const totalText = document.createElementNS(svgNS, "text");
-        totalText.setAttribute("x", "0");
-        totalText.setAttribute("y", "0");
-        totalText.setAttribute("text-anchor", "middle");
-        totalText.setAttribute("dominant-baseline", "middle");
-        totalText.setAttribute("fill", "var(--text-normal)");
-        totalText.setAttribute("font-size", "12");
-        totalText.setAttribute("font-weight", "bold");
-        totalText.textContent = totalEvents.toString();
+        totalText.setAttrs({
+            x: "0",
+            y: "0",
+            "text-anchor": "middle",
+            "dominant-baseline": "middle",
+            fill: "var(--text-normal)",
+            "font-size": "12",
+            "font-weight": "bold",
+        });
+        totalText.textContent = totalEventsForPie.toString();
         g.appendChild(totalText);
         const totalLabel = document.createElementNS(svgNS, "text");
-        totalLabel.setAttribute("x", "0");
-        totalLabel.setAttribute("y", "12");
-        totalLabel.setAttribute("text-anchor", "middle");
-        totalLabel.setAttribute("dominant-baseline", "middle");
-        totalLabel.setAttribute("fill", "var(--text-muted)");
-        totalLabel.setAttribute("font-size", "6");
+        totalLabel.setAttrs({
+            x: "0",
+            y: "12",
+            "text-anchor": "middle",
+            "dominant-baseline": "middle",
+            fill: "var(--text-muted)",
+            "font-size": "6",
+        });
         totalLabel.textContent = "Events";
         g.appendChild(totalLabel);
-        // ======== SEASONAL PATTERN ANALYSIS ========
+        // --- Chart 2: Seasonal Pattern Analysis (Radar Chart) ---
         const seasonalCard = chartsGridContainer.createEl("div", {
             cls: "chronica-chart-card",
         });
@@ -4821,251 +4361,243 @@ class ChornicaTimelineView extends obsidian.ItemView {
             cls: "chronica-chart-title",
             text: "Seasonal Patterns",
         });
-        // Define seasons with their months and colors
         const seasons = [
             { name: "Winter", months: [11, 0, 1], color: "#90CAF9" },
             { name: "Spring", months: [2, 3, 4], color: "#A5D6A7" },
             { name: "Summer", months: [5, 6, 7], color: "#FFCC80" },
-            { name: "Fall", months: [8, 9, 10], color: "#EF9A9A" }, // Sep, Oct, Nov
+            { name: "Fall", months: [8, 9, 10], color: "#EF9A9A" },
         ];
-        // Count events by season
         const seasonCounts = seasons.map((season) => {
             let count = 0;
             allEvents.forEach((event) => {
-                const { year, week } = parseWeekKey(event.weekKey);
-                if (year <= 0)
-                    return;
-                // Estimate month from week number (approximate)
-                const eventDate = new Date(year, 0, 1);
-                eventDate.setDate(eventDate.getDate() + (week - 1) * 7);
-                const month = eventDate.getMonth();
-                if (season.months.includes(month)) {
+                const eventDate = getDateFromWeekKey(event.weekKey);
+                if (eventDate && season.months.includes(eventDate.getMonth())) {
                     count++;
                 }
             });
             return { ...season, count };
         });
-        // Create seasonal chart container
         const seasonalChartContainer = seasonalCard.createEl("div", {
             cls: "chronica-seasonal-chart-container",
         });
-        // Create SVG for radar chart
+        // (Keep SVG rendering logic for radar chart - unchanged, as it uses the calculated seasonCounts)
         const seasonalSvg = document.createElementNS(svgNS, "svg");
         seasonalSvg.classList.add("chronica-seasonal-chart");
-        // define true center and radius
         const SIZE = 300;
-        const CENTER = SIZE / 2; // 150px
-        const OUTER_RADIUS = 100; // your existing radius
-        // set up your SVG coordinate space
-        seasonalSvg.setAttribute("viewBox", `0 0 ${SIZE} ${SIZE}`);
-        seasonalSvg.setAttribute("width", SIZE.toString());
-        seasonalSvg.setAttribute("height", SIZE.toString());
+        const CENTER = SIZE / 2;
+        const OUTER_RADIUS = 100;
+        seasonalSvg.setAttrs({
+            viewBox: `0 0 ${SIZE} ${SIZE}`,
+            width: SIZE.toString(),
+            height: SIZE.toString(),
+        });
         seasonalChartContainer.appendChild(seasonalSvg);
-        // Find maximum count for scaling
         const maxSeasonCount = Math.max(...seasonCounts.map((s) => s.count), 1);
         const totalSeasonEvents = seasonCounts.reduce((sum, s) => sum + s.count, 0);
         if (totalSeasonEvents > 0) {
-            // Create background circle
+            /* ... keep logic to draw radar axes, labels, polygon, dots ... */
+            // Draw Axes/Background Circles
             const bgCircle = document.createElementNS(svgNS, "circle");
-            bgCircle.setAttribute("cx", CENTER.toString());
-            bgCircle.setAttribute("cy", CENTER.toString());
-            bgCircle.setAttribute("r", OUTER_RADIUS.toString());
-            bgCircle.setAttribute("fill", "none");
-            bgCircle.setAttribute("stroke", "var(--background-modifier-border)");
-            bgCircle.setAttribute("stroke-width", "1");
-            bgCircle.setAttribute("opacity", "0.5");
+            bgCircle.setAttrs({
+                cx: CENTER.toString(),
+                cy: CENTER.toString(),
+                r: OUTER_RADIUS.toString(),
+                fill: "none",
+                stroke: "var(--background-modifier-border)",
+                "stroke-width": "1",
+                opacity: "0.5",
+            });
             seasonalSvg.appendChild(bgCircle);
-            // Create mid-level circle
             const midCircle = document.createElementNS(svgNS, "circle");
-            midCircle.setAttribute("cx", CENTER.toString());
-            midCircle.setAttribute("cy", CENTER.toString());
-            midCircle.setAttribute("r", (OUTER_RADIUS / 2).toString());
-            midCircle.setAttribute("fill", "none");
-            midCircle.setAttribute("stroke", "var(--background-modifier-border)");
-            midCircle.setAttribute("stroke-width", "1");
-            midCircle.setAttribute("opacity", "0.3");
+            midCircle.setAttrs({
+                cx: CENTER.toString(),
+                cy: CENTER.toString(),
+                r: (OUTER_RADIUS / 2).toString(),
+                fill: "none",
+                stroke: "var(--background-modifier-border)",
+                "stroke-width": "1",
+                opacity: "0.3",
+            });
             seasonalSvg.appendChild(midCircle);
-            // Create center point
             const centerPoint = document.createElementNS(svgNS, "circle");
-            centerPoint.setAttribute("cx", CENTER.toString());
-            centerPoint.setAttribute("cy", CENTER.toString());
-            centerPoint.setAttribute("r", "3");
-            centerPoint.setAttribute("fill", "var(--background-modifier-border)");
+            centerPoint.setAttrs({
+                cx: CENTER.toString(),
+                cy: CENTER.toString(),
+                r: "3",
+                fill: "var(--background-modifier-border)",
+            });
             seasonalSvg.appendChild(centerPoint);
-            // Draw axis lines
             const axisPoints = [
                 { x: CENTER, y: CENTER - OUTER_RADIUS },
                 { x: CENTER + OUTER_RADIUS, y: CENTER },
                 { x: CENTER, y: CENTER + OUTER_RADIUS },
-                { x: CENTER - OUTER_RADIUS, y: CENTER }, // Fall
+                { x: CENTER - OUTER_RADIUS, y: CENTER },
             ];
-            // Create axes
             for (let i = 0; i < 4; i++) {
                 const axis = document.createElementNS(svgNS, "line");
-                axis.setAttribute("x1", CENTER.toString());
-                axis.setAttribute("y1", CENTER.toString());
-                axis.setAttribute("x2", axisPoints[i].x.toString());
-                axis.setAttribute("y2", axisPoints[i].y.toString());
-                axis.setAttribute("stroke", "var(--background-modifier-border)");
-                axis.setAttribute("stroke-width", "1");
-                axis.setAttribute("opacity", "0.5");
+                axis.setAttrs({
+                    x1: CENTER.toString(),
+                    y1: CENTER.toString(),
+                    x2: axisPoints[i].x.toString(),
+                    y2: axisPoints[i].y.toString(),
+                    stroke: "var(--background-modifier-border)",
+                    "stroke-width": "1",
+                    opacity: "0.5",
+                });
                 seasonalSvg.appendChild(axis);
             }
-            // Create season labels with better positioning
+            // Draw Labels
             const seasonLabels = ["Winter", "Spring", "Summer", "Fall"];
             const labelPoints = [
                 { x: CENTER, y: CENTER - OUTER_RADIUS - 20 },
                 { x: CENTER + OUTER_RADIUS + 30, y: CENTER },
                 { x: CENTER, y: CENTER + OUTER_RADIUS + 20 },
-                { x: CENTER - OUTER_RADIUS - 20, y: CENTER }, // Fall (left)
+                { x: CENTER - OUTER_RADIUS - 20, y: CENTER },
             ];
             for (let i = 0; i < 4; i++) {
                 const label = document.createElementNS(svgNS, "text");
-                label.setAttribute("x", labelPoints[i].x.toString());
-                label.setAttribute("y", labelPoints[i].y.toString());
-                label.setAttribute("text-anchor", "middle");
-                label.setAttribute("dominant-baseline", "middle");
-                label.setAttribute("fill", "var(--text-normal)");
-                label.setAttribute("font-size", "12");
+                label.setAttrs({
+                    x: labelPoints[i].x.toString(),
+                    y: labelPoints[i].y.toString(),
+                    "text-anchor": "middle",
+                    "dominant-baseline": "middle",
+                    fill: "var(--text-normal)",
+                    "font-size": "12",
+                });
                 label.textContent = seasonLabels[i];
                 seasonalSvg.appendChild(label);
             }
-            // Calculate radar points
+            // Draw Radar Polygon & Points
             const radarPoints = seasonCounts.map((season, i) => {
                 const normalizedValue = season.count / maxSeasonCount;
                 const radius = normalizedValue * OUTER_RADIUS;
-                const angle = Math.PI / 2 - (i * Math.PI) / 2; // start at top, clockwise
+                const angle = Math.PI / 2 - (i * Math.PI) / 2;
                 const x = CENTER + radius * Math.cos(angle);
                 const y = CENTER - radius * Math.sin(angle);
                 return {
                     x,
                     y,
                     value: season.count,
-                    percentage: (season.count / totalSeasonEvents) * 100,
+                    percentage: totalSeasonEvents > 0
+                        ? (season.count / totalSeasonEvents) * 100
+                        : 0,
                 };
             });
-            // Create radar polygon
             if (radarPoints.some((p) => p.value > 0)) {
                 const polygon = document.createElementNS(svgNS, "polygon");
-                // Build points string
                 const pointsStr = radarPoints.map((p) => `${p.x},${p.y}`).join(" ");
-                polygon.setAttribute("points", pointsStr);
-                polygon.setAttribute("fill", "rgba(102, 126, 234, 0.5)");
-                polygon.setAttribute("stroke", "var(--interactive-accent)");
-                polygon.setAttribute("stroke-width", "2");
+                polygon.setAttrs({
+                    points: pointsStr,
+                    fill: "rgba(102, 126, 234, 0.5)",
+                    stroke: "var(--interactive-accent)",
+                    "stroke-width": "2",
+                });
                 seasonalSvg.appendChild(polygon);
-                // Add data points and labels
                 radarPoints.forEach((point, i) => {
-                    // Always add the points for all four seasons regardless of value
-                    // Add dot
+                    /* ... keep logic to draw dots and percentage/count labels ... */
                     const dot = document.createElementNS(svgNS, "circle");
-                    dot.setAttribute("cx", point.x.toString());
-                    dot.setAttribute("cy", point.y.toString());
-                    dot.setAttribute("r", "6");
-                    dot.setAttribute("fill", seasons[i].color);
-                    dot.setAttribute("stroke", "var(--background-primary)");
-                    dot.setAttribute("stroke-width", "1");
+                    dot.setAttrs({
+                        cx: point.x.toString(),
+                        cy: point.y.toString(),
+                        r: "6",
+                        fill: seasons[i].color,
+                        stroke: "var(--background-primary)",
+                        "stroke-width": "1",
+                    });
                     seasonalSvg.appendChild(dot);
-                    // Calculate better positions for labels based on season
-                    let labelX = 0;
-                    let labelY = 0;
-                    let pctX = 0;
-                    let pctY = 0;
+                    let pctX = 0, pctY = 0, countX = 0, countY = 0;
                     switch (i) {
-                        case 0: // Winter (top)
-                            labelX = point.x;
-                            labelY = point.y - 20;
-                            pctX = labelX;
-                            pctY = labelY - 15;
+                        case 0:
+                            pctX = point.x;
+                            pctY = point.y - 20;
                             break;
-                        case 1: // Spring (right)
-                            labelX = point.x;
-                            labelY = point.y - 10;
-                            pctX = labelX;
-                            pctY = labelY - 15;
+                        case 1:
+                            pctX = point.x + 20;
+                            pctY = point.y;
                             break;
-                        case 2: // Summer (bottom)
-                            labelX = point.x;
-                            labelY = point.y + 20;
-                            pctX = labelX;
-                            pctY = labelY + 15;
+                        case 2:
+                            pctX = point.x;
+                            pctY = point.y + 20;
                             break;
-                        case 3: // Fall (left)
-                            labelX = point.x - 30;
-                            labelY = point.y;
-                            pctX = labelX;
-                            pctY = labelY - 15;
+                        case 3:
+                            pctX = point.x - 20;
+                            pctY = point.y;
                             break;
                     }
-                    // Add percentage (always show)
+                    countX = pctX;
+                    countY = pctY + (i === 2 ? 12 : 12); // Basic positioning for count near percentage
                     const pctLabel = document.createElementNS(svgNS, "text");
-                    pctLabel.setAttribute("x", pctX.toString());
-                    pctLabel.setAttribute("y", pctY.toString());
-                    pctLabel.setAttribute("text-anchor", "middle");
-                    pctLabel.setAttribute("dominant-baseline", "middle");
-                    pctLabel.setAttribute("fill", "var(--text-muted)");
-                    pctLabel.setAttribute("font-size", "10");
+                    pctLabel.setAttrs({
+                        x: pctX.toString(),
+                        y: pctY.toString(),
+                        "text-anchor": "middle",
+                        "dominant-baseline": "middle",
+                        fill: "var(--text-muted)",
+                        "font-size": "10",
+                    });
                     pctLabel.textContent = `${Math.round(point.percentage)}%`;
                     seasonalSvg.appendChild(pctLabel);
-                    // Add raw count with Spring/Fall moved under the percentage
                     const countLabel = document.createElementNS(svgNS, "text");
-                    // default: place under the percent
-                    let countX = pctX;
-                    let countY = pctY + 12;
-                    if (i === 2) {
-                        // Summer: override to place above
-                        countY = pctY - 12;
-                    }
-                    countLabel.setAttribute("x", countX.toString());
-                    countLabel.setAttribute("y", countY.toString());
-                    countLabel.setAttribute("text-anchor", "middle");
-                    countLabel.setAttribute("dominant-baseline", "middle");
-                    countLabel.setAttribute("fill", "var(--text-normal)");
-                    countLabel.setAttribute("font-size", "10");
+                    countLabel.setAttrs({
+                        x: countX.toString(),
+                        y: countY.toString(),
+                        "text-anchor": "middle",
+                        "dominant-baseline": "middle",
+                        fill: "var(--text-normal)",
+                        "font-size": "10",
+                    });
                     countLabel.textContent = point.value.toString();
                     seasonalSvg.appendChild(countLabel);
                 });
             }
-            // Add total in center
-            const totalContainer = document.createElementNS(svgNS, "circle");
-            totalContainer.setAttribute("cx", CENTER.toString());
-            totalContainer.setAttribute("cy", CENTER.toString());
-            totalContainer.setAttribute("r", (OUTER_RADIUS / 4).toString()); // 25 if OUTER_RADIUS=100
-            totalContainer.setAttribute("fill", "var(--background-secondary)");
-            seasonalSvg.appendChild(totalContainer);
-            const totalText = document.createElementNS(svgNS, "text");
-            totalText.setAttribute("x", CENTER.toString());
-            totalText.setAttribute("y", (CENTER - 5).toString());
-            totalText.setAttribute("text-anchor", "middle");
-            totalText.setAttribute("dominant-baseline", "middle");
-            totalText.setAttribute("fill", "var(--text-normal)");
-            totalText.setAttribute("font-size", "16");
-            totalText.setAttribute("font-weight", "bold");
-            totalText.textContent = totalSeasonEvents.toString();
-            seasonalSvg.appendChild(totalText);
-            const eventsLabel = document.createElementNS(svgNS, "text");
-            eventsLabel.setAttribute("x", CENTER.toString());
-            eventsLabel.setAttribute("y", (CENTER + 10).toString());
-            eventsLabel.setAttribute("text-anchor", "middle");
-            eventsLabel.setAttribute("dominant-baseline", "middle");
-            eventsLabel.setAttribute("fill", "var(--text-muted)");
-            eventsLabel.setAttribute("font-size", "10");
-            eventsLabel.textContent = "Events";
-            seasonalSvg.appendChild(eventsLabel);
+            // Draw Total in Center
+            const totalCenterContainer = document.createElementNS(svgNS, "circle");
+            totalCenterContainer.setAttrs({
+                cx: CENTER.toString(),
+                cy: CENTER.toString(),
+                r: (OUTER_RADIUS / 4).toString(),
+                fill: "var(--background-secondary)",
+            });
+            seasonalSvg.appendChild(totalCenterContainer);
+            const totalCenterText = document.createElementNS(svgNS, "text");
+            totalCenterText.setAttrs({
+                x: CENTER.toString(),
+                y: (CENTER - 5).toString(),
+                "text-anchor": "middle",
+                "dominant-baseline": "middle",
+                fill: "var(--text-normal)",
+                "font-size": "16",
+                "font-weight": "bold",
+            });
+            totalCenterText.textContent = totalSeasonEvents.toString();
+            seasonalSvg.appendChild(totalCenterText);
+            const totalCenterLabel = document.createElementNS(svgNS, "text");
+            totalCenterLabel.setAttrs({
+                x: CENTER.toString(),
+                y: (CENTER + 10).toString(),
+                "text-anchor": "middle",
+                "dominant-baseline": "middle",
+                fill: "var(--text-muted)",
+                "font-size": "10",
+            });
+            totalCenterLabel.textContent = "Events";
+            seasonalSvg.appendChild(totalCenterLabel);
         }
         else {
-            // Show empty state
+            /* ... keep empty state logic ... */
             const emptyText = document.createElementNS(svgNS, "text");
-            emptyText.setAttribute("x", CENTER.toString());
-            emptyText.setAttribute("y", CENTER.toString());
-            emptyText.setAttribute("text-anchor", "middle");
-            emptyText.setAttribute("dominant-baseline", "middle");
-            emptyText.setAttribute("fill", "var(--text-muted)");
-            emptyText.setAttribute("font-size", "14");
+            emptyText.setAttrs({
+                x: CENTER.toString(),
+                y: CENTER.toString(),
+                "text-anchor": "middle",
+                "dominant-baseline": "middle",
+                fill: "var(--text-muted)",
+                "font-size": "14",
+            });
             emptyText.textContent = "No events to analyze";
             seasonalSvg.appendChild(emptyText);
         }
-        // ======== FUTURE PLANNING HORIZON CHART ========
+        // --- Chart 3: Future Planning Horizon (Bar Chart) ---
         const futurePlanningCard = chartsGridContainer.createEl("div", {
             cls: "chronica-chart-card chronica-full-width",
         });
@@ -5073,17 +4605,10 @@ class ChornicaTimelineView extends obsidian.ItemView {
             cls: "chronica-chart-title",
             text: "Future Planning Horizon",
         });
-        // Filter for future events only
         const futureEvents = allEvents.filter((event) => {
-            const { year, week } = parseWeekKey(event.weekKey);
-            if (year <= 0)
-                return false;
-            // Create date from week key
-            const eventDate = new Date(year, 0, 1);
-            eventDate.setDate(eventDate.getDate() + (week - 1) * 7);
-            return eventDate > now;
+            const eventDate = getDateFromWeekKey(event.weekKey);
+            return eventDate && eventDate > now;
         });
-        // If no future events, show empty state
         if (futureEvents.length === 0) {
             futurePlanningCard.createEl("div", {
                 cls: "chronica-empty-state",
@@ -5091,7 +4616,6 @@ class ChornicaTimelineView extends obsidian.ItemView {
             });
         }
         else {
-            // Group future events by time horizon
             const horizons = {
                 "Next Month": 30,
                 "1-3 Months": 90,
@@ -5102,15 +4626,11 @@ class ChornicaTimelineView extends obsidian.ItemView {
             };
             const horizonCounts = {};
             Object.keys(horizons).forEach((key) => (horizonCounts[key] = 0));
-            // Count events for each horizon
             futureEvents.forEach((event) => {
-                const { year, week } = parseWeekKey(event.weekKey);
-                // Create date from week key
-                const eventDate = new Date(year, 0, 1);
-                eventDate.setDate(eventDate.getDate() + (week - 1) * 7);
-                // Calculate days from now
+                const eventDate = getDateFromWeekKey(event.weekKey);
+                if (!eventDate)
+                    return;
                 const daysFromNow = Math.ceil((eventDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-                // Find appropriate horizon
                 for (const [horizon, days] of Object.entries(horizons)) {
                     if (daysFromNow <= days) {
                         horizonCounts[horizon]++;
@@ -5118,19 +4638,14 @@ class ChornicaTimelineView extends obsidian.ItemView {
                     }
                 }
             });
-            // Create horizons chart container
             const horizonsContainer = futurePlanningCard.createEl("div", {
                 cls: "chronica-horizons-container",
             });
-            // Sort horizons by timeframe
-            const sortedHorizons = Object.keys(horizonCounts).filter((h) => horizonCounts[h] > 0);
-            // Find maximum for scaling
+            const sortedHorizons = Object.keys(horizonCounts).filter((h) => horizonCounts[h] > 0); // Only show horizons with events
             const maxHorizonCount = Math.max(...Object.values(horizonCounts), 1);
-            // Create bars for each horizon
             sortedHorizons.forEach((horizon) => {
+                // (Keep rendering logic for horizon bars - unchanged)
                 const count = horizonCounts[horizon];
-                if (count === 0)
-                    return;
                 const horizonRow = horizonsContainer.createEl("div", {
                     cls: "chronica-horizon-row",
                 });
@@ -5144,21 +4659,18 @@ class ChornicaTimelineView extends obsidian.ItemView {
                 const bar = barContainer.createEl("div", {
                     cls: "chronica-horizon-bar",
                 });
-                // Scale the bar width
                 bar.style.width = `${(count / maxHorizonCount) * 100}%`;
-                // Add count on the bar
                 barContainer.createEl("div", {
                     cls: "chronica-horizon-count",
                     text: count.toString(),
                 });
             });
-            // Add summary at the bottom
             futurePlanningCard.createEl("div", {
                 cls: "chronica-horizon-summary",
                 text: `${futureEvents.length} events planned in the future`,
             });
         }
-        // ======== MONTHLY DISTRIBUTION CHART ========
+        // --- Chart 4: Monthly Distribution (Bar Chart) ---
         const monthlyChartCard = chartsGridContainer.createEl("div", {
             cls: "chronica-chart-card chronica-full-width",
         });
@@ -5166,24 +4678,16 @@ class ChornicaTimelineView extends obsidian.ItemView {
             cls: "chronica-chart-title",
             text: "Event Distribution by Month",
         });
-        // Count events by month
         const eventsByMonth = Array(12).fill(0);
         allEvents.forEach((event) => {
-            // Simple approximation of month from week number
-            const { year, week } = parseWeekKey(event.weekKey);
-            if (year > 0) {
-                // Estimate month based on week number (very approximate)
-                const monthIndex = Math.min(11, Math.floor((week - 1) / 4.34)); // ~4.34 weeks per month
-                if (monthIndex >= 0 && monthIndex < 12) {
-                    eventsByMonth[monthIndex]++;
-                }
+            const eventDate = getDateFromWeekKey(event.weekKey);
+            if (eventDate) {
+                eventsByMonth[eventDate.getMonth()]++;
             }
         });
-        // Create monthly chart container
         const monthlyChartContainer = monthlyChartCard.createEl("div", {
             cls: "chronica-monthly-chart-container",
         });
-        // Month names
         const monthNames = [
             "Jan",
             "Feb",
@@ -5198,10 +4702,9 @@ class ChornicaTimelineView extends obsidian.ItemView {
             "Nov",
             "Dec",
         ];
-        // Get maximum for scaling
         const maxMonthlyEvents = Math.max(...eventsByMonth, 1);
-        // Create month bars
         monthNames.forEach((month, index) => {
+            // (Keep rendering logic for month bars - unchanged)
             const count = eventsByMonth[index];
             const barHeight = Math.max(5, (count / maxMonthlyEvents) * 100);
             const barContainer = monthlyChartContainer.createEl("div", {
@@ -5211,549 +4714,162 @@ class ChornicaTimelineView extends obsidian.ItemView {
                 cls: "chronica-bar chronica-month-bar",
             });
             bar.style.height = `${barHeight}%`;
-            // Add value above bar
             barContainer.createEl("div", {
                 cls: "chronica-bar-value",
                 text: count > 0 ? count.toString() : "",
             });
-            // Add month label below bar
-            barContainer.createEl("div", {
-                cls: "chronica-bar-label",
-                text: month,
-            });
-            // Highlight current month
+            barContainer.createEl("div", { cls: "chronica-bar-label", text: month });
             if (index === now.getMonth()) {
                 barContainer.addClass("chronica-current-period");
                 bar.addClass("chronica-current-bar");
             }
-            // Set tooltip
             barContainer.setAttribute("title", `${month}: ${count} events`);
         });
     }
+    /**
+       * Applies styling to a cell if an event exists for the given week key.
+       * Reads from the new unified this.settings.events and this.settings.eventTypes.
+       * @param cell - The HTML element for the grid cell.
+       * @param weekKey - The week key (YYYY-WXX) to check for events.
+       * @returns True if an event style was applied, false otherwise.
+       */
     applyEventStyling(cell, weekKey) {
-        // Flag to track if an event was applied by any method
-        let eventApplied = false;
-        // Check if we have an event in the note frontmatter (new functionality)
-        const checkNoteEvent = async () => {
-            try {
-                // Check if the file exists
-                const fileName = `${weekKey.replace("W", "-W")}.md`;
-                const fullPath = this.plugin.getFullPath(fileName);
-                const fileExists = this.plugin.app.vault.getAbstractFileByPath(fullPath) instanceof
-                    obsidian.TFile;
-                // If file doesn't exist, make sure to remove any existing styling
-                if (!fileExists) {
-                    // Remove any event styling from the cell
-                    cell.classList.remove("event");
-                    cell.classList.remove("major-life-event");
-                    cell.classList.remove("travel-event");
-                    cell.classList.remove("relationship-event");
-                    cell.classList.remove("education-career-event");
-                    cell.style.backgroundColor = "";
-                    cell.style.border = "";
-                    // Restore appropriate base styling
-                    const now = new Date();
-                    const [year, weekNum] = weekKey.split("-W").map((n) => parseInt(n));
-                    const cellDate = new Date(year, 0, 1);
-                    cellDate.setDate(cellDate.getDate() + (weekNum - 1) * 7);
-                    // Reapply appropriate base styling
-                    const isCurrentWeek = weekKey === this.plugin.getWeekKeyFromDate(new Date());
-                    if (isCurrentWeek) {
-                        cell.style.backgroundColor = this.plugin.settings.presentCellColor;
-                    }
-                    else if (cellDate < now) {
-                        cell.style.backgroundColor = this.plugin.settings.pastCellColor;
-                    }
-                    else {
-                        cell.style.backgroundColor = this.plugin.settings.futureCellColor;
-                    }
-                    return false;
-                }
-                // Continue with normal event checking
-                const eventData = await this.plugin.getEventFromNote(weekKey);
-                if (eventData && eventData.event) {
-                    // Apply styling based on note frontmatter
-                    cell.classList.add("event");
-                    // Add specific event type class based on type
-                    switch (eventData.type) {
-                        case "Major Life":
-                            cell.classList.add("major-life-event");
-                            break;
-                        case "Travel":
-                            cell.classList.add("travel-event");
-                            break;
-                        case "Relationship":
-                            cell.classList.add("relationship-event");
-                            break;
-                        case "Education/Career":
-                            cell.classList.add("education-career-event");
-                            break;
-                    }
-                    // Apply color if specified in frontmatter
-                    if (eventData.color) {
-                        cell.style.backgroundColor = eventData.color;
-                        cell.style.border = `2px solid ${eventData.color}`;
-                    }
-                    else {
-                        // Default color based on type
-                        let defaultColor = "#4CAF50"; // Default to green (Major Life)
-                        switch (eventData.type) {
-                            case "Major Life":
-                                defaultColor = "#4CAF50";
-                                break;
-                            case "Travel":
-                                defaultColor = "#2196F3";
-                                break;
-                            case "Relationship":
-                                defaultColor = "#E91E63";
-                                break;
-                            case "Education/Career":
-                                defaultColor = "#D2B55B";
-                                break;
-                            default:
-                                // Check if it's a custom type
-                                const customType = this.plugin.settings.customEventTypes.find((t) => t.name === eventData.type);
-                                if (customType) {
-                                    defaultColor = customType.color;
-                                }
-                        }
-                        cell.style.backgroundColor = defaultColor;
-                        cell.style.border = `2px solid ${defaultColor}`;
-                    }
-                    // Build tooltip
-                    const eventName = eventData.name || eventData.event;
-                    const eventDesc = eventData.description
-                        ? `: ${eventData.description}`
-                        : "";
-                    const prevTitle = cell.getAttribute("title") || "";
-                    // Include date range info if present
-                    let dateInfo = "";
-                    if (eventData.startDate && eventData.endDate) {
-                        dateInfo = ` (${eventData.startDate} to ${eventData.endDate})`;
-                    }
-                    else if (eventData.startDate) {
-                        dateInfo = ` (${eventData.startDate})`;
-                    }
-                    cell.setAttribute("title", `${eventName}${eventDesc}${dateInfo}${prevTitle ? "\n" + prevTitle : ""}`);
-                    // Mark that we successfully applied an event
-                    eventApplied = true;
-                    return true;
-                }
-                return false;
-            }
-            catch (error) {
-                return false;
-            }
-        };
-        // Set a property on the cell to track if we're checking events
-        // This prevents multiple simultaneous checks
-        if (cell.dataset.checkingEvents === "true") {
+        // Ensure events and eventTypes arrays exist and have data
+        if (!this.plugin.settings.events || this.plugin.settings.events.length === 0 || !this.plugin.settings.eventTypes || this.plugin.settings.eventTypes.length === 0) {
+            // Clear any lingering event styles if data is missing
+            cell.classList.remove("event", "future-event-highlight");
+            cell.style.backgroundColor = ''; // Let base past/present/future CSS handle it
+            cell.style.borderColor = '';
+            cell.style.borderWidth = '';
+            cell.style.borderStyle = '';
+            delete cell.dataset.eventFile;
             return false;
         }
-        cell.dataset.checkingEvents = "true";
-        // Schedule the async check with a higher priority
-        setTimeout(async () => {
-            const hasNoteEvent = await checkNoteEvent();
-            // Only process fallback events if no note event was found
-            if (!hasNoteEvent) {
-                // Process fallback events
-                const hasFallbackEvent = checkFallbackEvents();
-                eventApplied = hasFallbackEvent;
-                // If no event was found by either method, ensure styling is cleared
-                if (!hasFallbackEvent) {
-                    // Need to handle the case where the event was in settings but note is gone
-                    const now = new Date();
-                    const [year, weekNum] = weekKey.split("-W").map((n) => parseInt(n));
-                    const cellDate = new Date(year, 0, 1);
-                    cellDate.setDate(cellDate.getDate() + (weekNum - 1) * 7);
-                    // Make sure appropriate base styling is applied
-                    const isCurrentWeek = weekKey === this.plugin.getWeekKeyFromDate(new Date());
-                    if (isCurrentWeek) {
-                        cell.style.backgroundColor = this.plugin.settings.presentCellColor;
-                    }
-                    else if (cellDate < now) {
-                        cell.style.backgroundColor = this.plugin.settings.pastCellColor;
-                    }
-                    else {
-                        cell.style.backgroundColor = this.plugin.settings.futureCellColor;
+        let eventApplied = false;
+        let eventDescription = ""; // Store description for tooltip
+        let appliedNotePath = undefined;
+        // Find the FIRST event matching this weekKey
+        let matchedEvent = null;
+        for (const event of this.plugin.settings.events) {
+            let isMatch = false;
+            if (event.weekKey === weekKey && !event.endWeekKey) {
+                isMatch = true;
+            } // Direct match
+            else if (event.weekKey && event.endWeekKey) { // Range check
+                try {
+                    const startYear = parseInt(event.weekKey.split("-W")[0], 10);
+                    const startWeek = parseInt(event.weekKey.split("-W")[1], 10);
+                    const endYear = parseInt(event.endWeekKey.split("-W")[0], 10);
+                    const endWeek = parseInt(event.endWeekKey.split("-W")[1], 10);
+                    const cellYear = parseInt(weekKey.split("-W")[0], 10);
+                    const cellWeek = parseInt(weekKey.split("-W")[1], 10);
+                    if (![startYear, startWeek, endYear, endWeek, cellYear, cellWeek].some(isNaN)) { // Basic validation
+                        if (cellYear > startYear && cellYear < endYear)
+                            isMatch = true;
+                        else if (cellYear === startYear && cellYear < endYear && cellWeek >= startWeek)
+                            isMatch = true;
+                        else if (cellYear > startYear && cellYear === endYear && cellWeek <= endWeek)
+                            isMatch = true;
+                        else if (cellYear === startYear && cellYear === endYear && cellWeek >= startWeek && cellWeek <= endWeek)
+                            isMatch = true;
                     }
                 }
+                catch (error) { /* Ignore parsing errors */ }
             }
-            // Clear the checking flag
-            delete cell.dataset.checkingEvents;
-            // Apply filled week styling if applicable (and not overriding an event)
-            if (!eventApplied &&
-                this.plugin.settings.filledWeeks.includes(weekKey) &&
-                weekKey !== this.plugin.getWeekKeyFromDate(new Date())) {
-                cell.classList.add("filled-week");
-                // Only change color if no event is on this week
-                if (!cell.classList.contains("event")) {
-                    cell.style.backgroundColor = "#8bc34a"; // Light green for filled weeks
-                }
+            if (isMatch) {
+                matchedEvent = event;
+                break;
             }
-        }, 0);
-        // Function to check legacy event formats (copied from existing code)
-        const checkFallbackEvents = () => {
-            // Add the existing fallback event checking code here
-            const applyEventStyle = (events, defaultColor, defaultDesc) => {
-                // First, handle single-day events (format: weekKey:description)
-                const singleEvents = events.filter((e) => {
-                    const parts = e.split(":");
-                    return parts.length === 2 && parts[0].includes("W");
-                });
-                for (const ev of singleEvents) {
-                    const [eventWeekKey, description] = ev.split(":");
-                    // Direct string match: if the event's weekKey equals this cell's weekKey
-                    if (eventWeekKey === weekKey) {
-                        // Apply styles
-                        cell.classList.add("event");
-                        cell.style.backgroundColor = defaultColor;
-                        cell.style.border = `2px solid ${defaultColor}`;
-                        // Build tooltip
-                        const eventDesc = description || defaultDesc;
-                        const prevTitle = cell.getAttribute("title") || "";
-                        cell.setAttribute("title", `${eventDesc} (${eventWeekKey})\n${prevTitle}`);
-                        return true;
-                    }
+        }
+        // If an event was found for this week
+        if (matchedEvent) {
+            const eventType = this.plugin.settings.eventTypes.find(type => type.id === matchedEvent.typeId);
+            if (eventType) {
+                cell.classList.add("event");
+                const safeTypeIdClass = `event-type-${eventType.id.replace(/[^a-zA-Z0-9-_]/g, '-')}`;
+                cell.addClass(safeTypeIdClass);
+                cell.style.backgroundColor = eventType.color + ' !important'; // Apply color inline
+                cell.style.borderColor = eventType.color;
+                cell.style.borderWidth = '2px';
+                cell.style.borderStyle = 'solid';
+                eventDescription = `${eventType.name}: ${matchedEvent.description}`;
+                if (matchedEvent.endWeekKey && matchedEvent.endWeekKey !== matchedEvent.weekKey) {
+                    eventDescription += ` (${matchedEvent.weekKey} to ${matchedEvent.endWeekKey})`;
                 }
-                // Next, handle range events (format: startWeek:endWeek:description)
-                const rangeEvents = events.filter((e) => {
-                    const parts = e.split(":");
-                    return (parts.length >= 3 &&
-                        parts[0].includes("W") &&
-                        parts[1].includes("W"));
-                });
-                for (const rangeEvent of rangeEvents) {
-                    const [startWeekKey, endWeekKey, description] = rangeEvent.split(":");
-                    // Skip if the format is invalid
-                    if (!startWeekKey || !endWeekKey)
-                        continue;
-                    try {
-                        // Parse the week numbers
-                        const startYear = parseInt(startWeekKey.split("-W")[0], 10);
-                        const startWeek = parseInt(startWeekKey.split("-W")[1], 10);
-                        const endYear = parseInt(endWeekKey.split("-W")[0], 10);
-                        const endWeek = parseInt(endWeekKey.split("-W")[1], 10);
-                        // Parse current cell week
-                        const cellYear = parseInt(weekKey.split("-W")[0], 10);
-                        const cellWeek = parseInt(weekKey.split("-W")[1], 10);
-                        // Create actual dates to compare
-                        const startDate = new Date(startYear, 0, 1);
-                        startDate.setDate(startDate.getDate() + (startWeek - 1) * 7);
-                        const endDate = new Date(endYear, 0, 1);
-                        endDate.setDate(endDate.getDate() + (endWeek - 1) * 7 + 6); // Add 6 to include full end week
-                        const cellDate = new Date(cellYear, 0, 1);
-                        cellDate.setDate(cellDate.getDate() + (cellWeek - 1) * 7);
-                        // Check if current week falls within the range using actual dates
-                        const isInRange = cellDate >= startDate && cellDate <= endDate;
-                        if (isInRange) {
-                            // Apply styles
-                            cell.classList.add("event");
-                            cell.style.backgroundColor = defaultColor;
-                            cell.style.borderColor = defaultColor;
-                            cell.style.borderWidth = "2px";
-                            cell.style.borderStyle = "solid";
-                            // Add specific event type class based on color
-                            if (defaultColor === "#4CAF50") {
-                                cell.classList.add("major-life-event");
-                            }
-                            else if (defaultColor === "#2196F3") {
-                                cell.classList.add("travel-event");
-                            }
-                            else if (defaultColor === "#E91E63") {
-                                cell.classList.add("relationship-event");
-                            }
-                            else if (defaultColor === "#D2B55B") {
-                                cell.classList.add("education-career-event");
-                            }
-                            const eventDesc = description || defaultDesc;
-                            const currentTitle = cell.getAttribute("title") || "";
-                            cell.setAttribute("title", `${eventDesc} (${startWeekKey} to ${endWeekKey})\n${currentTitle}`);
-                            return true;
-                        }
-                    }
-                    catch (error) {
-                        console.error("Error processing range event:", rangeEvent, error);
-                    }
+                else {
+                    eventDescription += ` (${matchedEvent.weekKey})`;
                 }
-                return false;
-            };
-            // Apply event styling for each event type
-            const hasGreenEvent = applyEventStyle(this.plugin.settings.greenEvents, "#4CAF50", "Major Life Event");
-            if (hasGreenEvent)
-                return true;
-            const hasBlueEvent = applyEventStyle(this.plugin.settings.blueEvents, "#2196F3", "Travel");
-            if (hasBlueEvent)
-                return true;
-            const hasPinkEvent = applyEventStyle(this.plugin.settings.pinkEvents, "#E91E63", "Relationship");
-            if (hasPinkEvent)
-                return true;
-            const hasPurpleEvent = applyEventStyle(this.plugin.settings.purpleEvents, "#D2B55B", "Education/Career");
-            if (hasPurpleEvent)
-                return true;
-            // Only check custom events if no built-in event was found
-            if (this.plugin.settings.customEvents) {
-                for (const [typeName, events] of Object.entries(this.plugin.settings.customEvents)) {
-                    const customType = this.plugin.settings.customEventTypes.find((type) => type.name === typeName);
-                    if (customType && events.length > 0) {
-                        const hasCustomEvent = applyEventStyle(events, customType.color, typeName);
-                        if (hasCustomEvent)
-                            return true;
-                    }
-                }
+                appliedNotePath = matchedEvent.notePath;
+                eventApplied = true;
             }
-            // Highlight future events within next 6 months
+            else { // Type definition missing
+                console.warn(`Chronica: Type definition missing for typeId: ${matchedEvent.typeId}`);
+                cell.classList.add("event");
+                cell.style.borderColor = 'var(--text-muted)';
+                cell.style.borderWidth = '1px';
+                cell.style.borderStyle = 'dashed';
+                eventDescription = `Unknown Type: ${matchedEvent.description} (${matchedEvent.weekKey})`;
+                appliedNotePath = matchedEvent.notePath;
+                eventApplied = true;
+            }
+        }
+        else {
+            // No event found, ensure no lingering event styles
+            cell.classList.remove("event");
+            // Remove specific event type classes (might need a loop or regex if many types)
+            cell.className = cell.className.replace(/\bevent-type-[^ ]+/g, '').trim();
+            cell.style.backgroundColor = ''; // Let base CSS handle it
+            cell.style.borderColor = '';
+            cell.style.borderWidth = '';
+            cell.style.borderStyle = '';
+        }
+        // Update tooltip
+        const prevTitle = cell.getAttribute("title")?.split('\n').pop() || ''; // Get base title (last line)
+        if (eventApplied && eventDescription) {
+            cell.setAttribute("title", `${eventDescription}\n${prevTitle}`);
+            if (appliedNotePath) {
+                cell.dataset.eventFile = appliedNotePath;
+            }
+            else {
+                delete cell.dataset.eventFile;
+            }
+        }
+        else {
+            // Ensure only base title remains if no event applied this time
+            cell.setAttribute("title", prevTitle);
+            delete cell.dataset.eventFile;
+        }
+        // --- Highlight future events ---
+        if (eventApplied) {
             const now = new Date();
-            const cellDate = new Date();
-            const [cellYearStr, weekNumStr] = weekKey.split("-W");
-            cellDate.setFullYear(parseInt(cellYearStr, 10));
-            cellDate.setDate(1 + (parseInt(weekNumStr, 10) - 1) * 7);
-            if (cellDate > now &&
-                cellDate < new Date(now.getTime() + 6 * 30 * 24 * 60 * 60 * 1000) &&
-                cell.classList.contains("event")) {
-                cell.classList.add("future-event-highlight");
+            let cellDate = null;
+            try {
+                const [y, w] = weekKey.split("-W").map(Number);
+                cellDate = new Date(y, 0, 1 + (w - 1) * 7);
             }
-            return false;
-        };
-        // Always return our tracking flag - the actual styling will happen asynchronously
+            catch { }
+            if (cellDate) {
+                const sixMonthsFromNow = new Date(now.getTime() + 6 * 30 * 24 * 60 * 60 * 1000);
+                if (cellDate > now && cellDate < sixMonthsFromNow) {
+                    cell.classList.add("future-event-highlight");
+                }
+                else {
+                    cell.classList.remove("future-event-highlight");
+                }
+            }
+            else {
+                cell.classList.remove("future-event-highlight");
+            }
+        }
+        else {
+            cell.classList.remove("future-event-highlight");
+        }
         return eventApplied;
     }
 }
 // -----------------------------------------------------------------------
 // EVENT TYPES MODAL CLASS
 // -----------------------------------------------------------------------
-/**
- * Modal for managing custom event types
- */
-class ManageEventTypesModal extends obsidian.Modal {
-    /** Reference to the main plugin */
-    plugin;
-    /**
-     * Create a new event types modal
-     * @param app - Obsidian App instance
-     * @param plugin - ChornicaTimelinePlugin instance
-     */
-    constructor(app, plugin) {
-        super(app);
-        this.plugin = plugin;
-    }
-    /**
-     * Build the modal UI when opened
-     */
-    onOpen() {
-        const { contentEl } = this;
-        contentEl.empty();
-        contentEl.createEl("h2", { text: "Manage Event Types" });
-        // Section for adding a new event type
-        const addSection = contentEl.createDiv({ cls: "event-type-add-section" });
-        addSection.createEl("h3", { text: "Add New Event Type" });
-        const nameInput = addSection.createEl("input", {
-            type: "text",
-            placeholder: "Event Type Name",
-        });
-        const colorInput = addSection.createEl("input", {
-            type: "color",
-            value: "#FF9800",
-        });
-        const addButton = addSection.createEl("button", {
-            text: "Add Type",
-            cls: "add-type-button",
-        });
-        addButton.addEventListener("click", () => {
-            const name = nameInput.value.trim();
-            if (!name) {
-                new obsidian.Notice("Please enter a name for the event type");
-                return;
-            }
-            if (this.plugin.settings.customEventTypes.some((type) => type.name === name)) {
-                new obsidian.Notice("An event type with this name already exists");
-                return;
-            }
-            this.plugin.settings.customEventTypes.push({
-                name: name,
-                color: colorInput.value,
-            });
-            this.plugin.settings.customEvents[name] = [];
-            this.plugin.saveSettings().then(() => {
-                new obsidian.Notice(`Event type "${name}" added`);
-                this.renderExistingTypes(contentEl);
-                nameInput.value = "";
-            });
-        });
-        // Section for listing existing custom types
-        const existingSection = contentEl.createDiv({
-            cls: "event-type-existing-section",
-        });
-        existingSection.createEl("h3", { text: "Existing Event Types" });
-        this.renderExistingTypes(existingSection);
-        // Close button
-        const closeButton = contentEl.createEl("button", {
-            text: "Close",
-            cls: "close-button",
-        });
-        closeButton.addEventListener("click", () => {
-            this.close();
-            this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE).forEach((leaf) => {
-                const view = leaf.view;
-                view.renderView();
-            });
-        });
-    }
-    /**
-     * Render list of existing event types
-     * @param container - Container element
-     */
-    renderExistingTypes(container) {
-        // Remove existing list if present
-        const typesList = container.querySelector(".existing-types-list");
-        if (typesList)
-            typesList.remove();
-        const newList = container.createEl("div", { cls: "existing-types-list" });
-        // Built-in types section
-        newList.createEl("p", {
-            text: "Built-in types (cannot be edited)",
-            cls: "built-in-note",
-        });
-        const builtInTypes = [
-            { name: "Major Life", color: "#4CAF50" },
-            { name: "Travel", color: "#2196F3" },
-            { name: "Relationship", color: "#E91E63" },
-            { name: "Education/Career", color: "#D2B55B" },
-        ];
-        for (const type of builtInTypes) {
-            const typeItem = newList.createEl("div", {
-                cls: "event-type-item built-in",
-            });
-            const colorBox = typeItem.createEl("span", { cls: "event-type-color" });
-            colorBox.style.backgroundColor = type.color;
-            typeItem.createEl("span", { text: type.name, cls: "event-type-name" });
-        }
-        // Custom types section
-        if (this.plugin.settings.customEventTypes.length > 0) {
-            newList.createEl("p", {
-                text: "Your custom types",
-                cls: "custom-types-note",
-            });
-            for (const type of this.plugin.settings.customEventTypes) {
-                const typeItem = newList.createEl("div", {
-                    cls: "event-type-item custom",
-                });
-                const colorBox = typeItem.createEl("span", { cls: "event-type-color" });
-                colorBox.style.backgroundColor = type.color;
-                typeItem.createEl("span", { text: type.name, cls: "event-type-name" });
-                // Edit button
-                const editButton = typeItem.createEl("button", {
-                    text: "Edit",
-                    cls: "edit-type-button",
-                });
-                editButton.addEventListener("click", () => {
-                    this.showEditTypeModal(type);
-                });
-                // Delete button
-                const deleteButton = typeItem.createEl("button", {
-                    text: "Delete",
-                    cls: "delete-type-button",
-                });
-                deleteButton.addEventListener("click", () => {
-                    if (confirm(`Are you sure you want to delete the event type "${type.name}"? All events of this type will also be deleted.`)) {
-                        this.plugin.settings.customEventTypes =
-                            this.plugin.settings.customEventTypes.filter((t) => t.name !== type.name);
-                        delete this.plugin.settings.customEvents[type.name];
-                        this.plugin.saveSettings().then(() => {
-                            new obsidian.Notice(`Event type "${type.name}" deleted`);
-                            this.renderExistingTypes(container);
-                        });
-                    }
-                });
-            }
-        }
-        else {
-            newList.createEl("p", {
-                text: "You haven't created any custom event types yet",
-                cls: "no-custom-types",
-            });
-        }
-    }
-    /**
-     * Show modal for editing an event type
-     * @param type - Custom event type to edit
-     */
-    showEditTypeModal(type) {
-        const modal = new obsidian.Modal(this.app);
-        modal.titleEl.setText(`Edit Event Type: ${type.name}`);
-        const contentEl = modal.contentEl;
-        // Name field
-        const nameContainer = contentEl.createDiv({ cls: "edit-name-container" });
-        const nameLabel = nameContainer.createEl("label");
-        nameLabel.textContent = "Name";
-        nameLabel.htmlFor = "edit-type-name";
-        const nameInput = nameContainer.createEl("input");
-        nameInput.type = "text";
-        nameInput.value = type.name;
-        nameInput.id = "edit-type-name";
-        // Color field
-        const colorContainer = contentEl.createDiv({ cls: "edit-color-container" });
-        const colorLabel = colorContainer.createEl("label");
-        colorLabel.textContent = "Color";
-        colorLabel.htmlFor = "edit-type-color";
-        const colorInput = colorContainer.createEl("input");
-        colorInput.type = "color";
-        colorInput.value = type.color;
-        colorInput.id = "edit-type-color";
-        // Save button
-        const saveButton = contentEl.createEl("button", {
-            text: "Save Changes",
-            cls: "save-edit-button",
-        });
-        saveButton.addEventListener("click", () => {
-            const newName = nameInput.value.trim();
-            if (!newName) {
-                new obsidian.Notice("Please enter a name for the event type");
-                return;
-            }
-            if (newName !== type.name &&
-                this.plugin.settings.customEventTypes.some((t) => t.name === newName)) {
-                new obsidian.Notice("An event type with this name already exists");
-                return;
-            }
-            // Update name reference in events if changed
-            if (newName !== type.name) {
-                this.plugin.settings.customEvents[newName] =
-                    this.plugin.settings.customEvents[type.name] || [];
-                delete this.plugin.settings.customEvents[type.name];
-            }
-            // Update event type
-            const typeIndex = this.plugin.settings.customEventTypes.findIndex((t) => t.name === type.name);
-            if (typeIndex !== -1) {
-                this.plugin.settings.customEventTypes[typeIndex] = {
-                    name: newName,
-                    color: colorInput.value,
-                };
-                this.plugin.saveSettings().then(() => {
-                    new obsidian.Notice(`Event type updated to "${newName}"`);
-                    modal.close();
-                    this.renderExistingTypes(this.contentEl);
-                });
-            }
-        });
-        // Cancel button
-        const cancelButton = contentEl.createEl("button", {
-            text: "Cancel",
-            cls: "cancel-edit-button",
-        });
-        cancelButton.addEventListener("click", () => {
-            modal.close();
-        });
-        modal.open();
-    }
-    /**
-     * Clean up on modal close
-     */
-    onClose() {
-        const { contentEl } = this;
-        contentEl.empty();
-    }
-}
 // -----------------------------------------------------------------------
 // SETTINGS TAB CLASS
 // -----------------------------------------------------------------------
@@ -5782,6 +4898,8 @@ class ChornicaSettingTab extends obsidian.PluginSettingTab {
         containerEl.createEl("p", {
             text: "Customize your life timeline visualization.",
         });
+        // --- Core Settings ---
+        containerEl.createEl("h3", { text: "Core Setup" });
         // Birthday setting
         new obsidian.Setting(containerEl)
             .setName("Birthday")
@@ -5790,16 +4908,23 @@ class ChornicaSettingTab extends obsidian.PluginSettingTab {
             .setPlaceholder("1990-01-01")
             .setValue(this.plugin.settings.birthday)
             .onChange(async (value) => {
-            this.plugin.settings.birthday = value;
-            await this.plugin.saveSettings();
-            this.refreshAllViews();
+            // Basic validation - check if it looks like a date
+            if (value && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+                this.plugin.settings.birthday = value;
+                await this.plugin.saveSettings();
+                this.refreshAllViews();
+            }
+            else {
+                // Optionally provide feedback if format is wrong
+                new obsidian.Notice("Please enter birthday in YYYY-MM-DD format.");
+            }
         }));
         // Lifespan setting
         new obsidian.Setting(containerEl)
             .setName("Lifespan")
-            .setDesc("Maximum age in years to display")
+            .setDesc("Maximum age in years to display on the timeline grid.")
             .addSlider((slider) => slider
-            .setLimits(50, 120, 5)
+            .setLimits(50, 120, 5) // Min 50, Max 120, Step 5
             .setValue(this.plugin.settings.lifespan)
             .setDynamicTooltip()
             .onChange(async (value) => {
@@ -5807,88 +4932,192 @@ class ChornicaSettingTab extends obsidian.PluginSettingTab {
             await this.plugin.saveSettings();
             this.refreshAllViews();
         }));
-        // Notes folder setting
+        // --- Folders & Notes ---
+        containerEl.createEl("h3", { text: "Folders & Note Naming" });
+        // Notes folder setting (Main / Weekly)
         new obsidian.Setting(containerEl)
-            .setName("Notes folder")
-            .setDesc("Select the folder where your weekly notes live")
+            .setName("Weekly Notes Folder")
+            .setDesc("Folder to store weekly notes (leave blank for vault root).")
             .addSearch((search) => {
-            // Store the original value
             const originalFolder = this.plugin.settings.notesFolder;
             search
-                .setPlaceholder("Pick a folder…")
+                .setPlaceholder("Select folder...")
                 .setValue(this.plugin.settings.notesFolder)
                 .onChange(async (value) => {
-                // Update setting
-                this.plugin.settings.notesFolder = value;
+                const newFolder = value.trim(); // Trim whitespace
+                this.plugin.settings.notesFolder = newFolder;
                 await this.plugin.saveSettings();
-                // If value has changed significantly, handle folder migration
-                if (value && value.trim() !== "" && value !== originalFolder) {
-                    this.plugin.handleFolderChange(originalFolder, value, false);
+                if (newFolder && newFolder !== originalFolder) {
+                    this.plugin.handleFolderChange(originalFolder, newFolder, false);
+                }
+                else if (!newFolder && originalFolder) {
+                    // Handle clearing the folder setting if needed (e.g., ask user if they want to move notes back to root)
+                    console.log("Weekly notes folder cleared. Notes remain in the old folder unless moved manually.");
                 }
             });
-            // Pass the plugin instance to FolderSuggest
             new FolderSuggest(this.app, search.inputEl, this.plugin);
         });
-        // Separate folders for event notes
+        // Separate folders toggle
         new obsidian.Setting(containerEl)
-            .setName("Use Separate Folders")
-            .setDesc("Store week notes and event notes in different folders")
+            .setName("Use Separate Event Notes Folder")
+            .setDesc("Store event-specific notes in a different folder from weekly notes.")
             .addToggle((toggle) => toggle
             .setValue(this.plugin.settings.useSeparateFolders)
             .onChange(async (value) => {
             this.plugin.settings.useSeparateFolders = value;
             await this.plugin.saveSettings();
-            // Show/hide event folder selector based on toggle state
-            // Note: 'eventFolderSetting' is the Setting instance defined later
-            if (eventFolderSetting && eventFolderSetting.settingEl) {
-                eventFolderSetting.settingEl.classList.toggle("hidden", !value);
+            // Show/hide event folder selector using hidden class
+            const eventFolderSettingEl = containerEl.querySelector(".event-folder-selector");
+            if (eventFolderSettingEl) {
+                eventFolderSettingEl.classList.toggle("hidden", !value);
             }
         }));
-        // Event notes folder setting
+        // Event notes folder setting (conditionally displayed)
         const eventFolderSetting = new obsidian.Setting(containerEl)
             .setName("Event Notes Folder")
-            .setDesc("Select the folder where your event notes will be stored")
-            .setClass("event-folder-selector")
+            .setDesc("Folder to store event notes (only used if toggle above is ON).")
+            .setClass("event-folder-selector") // Class used for showing/hiding
             .addSearch((search) => {
-            // Store the original value
             const originalFolder = this.plugin.settings.eventNotesFolder;
             search
-                .setPlaceholder("Pick a folder…")
+                .setPlaceholder("Select event notes folder...")
                 .setValue(this.plugin.settings.eventNotesFolder)
                 .onChange(async (value) => {
-                // Update setting
-                this.plugin.settings.eventNotesFolder = value;
+                const newFolder = value.trim();
+                this.plugin.settings.eventNotesFolder = newFolder;
                 await this.plugin.saveSettings();
-                // If value has changed significantly, handle folder migration
-                if (value && value.trim() !== "" && value !== originalFolder) {
-                    this.plugin.handleFolderChange(originalFolder, value, true);
+                if (this.plugin.settings.useSeparateFolders &&
+                    newFolder &&
+                    newFolder !== originalFolder) {
+                    this.plugin.handleFolderChange(originalFolder, newFolder, true);
+                }
+                else if (!newFolder && originalFolder) {
+                    console.log("Event notes folder cleared. Notes remain in the old folder unless moved manually.");
                 }
             });
-            // Pass the plugin instance to FolderSuggest
             new FolderSuggest(this.app, search.inputEl, this.plugin);
         });
         // Hide event folder selector initially if separate folders not enabled
         if (!this.plugin.settings.useSeparateFolders) {
             eventFolderSetting.settingEl.classList.add("hidden");
         }
+        // Week note template
+        new obsidian.Setting(containerEl)
+            .setName("Week Note Template")
+            .setDesc("Template for week note filenames. Placeholders: ${year}, ${week}")
+            .addText((text) => text
+            .setPlaceholder(DEFAULT_SETTINGS.weekNoteTemplate)
+            .setValue(this.plugin.settings.weekNoteTemplate)
+            .onChange(async (value) => {
+            this.plugin.settings.weekNoteTemplate =
+                value || DEFAULT_SETTINGS.weekNoteTemplate;
+            await this.plugin.saveSettings();
+        }));
+        // Event note template
+        new obsidian.Setting(containerEl)
+            .setName("Event Note Template")
+            .setDesc("For single-date events. Placeholders: ${eventName}, ${startDate}, ${year}, ${week}")
+            .addText((text) => text
+            .setPlaceholder(DEFAULT_SETTINGS.eventNoteTemplate)
+            .setValue(this.plugin.settings.eventNoteTemplate)
+            .onChange(async (value) => {
+            this.plugin.settings.eventNoteTemplate =
+                value || DEFAULT_SETTINGS.eventNoteTemplate;
+            await this.plugin.saveSettings();
+        }));
+        // Range note template
+        new obsidian.Setting(containerEl)
+            .setName("Range Event Template")
+            .setDesc("For multi-week events. Placeholders: ${eventName}, ${startDate}, ${startYear}, ${startWeek}, ${endYear}, ${endWeek}")
+            .addText((text) => text
+            .setPlaceholder(DEFAULT_SETTINGS.rangeNoteTemplate)
+            .setValue(this.plugin.settings.rangeNoteTemplate)
+            .onChange(async (value) => {
+            this.plugin.settings.rangeNoteTemplate =
+                value || DEFAULT_SETTINGS.rangeNoteTemplate;
+            await this.plugin.saveSettings();
+        }));
+        // --- Appearance Settings ---
+        containerEl.createEl("h3", { text: "Appearance" });
         // Quote setting
         new obsidian.Setting(containerEl)
             .setName("Footer Quote")
-            .setDesc("Inspirational quote to display at the bottom")
+            .setDesc("Inspirational quote for the sidebar footer.")
             .addText((text) => text
             .setPlaceholder("the only true luxury is time.")
             .setValue(this.plugin.settings.quote)
             .onChange(async (value) => {
             this.plugin.settings.quote = value;
             await this.plugin.saveSettings();
+            this.refreshAllViews(); // To update footer if view is open
+        }));
+        // Color settings
+        new obsidian.Setting(containerEl)
+            .setName("Past Weeks Color")
+            .setDesc("Background color for weeks that have passed.")
+            .addColorPicker((colorPicker) => colorPicker
+            .setValue(this.plugin.settings.pastCellColor)
+            .onChange(async (value) => {
+            this.plugin.settings.pastCellColor = value;
+            // Update CSS variable (if we decide to implement dynamic updates later)
+            // document.documentElement.style.setProperty('--past-cell-color', value);
+            await this.plugin.saveSettings();
             this.refreshAllViews();
         }));
-        // Marker visibility section
+        new obsidian.Setting(containerEl)
+            .setName("Current Week Color")
+            .setDesc("Background color for the current week.")
+            .addColorPicker((colorPicker) => colorPicker
+            .setValue(this.plugin.settings.presentCellColor)
+            .onChange(async (value) => {
+            this.plugin.settings.presentCellColor = value;
+            // document.documentElement.style.setProperty('--present-cell-color', value);
+            await this.plugin.saveSettings();
+            this.refreshAllViews();
+        }));
+        new obsidian.Setting(containerEl)
+            .setName("Future Weeks Color")
+            .setDesc("Background color for weeks in the future.")
+            .addColorPicker((colorPicker) => colorPicker
+            .setValue(this.plugin.settings.futureCellColor)
+            .onChange(async (value) => {
+            this.plugin.settings.futureCellColor = value;
+            // document.documentElement.style.setProperty('--future-cell-color', value);
+            await this.plugin.saveSettings();
+            this.refreshAllViews();
+        }));
+        // Cell Shape
+        new obsidian.Setting(containerEl)
+            .setName("Cell Shape")
+            .setDesc("Visual shape of the week cells.")
+            .addDropdown((drop) => drop
+            .addOption("square", "Square")
+            .addOption("circle", "Circle")
+            .addOption("diamond", "Diamond")
+            .setValue(this.plugin.settings.cellShape)
+            .onChange(async (value) => {
+            this.plugin.settings.cellShape = value;
+            await this.plugin.saveSettings();
+            this.refreshAllViews();
+        }));
+        // Grid Orientation
+        new obsidian.Setting(containerEl)
+            .setName("Grid Orientation")
+            .setDesc("How years and weeks are arranged.")
+            .addDropdown((drop) => drop
+            .addOption("landscape", "Landscape (Years as Columns)")
+            .addOption("portrait", "Portrait (Years as Rows)")
+            .setValue(this.plugin.settings.gridOrientation)
+            .onChange(async (value) => {
+            this.plugin.settings.gridOrientation = value;
+            await this.plugin.saveSettings();
+            this.refreshAllViews();
+        }));
+        // --- Marker Visibility Settings ---
         containerEl.createEl("h3", { text: "Marker Visibility" });
-        // Decade markers setting
         new obsidian.Setting(containerEl)
             .setName("Decade Markers")
-            .setDesc("Show decade markers along the top (0, 10, 20, ...)")
+            .setDesc("Show age markers every 10 years.")
             .addToggle((toggle) => toggle
             .setValue(this.plugin.settings.showDecadeMarkers)
             .onChange(async (value) => {
@@ -5896,10 +5125,9 @@ class ChornicaSettingTab extends obsidian.PluginSettingTab {
             await this.plugin.saveSettings();
             this.refreshAllViews();
         }));
-        // Week markers setting
         new obsidian.Setting(containerEl)
             .setName("Week Markers")
-            .setDesc("Show week markers along the left (10, 20, 30, ...)")
+            .setDesc("Show markers for weeks 10, 20, 30, 40, 50.")
             .addToggle((toggle) => toggle
             .setValue(this.plugin.settings.showWeekMarkers)
             .onChange(async (value) => {
@@ -5907,33 +5135,31 @@ class ChornicaSettingTab extends obsidian.PluginSettingTab {
             await this.plugin.saveSettings();
             this.refreshAllViews();
         }));
-        // Month markers setting
-        new obsidian.Setting(containerEl)
+        new obsidian.Setting(containerEl) // Store ref to toggle
             .setName("Month Markers")
-            .setDesc("Show month markers along the left side (Jan, Feb, Mar, ...)")
+            .setDesc("Show abbreviated month names.")
             .addToggle((toggle) => toggle
             .setValue(this.plugin.settings.showMonthMarkers)
             .onChange(async (value) => {
             this.plugin.settings.showMonthMarkers = value;
             await this.plugin.saveSettings();
-            this.refreshAllViews();
-            // Show/hide month marker frequency setting based on toggle state
-            // Note: 'freqSetting' is the Setting instance defined later in the code
-            if (freqSetting && freqSetting.settingEl) {
-                freqSetting.settingEl.classList.toggle("hidden", !value);
+            // Show/hide frequency dropdown using hidden class
+            const freqSettingEl = containerEl.querySelector(".month-marker-frequency");
+            if (freqSettingEl) {
+                freqSettingEl.classList.toggle("hidden", !value);
             }
+            this.refreshAllViews();
         }));
-        // Month marker frequency setting
         const freqSetting = new obsidian.Setting(containerEl)
             .setName("Month Marker Frequency")
-            .setDesc("Choose how often month markers appear")
-            .setClass("month-marker-frequency")
+            .setDesc("How often month markers appear (requires Month Markers ON).")
+            .setClass("month-marker-frequency") // Class for show/hide
             .addDropdown((dropdown) => {
             dropdown
                 .addOption("all", "Every Month")
-                .addOption("quarter", "Every Quarter (Jan, Apr, Jul, Oct)")
-                .addOption("half-year", "Every Half Year (Jan, Jul)")
-                .addOption("year", "Every Year (Jan only)")
+                .addOption("quarter", "Every Quarter")
+                .addOption("half-year", "Every Half Year")
+                .addOption("year", "Start of Year Only")
                 .setValue(this.plugin.settings.monthMarkerFrequency)
                 .onChange(async (value) => {
                 this.plugin.settings.monthMarkerFrequency = value;
@@ -5945,90 +5171,73 @@ class ChornicaSettingTab extends obsidian.PluginSettingTab {
         if (!this.plugin.settings.showMonthMarkers) {
             freqSetting.settingEl.classList.add("hidden");
         }
-        // Color settings section
-        containerEl.createEl("h3", { text: "Colors" });
-        // Past cells color
         new obsidian.Setting(containerEl)
-            .setName("Past Weeks Color")
-            .setDesc("Color for weeks that have passed")
-            .addColorPicker((colorPicker) => colorPicker
-            .setValue(this.plugin.settings.pastCellColor)
+            .setName("Birthday Marker")
+            .setDesc("Show a cake icon near your birthday week.")
+            .addToggle((toggle) => toggle
+            .setValue(this.plugin.settings.showBirthdayMarker)
             .onChange(async (value) => {
-            this.plugin.settings.pastCellColor = value;
+            this.plugin.settings.showBirthdayMarker = value;
             await this.plugin.saveSettings();
             this.refreshAllViews();
         }));
-        // Present cell color
+        // --- Event Type Management ---
+        containerEl.createEl("h3", { text: "Event Types" });
         new obsidian.Setting(containerEl)
-            .setName("Current Week Color")
-            .setDesc("Color for the current week")
-            .addColorPicker((colorPicker) => colorPicker
-            .setValue(this.plugin.settings.presentCellColor)
-            .onChange(async (value) => {
-            this.plugin.settings.presentCellColor = value;
-            await this.plugin.saveSettings();
-            this.refreshAllViews();
-        }));
-        // Future cells color
-        new obsidian.Setting(containerEl)
-            .setName("Future Weeks Color")
-            .setDesc("Color for weeks in the future")
-            .addColorPicker((colorPicker) => colorPicker
-            .setValue(this.plugin.settings.futureCellColor)
-            .onChange(async (value) => {
-            this.plugin.settings.futureCellColor = value;
-            await this.plugin.saveSettings();
-            this.refreshAllViews();
-        }));
-        // Find the "Week Filling Options" section in your code
+            .setName("Manage Event Types")
+            .setDesc("Add custom types, or edit the names and colors of any type (including presets).")
+            .addButton((button) => {
+            button.setButtonText("Manage Types").onClick(() => {
+                // Assuming ManageEventTypesModal class exists and is correct
+                new ManageEventTypesModal(this.app, this.plugin).open();
+            });
+        });
+        // --- Week Filling Options ---
         containerEl.createEl("h3", { text: "Week Filling Options" });
-        // Replace the existing toggles with this single toggle that handles both modes
-        new obsidian.Setting(containerEl)
+        // Auto-fill toggle (now controls manual fill indirectly)
+        const autoFillToggleSetting = new obsidian.Setting(containerEl)
             .setName("Enable Auto-Fill")
-            .setDesc("When enabled, automatically marks weeks as completed on a specific day. When disabled, you can manually mark weeks by right-clicking them.")
+            .setDesc("Automatically mark past weeks as 'filled' on a chosen day. If OFF, you can mark future weeks manually by right-clicking them.")
             .addToggle((toggle) => toggle
             .setValue(this.plugin.settings.enableAutoFill)
             .onChange(async (value) => {
             this.plugin.settings.enableAutoFill = value;
-            // If auto-fill is enabled, manual fill should be disabled
-            this.plugin.settings.enableManualFill = !value;
+            this.plugin.settings.enableManualFill = !value; // Manual fill is inverse
             await this.plugin.saveSettings();
-            // Find the setting element for the day selector using its class
+            // Show/hide day selector based on toggle state
             const daySelectorEl = containerEl.querySelector(".auto-fill-day-selector");
             if (daySelectorEl) {
-                // Toggle the hidden class directly on the element
                 daySelectorEl.classList.toggle("hidden", !value);
             }
             // Update status indicator text
             let statusIndicator = containerEl.querySelector(".chronica-fill-mode-status");
             const statusText = value
-                ? "Auto-fill is active. Weeks will be filled automatically."
-                : "Manual fill is active. Right-click on future weeks to mark them as filled.";
+                ? "Auto-fill is active."
+                : "Manual fill is active (right-click future weeks).";
             if (statusIndicator) {
-                // If element exists, just update text
                 statusIndicator.textContent = statusText;
             }
             else {
-                // If element doesn't exist, create it
+                // If it doesn't exist, create it after the day selector setting
                 statusIndicator = containerEl.createEl("div", {
                     cls: "chronica-fill-mode-status",
                     text: statusText,
                 });
-                // Try to insert it after the day selector element if found,
-                // otherwise, just append to the container (less ideal but safe)
-                if (daySelectorEl) {
-                    daySelectorEl.insertAdjacentElement("afterend", statusIndicator);
+                const daySel = containerEl.querySelector(".auto-fill-day-selector");
+                if (daySel) {
+                    daySel.insertAdjacentElement("afterend", statusIndicator);
                 }
                 else {
-                    containerEl.appendChild(statusIndicator);
+                    // Fallback: append after the toggle itself if day selector missing
+                    autoFillToggleSetting.settingEl.insertAdjacentElement("afterend", statusIndicator);
                 }
             }
             this.refreshAllViews();
         }));
-        // Auto-fill day selector (keep this)
+        // Auto-fill day selector (conditionally displayed)
         const daySelector = new obsidian.Setting(containerEl)
             .setName("Auto-Fill Day")
-            .setDesc("Day of the week when auto-fill should occur")
+            .setDesc("Day of the week when auto-fill should occur (requires Auto-Fill ON).")
             .setClass("auto-fill-day-selector")
             .addDropdown((dropdown) => {
             const days = [
@@ -6040,9 +5249,7 @@ class ChornicaSettingTab extends obsidian.PluginSettingTab {
                 "Friday",
                 "Saturday",
             ];
-            days.forEach((day, index) => {
-                dropdown.addOption(index.toString(), day);
-            });
+            days.forEach((day, index) => dropdown.addOption(index.toString(), day));
             dropdown
                 .setValue(this.plugin.settings.autoFillDay.toString())
                 .onChange(async (value) => {
@@ -6050,341 +5257,174 @@ class ChornicaSettingTab extends obsidian.PluginSettingTab {
                 await this.plugin.saveSettings();
             });
         });
-        // Hide day selector if auto-fill is disabled
-        if (!this.plugin.settings.enableAutoFill) {
-            daySelector.settingEl.style.display = "none";
-        }
-        // Add initial status indicator AFTER the daySelector is defined
+        // Create the initial status indicator text element AFTER daySelector setting
         const initialStatusText = this.plugin.settings.enableAutoFill
-            ? "Auto-fill is active. Weeks will be filled automatically."
-            : "Manual fill is active. Right-click on future weeks to mark them as filled.";
+            ? "Auto-fill is active."
+            : "Manual fill is active (right-click future weeks).";
         const statusEl = containerEl.createEl("div", {
             cls: "chronica-fill-mode-status",
             text: initialStatusText,
         });
-        // Place the status element directly after the daySelector's main element
-        if (daySelector && daySelector.settingEl) {
-            daySelector.settingEl.insertAdjacentElement("afterend", statusEl);
-        }
-        else {
-            // Fallback if daySelector wasn't created for some reason
-            containerEl.appendChild(statusEl);
-        }
-        // Hide day selector initially if auto-fill is disabled (this remains correct)
+        daySelector.settingEl.insertAdjacentElement("afterend", statusEl); // Place it
+        // Hide day selector initially if auto-fill is disabled
         if (!this.plugin.settings.enableAutoFill) {
             daySelector.settingEl.classList.add("hidden");
         }
-        // Event types management section
-        containerEl.createEl("h3", { text: "Event Types" });
+        // Clear filled weeks button
         new obsidian.Setting(containerEl)
-            .setName("Manage Event Types")
-            .setDesc("Create, edit, or delete custom event types")
+            .setName("Clear Filled Weeks")
+            .setDesc("Remove all manual/auto filled week markings (does not delete notes or events).")
             .addButton((button) => {
-            button.setButtonText("Manage Types").onClick(() => {
-                const modal = new ManageEventTypesModal(this.app, this.plugin);
-                modal.open();
-            });
-        });
-        // File naming templates section
-        containerEl.createEl("h3", { text: "File Naming Templates" });
-        containerEl.createEl("p", {
-            text: "Customize how Chronica names your week and event note files. Use placeholders like ${year}, ${week}, etc.",
-        });
-        // Week note template
-        new obsidian.Setting(containerEl)
-            .setName("Week Note Template")
-            .setDesc("Template for week note filenames. Example: ${year}-W${week}")
-            .addText((text) => text
-            .setPlaceholder("${year}-W${week}")
-            .setValue(this.plugin.settings.weekNoteTemplate)
-            .onChange(async (value) => {
-            this.plugin.settings.weekNoteTemplate = value || "${year}-W${week}";
-            await this.plugin.saveSettings();
-        }));
-        // Event note template
-        new obsidian.Setting(containerEl)
-            .setName("Event Note Template")
-            .setDesc("Template for event note filenames. Example: ${year}-W${week}-${event}")
-            .addText((text) => text
-            .setPlaceholder("${year}-W${week}")
-            .setValue(this.plugin.settings.eventNoteTemplate)
-            .onChange(async (value) => {
-            this.plugin.settings.eventNoteTemplate =
-                value || "${year}-W${week}";
-            await this.plugin.saveSettings();
-        }));
-        // Range note template
-        new obsidian.Setting(containerEl)
-            .setName("Range Event Template")
-            .setDesc("Template for range event filenames. Example: ${startYear}-W${startWeek}_to_${endYear}-W${endWeek}")
-            .addText((text) => text
-            .setPlaceholder("${startYear}-W${startWeek}_to_${endYear}-W${endWeek}")
-            .setValue(this.plugin.settings.rangeNoteTemplate)
-            .onChange(async (value) => {
-            this.plugin.settings.rangeNoteTemplate =
-                value || "${startYear}-W${startWeek}_to_${endYear}-W${endWeek}";
-            await this.plugin.saveSettings();
-        }));
-        // Clear event data section
-        containerEl.createEl("h3", { text: "Clear Event Data" });
-        // Green events (Major Life Events)
-        new obsidian.Setting(containerEl)
-            .setName("Major Life Events")
-            .setDesc("Weeks marked as Major Life Events")
-            .addButton((button) => {
-            button.setButtonText("Clear All").onClick(async () => {
-                this.plugin.settings.greenEvents = [];
-                await this.plugin.saveSettings();
-                this.refreshAllViews();
-                new obsidian.Notice("Cleared all Major Life Events");
-            });
-        });
-        // Blue events (Travel)
-        new obsidian.Setting(containerEl)
-            .setName("Travel Events")
-            .setDesc("Weeks marked as Travel")
-            .addButton((button) => {
-            button.setButtonText("Clear All").onClick(async () => {
-                this.plugin.settings.blueEvents = [];
-                await this.plugin.saveSettings();
-                this.refreshAllViews();
-                new obsidian.Notice("Cleared all Travel Events");
-            });
-        });
-        // Pink events (Relationships)
-        new obsidian.Setting(containerEl)
-            .setName("Relationship Events")
-            .setDesc("Weeks marked as Relationships")
-            .addButton((button) => {
-            button.setButtonText("Clear All").onClick(async () => {
-                this.plugin.settings.pinkEvents = [];
-                await this.plugin.saveSettings();
-                this.refreshAllViews();
-                new obsidian.Notice("Cleared all Relationship Events");
-            });
-        });
-        // Purple events (Education/Career)
-        new obsidian.Setting(containerEl)
-            .setName("Education/Career Events")
-            .setDesc("Weeks marked as Education/Career")
-            .addButton((button) => {
-            button.setButtonText("Clear All").onClick(async () => {
-                this.plugin.settings.purpleEvents = [];
-                await this.plugin.saveSettings();
-                this.refreshAllViews();
-                new obsidian.Notice("Cleared all Education/Career Events");
-            });
-        });
-        // Custom events clear button (only if there are custom event types)
-        if (this.plugin.settings.customEventTypes &&
-            this.plugin.settings.customEventTypes.length > 0) {
-            new obsidian.Setting(containerEl)
-                .setName("Custom Events")
-                .setDesc("Clear events for custom event types")
-                .addButton((button) => {
-                button.setButtonText("Clear All Custom Events").onClick(async () => {
-                    this.plugin.settings.customEvents = {};
-                    for (const type of this.plugin.settings.customEventTypes) {
-                        this.plugin.settings.customEvents[type.name] = [];
-                    }
-                    await this.plugin.saveSettings();
-                    this.refreshAllViews();
-                    new obsidian.Notice("Cleared all custom events");
-                });
-            });
-            // Manual fill toggle
-            new obsidian.Setting(containerEl)
-                .setName("Enable Manual Fill")
-                .setDesc("Allow manually marking weeks as filled by right-clicking on them")
-                .addToggle((toggle) => toggle
-                .setValue(this.plugin.settings.enableManualFill)
-                .onChange(async (value) => {
-                this.plugin.settings.enableManualFill = value;
-                await this.plugin.saveSettings();
-                this.refreshAllViews();
-            }));
-            // Auto-fill toggle
-            new obsidian.Setting(containerEl)
-                .setName("Enable Auto-Fill")
-                .setDesc("Automatically mark the current week as filled on a specific day")
-                .addToggle((toggle) => toggle
-                .setValue(this.plugin.settings.enableAutoFill)
-                .onChange(async (value) => {
-                this.plugin.settings.enableAutoFill = value;
-                await this.plugin.saveSettings();
-                // Show/hide day selector based on toggle state
-                const daySelector = containerEl.querySelector(".auto-fill-day-selector");
-                if (daySelector) {
-                    daySelector.style.display = value
-                        ? "flex"
-                        : "none";
-                }
-            }));
-            // Auto-fill day selector
-            const daySelector = new obsidian.Setting(containerEl)
-                .setName("Auto-Fill Day")
-                .setDesc("Day of the week when auto-fill should occur")
-                .setClass("auto-fill-day-selector")
-                .addDropdown((dropdown) => {
-                const days = [
-                    "Sunday",
-                    "Monday",
-                    "Tuesday",
-                    "Wednesday",
-                    "Thursday",
-                    "Friday",
-                    "Saturday",
-                ];
-                days.forEach((day, index) => {
-                    dropdown.addOption(index.toString(), day);
-                });
-                dropdown
-                    .setValue(this.plugin.settings.autoFillDay.toString())
-                    .onChange(async (value) => {
-                    this.plugin.settings.autoFillDay = parseInt(value);
-                    await this.plugin.saveSettings();
-                });
-            });
-            // Hide day selector if auto-fill is disabled
-            if (!this.plugin.settings.enableAutoFill) {
-                daySelector.settingEl.style.display = "none";
-            }
-            // Week start day setting
-            new obsidian.Setting(containerEl)
-                .setName("Start Week On Monday")
-                .setDesc("Use Monday as the first day of the week (instead of Sunday)")
-                .addToggle((toggle) => toggle
-                .setValue(this.plugin.settings.startWeekOnMonday)
-                .onChange(async (value) => {
-                this.plugin.settings.startWeekOnMonday = value;
-                await this.plugin.saveSettings();
-                this.refreshAllViews();
-            }));
-            // Clear filled weeks button
-            new obsidian.Setting(containerEl)
-                .setName("Clear Filled Weeks")
-                .setDesc("Remove all filled week markings")
-                .addButton((button) => {
-                button.setButtonText("Clear All").onClick(async () => {
+            button.setButtonText("Clear Filled Markings").onClick(async () => {
+                if (confirm("Are you sure you want to clear all filled week markings?")) {
                     this.plugin.settings.filledWeeks = [];
                     await this.plugin.saveSettings();
                     this.refreshAllViews();
-                    new obsidian.Notice("Cleared all filled weeks");
-                });
-            });
-            // Default to fit to screen setting
-            new obsidian.Setting(containerEl)
-                .setName("Default to Fit to Screen")
-                .setDesc("Automatically fit the timeline to the screen when opening the view")
-                .addToggle((toggle) => toggle
-                .setValue(this.plugin.settings.defaultFitToScreen)
-                .onChange(async (value) => {
-                this.plugin.settings.defaultFitToScreen = value;
-                await this.plugin.saveSettings();
-                // Show/hide the zoom level setting based on this value
-                // Note: 'zoomSetting' is the Setting instance defined later
-                if (zoomSetting && zoomSetting.settingEl) {
-                    // Note: We hide zoom when Fit to Screen is ON (value is true)
-                    zoomSetting.settingEl.classList.toggle("hidden", value);
+                    new obsidian.Notice("Cleared all filled weeks.");
                 }
-            }));
-            // Zoom level setting
-            const zoomSetting = new obsidian.Setting(containerEl)
-                .setName("Default Zoom Level")
-                .setDesc("Set the default zoom level when 'Fit to Screen' is disabled (1.0 = 100%)")
-                .setClass("zoom-level-setting")
-                .addSlider((slider) => slider
-                .setLimits(0.5, 3.0, 0.25)
-                .setValue(this.plugin.settings.zoomLevel)
-                .setDynamicTooltip()
-                .onChange(async (value) => {
-                this.plugin.settings.zoomLevel = value;
-                await this.plugin.saveSettings();
-                this.refreshAllViews();
-            }));
-            // Hide zoom setting initially if fit to screen is enabled
-            if (this.plugin.settings.defaultFitToScreen) {
-                zoomSetting.settingEl.classList.add("hidden");
-            }
-            new obsidian.Setting(containerEl)
-                .setName("Grid Orientation")
-                .setDesc("Display years as columns/weeks as rows (landscape) or years as rows/weeks as columns (portrait)")
-                .addDropdown((drop) => drop
-                .addOption("landscape", "Landscape (Default)")
-                .addOption("portrait", "Portrait")
-                .setValue(this.plugin.settings.gridOrientation)
-                .onChange(async (value) => {
-                this.plugin.settings.gridOrientation = value;
-                await this.plugin.saveSettings();
-                this.refreshAllViews();
-            }));
-            new obsidian.Setting(containerEl)
-                .setName("Cell Shape")
-                .setDesc("Square, circle, or diamond.")
-                .addDropdown((drop) => drop
-                .addOption("square", "Square")
-                .addOption("circle", "Circle")
-                .addOption("diamond", "Diamond")
-                .setValue(this.plugin.settings.cellShape)
-                .onChange(async (value) => {
-                this.plugin.settings.cellShape = value;
-                await this.plugin.saveSettings();
-                // Re-render each open Chronica Timeline view so the new shape takes effect
-                this.plugin.app.workspace
-                    .getLeavesOfType(TIMELINE_VIEW_TYPE)
-                    .forEach((leaf) => {
-                    const view = leaf.view;
-                    view.updateZoomLevel();
-                });
-            }));
-            // Statistics Panel Settings
-            containerEl.createEl("h3", { text: "Statistics Panel" });
-            new obsidian.Setting(containerEl)
-                .setName("Default Panel State")
-                .setDesc("Whether the statistics panel should be open by default")
-                .addToggle((toggle) => toggle
-                .setValue(this.plugin.settings.isStatsOpen)
-                .onChange(async (value) => {
-                this.plugin.settings.isStatsOpen = value;
-                await this.plugin.saveSettings();
-                this.refreshAllViews();
-            }));
-            new obsidian.Setting(containerEl)
-                .setName("Default Tab")
-                .setDesc("Which tab should be selected by default")
-                .addDropdown((dropdown) => {
-                dropdown
-                    .addOption("overview", "Overview")
-                    .addOption("events", "Events")
-                    .addOption("timeline", "Timeline")
-                    .addOption("charts", "Charts")
-                    .setValue(this.plugin.settings.activeStatsTab)
-                    .onChange(async (value) => {
-                    this.plugin.settings.activeStatsTab = value;
-                    await this.plugin.saveSettings();
-                    this.refreshAllViews();
-                });
             });
-            new obsidian.Setting(containerEl)
-                .setName("Panel Height")
-                .setDesc("Default height of the statistics panel in pixels")
-                .addSlider((slider) => slider
-                .setLimits(150, 600, 50)
-                .setValue(this.plugin.settings.statsPanelHeight)
-                .setDynamicTooltip()
-                .onChange(async (value) => {
-                this.plugin.settings.statsPanelHeight = value;
-                await this.plugin.saveSettings();
-                this.refreshAllViews();
-            }));
+        });
+        // --- Other Display/Interaction Settings ---
+        containerEl.createEl("h3", { text: "Other Display Options" });
+        // Week start day setting
+        new obsidian.Setting(containerEl)
+            .setName("Start Week On Monday")
+            .setDesc("Use Monday as the first day of the week (ISO standard).")
+            .addToggle((toggle) => toggle
+            .setValue(this.plugin.settings.startWeekOnMonday)
+            .onChange(async (value) => {
+            this.plugin.settings.startWeekOnMonday = value;
+            await this.plugin.saveSettings();
+            this.refreshAllViews();
+        }));
+        // Default fit to screen setting
+        new obsidian.Setting(containerEl) // Store ref to toggle
+            .setName("Default Fit to Screen")
+            .setDesc("Automatically zoom to fit the grid when opening the view.")
+            .addToggle((toggle) => toggle
+            .setValue(this.plugin.settings.defaultFitToScreen)
+            .onChange(async (value) => {
+            this.plugin.settings.defaultFitToScreen = value;
+            await this.plugin.saveSettings();
+            // Show/hide zoom slider using hidden class
+            const zoomSettingEl = containerEl.querySelector(".zoom-level-setting");
+            if (zoomSettingEl) {
+                zoomSettingEl.classList.toggle("hidden", value); // Hide slider if Fit is ON
+            }
+        }));
+        // Zoom level setting (conditionally displayed)
+        const zoomSetting = new obsidian.Setting(containerEl)
+            .setName("Default Zoom Level")
+            .setDesc("Manual zoom level if 'Fit to Screen' is OFF (1 = 100%).")
+            .setClass("zoom-level-setting") // Class for show/hide
+            .addSlider((slider) => slider
+            .setLimits(0.5, 3.0, 0.1) // Finer steps for zoom
+            .setValue(this.plugin.settings.zoomLevel)
+            .setDynamicTooltip()
+            .onChange(async (value) => {
+            this.plugin.settings.zoomLevel = value;
+            await this.plugin.saveSettings();
+            // No need to refresh views here, zoom applies instantly in view
+        }));
+        // Hide zoom setting initially if fit to screen is enabled
+        if (this.plugin.settings.defaultFitToScreen) {
+            zoomSetting.settingEl.classList.add("hidden");
         }
-        // Help tips section
+        // --- Statistics Panel Settings ---
+        containerEl.createEl("h3", { text: "Statistics Panel" });
+        new obsidian.Setting(containerEl)
+            .setName("Default Panel State")
+            .setDesc("Have the statistics panel open when Chronica view loads.")
+            .addToggle((toggle) => toggle
+            .setValue(this.plugin.settings.isStatsOpen)
+            .onChange(async (value) => {
+            this.plugin.settings.isStatsOpen = value;
+            await this.plugin.saveSettings();
+            // Views will read this on next open/render
+        }));
+        new obsidian.Setting(containerEl)
+            .setName("Default Panel Tab")
+            .setDesc("Which tab the statistics panel opens to.")
+            .addDropdown((dropdown) => {
+            dropdown
+                .addOption("overview", "Overview")
+                .addOption("events", "Events")
+                .addOption("timeline", "Timeline")
+                .addOption("charts", "Charts")
+                .setValue(this.plugin.settings.activeStatsTab)
+                .onChange(async (value) => {
+                this.plugin.settings.activeStatsTab = value;
+                await this.plugin.saveSettings();
+            });
+        });
+        new obsidian.Setting(containerEl)
+            .setName("Default Panel Height")
+            .setDesc("Initial height of the statistics panel in pixels.")
+            .addSlider((slider) => slider
+            .setLimits(150, 600, 10) // Finer steps
+            .setValue(this.plugin.settings.statsPanelHeight)
+            .setDynamicTooltip()
+            .onChange(async (value) => {
+            this.plugin.settings.statsPanelHeight = value;
+            await this.plugin.saveSettings();
+            // Update CSS variable if view is open? Or let view handle on open.
+        }));
+        new obsidian.Setting(containerEl)
+            .setName("Default Panel Width")
+            .setDesc("Initial width of the statistics panel in pixels.")
+            .addSlider((slider) => slider
+            .setLimits(400, 1200, 20) // Width range
+            .setValue(this.plugin.settings.statsPanelWidth)
+            .setDynamicTooltip()
+            .onChange(async (value) => {
+            this.plugin.settings.statsPanelWidth = value;
+            await this.plugin.saveSettings();
+        }));
+        // --- NEW Data Management Section ---
+        containerEl.createEl("h3", { text: "Data Management" });
+        // Clear All Events Button
+        new obsidian.Setting(containerEl)
+            .setName("Clear All Events")
+            .setDesc("Permanently delete all recorded events. This does NOT delete notes. Event type definitions will remain.")
+            .addButton((button) => {
+            button
+                .setButtonText("Clear All Events")
+                .setWarning() // Make the button look cautionary
+                .onClick(async () => {
+                if (confirm("DANGER: Are you sure you want to delete ALL recorded events from Chronica's settings? This will NOT delete your notes, but the links in Chronica will be gone. This cannot be undone.")) {
+                    this.plugin.settings.events = []; // Clear the new events array
+                    await this.plugin.saveSettings();
+                    this.refreshAllViews(); // Update views
+                    new obsidian.Notice("All recorded events have been cleared from Chronica settings.");
+                }
+            });
+        });
+        // Reset Event Types Button
+        new obsidian.Setting(containerEl)
+            .setName("Reset Event Types & Events")
+            .setDesc("Reset event types to the default presets (Major Life, etc.). This will ALSO CLEAR ALL RECORDED EVENTS because their type links will become invalid.")
+            .addButton((button) => {
+            button
+                .setButtonText("Reset Types & Clear Events")
+                .setWarning() // Make the button look cautionary
+                .onClick(async () => {
+                if (confirm("DANGER: Are you sure you want to reset event types to default? This will also DELETE ALL recorded events from Chronica's settings. This cannot be undone.")) {
+                    // Reset types to default (deep copy)
+                    this.plugin.settings.eventTypes = JSON.parse(JSON.stringify(DEFAULT_SETTINGS.eventTypes));
+                    // Clear all events as their typeIds are no longer valid/consistent
+                    this.plugin.settings.events = [];
+                    await this.plugin.saveSettings();
+                    this.refreshAllViews(); // Update views
+                    new obsidian.Notice("Event types reset to default. All events cleared.");
+                }
+            });
+        });
+        // --- Tips & Shortcuts Section (Keep as is) ---
         containerEl.createEl("h3", { text: "Tips & Shortcuts" });
-        // Create container for tips sections
         const tipsContainer = containerEl.createDiv({
             cls: "chronica-tips-container",
         });
-        // Basic Navigation section
+        // (Keep all the <details> sections for tips - unchanged)
         const navigationDetails = tipsContainer.createEl("details", {
             cls: "chronica-tips-details",
         });
@@ -6396,21 +5436,17 @@ class ChornicaSettingTab extends obsidian.PluginSettingTab {
             cls: "chronica-tips-content",
         });
         navContent.createEl("p", {
-            text: "• Click on any week to create or open a note for that week",
+            text: "• Click on any week cell to create or open its note.",
         });
         navContent.createEl("p", {
-            text: "• Shift+Click on a week to quickly add an event at that date",
+            text: "• Shift+Click on a week cell to quickly add an event for that date.",
         });
         navContent.createEl("p", {
-            text: "• Hover over a cell to see week number and date range",
+            text: "• Hover over cells for week number and date range.",
         });
         navContent.createEl("p", {
-            text: "• Use the zoom controls in the sidebar to adjust cell size",
+            text: "• Use sidebar zoom controls or 'Fit to Screen'.",
         });
-        navContent.createEl("p", {
-            text: "• Click 'Fit to Screen' to automatically size the grid to your window",
-        });
-        // Events & Planning section
         const eventsDetails = tipsContainer.createEl("details", {
             cls: "chronica-tips-details",
         });
@@ -6422,47 +5458,43 @@ class ChornicaSettingTab extends obsidian.PluginSettingTab {
             cls: "chronica-tips-content",
         });
         eventsContent.createEl("p", {
-            text: "• Use the 'Plan Event' button to mark significant life events",
+            text: "• Use 'Add Event' button or Shift+Click.",
         });
         eventsContent.createEl("p", {
-            text: "• Create date ranges by selecting 'Date Range' in the event modal",
+            text: "• Mark multi-week events using 'Date Range'.",
         });
         eventsContent.createEl("p", {
-            text: "• Create custom event types with your own names and colors",
+            text: "• Manage custom event types (names/colors) via the button.",
         });
         eventsContent.createEl("p", {
-            text: "• Right-click on future weeks to manually mark them as filled (when auto-fill is disabled)",
+            text: "• Edit preset type names/colors via 'Manage Types'.",
         });
         eventsContent.createEl("p", {
-            text: "• Events are stored as regular notes with YAML frontmatter",
+            text: "• Events create/link to notes with YAML frontmatter.",
         });
-        // Customization section
-        const customDetails = tipsContainer.createEl("details", {
+        const customizationDetails = tipsContainer.createEl("details", {
             cls: "chronica-tips-details",
         });
-        customDetails.createEl("summary", {
+        customizationDetails.createEl("summary", {
             text: "Customization",
             cls: "chronica-tips-summary",
         });
-        const customContent = customDetails.createDiv({
+        const customContent = customizationDetails.createDiv({
             cls: "chronica-tips-content",
         });
         customContent.createEl("p", {
-            text: "• Change between square, circle, or diamond cells for different visual styles",
+            text: "• Change cell shapes (square, circle, diamond).",
         });
         customContent.createEl("p", {
-            text: "• Try portrait mode for an alternative timeline view (years as rows instead of columns)",
+            text: "• Switch between Landscape/Portrait grid orientation.",
         });
         customContent.createEl("p", {
-            text: "• Customize which markers appear using the marker visibility toggles",
+            text: "• Toggle visibility of Decade, Week, Month, Birthday markers.",
         });
         customContent.createEl("p", {
-            text: "• Adjust color schemes for past, present, and future weeks",
+            text: "• Adjust colors for Past/Present/Future cells.",
         });
-        customContent.createEl("p", {
-            text: "• Personalize the footer quote to display your own mantra or reminder",
-        });
-        // Statistics section
+        customContent.createEl("p", { text: "• Customize the footer quote." });
         const statsDetails = tipsContainer.createEl("details", {
             cls: "chronica-tips-details",
         });
@@ -6474,56 +5506,32 @@ class ChornicaSettingTab extends obsidian.PluginSettingTab {
             cls: "chronica-tips-content",
         });
         statsContent.createEl("p", {
-            text: "• Click the 'Statistics' handle at the bottom of the screen to open the stats panel",
+            text: "• Click handle at screen bottom to toggle panel.",
         });
         statsContent.createEl("p", {
-            text: "• Browse different tabs to see varied visualizations of your timeline data",
+            text: "• Drag top handle to resize vertically.",
         });
         statsContent.createEl("p", {
-            text: "• Drag the top handle of the stats panel to resize it",
+            text: "• Drag side handles or header (not buttons) to resize/move horizontally.",
         });
         statsContent.createEl("p", {
-            text: "• Analyze seasonal patterns and event distribution in the Charts tab",
+            text: "• Explore different data views in the tabs.",
         });
-        statsContent.createEl("p", {
-            text: "• Track your life progress and upcoming milestones in the Timeline tab",
-        });
-        // Obsidian Integration section
-        const integrationDetails = tipsContainer.createEl("details", {
-            cls: "chronica-tips-details",
-        });
-        integrationDetails.createEl("summary", {
-            text: "Obsidian Integration",
-            cls: "chronica-tips-summary",
-        });
-        const integrationContent = integrationDetails.createDiv({
-            cls: "chronica-tips-content",
-        });
-        integrationContent.createEl("p", {
-            text: "• Weekly notes are stored as regular markdown files in your vault",
-        });
-        integrationContent.createEl("p", {
-            text: "• Define a specific folder for all timeline notes in settings",
-        });
-        integrationContent.createEl("p", {
-            text: "• Event metadata is stored in YAML frontmatter for compatibility with other plugins",
-        });
-        integrationContent.createEl("p", {
-            text: "• Use Command+P (Ctrl+P) and search for 'Chronica' to access timeline commands",
-        });
-        // Set the first section to be open by default
-        navigationDetails.setAttribute("open", "");
-    }
+        navigationDetails.setAttribute("open", ""); // Open first tip by default
+    } // End of display() method
     /**
-     * Refresh all timeline viewsprivate isChronicaRelatedFile(file: TAbstractFile): boolea
+     * Refresh all timeline views
      */
     refreshAllViews() {
         this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE).forEach((leaf) => {
             const view = leaf.view;
-            view.renderView();
+            // Ensure view exists and has the render method before calling
+            if (view && typeof view.renderView === "function") {
+                view.renderView();
+            }
         });
     }
-}
+} // End of ChornicaSettingTab class
 
 module.exports = ChornicaTimelinePlugin;
 //# sourceMappingURL=main.js.map
