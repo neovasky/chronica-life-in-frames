@@ -4866,12 +4866,14 @@ class ChornicaTimelineView extends ItemView {
       cls: "chronica-stats-handle",
     });
 
-    statsHandle.innerHTML = `
-    <svg class="chronica-stats-handle-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M18 20V10M12 20V4M6 20v-6"></path>
-    </svg>
-    <span>Statistics</span>
-  `;
+    // Create the icon using setIcon
+    const iconEl = statsHandle.createSpan({
+      cls: "chronica-stats-handle-icon",
+    }); // Create a span for the icon
+    setIcon(iconEl, "bar-chart-horizontal"); // Use the appropriate icon name
+
+    // Create the text label separately
+    statsHandle.createSpan({ text: "Statistics" });
 
     statsHandle.setAttribute(
       "title",
