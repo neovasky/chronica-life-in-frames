@@ -2801,8 +2801,6 @@ class ChornicaTimelineView extends obsidian.ItemView {
         });
         // Use the directly imported setIcon helper function
         obsidian.setIcon(sidebarToggle, this.isSidebarOpen ? "chevron-left" : "chevron-right"); // <<< Fixed: no 'obsidian.' prefix
-        sidebarToggle.style.width = "var(--sidebar-toggle-size)"; // Ensure size is consistent
-        sidebarToggle.style.height = "var(--sidebar-toggle-size)"; // Ensure size is consistent
         sidebarToggle.addEventListener("click", () => {
             this.isSidebarOpen = !this.isSidebarOpen;
             // Save state to plugin settings

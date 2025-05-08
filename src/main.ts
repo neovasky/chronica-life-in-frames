@@ -3667,8 +3667,6 @@ class ChornicaTimelineView extends ItemView {
       sidebarToggle,
       this.isSidebarOpen ? "chevron-left" : "chevron-right"
     ); // <<< Fixed: no 'obsidian.' prefix
-    sidebarToggle.style.width = "var(--sidebar-toggle-size)"; // Ensure size is consistent
-    sidebarToggle.style.height = "var(--sidebar-toggle-size)"; // Ensure size is consistent
 
     sidebarToggle.addEventListener("click", () => {
       this.isSidebarOpen = !this.isSidebarOpen;

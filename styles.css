@@ -233,8 +233,8 @@
 .chronica-sidebar-toggle {
   background-color: transparent;
   border: none;
-  width: 30px;
-  height: 30px;
+  width: var(--sidebar-toggle-size); /* Use CSS variable */
+  height: var(--sidebar-toggle-size); /* Use CSS variable */
   padding: 0;
   cursor: pointer;
   display: flex;
@@ -245,8 +245,7 @@
   transition: background-color 0.2s ease, color 0.2s ease;
   z-index: 25;
 }
-
-.chronica-sidebar-toggle:hover {
+Exp .chronica-sidebar-toggle:hover {
   background-color: var(--background-modifier-hover);
   color: var(--text-normal);
 }
