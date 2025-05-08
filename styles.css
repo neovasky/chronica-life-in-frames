@@ -633,6 +633,59 @@
   box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
 }
 
+/* Event type styling via classes */
+.chronica-grid-cell.event.chronica-event-major-life {
+  background-color: var(
+    --chronica-event-major-life
+  ); /* Defined in :root, set by JS */
+  border: 1px solid rgba(0, 0, 0, 0.2); /* Example border */
+}
+.chronica-grid-cell.event.chronica-event-travel {
+  background-color: var(--chronica-event-travel);
+  border: 1px solid rgba(0, 0, 0, 0.2);
+}
+.chronica-grid-cell.event.chronica-event-relationship {
+  background-color: var(--chronica-event-relationship);
+  border: 1px solid rgba(0, 0, 0, 0.2);
+}
+.chronica-grid-cell.event.chronica-event-education-career {
+  background-color: var(--chronica-event-education-career);
+  border: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+/* Custom event styling via variable */
+.chronica-grid-cell.event.chronica-event-custom {
+  background-color: var(--custom-color); /* JS sets this variable */
+  border: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+/* Filled week styling */
+.chronica-grid-cell.filled-week {
+  /* Example: add an inner dot or border, don't override background if it's an event */
+  position: relative; /* Needed for pseudo-elements */
+}
+
+.chronica-grid-cell.filled-week::after {
+  content: "";
+  position: absolute;
+  top: calc(50% - 2px); /* Center the dot */
+  left: calc(50% - 2px);
+  width: 4px;
+  height: 4px;
+  background-color: rgba(0, 0, 0, 0.3); /* Darker dot */
+  border-radius: 50%;
+  display: block;
+}
+
+/* Ensure filled dot doesn't show on current week */
+.chronica-grid-cell.present.filled-week::after {
+  display: none;
+}
+
+.chronica-grid-cell.past.filled-week:not(.event) {
+  background-color: #c8e6c9;
+}
+
 /* Future event highlight - subtle indicator */
 .chronica-grid-cell.future-event-highlight {
   border: 1px solid var(--future-event-color);

@@ -2780,7 +2780,7 @@ class ChronosTimelineView extends obsidian.ItemView {
     /**
      * Render the timeline view with all components
      */
-    renderView() {
+    async renderView() {
         // Clear content
         const contentEl = this.containerEl.children[1];
         contentEl.empty();
@@ -3235,7 +3235,7 @@ class ChronosTimelineView extends obsidian.ItemView {
         // Create the view container
         const viewEl = contentAreaEl.createEl("div", { cls: "chronica-view" });
         // Render the weeks grid
-        this.renderWeeksGrid(viewEl);
+        await this.renderWeeksGrid(viewEl);
         this.renderStatsPanel(contentAreaEl);
     }
     /**
@@ -3370,7 +3370,7 @@ class ChronosTimelineView extends obsidian.ItemView {
     /**
      * Update zoom-affected elements with adjusted positioning
      */
-    updateZoomLevel() {
+    async updateZoomLevel() {
         // Get the container element
         const contentEl = this.containerEl.children[1];
         // Use a more robust selector to find the zoom level indicator anywhere in the container
@@ -3398,15 +3398,184 @@ class ChronosTimelineView extends obsidian.ItemView {
                 verticalMarkers.classList.remove("chronica-transformed");
             // Clear the view and re-render
             viewEl.empty();
-            this.renderWeeksGrid(viewEl);
+            await this.renderWeeksGrid(viewEl);
         }
+    }
+    /**
+     * Fetches and processes event data for all relevant week keys.
+     * @returns A map where keys are weekKeys (YYYY-WXX) and values are event styling info.
+     */
+    async prefetchAllEventData() {
+        const eventMap = new Map();
+        const allRelevantFiles = await this.plugin.findChronicaRelatedFiles(); // Use existing helper
+        // Process notes with frontmatter first (more efficient)
+        for (const file of allRelevantFiles) {
+            try {
+                const content = await this.app.vault.read(file);
+                const frontmatterMatch = content.match(/^---\s+([\s\S]*?)\s+---/);
+                if (!frontmatterMatch)
+                    continue;
+                const frontmatter = frontmatterMatch[1];
+                const metadata = {};
+                frontmatter.split("\n").forEach((line) => {
+                    const match = line.match(/^([^:]+):\s*(.+)$/);
+                    if (match) {
+                        const [_, key, value] = match;
+                        metadata[key.trim()] = value.trim().replace(/^"(.*)"$/, "$1");
+                    }
+                });
+                if (!metadata.event && !metadata.name)
+                    continue;
+                const eventName = metadata.event || metadata.name;
+                const eventType = metadata.type || "Major Life";
+                const description = metadata.description || eventName;
+                let color = metadata.color;
+                // Determine color if not specified in frontmatter
+                if (!color) {
+                    const customType = this.plugin.settings.customEventTypes.find((t) => t.name === eventType);
+                    if (customType) {
+                        color = customType.color;
+                    }
+                    else {
+                        // Assign default colors for built-in types
+                        switch (eventType) {
+                            case "Major Life":
+                                color = this.plugin.settings.majorLifeColor;
+                                break;
+                            case "Travel":
+                                color = this.plugin.settings.travelColor;
+                                break;
+                            case "Relationship":
+                                color = this.plugin.settings.RelationshipColor;
+                                break;
+                            case "Education/Career":
+                                color = this.plugin.settings.CareerColor;
+                                break;
+                            default:
+                                color = this.plugin.settings.futureCellColor; // Fallback color
+                        }
+                    }
+                }
+                // Handle single week and range events defined in frontmatter
+                if (metadata.startDate) {
+                    const startDate = new Date(metadata.startDate);
+                    const endDate = metadata.endDate
+                        ? new Date(metadata.endDate)
+                        : startDate;
+                    const weekKeys = this.plugin.getWeekKeysBetweenDates(startDate, endDate);
+                    weekKeys.forEach((weekKey) => {
+                        // Only add if not already processed (e.g., from another note)
+                        if (!eventMap.has(weekKey)) {
+                            eventMap.set(weekKey, {
+                                type: eventType,
+                                description: description,
+                                color: color,
+                            });
+                        }
+                    });
+                }
+                else {
+                    // Fallback for files named like YYYY-WXX.md without explicit dates
+                    const weekMatch = file.basename.match(/(\d{4}-W\d{2})/);
+                    if (weekMatch) {
+                        const weekKey = weekMatch[1];
+                        if (!eventMap.has(weekKey)) {
+                            eventMap.set(weekKey, {
+                                type: eventType,
+                                description: description,
+                                color: color,
+                            });
+                        }
+                    }
+                    // Handle range filenames if no dates in frontmatter
+                    const rangeMatch = file.basename.match(/(\d{4}-W\d{2})_to_(\d{4}-W\d{2})/);
+                    if (rangeMatch) {
+                        const startWeekKey = rangeMatch[1];
+                        const endWeekKey = rangeMatch[2];
+                        const startDate = this.plugin.getStartOfISOWeek(new Date(parseInt(startWeekKey.split("-W")[0]), 0, (parseInt(startWeekKey.split("-W")[1]) - 1) * 7 + 4)); // Approx start date
+                        const endDate = this.plugin.getStartOfISOWeek(new Date(parseInt(endWeekKey.split("-W")[0]), 0, (parseInt(endWeekKey.split("-W")[1]) - 1) * 7 + 4)); // Approx end date
+                        const weekKeys = this.plugin.getWeekKeysBetweenDates(startDate, endDate);
+                        weekKeys.forEach((weekKey) => {
+                            if (!eventMap.has(weekKey)) {
+                                eventMap.set(weekKey, {
+                                    type: eventType,
+                                    description: description,
+                                    color: color,
+                                });
+                            }
+                        });
+                    }
+                }
+            }
+            catch (error) {
+                console.warn("Chronica: Error processing potential event file:", file.path, error);
+            }
+        }
+        // Process fallback events from settings (less efficient, do last)
+        const processFallbackEvents = (events, type, color) => {
+            events.forEach((eventData) => {
+                const parts = eventData.split(":");
+                if (parts.length === 2 && parts[0].includes("W")) {
+                    // Single week: YYYY-WXX:Description
+                    const weekKey = parts[0];
+                    if (!eventMap.has(weekKey)) {
+                        // Add only if not found via frontmatter
+                        eventMap.set(weekKey, {
+                            type: type,
+                            description: parts[1],
+                            color: color,
+                        });
+                    }
+                }
+                else if (parts.length === 3 &&
+                    parts[0].includes("W") &&
+                    parts[1].includes("W")) {
+                    // Range: StartKey:EndKey:Desc
+                    const startWeekKey = parts[0];
+                    const endWeekKey = parts[1];
+                    const description = parts[2];
+                    try {
+                        const startDate = this.plugin.getStartOfISOWeek(new Date(parseInt(startWeekKey.split("-W")[0]), 0, (parseInt(startWeekKey.split("-W")[1]) - 1) * 7 + 4)); // Approx start date
+                        const endDate = this.plugin.getStartOfISOWeek(new Date(parseInt(endWeekKey.split("-W")[0]), 0, (parseInt(endWeekKey.split("-W")[1]) - 1) * 7 + 4)); // Approx end date
+                        const weekKeys = this.plugin.getWeekKeysBetweenDates(startDate, endDate);
+                        weekKeys.forEach((weekKey) => {
+                            if (!eventMap.has(weekKey)) {
+                                eventMap.set(weekKey, {
+                                    type: type,
+                                    description: description,
+                                    color: color,
+                                });
+                            }
+                        });
+                    }
+                    catch (e) {
+                        console.warn("Chronica: Error parsing fallback range event:", eventData, e);
+                    }
+                }
+            });
+        };
+        processFallbackEvents(this.plugin.settings.greenEvents, "Major Life", this.plugin.settings.majorLifeColor);
+        processFallbackEvents(this.plugin.settings.blueEvents, "Travel", this.plugin.settings.travelColor);
+        processFallbackEvents(this.plugin.settings.pinkEvents, "Relationship", this.plugin.settings.RelationshipColor);
+        processFallbackEvents(this.plugin.settings.purpleEvents, "Education/Career", this.plugin.settings.CareerColor);
+        if (this.plugin.settings.customEventTypes &&
+            this.plugin.settings.customEvents) {
+            for (const customType of this.plugin.settings.customEventTypes) {
+                if (this.plugin.settings.customEvents[customType.name]) {
+                    processFallbackEvents(this.plugin.settings.customEvents[customType.name], customType.name, customType.color);
+                }
+            }
+        }
+        return eventMap;
     }
     /**
      * Render the main weeks grid visualization
      * @param container - Container to render grid in
      */
-    renderWeeksGrid(container) {
+    async renderWeeksGrid(container) {
         container.empty();
+        // Fetch all event data before rendering
+        const eventDataMap = await this.prefetchAllEventData();
         // Get the CSS variables for positioning and styling
         const root = document.documentElement;
         const baseSize = parseInt(getComputedStyle(root).getPropertyValue("--base-cell-size")) ||
@@ -3761,30 +3930,53 @@ class ChronosTimelineView extends obsidian.ItemView {
                 cell.style.setProperty("--element-height", `${cellSize}px`);
                 cell.addClass("chronica-position-dynamic");
                 cell.addClass("chronica-size-dynamic");
-                // Color coding (past, present, future)
+                const eventInfo = eventDataMap.get(weekKey);
+                let hasEvent = false;
+                if (eventInfo) {
+                    hasEvent = true;
+                    cell.classList.add("event");
+                    // Apply specific event class based on type
+                    const typeClass = `chronica-event-${eventInfo.type.toLowerCase().replace(/[\/\s]+/g, '-')}`;
+                    cell.classList.add(typeClass); // e.g., chronica-event-major-life
+                    // Use the pre-fetched color directly via CSS variable
+                    cell.style.setProperty("--custom-color", eventInfo.color);
+                    // Add a generic class if using custom color, or specific if matching built-in
+                    if (["Major Life", "Travel", "Relationship", "Education/Career"].includes(eventInfo.type)) ;
+                    else {
+                        cell.classList.add("chronica-event-custom"); // Use this for custom types or overrides
+                    }
+                    // Update tooltip
+                    cell.getAttribute("title") || "";
+                    `${eventInfo.type}: ${eventInfo.description}`; // Simplified tooltip for now
+                    cell.setAttribute("title", `<span class="math-inline">\{eventTitle\}\\n</span>{prevTitle}`);
+                }
+                // Apply base styling (past/present/future) or filled status
                 const isCurrentWeek = weekKey === currentWeekKey;
-                const hasEvent = this.applyEventStyling(cell, weekKey);
-                // Add appropriate class regardless of color
                 if (isCurrentWeek) {
                     cell.addClass("present");
+                    if (!hasEvent)
+                        cell.addClass("chronica-cell-present");
                 }
                 else if (cellStartDate < now) {
                     cell.addClass("past");
+                    if (!hasEvent)
+                        cell.addClass("chronica-cell-past");
                 }
                 else {
                     cell.addClass("future");
-                }
-                // Only apply base color coding if there's no event
-                if (!hasEvent) {
-                    if (isCurrentWeek) {
-                        cell.addClass("chronica-cell-present");
-                    }
-                    else if (cellStartDate < now) {
-                        cell.addClass("chronica-cell-past");
-                    }
-                    else {
+                    if (!hasEvent)
                         cell.addClass("chronica-cell-future");
-                    }
+                }
+                // Apply filled styling only if it's a past week and not the current week, and no event styling applied
+                if (!hasEvent && this.plugin.settings.filledWeeks.includes(weekKey) && cellStartDate < now && !isCurrentWeek) {
+                    cell.addClass("filled-week");
+                    // Optional: Add specific background for filled weeks if needed, e.g.:
+                    // cell.style.backgroundColor = "#some-fill-color";
+                }
+                else if (!hasEvent && this.plugin.settings.filledWeeks.includes(weekKey) && cellStartDate >= now && !isCurrentWeek) {
+                    // Handle filled future weeks (manual fill) if needed
+                    cell.addClass("filled-week");
+                    // cell.style.backgroundColor = "#manual-fill-color"; // Example
                 }
                 // Keep the event handlers the same
                 cell.addEventListener("click", async (event) => {
@@ -5429,321 +5621,6 @@ class ChronosTimelineView extends obsidian.ItemView {
             // Set tooltip
             barContainer.setAttribute("title", `${month}: ${count} events`);
         });
-    }
-    applyEventStyling(cell, weekKey) {
-        // Flag to track if an event was applied by any method
-        let eventApplied = false;
-        // Check if we have an event in the note frontmatter (new functionality)
-        const checkNoteEvent = async () => {
-            try {
-                // Check if the file exists
-                const fileName = `${weekKey.replace("W", "-W")}.md`;
-                const fullPath = this.plugin.getFullPath(fileName);
-                const fileExists = this.plugin.app.vault.getAbstractFileByPath(fullPath) instanceof
-                    obsidian.TFile;
-                // If file doesn't exist, make sure to remove any existing styling
-                if (!fileExists) {
-                    // Remove any event styling from the cell
-                    cell.classList.remove("event");
-                    cell.classList.remove("major-life-event");
-                    cell.classList.remove("travel-event");
-                    cell.classList.remove("relationship-event");
-                    cell.classList.remove("education-career-event");
-                    cell.classList.remove("chronica-event-major-life");
-                    cell.classList.remove("chronica-event-travel");
-                    cell.classList.remove("chronica-event-relationship");
-                    cell.classList.remove("chronica-event-education-career");
-                    cell.classList.remove("chronica-event-custom");
-                    cell.style.backgroundColor = "";
-                    cell.style.border = "";
-                    // Restore appropriate base styling
-                    const now = new Date();
-                    const [year, weekNum] = weekKey.split("-W").map((n) => parseInt(n));
-                    const cellDate = new Date(year, 0, 1);
-                    cellDate.setDate(cellDate.getDate() + (weekNum - 1) * 7);
-                    // Remove any previous styling classes
-                    cell.classList.remove("chronica-cell-present");
-                    cell.classList.remove("chronica-cell-past");
-                    cell.classList.remove("chronica-cell-future");
-                    // Reapply appropriate base styling
-                    const isCurrentWeek = weekKey === this.plugin.getWeekKeyFromDate(new Date());
-                    if (isCurrentWeek) {
-                        cell.classList.add("chronica-cell-present");
-                    }
-                    else if (cellDate < now) {
-                        cell.classList.add("chronica-cell-past");
-                    }
-                    else {
-                        cell.classList.add("chronica-cell-future");
-                        document.documentElement.style.setProperty("--future-color", this.plugin.settings.futureCellColor);
-                    }
-                    return false;
-                }
-                // Continue with normal event checking
-                const eventData = await this.plugin.getEventFromNote(weekKey);
-                if (eventData && eventData.event) {
-                    // Apply styling based on note front‑matter
-                    cell.classList.add("event");
-                    // ── Built‑in event‑type classes (no inline colors)
-                    cell.classList.remove("chronica-event-major-life", "chronica-event-travel", "chronica-event-relationship", "chronica-event-education-career");
-                    switch (eventData.type) {
-                        case "Major Life":
-                            cell.classList.add("chronica-event-major-life");
-                            break;
-                        case "Travel":
-                            cell.classList.add("chronica-event-travel");
-                            break;
-                        case "Relationship":
-                            cell.classList.add("chronica-event-relationship");
-                            break;
-                        case "Education/Career":
-                            cell.classList.add("chronica-event-education-career");
-                            break;
-                    }
-                    // ── Custom color via front‑matter or custom type
-                    if (eventData.color) {
-                        cell.style.setProperty("--custom-color", eventData.color);
-                        cell.classList.add("chronica-event-custom");
-                    }
-                    else {
-                        // If it's a user‑defined custom type, set --custom-color once and use .chronica-event-custom
-                        const customType = this.plugin.settings.customEventTypes.find((t) => t.name === eventData.type);
-                        if (customType) {
-                            cell.style.setProperty("--custom-color", customType.color);
-                            cell.classList.add("chronica-event-custom");
-                        }
-                    }
-                    // Build tooltip
-                    const eventName = eventData.name || eventData.event;
-                    const eventDesc = eventData.description
-                        ? `: ${eventData.description}`
-                        : "";
-                    const prevTitle = cell.getAttribute("title") || "";
-                    // Include date range info if present
-                    let dateInfo = "";
-                    if (eventData.startDate && eventData.endDate) {
-                        dateInfo = ` (${eventData.startDate} to ${eventData.endDate})`;
-                    }
-                    else if (eventData.startDate) {
-                        dateInfo = ` (${eventData.startDate})`;
-                    }
-                    cell.setAttribute("title", `${eventName}${eventDesc}${dateInfo}${prevTitle ? "\n" + prevTitle : ""}`);
-                    // Mark that we successfully applied an event
-                    eventApplied = true;
-                    return true;
-                }
-                return false;
-            }
-            catch (error) {
-                return false;
-            }
-        };
-        // Set a property on the cell to track if we're checking events
-        // This prevents multiple simultaneous checks
-        if (cell.dataset.checkingEvents === "true") {
-            return false;
-        }
-        cell.dataset.checkingEvents = "true";
-        // Schedule the async check with a higher priority
-        setTimeout(async () => {
-            const hasNoteEvent = await checkNoteEvent();
-            // Only process fallback events if no note event was found
-            if (!hasNoteEvent) {
-                // Process fallback events
-                const hasFallbackEvent = checkFallbackEvents();
-                eventApplied = hasFallbackEvent;
-                // If no event was found by either method, ensure styling is cleared
-                if (!hasFallbackEvent) {
-                    // Need to handle the case where the event was in settings but note is gone
-                    const now = new Date();
-                    const [year, weekNum] = weekKey.split("-W").map((n) => parseInt(n));
-                    const cellDate = new Date(year, 0, 1);
-                    cellDate.setDate(cellDate.getDate() + (weekNum - 1) * 7);
-                    // Remove any previous styling classes
-                    cell.classList.remove("chronica-cell-present");
-                    cell.classList.remove("chronica-cell-past");
-                    cell.classList.remove("chronica-cell-future");
-                    // Make sure appropriate base styling is applied
-                    const isCurrentWeek = weekKey === this.plugin.getWeekKeyFromDate(new Date());
-                    if (isCurrentWeek) {
-                        cell.classList.add("chronica-cell-present");
-                    }
-                    else if (cellDate < now) {
-                        cell.classList.add("chronica-cell-past");
-                    }
-                    else {
-                        cell.classList.add("chronica-cell-future");
-                    }
-                }
-            }
-            // Clear the checking flag
-            delete cell.dataset.checkingEvents;
-            // Apply filled week styling if applicable (and not overriding an event)
-            if (!eventApplied &&
-                this.plugin.settings.filledWeeks.includes(weekKey) &&
-                weekKey !== this.plugin.getWeekKeyFromDate(new Date())) {
-                cell.classList.add("filled-week");
-                // Only change color if no event is on this week
-                if (!cell.classList.contains("event")) {
-                    cell.style.backgroundColor = "#8bc34a"; // Light green for filled weeks
-                }
-            }
-        }, 0);
-        // Function to check legacy event formats (copied from existing code)
-        const checkFallbackEvents = () => {
-            // Add the existing fallback event checking code here
-            const applyEventStyle = (events, defaultColor, defaultDesc) => {
-                // First, handle single-day events (format: weekKey:description)
-                const singleEvents = events.filter((e) => {
-                    const parts = e.split(":");
-                    return parts.length === 2 && parts[0].includes("W");
-                });
-                for (const ev of singleEvents) {
-                    const [eventWeekKey, description] = ev.split(":");
-                    // Direct string match: if the event's weekKey equals this cell's weekKey
-                    if (eventWeekKey === weekKey) {
-                        // Apply styles
-                        cell.classList.add("event");
-                        // Add appropriate class based on event type
-                        if (defaultColor === "#4CAF50") {
-                            cell.classList.add("chronica-event-major-life");
-                        }
-                        else if (defaultColor === "#2196F3") {
-                            cell.classList.add("chronica-event-travel");
-                        }
-                        else if (defaultColor === "#E91E63") {
-                            cell.classList.add("chronica-event-relationship");
-                        }
-                        else if (defaultColor === "#D2B55B") {
-                            cell.classList.add("chronica-event-education-career");
-                        }
-                        else {
-                            // For custom colors, we still need to use inline style
-                            cell.style.setProperty("--custom-color", defaultColor);
-                            cell.classList.add("chronica-event-custom");
-                        }
-                        // Build tooltip
-                        const eventDesc = description || defaultDesc;
-                        const prevTitle = cell.getAttribute("title") || "";
-                        cell.setAttribute("title", `${eventDesc} (${eventWeekKey})\n${prevTitle}`);
-                        return true;
-                    }
-                }
-                // Next, handle range events (format: startWeek:endWeek:description)
-                const rangeEvents = events.filter((e) => {
-                    const parts = e.split(":");
-                    return (parts.length >= 3 &&
-                        parts[0].includes("W") &&
-                        parts[1].includes("W"));
-                });
-                for (const rangeEvent of rangeEvents) {
-                    const [startWeekKey, endWeekKey, description] = rangeEvent.split(":");
-                    // Skip if the format is invalid
-                    if (!startWeekKey || !endWeekKey)
-                        continue;
-                    try {
-                        // Parse the week numbers
-                        const startYear = parseInt(startWeekKey.split("-W")[0], 10);
-                        const startWeek = parseInt(startWeekKey.split("-W")[1], 10);
-                        const endYear = parseInt(endWeekKey.split("-W")[0], 10);
-                        const endWeek = parseInt(endWeekKey.split("-W")[1], 10);
-                        // Parse current cell week
-                        const cellYear = parseInt(weekKey.split("-W")[0], 10);
-                        const cellWeek = parseInt(weekKey.split("-W")[1], 10);
-                        // Create actual dates to compare
-                        const startDate = new Date(startYear, 0, 1);
-                        startDate.setDate(startDate.getDate() + (startWeek - 1) * 7);
-                        const endDate = new Date(endYear, 0, 1);
-                        endDate.setDate(endDate.getDate() + (endWeek - 1) * 7 + 6); // Add 6 to include full end week
-                        const cellDate = new Date(cellYear, 0, 1);
-                        cellDate.setDate(cellDate.getDate() + (cellWeek - 1) * 7);
-                        // Check if current week falls within the range using actual dates
-                        const isInRange = cellDate >= startDate && cellDate <= endDate;
-                        if (isInRange) {
-                            // Apply styles
-                            cell.classList.add("event");
-                            // Add appropriate class based on event type
-                            if (defaultColor === "#4CAF50") {
-                                cell.classList.add("chronica-event-major-life");
-                            }
-                            else if (defaultColor === "#2196F3") {
-                                cell.classList.add("chronica-event-travel");
-                            }
-                            else if (defaultColor === "#E91E63") {
-                                cell.classList.add("chronica-event-relationship");
-                            }
-                            else if (defaultColor === "#D2B55B") {
-                                cell.classList.add("chronica-event-education-career");
-                            }
-                            else {
-                                // For custom colors, we still need to use inline style
-                                cell.style.setProperty("--custom-color", defaultColor);
-                                cell.classList.add("chronica-event-custom");
-                            }
-                            // Add specific event type class based on color
-                            if (defaultColor === "#4CAF50") {
-                                cell.classList.add("major-life-event");
-                            }
-                            else if (defaultColor === "#2196F3") {
-                                cell.classList.add("travel-event");
-                            }
-                            else if (defaultColor === "#E91E63") {
-                                cell.classList.add("relationship-event");
-                            }
-                            else if (defaultColor === "#D2B55B") {
-                                cell.classList.add("education-career-event");
-                            }
-                            const eventDesc = description || defaultDesc;
-                            const currentTitle = cell.getAttribute("title") || "";
-                            cell.setAttribute("title", `${eventDesc} (${startWeekKey} to ${endWeekKey})\n${currentTitle}`);
-                            return true;
-                        }
-                    }
-                    catch (error) {
-                        console.error("Error processing range event:", rangeEvent, error);
-                    }
-                }
-                return false;
-            };
-            // Apply event styling for each event type
-            const hasGreenEvent = applyEventStyle(this.plugin.settings.greenEvents, "#4CAF50", "Major Life Event");
-            if (hasGreenEvent)
-                return true;
-            const hasBlueEvent = applyEventStyle(this.plugin.settings.blueEvents, "#2196F3", "Travel");
-            if (hasBlueEvent)
-                return true;
-            const hasPinkEvent = applyEventStyle(this.plugin.settings.pinkEvents, "#E91E63", "Relationship");
-            if (hasPinkEvent)
-                return true;
-            const hasPurpleEvent = applyEventStyle(this.plugin.settings.purpleEvents, "#D2B55B", "Education/Career");
-            if (hasPurpleEvent)
-                return true;
-            // Only check custom events if no built-in event was found
-            if (this.plugin.settings.customEvents) {
-                for (const [typeName, events] of Object.entries(this.plugin.settings.customEvents)) {
-                    const customType = this.plugin.settings.customEventTypes.find((type) => type.name === typeName);
-                    if (customType && events.length > 0) {
-                        const hasCustomEvent = applyEventStyle(events, customType.color, typeName);
-                        if (hasCustomEvent)
-                            return true;
-                    }
-                }
-            }
-            // Highlight future events within next 6 months
-            const now = new Date();
-            const cellDate = new Date();
-            const [cellYearStr, weekNumStr] = weekKey.split("-W");
-            cellDate.setFullYear(parseInt(cellYearStr, 10));
-            cellDate.setDate(1 + (parseInt(weekNumStr, 10) - 1) * 7);
-            if (cellDate > now &&
-                cellDate < new Date(now.getTime() + 6 * 30 * 24 * 60 * 60 * 1000) &&
-                cell.classList.contains("event")) {
-                cell.classList.add("future-event-highlight");
-            }
-            return false;
-        };
-        // Always return our tracking flag - the actual styling will happen asynchronously
-        return eventApplied;
     }
 }
 // -----------------------------------------------------------------------
