@@ -3471,12 +3471,6 @@ class ChornicaTimelineView extends obsidian.ItemView {
                 else {
                     markerEl.style.top = `${marker.weekIndex * (cellSize + cellGap) + cellSize / 2}px`;
                 }
-                // Special styling for birth month
-                // Check if an SVG element does NOT exist as a child before applying text styles
-                if (monthIndex === birthMonth && !markerEl.querySelector("svg")) {
-                    markerEl.style.color = "#e91e63"; // Pink color
-                    markerEl.style.fontWeight = "500";
-                }
             }
         }
         // Create the grid container

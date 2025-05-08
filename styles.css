@@ -633,8 +633,10 @@ Exp .chronica-sidebar-toggle:hover {
 }
 
 .chronica-month-marker.birth-month {
-  right: auto; /* Keep original value */
-  left: 5px; /* Keep original value */
+  right: auto;
+  left: 5px;
+  color: #e91e63;
+  font-weight: 500;
 }
 
 .chronica-month-marker.birth-month svg {
