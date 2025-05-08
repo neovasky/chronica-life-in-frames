@@ -2798,9 +2798,10 @@ class ChornicaTimelineView extends obsidian.ItemView {
                 title: this.isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar",
             },
         });
-        sidebarToggle.innerHTML = this.isSidebarOpen
-            ? `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>`
-            : `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>`;
+        // Use the directly imported setIcon helper function
+        obsidian.setIcon(sidebarToggle, this.isSidebarOpen ? "chevron-left" : "chevron-right"); // <<< Fixed: no 'obsidian.' prefix
+        sidebarToggle.style.width = "var(--sidebar-toggle-size)"; // Ensure size is consistent
+        sidebarToggle.style.height = "var(--sidebar-toggle-size)"; // Ensure size is consistent
         sidebarToggle.addEventListener("click", () => {
             this.isSidebarOpen = !this.isSidebarOpen;
             // Save state to plugin settings
@@ -2809,12 +2810,11 @@ class ChornicaTimelineView extends obsidian.ItemView {
             // Update UI
             sidebarEl.classList.toggle("collapsed", !this.isSidebarOpen);
             sidebarEl.classList.toggle("expanded", this.isSidebarOpen);
-            // Update toggle icon
-            sidebarToggle.innerHTML = this.isSidebarOpen
-                ? `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>`
-                : `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>`;
+            // Update toggle icon using setIcon directly
+            obsidian.setIcon(sidebarToggle, this.isSidebarOpen ? "chevron-left" : "chevron-right"); // <<< Fixed: no 'obsidian.' prefix
             sidebarToggle.setAttribute("title", this.isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar");
             // Toggle visibility of the collapsed toggle button
+            const collapsedToggle = contentAreaEl.querySelector(".chronica-collapsed-toggle"); // Find the element again
             if (collapsedToggle) {
                 collapsedToggle.style.display = this.isSidebarOpen ? "none" : "block";
             }
