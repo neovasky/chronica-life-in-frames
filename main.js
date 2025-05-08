@@ -3070,22 +3070,28 @@ class ChornicaTimelineView extends obsidian.ItemView {
             cls: "chronica-collapsed-toggle",
             attr: { title: "Expand Sidebar" },
         });
-        collapsedToggle.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>`;
+        // Use the directly imported setIcon helper function
+        obsidian.setIcon(collapsedToggle, "chevron-right");
         collapsedToggle.addEventListener("click", () => {
             this.isSidebarOpen = true;
             // Save state to plugin settings
             this.plugin.settings.isSidebarOpen = true;
             this.plugin.saveSettings();
             // Update the view without full re-render
-            sidebarEl.classList.remove("collapsed");
-            sidebarEl.classList.add("expanded");
-            collapsedToggle.style.display = "none";
-            // Update sidebar toggle icon
-            const sidebarToggle = sidebarEl.querySelector(".chronica-sidebar-toggle");
-            if (sidebarToggle) {
-                sidebarToggle.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>`;
-                sidebarToggle.setAttribute("title", "Collapse Sidebar");
+            // Need to find sidebarEl again as it was defined earlier in the function scope
+            const sidebarEl = mainContainer.querySelector(".chronica-sidebar");
+            if (sidebarEl) {
+                sidebarEl.classList.remove("collapsed");
+                sidebarEl.classList.add("expanded");
+                // Update sidebar toggle icon inside the expanded sidebar
+                const sidebarToggle = sidebarEl.querySelector(".chronica-sidebar-toggle");
+                if (sidebarToggle instanceof HTMLElement) {
+                    // Check if it's an HTMLElement
+                    obsidian.setIcon(sidebarToggle, "chevron-left");
+                    sidebarToggle.setAttribute("title", "Collapse Sidebar");
+                }
             }
+            collapsedToggle.style.display = "none"; // Hide this toggle button
             this.updateStatsPanelLayout();
         });
         // Show/hide the toggle button based on sidebar state
