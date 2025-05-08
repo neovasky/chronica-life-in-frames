@@ -2406,7 +2406,8 @@ class ChronicaWelcomeModal extends obsidian.Modal {
         const iconEl = headerEl.createEl("div", {
             cls: "chronica-welcome-icon",
         });
-        iconEl.innerHTML = Chornica_ICON;
+        // Use setIcon to safely add the custom icon SVG
+        obsidian.setIcon(iconEl, "chronica-icon"); // Assuming Chornica_ICON is registered with addIcon
         // Add title
         headerEl.createEl("h1", {
             text: "Welcome to Chronica",
