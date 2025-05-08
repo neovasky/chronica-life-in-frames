@@ -23,6 +23,9 @@
   --hover-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
   --transition-speed: 0.2s;
   --present-color: var(--text-accent);
+  --past-cell-color: #6a7ba3;
+  --present-cell-color: #a882ff;
+  --future-cell-color: #d8e2e6;
   --future-event-color: rgba(255, 215, 0, 0.5);
   --relationship-color: #e91e63;
   --travel-color: #2196f3;
@@ -469,8 +472,17 @@
 /* Cell States & Colors */
 .chronica-grid-cell.present {
   z-index: 5;
-  box-shadow: 0 0 8px var(--present-color); /* Keep original value */
-  border-color: var(--present-color); /* Keep original value */
+  box-shadow: 0 0 8px var(--present-color);
+  border-color: var(--present-color);
+  background-color: var(--present-cell-color);
+}
+
+.chronica-grid-cell.past {
+  background-color: var(--past-cell-color);
+}
+
+.chronica-grid-cell.future {
+  background-color: var(--future-cell-color);
 }
 
 .chronica-grid-cell.event {

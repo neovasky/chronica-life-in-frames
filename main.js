@@ -3597,7 +3597,7 @@ class ChornicaTimelineView extends obsidian.ItemView {
                 cell.style.height = `${cellSize}px`;
                 // Color coding (past, present, future)
                 const isCurrentWeek = weekKey === currentWeekKey;
-                const hasEvent = this.applyEventStyling(cell, weekKey);
+                this.applyEventStyling(cell, weekKey);
                 // Add appropriate class regardless of color
                 if (isCurrentWeek) {
                     cell.addClass("present");
@@ -3607,18 +3607,6 @@ class ChornicaTimelineView extends obsidian.ItemView {
                 }
                 else {
                     cell.addClass("future");
-                }
-                // Only apply base color coding if there's no event
-                if (!hasEvent) {
-                    if (isCurrentWeek) {
-                        cell.style.backgroundColor = this.plugin.settings.presentCellColor;
-                    }
-                    else if (cellStartDate < now) {
-                        cell.style.backgroundColor = this.plugin.settings.pastCellColor;
-                    }
-                    else {
-                        cell.style.backgroundColor = this.plugin.settings.futureCellColor;
-                    }
                 }
                 // Keep the event handlers the same
                 cell.addEventListener("click", async (event) => {

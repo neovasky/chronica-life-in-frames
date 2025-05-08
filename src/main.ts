@@ -4708,17 +4708,6 @@ class ChornicaTimelineView extends ItemView {
           cell.addClass("future");
         }
 
-        // Only apply base color coding if there's no event
-        if (!hasEvent) {
-          if (isCurrentWeek) {
-            cell.style.backgroundColor = this.plugin.settings.presentCellColor;
-          } else if (cellStartDate < now) {
-            cell.style.backgroundColor = this.plugin.settings.pastCellColor;
-          } else {
-            cell.style.backgroundColor = this.plugin.settings.futureCellColor;
-          }
-        }
-
         // Keep the event handlers the same
         cell.addEventListener("click", async (event) => {
           // Event handling code remains the same
