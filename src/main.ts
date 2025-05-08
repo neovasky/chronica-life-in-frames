@@ -3754,7 +3754,7 @@ class ChornicaTimelineView extends ItemView {
       attr: { title: "Zoom Out" },
     });
     // Use the directly imported setIcon helper function
-    setIcon(zoomOutBtn, "zoom-out"); // <<< Replaced innerHTML
+    setIcon(zoomOutBtn, "zoom-out");
     // Adjust icon size if needed via CSS or direct style
     // zoomOutBtn.style. // Add styles if necessary
 
@@ -3793,7 +3793,7 @@ class ChornicaTimelineView extends ItemView {
       attr: { title: "Zoom In" },
     });
     // Use the directly imported setIcon helper function
-    setIcon(zoomInBtn, "zoom-in"); // <<< Replaced innerHTML
+    setIcon(zoomInBtn, "zoom-in");
     // Adjust icon size if needed via CSS or direct style
     // zoomInBtn.style. // Add styles if necessary
 
@@ -4530,7 +4530,8 @@ class ChornicaTimelineView extends ItemView {
         }
 
         // Special styling for birth month
-        if (monthIndex === birthMonth && !markerEl.innerHTML.includes("svg")) {
+        // Check if an SVG element does NOT exist as a child before applying text styles
+        if (monthIndex === birthMonth && !markerEl.querySelector("svg")) {
           markerEl.style.color = "#e91e63"; // Pink color
           markerEl.style.fontWeight = "500";
         }

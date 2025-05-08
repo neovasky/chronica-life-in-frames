@@ -2870,7 +2870,7 @@ class ChornicaTimelineView extends obsidian.ItemView {
             attr: { title: "Zoom Out" },
         });
         // Use the directly imported setIcon helper function
-        obsidian.setIcon(zoomOutBtn, "zoom-out"); // <<< Replaced innerHTML
+        obsidian.setIcon(zoomOutBtn, "zoom-out");
         // Adjust icon size if needed via CSS or direct style
         // zoomOutBtn.style. // Add styles if necessary
         zoomOutBtn.addEventListener("click", () => {
@@ -2906,7 +2906,7 @@ class ChornicaTimelineView extends obsidian.ItemView {
             attr: { title: "Zoom In" },
         });
         // Use the directly imported setIcon helper function
-        obsidian.setIcon(zoomInBtn, "zoom-in"); // <<< Replaced innerHTML
+        obsidian.setIcon(zoomInBtn, "zoom-in");
         // Adjust icon size if needed via CSS or direct style
         // zoomInBtn.style. // Add styles if necessary
         zoomInBtn.addEventListener("click", () => {
@@ -3474,7 +3474,8 @@ class ChornicaTimelineView extends obsidian.ItemView {
                     markerEl.style.top = `${marker.weekIndex * (cellSize + cellGap) + cellSize / 2}px`;
                 }
                 // Special styling for birth month
-                if (monthIndex === birthMonth && !markerEl.innerHTML.includes("svg")) {
+                // Check if an SVG element does NOT exist as a child before applying text styles
+                if (monthIndex === birthMonth && !markerEl.querySelector("svg")) {
                     markerEl.style.color = "#e91e63"; // Pink color
                     markerEl.style.fontWeight = "500";
                 }
