@@ -102,7 +102,7 @@ const DEFAULT_SETTINGS = {
     hasSeenFolders: false,
 };
 /** SVG icon for the Chronica Timeline */
-const CHRONOS_ICON = `<svg viewBox="0 0 100 100" width="100" height="100" xmlns="http://www.w3.org/2000/svg">
+const Chornica_ICON = `<svg viewBox="0 0 100 100" width="100" height="100" xmlns="http://www.w3.org/2000/svg">
   <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" stroke-width="4"/>
   <line x1="50" y1="15" x2="50" y2="50" stroke="currentColor" stroke-width="4"/>
   <line x1="50" y1="50" x2="75" y2="60" stroke="currentColor" stroke-width="4"/>
@@ -125,7 +125,7 @@ const MONTH_NAMES = [
     "Nov",
     "Dec",
 ];
-class ChronosFolderSelectionModal extends obsidian.Modal {
+class ChornicaFolderSelectionModal extends obsidian.Modal {
     plugin;
     constructor(app, plugin) {
         super(app);
@@ -231,7 +231,7 @@ class ChronosFolderSelectionModal extends obsidian.Modal {
 /**
  * Main plugin class that handles initialization, settings, and view management
  */
-class ChronosTimelinePlugin extends obsidian.Plugin {
+class ChornicaTimelinePlugin extends obsidian.Plugin {
     /** Plugin settings */
     settings = DEFAULT_SETTINGS;
     /**
@@ -241,7 +241,7 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
         console.log("Loading Chronica Timeline Plugin");
         // 1) Register the timeline view exactly once
         try {
-            this.registerView(TIMELINE_VIEW_TYPE, (leaf) => new ChronosTimelineView(leaf, this));
+            this.registerView(TIMELINE_VIEW_TYPE, (leaf) => new ChornicaTimelineView(leaf, this));
         }
         catch (e) {
             // already registered on hot-reload—ignore
@@ -306,7 +306,7 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
             }, 500);
         }
         // 4) Now your regular setup
-        obsidian.addIcon("chronica-icon", CHRONOS_ICON);
+        obsidian.addIcon("chronica-icon", Chornica_ICON);
         await this.loadSettings();
         await this.scanVaultForEvents();
         this.addRibbonIcon("chronica-icon", "Open Chronica Timeline", () => {
@@ -329,7 +329,7 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
             },
         });
         // Add settings tab
-        this.addSettingTab(new ChronosSettingTab(this.app, this));
+        this.addSettingTab(new ChornicaSettingTab(this.app, this));
         // Check for auto-fill on plugin load
         this.checkAndAutoFill();
         // Register interval to check for auto-fill (check every hour)
@@ -1856,7 +1856,7 @@ class ChronosTimelinePlugin extends obsidian.Plugin {
 /**
  * Modal dialog for adding life events to the timeline
  */
-class ChronosEventModal extends obsidian.Modal {
+class ChornicaEventModal extends obsidian.Modal {
     /** Reference to the main plugin */
     plugin;
     /** Selected date/week (YYYY-WXX format) */
@@ -1886,7 +1886,7 @@ class ChronosEventModal extends obsidian.Modal {
     /**
      * Create a new event modal
      * @param app - Obsidian App instance
-     * @param plugin - ChronosTimelinePlugin instance
+     * @param plugin - ChornicaTimelinePlugin instance
      * @param preselectedDate - Optional date to preselect
      */
     constructor(app, plugin, preselectedDate = null) {
@@ -2401,7 +2401,7 @@ class ChronicaWelcomeModal extends obsidian.Modal {
     /**
      * Create a welcome modal
      * @param app - Obsidian App instance
-     * @param plugin - ChronosTimelinePlugin instance
+     * @param plugin - ChornicaTimelinePlugin instance
      */
     constructor(app, plugin) {
         super(app);
@@ -2422,7 +2422,7 @@ class ChronicaWelcomeModal extends obsidian.Modal {
         const iconEl = headerEl.createEl("div", {
             cls: "chronica-welcome-icon",
         });
-        iconEl.innerHTML = CHRONOS_ICON;
+        iconEl.innerHTML = Chornica_ICON;
         // Add title
         headerEl.createEl("h1", {
             text: "Welcome to Chronica",
@@ -2529,7 +2529,7 @@ class ChronicaWelcomeModal extends obsidian.Modal {
 /**
  * Main timeline view that shows the life grid and events
  */
-class ChronosTimelineView extends obsidian.ItemView {
+class ChornicaTimelineView extends obsidian.ItemView {
     /** Reference to the main plugin */
     plugin;
     /** Track sidebar open/closed state */
@@ -3116,7 +3116,7 @@ class ChronosTimelineView extends obsidian.ItemView {
      * Show modal for adding an event
      */
     showAddEventModal() {
-        const modal = new ChronosEventModal(this.app, this.plugin);
+        const modal = new ChornicaEventModal(this.app, this.plugin);
         modal.open();
     }
     /**
@@ -3635,13 +3635,13 @@ class ChronosTimelineView extends obsidian.ItemView {
                 cell.addEventListener("click", async (event) => {
                     // Event handling code remains the same
                     if (!this.plugin.settings.hasSeenFolders) {
-                        const modal = new ChronosFolderSelectionModal(this.app, this.plugin);
+                        const modal = new ChornicaFolderSelectionModal(this.app, this.plugin);
                         modal.open();
                         return;
                     }
                     // If shift key is pressed, add an event
                     if (event.shiftKey) {
-                        const modal = new ChronosEventModal(this.app, this.plugin, weekKey);
+                        const modal = new ChornicaEventModal(this.app, this.plugin, weekKey);
                         modal.open();
                         return;
                     }
@@ -5539,7 +5539,7 @@ class ManageEventTypesModal extends obsidian.Modal {
     /**
      * Create a new event types modal
      * @param app - Obsidian App instance
-     * @param plugin - ChronosTimelinePlugin instance
+     * @param plugin - ChornicaTimelinePlugin instance
      */
     constructor(app, plugin) {
         super(app);
@@ -5768,13 +5768,13 @@ class ManageEventTypesModal extends obsidian.Modal {
 /**
  * Settings tab for configuring the plugin
  */
-class ChronosSettingTab extends obsidian.PluginSettingTab {
+class ChornicaSettingTab extends obsidian.PluginSettingTab {
     /** Reference to the main plugin */
     plugin;
     /**
      * Create a new settings tab
      * @param app - Obsidian App instance
-     * @param plugin - ChronosTimelinePlugin instance
+     * @param plugin - ChornicaTimelinePlugin instance
      */
     constructor(app, plugin) {
         super(app, plugin);
@@ -6523,5 +6523,5 @@ class ChronosSettingTab extends obsidian.PluginSettingTab {
     }
 }
 
-module.exports = ChronosTimelinePlugin;
+module.exports = ChornicaTimelinePlugin;
 //# sourceMappingURL=main.js.map

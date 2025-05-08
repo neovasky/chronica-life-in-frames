@@ -30,7 +30,7 @@ import {
 const TIMELINE_VIEW_TYPE = "chronica-timeline-view";
 
 /** Interface for plugin settings */
-interface ChronosSettings {
+interface ChornicaSettings {
   /** User's date of birth in YYYY-MM-DD format */
   birthday: string;
 
@@ -115,7 +115,7 @@ interface ChronosSettings {
   /** Start week on Monday (vs Sunday) */
   startWeekOnMonday: boolean;
 
-  // Add to the class properties at the top of ChronosTimelineView
+  // Add to the class properties at the top of ChornicaTimelineView
   isSidebarOpen: boolean;
 
   /** Whether the stats panel is open */
@@ -169,12 +169,12 @@ interface CustomEventType {
  */
 class FolderSuggest extends AbstractInputSuggest<string> {
   public inputEl: HTMLInputElement;
-  private plugin: ChronosTimelinePlugin;
+  private plugin: ChornicaTimelinePlugin;
 
   constructor(
     app: App,
     inputEl: HTMLInputElement,
-    plugin: ChronosTimelinePlugin
+    plugin: ChornicaTimelinePlugin
   ) {
     super(app, inputEl);
     this.inputEl = inputEl;
@@ -228,7 +228,7 @@ interface MonthMarker {
 }
 
 /** Default plugin settings */
-const DEFAULT_SETTINGS: ChronosSettings = {
+const DEFAULT_SETTINGS: ChornicaSettings = {
   birthday: "2000-01-01",
   lifespan: 90,
   defaultView: "weeks",
@@ -274,7 +274,7 @@ const DEFAULT_SETTINGS: ChronosSettings = {
 };
 
 /** SVG icon for the Chronica Timeline */
-const CHRONOS_ICON = `<svg viewBox="0 0 100 100" width="100" height="100" xmlns="http://www.w3.org/2000/svg">
+const Chornica_ICON = `<svg viewBox="0 0 100 100" width="100" height="100" xmlns="http://www.w3.org/2000/svg">
   <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" stroke-width="4"/>
   <line x1="50" y1="15" x2="50" y2="50" stroke="currentColor" stroke-width="4"/>
   <line x1="50" y1="50" x2="75" y2="60" stroke="currentColor" stroke-width="4"/>
@@ -305,10 +305,10 @@ const MONTH_NAMES = [
   "Dec",
 ];
 
-class ChronosFolderSelectionModal extends Modal {
-  private plugin: ChronosTimelinePlugin;
+class ChornicaFolderSelectionModal extends Modal {
+  private plugin: ChornicaTimelinePlugin;
 
-  constructor(app: App, plugin: ChronosTimelinePlugin) {
+  constructor(app: App, plugin: ChornicaTimelinePlugin) {
     super(app);
     this.plugin = plugin;
   }
@@ -429,9 +429,9 @@ class ChronosFolderSelectionModal extends Modal {
 /**
  * Main plugin class that handles initialization, settings, and view management
  */
-export default class ChronosTimelinePlugin extends Plugin {
+export default class ChornicaTimelinePlugin extends Plugin {
   /** Plugin settings */
-  settings: ChronosSettings = DEFAULT_SETTINGS;
+  settings: ChornicaSettings = DEFAULT_SETTINGS;
 
   /**
    * Plugin initialization on load
@@ -443,7 +443,7 @@ export default class ChronosTimelinePlugin extends Plugin {
     try {
       this.registerView(
         TIMELINE_VIEW_TYPE,
-        (leaf) => new ChronosTimelineView(leaf, this)
+        (leaf) => new ChornicaTimelineView(leaf, this)
       );
     } catch (e) {
       // already registered on hot-reload—ignore
@@ -511,7 +511,7 @@ export default class ChronosTimelinePlugin extends Plugin {
         this.app.workspace
           .getLeavesOfType(TIMELINE_VIEW_TYPE)
           .forEach((leaf) => {
-            const view = leaf.view as ChronosTimelineView;
+            const view = leaf.view as ChornicaTimelineView;
             view.clearCachedEventData();
             view.renderView();
           });
@@ -528,7 +528,7 @@ export default class ChronosTimelinePlugin extends Plugin {
     }
 
     // 4) Now your regular setup
-    addIcon("chronica-icon", CHRONOS_ICON);
+    addIcon("chronica-icon", Chornica_ICON);
     await this.loadSettings();
     await this.scanVaultForEvents();
     this.addRibbonIcon("chronica-icon", "Open Chronica Timeline", () => {
@@ -554,7 +554,7 @@ export default class ChronosTimelinePlugin extends Plugin {
     });
 
     // Add settings tab
-    this.addSettingTab(new ChronosSettingTab(this.app, this));
+    this.addSettingTab(new ChornicaSettingTab(this.app, this));
 
     // Check for auto-fill on plugin load
     this.checkAndAutoFill();
@@ -944,7 +944,7 @@ export default class ChronosTimelinePlugin extends Plugin {
     }
 
     this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE).forEach((leaf) => {
-      (leaf.view as ChronosTimelineView).renderView();
+      (leaf.view as ChornicaTimelineView).renderView();
     });
   }
 
@@ -2328,7 +2328,7 @@ export default class ChronosTimelinePlugin extends Plugin {
 
       // Refresh all timeline views
       this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE).forEach((leaf) => {
-        const view = leaf.view as ChronosTimelineView;
+        const view = leaf.view as ChornicaTimelineView;
         // Clear any cached event data
         view.clearCachedEventData();
         view.renderView();
@@ -2338,7 +2338,7 @@ export default class ChronosTimelinePlugin extends Plugin {
     } else {
       // Weekly‐note file was deleted (no settings event removed) — still need to repaint
       this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE).forEach((leaf) => {
-        const view = leaf.view as ChronosTimelineView;
+        const view = leaf.view as ChornicaTimelineView;
         // Clear any cached event data
         view.clearCachedEventData();
         view.renderView();
@@ -2467,9 +2467,9 @@ export default class ChronosTimelinePlugin extends Plugin {
 /**
  * Modal dialog for adding life events to the timeline
  */
-class ChronosEventModal extends Modal {
+class ChornicaEventModal extends Modal {
   /** Reference to the main plugin */
-  plugin: ChronosTimelinePlugin;
+  plugin: ChornicaTimelinePlugin;
 
   /** Selected date/week (YYYY-WXX format) */
   selectedDate: string = "";
@@ -2510,12 +2510,12 @@ class ChronosEventModal extends Modal {
   /**
    * Create a new event modal
    * @param app - Obsidian App instance
-   * @param plugin - ChronosTimelinePlugin instance
+   * @param plugin - ChornicaTimelinePlugin instance
    * @param preselectedDate - Optional date to preselect
    */
   constructor(
     app: App,
-    plugin: ChronosTimelinePlugin,
+    plugin: ChornicaTimelinePlugin,
     preselectedDate: string | null = null
   ) {
     super(app);
@@ -3128,7 +3128,7 @@ class ChronosEventModal extends Modal {
     this.plugin.app.workspace
       .getLeavesOfType(TIMELINE_VIEW_TYPE)
       .forEach((leaf) => {
-        const view = leaf.view as ChronosTimelineView;
+        const view = leaf.view as ChornicaTimelineView;
         view.renderView();
       });
   }
@@ -3146,14 +3146,14 @@ class ChronosEventModal extends Modal {
  */
 class ChronicaWelcomeModal extends Modal {
   /** Reference to the main plugin */
-  plugin: ChronosTimelinePlugin;
+  plugin: ChornicaTimelinePlugin;
 
   /**
    * Create a welcome modal
    * @param app - Obsidian App instance
-   * @param plugin - ChronosTimelinePlugin instance
+   * @param plugin - ChornicaTimelinePlugin instance
    */
-  constructor(app: App, plugin: ChronosTimelinePlugin) {
+  constructor(app: App, plugin: ChornicaTimelinePlugin) {
     super(app);
     this.plugin = plugin;
   }
@@ -3175,7 +3175,7 @@ class ChronicaWelcomeModal extends Modal {
     const iconEl = headerEl.createEl("div", {
       cls: "chronica-welcome-icon",
     });
-    iconEl.innerHTML = CHRONOS_ICON;
+    iconEl.innerHTML = Chornica_ICON;
 
     // Add title
     headerEl.createEl("h1", {
@@ -3305,9 +3305,9 @@ class ChronicaWelcomeModal extends Modal {
 /**
  * Main timeline view that shows the life grid and events
  */
-class ChronosTimelineView extends ItemView {
+class ChornicaTimelineView extends ItemView {
   /** Reference to the main plugin */
-  plugin: ChronosTimelinePlugin;
+  plugin: ChornicaTimelinePlugin;
 
   /** Track sidebar open/closed state */
   isSidebarOpen: boolean;
@@ -3316,7 +3316,7 @@ class ChronosTimelineView extends ItemView {
     return window.innerWidth <= 768;
   }
 
-  constructor(leaf: WorkspaceLeaf, plugin: ChronosTimelinePlugin) {
+  constructor(leaf: WorkspaceLeaf, plugin: ChornicaTimelinePlugin) {
     super(leaf);
     this.plugin = plugin;
     this.isSidebarOpen = this.plugin.settings.isSidebarOpen;
@@ -4062,7 +4062,7 @@ class ChronosTimelineView extends ItemView {
    * Show modal for adding an event
    */
   showAddEventModal(): void {
-    const modal = new ChronosEventModal(this.app, this.plugin);
+    const modal = new ChornicaEventModal(this.app, this.plugin);
     modal.open();
   }
 
@@ -4739,7 +4739,7 @@ class ChronosTimelineView extends ItemView {
         cell.addEventListener("click", async (event) => {
           // Event handling code remains the same
           if (!this.plugin.settings.hasSeenFolders) {
-            const modal = new ChronosFolderSelectionModal(
+            const modal = new ChornicaFolderSelectionModal(
               this.app,
               this.plugin
             );
@@ -4749,7 +4749,11 @@ class ChronosTimelineView extends ItemView {
 
           // If shift key is pressed, add an event
           if (event.shiftKey) {
-            const modal = new ChronosEventModal(this.app, this.plugin, weekKey);
+            const modal = new ChornicaEventModal(
+              this.app,
+              this.plugin,
+              weekKey
+            );
             modal.open();
             return;
           }
@@ -7133,7 +7137,7 @@ class ChronosTimelineView extends ItemView {
  */
 class MarkerSettingsModal extends Modal {
   /** Reference to the main plugin */
-  plugin: ChronosTimelinePlugin;
+  plugin: ChornicaTimelinePlugin;
 
   /** Callback to refresh views when settings change */
   refreshCallback: () => void;
@@ -7141,12 +7145,12 @@ class MarkerSettingsModal extends Modal {
   /**
    * Create a new marker settings modal
    * @param app - Obsidian App instance
-   * @param plugin - ChronosTimelinePlugin instance
+   * @param plugin - ChornicaTimelinePlugin instance
    * @param refreshCallback - Callback to refresh views
    */
   constructor(
     app: App,
-    plugin: ChronosTimelinePlugin,
+    plugin: ChornicaTimelinePlugin,
     refreshCallback: () => void
   ) {
     super(app);
@@ -7276,14 +7280,14 @@ class MarkerSettingsModal extends Modal {
  */
 class ManageEventTypesModal extends Modal {
   /** Reference to the main plugin */
-  plugin: ChronosTimelinePlugin;
+  plugin: ChornicaTimelinePlugin;
 
   /**
    * Create a new event types modal
    * @param app - Obsidian App instance
-   * @param plugin - ChronosTimelinePlugin instance
+   * @param plugin - ChornicaTimelinePlugin instance
    */
-  constructor(app: App, plugin: ChronosTimelinePlugin) {
+  constructor(app: App, plugin: ChornicaTimelinePlugin) {
     super(app);
     this.plugin = plugin;
   }
@@ -7361,7 +7365,7 @@ class ManageEventTypesModal extends Modal {
     closeButton.addEventListener("click", () => {
       this.close();
       this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE).forEach((leaf) => {
-        const view = leaf.view as ChronosTimelineView;
+        const view = leaf.view as ChornicaTimelineView;
         view.renderView();
       });
     });
@@ -7570,16 +7574,16 @@ class ManageEventTypesModal extends Modal {
 /**
  * Settings tab for configuring the plugin
  */
-class ChronosSettingTab extends PluginSettingTab {
+class ChornicaSettingTab extends PluginSettingTab {
   /** Reference to the main plugin */
-  plugin: ChronosTimelinePlugin;
+  plugin: ChornicaTimelinePlugin;
 
   /**
    * Create a new settings tab
    * @param app - Obsidian App instance
-   * @param plugin - ChronosTimelinePlugin instance
+   * @param plugin - ChornicaTimelinePlugin instance
    */
-  constructor(app: App, plugin: ChronosTimelinePlugin) {
+  constructor(app: App, plugin: ChornicaTimelinePlugin) {
     super(app, plugin);
     this.plugin = plugin;
   }
@@ -8271,7 +8275,7 @@ class ChronosSettingTab extends PluginSettingTab {
               this.plugin.app.workspace
                 .getLeavesOfType(TIMELINE_VIEW_TYPE)
                 .forEach((leaf) => {
-                  const view = leaf.view as ChronosTimelineView;
+                  const view = leaf.view as ChornicaTimelineView;
                   view.updateZoomLevel();
                 });
             })
@@ -8475,7 +8479,7 @@ class ChronosSettingTab extends PluginSettingTab {
    */
   refreshAllViews(): void {
     this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE).forEach((leaf) => {
-      const view = leaf.view as ChronosTimelineView;
+      const view = leaf.view as ChornicaTimelineView;
       view.renderView();
     });
   }
