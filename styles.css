@@ -35,8 +35,8 @@
 }
 
 /* -----------------------------------------------------------------------------
-         LAYOUT CONTAINERS
-         ----------------------------------------------------------------------------- */
+           LAYOUT CONTAINERS
+           ----------------------------------------------------------------------------- */
 /* Main container */
 .chronica-timeline-container {
   font-family: var(--font-ui), -apple-system, BlinkMacSystemFont, sans-serif;
@@ -276,8 +276,8 @@
 }
 
 /* -----------------------------------------------------------------------------
-         CONTROL ELEMENTS
-         ----------------------------------------------------------------------------- */
+           CONTROL ELEMENTS
+           ----------------------------------------------------------------------------- */
 /* Controls styling */
 .chronica-controls,
 .chronica-visual-controls {
@@ -396,8 +396,8 @@
 }
 
 /* -----------------------------------------------------------------------------
-         MARKERS & GRID LAYOUT
-         ----------------------------------------------------------------------------- */
+           MARKERS & GRID LAYOUT
+           ----------------------------------------------------------------------------- */
 /* Decade markers (horizontal, top) */
 .chronica-decade-markers {
   position: absolute;
@@ -499,8 +499,8 @@
 }
 
 /* -----------------------------------------------------------------------------
-         GRID CELLS
-         ----------------------------------------------------------------------------- */
+           GRID CELLS
+           ----------------------------------------------------------------------------- */
 /* Individual cells */
 .chronica-grid-cell {
   width: var(--cell-size);
@@ -537,10 +537,6 @@
   border-color: var(--present-color);
 }
 
-.chronica-grid-cell.future.event {
-  border-width: 2px !important;
-}
-
 .chronica-grid-cell.event {
   border-width: 2px !important;
   box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
@@ -570,8 +566,8 @@
 }
 
 /* -----------------------------------------------------------------------------
-         LEGEND
-         ----------------------------------------------------------------------------- */
+           LEGEND
+           ----------------------------------------------------------------------------- */
 .chronica-legend {
   display: flex;
   flex-direction: column;
@@ -595,8 +591,8 @@
 }
 
 /* -----------------------------------------------------------------------------
-         FOOTER
-         ----------------------------------------------------------------------------- */
+           FOOTER
+           ----------------------------------------------------------------------------- */
 .chronica-footer {
   text-align: center;
   font-style: italic;
@@ -607,8 +603,8 @@
 }
 
 /* -----------------------------------------------------------------------------
-         MODAL WINDOWS & FORMS
-         ----------------------------------------------------------------------------- */
+           MODAL WINDOWS & FORMS
+           ----------------------------------------------------------------------------- */
 /* General modal styling */
 .modal .setting-item {
   border-top: 1px solid var(--background-modifier-border);
@@ -777,8 +773,8 @@
 }
 
 /* -----------------------------------------------------------------------------
-         RESPONSIVE DESIGN
-         ----------------------------------------------------------------------------- */
+           RESPONSIVE DESIGN
+           ----------------------------------------------------------------------------- */
 
 @media (max-width: 768px) {
   .chronica-main-container {
@@ -825,8 +821,8 @@
 }
 
 /* -----------------------------------------------------------------------------
-         PORTRAIT MODE STYLES
-         ----------------------------------------------------------------------------- */
+           PORTRAIT MODE STYLES
+           ----------------------------------------------------------------------------- */
 
 /* Portrait mode style adjustments */
 .chronica-vertical-markers.portrait-mode {
@@ -878,8 +874,8 @@
 }
 
 /* -----------------------------------------------------------------------------
-   STATISTICS PANEL
-   ----------------------------------------------------------------------------- */
+     STATISTICS PANEL
+     ----------------------------------------------------------------------------- */
 .chronica-stats-handle {
   position: fixed;
   bottom: 0;
@@ -957,6 +953,7 @@
   right: 0;
 }
 
+/* Combined hover rule */
 .chronica-stats-left-handle:hover,
 .chronica-stats-right-handle:hover {
   background-color: rgba(var(--interactive-accent-rgb), 0.1);
@@ -1004,11 +1001,6 @@
 .chronica-stats-drag-handle:hover {
   background-color: var(--text-muted);
   opacity: 0.5 !important;
-}
-
-.chronica-stats-drag-handle::after {
-  content: none;
-  display: none;
 }
 
 .chronica-stats-tabs {
@@ -1555,10 +1547,6 @@
   pointer-events: none;
 }
 
-.chronica-bar-label-hidden {
-  display: none;
-}
-
 /* Donut chart styling */
 .chronica-donut-container {
   display: flex;
@@ -1580,20 +1568,6 @@
   gap: 8px;
   overflow-y: auto;
   max-height: 200px;
-}
-
-.chronica-chart-tooltip {
-  position: fixed;
-  background-color: var(--background-primary);
-  color: var(--text-normal);
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  z-index: 1000;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-  pointer-events: none;
-  transform: translate(-50%, -100%);
-  border: 1px solid var(--background-modifier-border);
 }
 
 .chronica-legend-item {
@@ -1630,117 +1604,19 @@
   color: var(--text-muted);
 }
 
-/* Stacked bar chart */
-.chronica-stacked-chart-container {
-  display: flex;
-  align-items: flex-end;
-  gap: 10px;
-  height: 200px;
-  padding-top: 20px;
-  padding-bottom: 25px;
-}
-
-.chronica-stacked-bar-container {
-  flex: 1;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  position: relative;
-}
-
-.chronica-stacked-bar {
-  width: 30px;
-  height: 100%;
-  display: flex;
-  flex-direction: column-reverse; /* Stack from bottom */
-  border-radius: 4px;
-  overflow: hidden;
-  background-color: var(--background-primary);
-}
-
-.chronica-stacked-segment {
+/* Seasonal Pattern Analysis styles */
+.chronica-seasonal-chart-container {
   width: 100%;
-  transition: all 0.2s ease;
-}
-
-.chronica-stacked-bar-label {
-  position: absolute;
-  bottom: -20px;
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.chronica-stacked-bar-count {
-  position: absolute;
-  top: -18px;
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--text-muted);
-}
-
-/* Event Density Tile Grid */
-.chronica-year-tile-grid {
+  height: 280px; /* Significantly increased from 200px */
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 10px 0;
   justify-content: center;
-  margin: 15px 0;
-}
-
-.chronica-year-tile {
-  width: 56px;
-  height: 56px;
-  border-radius: 6px;
-  background-color: var(--background-primary);
-  display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  border: 1px solid var(--background-modifier-border);
-  transition: all 0.2s ease;
-  position: relative;
-  cursor: pointer;
+  margin: 10px 0;
 }
 
-.chronica-year-tile.has-events {
-  border-color: var(--interactive-accent);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.chronica-year-tile:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-  z-index: 2;
-}
-
-.chronica-year-tile-year {
-  font-size: 12px;
-  font-weight: 500;
-  opacity: 0.8;
-}
-
-.chronica-year-tile-count {
-  font-size: 18px;
-  font-weight: 600;
-  margin-top: 2px;
-}
-
-/* Responsive adjustments for tiny screens */
-@media (max-width: 400px) {
-  .chronica-year-tile {
-    width: 42px;
-    height: 42px;
-  }
-
-  .chronica-year-tile-year {
-    font-size: 10px;
-  }
-
-  .chronica-year-tile-count {
-    font-size: 14px;
-  }
+.chronica-seasonal-chart {
+  width: 280px; /* Significantly increased from 200px */
+  height: 280px; /* Significantly increased from 200px */
 }
 
 /* Monthly chart */
@@ -1843,21 +1719,6 @@
   font-style: italic;
 }
 
-/* Seasonal Pattern Analysis styles */
-.chronica-seasonal-chart-container {
-  width: 100%;
-  height: 280px; /* Significantly increased from 200px */
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin: 10px 0;
-}
-
-.chronica-seasonal-chart {
-  width: 280px; /* Significantly increased from 200px */
-  height: 280px; /* Significantly increased from 200px */
-}
-
 /* Collapsible tips styling */
 .chronica-tips-container {
   margin-top: 10px;
@@ -1898,8 +1759,8 @@
 }
 
 /* -----------------------------------------------------------------------------
-   WELCOME MODAL
-   ----------------------------------------------------------------------------- */
+     WELCOME MODAL
+     ----------------------------------------------------------------------------- */
 .chronica-welcome-modal {
   max-width: 500px;
   padding: 20px;
