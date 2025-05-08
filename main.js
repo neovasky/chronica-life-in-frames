@@ -238,7 +238,6 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
      * Plugin initialization on load
      */
     async onload() {
-        console.log("Loading Chronica Timeline Plugin");
         // 1) Register the timeline view exactly once
         try {
             this.registerView(TIMELINE_VIEW_TYPE, (leaf) => new ChornicaTimelineView(leaf, this));
@@ -264,7 +263,6 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
             this.registerPotentialSyncOperation();
             // Protect against sync-triggered modifications
             if (this.isSyncOperation) {
-                console.debug("Chronica: File modification during sync, deferring actions", file.path);
                 return;
             }
             // Skip if not a Chronica-related file
@@ -402,7 +400,6 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
         }
         // persist the cleared-out state immediately
         await this.saveSettings();
-        console.log("Scanning vault for event metadata...");
         // Get all markdown files in the vault
         let files = this.app.vault.getMarkdownFiles();
         // …rest of method…
@@ -630,14 +627,12 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
             }
         }
         if (eventCount > 0) {
-            console.log(`Found ${eventCount} events from note metadata`);
             await this.saveSettings();
         }
     }
     refreshAllViews() {
         // Skip refreshing during likely sync operations
         if (this.isSyncOperation) {
-            console.log("Skipping refresh during potential sync operation");
             return;
         }
         this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE).forEach((leaf) => {
@@ -741,7 +736,6 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
             }
         }
         catch (err) {
-            console.log("Error checking/creating folder:", err);
             new obsidian.Notice(`Failed to create folder: ${newFolder}`);
             return;
         }
@@ -1029,9 +1023,7 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
                             await this.app.vault.createFolder(this.settings.notesFolder);
                         }
                     }
-                    catch (err) {
-                        console.log("Error checking/creating folder:", err);
-                    }
+                    catch (err) { }
                 }
                 // Check if any events exist for this week in the plugin settings
                 let content = "";
@@ -1520,7 +1512,6 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
             };
         }
         catch (error) {
-            console.log("Error parsing frontmatter:", error);
             return null;
         }
     }
@@ -1568,9 +1559,7 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
                         await this.app.vault.createFolder(this.settings.notesFolder);
                     }
                 }
-                catch (err) {
-                    console.log("Error checking/creating folder:", err);
-                }
+                catch (err) { }
             }
             // Create file
             await this.app.vault.create(fullPath, content);
@@ -1653,7 +1642,6 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
         // If no matching week keys found, exit
         if (weekKeys.length === 0)
             return;
-        console.log(`Found ${weekKeys.length} week keys to clean for deleted file:`, fileName);
         // Check each of our event collections and remove matching events
         let needsSave = false;
         // Helper function to filter events - handles both single events and ranges
@@ -1824,8 +1812,6 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
             this.isSyncOperation = false;
             this.syncOperationTimer = null;
         }, 5000);
-        // Log sync operation detection for debugging
-        console.debug("Chronica: Potential sync operation detected, operations paused");
     }
     async cleanInvalidEvents() {
         const removeInvalid = (events) => events.filter((entry) => {
@@ -2323,9 +2309,7 @@ class ChornicaEventModal extends obsidian.Modal {
                         await this.app.vault.createFolder(this.plugin.settings.notesFolder);
                     }
                 }
-                catch (err) {
-                    console.log("Error checking/creating folder:", err);
-                }
+                catch (err) { }
             }
             // Create event note file with frontmatter and content
             let content = "";
@@ -3699,9 +3683,7 @@ class ChornicaTimelineView extends obsidian.ItemView {
                                     await this.app.vault.createFolder(this.plugin.settings.notesFolder);
                                 }
                             }
-                            catch (err) {
-                                console.log("Error checking/creating folder:", err);
-                            }
+                            catch (err) { }
                         }
                         // Add empty frontmatter
                         let content = this.plugin.formatFrontmatter({});
@@ -5349,7 +5331,6 @@ class ChornicaTimelineView extends obsidian.ItemView {
                 return false;
             }
             catch (error) {
-                console.log("Error checking note event:", error);
                 return false;
             }
         };

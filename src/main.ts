@@ -437,8 +437,6 @@ export default class ChornicaTimelinePlugin extends Plugin {
    * Plugin initialization on load
    */
   async onload(): Promise<void> {
-    console.log("Loading Chronica Timeline Plugin");
-
     // 1) Register the timeline view exactly once
     try {
       this.registerView(
@@ -474,10 +472,6 @@ export default class ChornicaTimelinePlugin extends Plugin {
 
         // Protect against sync-triggered modifications
         if (this.isSyncOperation) {
-          console.debug(
-            "Chronica: File modification during sync, deferring actions",
-            file.path
-          );
           return;
         }
 
@@ -644,7 +638,6 @@ export default class ChornicaTimelinePlugin extends Plugin {
     // persist the cleared-out state immediately
     await this.saveSettings();
 
-    console.log("Scanning vault for event metadata...");
     // Get all markdown files in the vault
     let files = this.app.vault.getMarkdownFiles();
     // …rest of method…
@@ -931,7 +924,6 @@ export default class ChornicaTimelinePlugin extends Plugin {
     }
 
     if (eventCount > 0) {
-      console.log(`Found ${eventCount} events from note metadata`);
       await this.saveSettings();
     }
   }
@@ -939,7 +931,6 @@ export default class ChornicaTimelinePlugin extends Plugin {
   public refreshAllViews(): void {
     // Skip refreshing during likely sync operations
     if (this.isSyncOperation) {
-      console.log("Skipping refresh during potential sync operation");
       return;
     }
 
@@ -1071,7 +1062,6 @@ export default class ChornicaTimelinePlugin extends Plugin {
         await this.app.vault.createFolder(newFolder);
       }
     } catch (err) {
-      console.log("Error checking/creating folder:", err);
       new Notice(`Failed to create folder: ${newFolder}`);
       return;
     }
@@ -1429,9 +1419,7 @@ export default class ChornicaTimelinePlugin extends Plugin {
             if (!folderExists) {
               await this.app.vault.createFolder(this.settings.notesFolder);
             }
-          } catch (err) {
-            console.log("Error checking/creating folder:", err);
-          }
+          } catch (err) {}
         }
 
         // Check if any events exist for this week in the plugin settings
@@ -2038,7 +2026,6 @@ export default class ChornicaTimelinePlugin extends Plugin {
         endDate: metadata.endDate,
       };
     } catch (error) {
-      console.log("Error parsing frontmatter:", error);
       return null;
     }
   }
@@ -2109,9 +2096,7 @@ export default class ChornicaTimelinePlugin extends Plugin {
           if (!folderExists) {
             await this.app.vault.createFolder(this.settings.notesFolder);
           }
-        } catch (err) {
-          console.log("Error checking/creating folder:", err);
-        }
+        } catch (err) {}
       }
 
       // Create file
@@ -2210,11 +2195,6 @@ export default class ChornicaTimelinePlugin extends Plugin {
 
     // If no matching week keys found, exit
     if (weekKeys.length === 0) return;
-
-    console.log(
-      `Found ${weekKeys.length} week keys to clean for deleted file:`,
-      fileName
-    );
 
     // Check each of our event collections and remove matching events
     let needsSave = false;
@@ -2421,11 +2401,6 @@ export default class ChornicaTimelinePlugin extends Plugin {
       this.isSyncOperation = false;
       this.syncOperationTimer = null;
     }, 5000);
-
-    // Log sync operation detection for debugging
-    console.debug(
-      "Chronica: Potential sync operation detected, operations paused"
-    );
   }
 
   public async cleanInvalidEvents(): Promise<void> {
@@ -3060,9 +3035,7 @@ class ChornicaEventModal extends Modal {
           if (!folderExists) {
             await this.app.vault.createFolder(this.plugin.settings.notesFolder);
           }
-        } catch (err) {
-          console.log("Error checking/creating folder:", err);
-        }
+        } catch (err) {}
       }
 
       // Create event note file with frontmatter and content
@@ -4824,9 +4797,7 @@ class ChornicaTimelineView extends ItemView {
                     this.plugin.settings.notesFolder
                   );
                 }
-              } catch (err) {
-                console.log("Error checking/creating folder:", err);
-              }
+              } catch (err) {}
             }
 
             // Add empty frontmatter
@@ -6885,7 +6856,6 @@ class ChornicaTimelineView extends ItemView {
         }
         return false;
       } catch (error) {
-        console.log("Error checking note event:", error);
         return false;
       }
     };
