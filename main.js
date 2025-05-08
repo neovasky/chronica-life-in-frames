@@ -3414,6 +3414,9 @@ class ChronosTimelineView extends obsidian.ItemView {
         const cellSize = Math.round(baseSize * this.plugin.settings.zoomLevel);
         // Apply the zoomed cell size to the CSS variable
         root.style.setProperty("--cell-size", `${cellSize}px`);
+        document.documentElement.style.setProperty("--present-color", this.plugin.settings.presentCellColor);
+        document.documentElement.style.setProperty("--past-color", this.plugin.settings.pastCellColor);
+        document.documentElement.style.setProperty("--future-color", this.plugin.settings.futureCellColor);
         const cellGap = parseInt(getComputedStyle(root).getPropertyValue("--cell-gap")) || 2;
         const leftOffset = parseInt(getComputedStyle(root).getPropertyValue("--left-offset")) || 70;
         const topOffset = parseInt(getComputedStyle(root).getPropertyValue("--top-offset")) || 50;
@@ -5466,11 +5469,9 @@ class ChronosTimelineView extends obsidian.ItemView {
                     const isCurrentWeek = weekKey === this.plugin.getWeekKeyFromDate(new Date());
                     if (isCurrentWeek) {
                         cell.classList.add("chronica-cell-present");
-                        document.documentElement.style.setProperty("--present-color", this.plugin.settings.presentCellColor);
                     }
                     else if (cellDate < now) {
                         cell.classList.add("chronica-cell-past");
-                        document.documentElement.style.setProperty("--past-color", this.plugin.settings.pastCellColor);
                     }
                     else {
                         cell.classList.add("chronica-cell-future");
@@ -5566,15 +5567,12 @@ class ChronosTimelineView extends obsidian.ItemView {
                     const isCurrentWeek = weekKey === this.plugin.getWeekKeyFromDate(new Date());
                     if (isCurrentWeek) {
                         cell.classList.add("chronica-cell-present");
-                        document.documentElement.style.setProperty("--present-color", this.plugin.settings.presentCellColor);
                     }
                     else if (cellDate < now) {
                         cell.classList.add("chronica-cell-past");
-                        document.documentElement.style.setProperty("--past-color", this.plugin.settings.pastCellColor);
                     }
                     else {
                         cell.classList.add("chronica-cell-future");
-                        document.documentElement.style.setProperty("--future-color", this.plugin.settings.futureCellColor);
                     }
                 }
             }
