@@ -2817,7 +2817,7 @@ class ChornicaTimelineView extends obsidian.ItemView {
             // Toggle visibility of the collapsed toggle button
             const collapsedToggle = contentAreaEl.querySelector(".chronica-collapsed-toggle"); // Find the element again
             if (collapsedToggle) {
-                collapsedToggle.style.display = this.isSidebarOpen ? "none" : "block";
+                collapsedToggle.classList.toggle("hidden", this.isSidebarOpen);
             }
             this.updateStatsPanelLayout();
         });
@@ -3089,11 +3089,11 @@ class ChornicaTimelineView extends obsidian.ItemView {
                     sidebarToggle.setAttribute("title", "Collapse Sidebar");
                 }
             }
-            collapsedToggle.style.display = "none"; // Hide this toggle button
+            collapsedToggle.classList.add("hidden"); // Hide this toggle button using hidden class
             this.updateStatsPanelLayout();
         });
-        // Show/hide the toggle button based on sidebar state
-        collapsedToggle.style.display = this.isSidebarOpen ? "none" : "block";
+        // Show/hide the toggle button based on initial sidebar state using hidden class
+        collapsedToggle.classList.toggle("hidden", this.isSidebarOpen);
         // Create the view container
         const viewEl = contentAreaEl.createEl("div", { cls: "chronica-view" });
         // Render the weeks grid
