@@ -1,9 +1,9 @@
-/* -----------------------------------------------------------------------------
-   Chornica TIMELINE PLUGIN - STYLES
-   ----------------------------------------------------------------------------- */
+/* =============================================================================
+   Chronica TIMELINE PLUGIN - STYLES
+   ============================================================================= */
 
 /* -----------------------------------------------------------------------------
-   CSS VARIABLES
+   1. CSS VARIABLES / CONFIGURATION
    ----------------------------------------------------------------------------- */
 :root {
   --base-cell-size: 16px;
@@ -35,29 +35,59 @@
 }
 
 /* -----------------------------------------------------------------------------
-           LAYOUT CONTAINERS
-           ----------------------------------------------------------------------------- */
-/* Main container */
+     2. CORE LAYOUT CONTAINERS
+     ----------------------------------------------------------------------------- */
+
+/* Main Plugin Container */
 .chronica-timeline-container {
   font-family: var(--font-ui), -apple-system, BlinkMacSystemFont, sans-serif;
   padding: 0;
   display: flex;
   flex-direction: column;
   height: 100%;
-  overflow: visible;
+  overflow: visible; /* Keep original value */
   position: relative;
 }
 
-/* Main container with flexbox layout */
+/* Flex Container for Sidebar + Content */
 .chronica-main-container {
   display: flex;
   height: 100%;
   width: 100%;
-  overflow: visible;
+  overflow: visible; /* Keep original value */
   position: relative;
 }
 
-/* Sidebar */
+/* Content Area (Grid + Bottom Panel Space) */
+.chronica-content-area {
+  flex: 1;
+  height: 100%;
+  overflow: auto; /* Keep original value */
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition: padding-bottom 0.3s ease; /* For stats panel */
+}
+
+/* Main Grid View Container */
+.chronica-view {
+  position: relative;
+  overflow: auto;
+  flex-grow: 1;
+  background-color: var(--background-primary);
+  border-radius: var(--container-border-radius);
+  box-shadow: var(--card-shadow);
+  padding: var(--top-offset) 20px 20px 0; /* Keep original value */
+  padding-bottom: 0; /* Keep original value */
+  min-height: 400px;
+  min-width: 600px;
+  z-index: 5;
+}
+
+/* -----------------------------------------------------------------------------
+     3. SIDEBAR
+     ----------------------------------------------------------------------------- */
+
 .chronica-sidebar {
   height: 100%;
   padding: 0;
@@ -67,7 +97,7 @@
   background-color: var(--background-primary-alt);
   border-right: 1px solid var(--background-modifier-border-hover);
   border-radius: var(--container-border-radius) 0 0
-    var(--container-border-radius);
+    var(--container-border-radius); /* Keep original value */
   transition: width 0.3s ease, min-width 0.3s ease, transform 0.3s ease;
   position: relative;
   z-index: 20;
@@ -96,80 +126,31 @@
   border-bottom: 1px solid var(--background-modifier-border);
 }
 
-/* Collapsed sidebar toggle button */
-.chronica-collapsed-toggle {
-  position: fixed; /* Change to fixed position to avoid scrolling issues */
-  left: 0;
-  width: 28px;
-  height: 40px;
-  background-color: var(--background-secondary-alt);
-  border: none;
-  border-radius: 0 6px 6px 0;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100; /* Increase z-index to ensure it's above all grid elements */
-  transition: width 0.2s ease, background-color 0.2s ease;
-  color: var(--text-normal);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-}
-
-.chronica-collapsed-toggle svg {
-  margin: 0;
-  width: 18px;
-  height: 18px;
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-}
-
-.chronica-collapsed-toggle:hover {
-  width: 30px;
-  background-color: var(--interactive-accent);
-  color: var(--text-on-accent);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-}
-
-/* Sidebar toggle button in header */
-.chronica-sidebar-toggle {
-  background-color: transparent;
-  border: none;
-  width: 30px;
-  height: 30px;
-  padding: 0;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-muted);
-  border-radius: 4px;
-  transition: background-color 0.2s ease, color 0.2s ease;
-  z-index: 25;
-}
-
-.chronica-sidebar-toggle:hover {
-  background-color: var(--background-modifier-hover);
-  color: var(--text-normal);
-}
-
-/* Content area */
-.chronica-content-area {
-  flex: 1;
-  height: 100%;
-  overflow: auto;
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  transition: padding-bottom 0.3s ease;
-}
-
 /* Sidebar sections */
 .chronica-sidebar-section {
   padding: 20px;
   margin-bottom: 16px;
   border-bottom: 1px solid var(--background-modifier-border);
+}
+
+/* Title styling */
+.chronica-title {
+  font-size: 20px;
+  font-weight: 300;
+  font-style: italic;
+  text-align: center; /* Keep original value */
+  margin-bottom: 24px; /* Keep original value */
+  color: var(--text-normal);
+}
+
+.section-header {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 10px 0;
+  margin-bottom: 16px;
+  color: var(--text-normal);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .subsection-header {
@@ -181,104 +162,27 @@
   letter-spacing: 0;
 }
 
-/* Adjust the existing section-header to create more contrast */
-.section-header {
-  font-size: 16px;
-  font-weight: 600;
-  margin: 0 0 10px 0;
-  margin-bottom: 16px;
-  color: var(--text-normal);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.chronica-select {
-  width: 100%;
-  padding: 8px 10px;
-  font-size: 16px;
-  background-color: var(--background-secondary);
-  color: var(--text-normal);
-  border: 1px solid var(--background-modifier-border);
-  border-radius: var(--container-border-radius);
-  margin-bottom: 12px;
-  cursor: pointer;
-  appearance: menulist;
-  height: auto;
-  line-height: 1.5;
-  font-weight: normal;
-  appearance: menulist;
-  padding: 8px 30px 8px 10px;
-  text-align: left;
-}
-
-.chronica-select:focus {
-  border-color: var(--interactive-accent);
-  outline: none;
-}
-
+/* Ensure specific heading overrides work */
 .chronica-sidebar-section h3.section-header + div .cell-shape-heading,
 .chronica-sidebar-section h3.section-header + div .grid-orientation-heading {
   text-transform: none;
 }
 
-/* Title styling */
-.chronica-title {
-  font-size: 20px;
-  font-weight: 300;
-  font-style: italic;
+/* Sidebar Footer */
+.chronica-footer {
   text-align: center;
-  margin-bottom: 24px;
-  color: var(--text-normal);
-}
-
-/* Main view container */
-.chronica-view {
-  position: relative;
-  overflow: auto;
-  flex-grow: 1;
-  background-color: var(--background-primary);
-  border-radius: var(--container-border-radius);
-  box-shadow: var(--card-shadow);
-  padding: var(--top-offset) 20px 20px 0;
-  padding-bottom: 0;
-  min-height: 400px;
-  min-width: 600px;
-  z-index: 5;
-}
-
-/* Markers container with proper structure */
-.chronica-vertical-markers {
-  position: absolute;
-  top: var(--top-offset);
-  left: 0;
-  width: var(--left-offset);
-  height: calc(100% - var(--top-offset));
-  pointer-events: none;
-  z-index: 10;
-  display: flex;
-  flex-direction: row-reverse;
-  transition: transform 0.2s ease;
-}
-
-/* Week markers container */
-.chronica-week-markers {
-  position: relative;
-  width: var(--marker-week-column);
-  height: 100%;
-}
-
-/* Month markers container */
-.chronica-month-markers {
-  position: relative;
-  width: var(--marker-month-column);
-  flex-grow: 1;
-  height: 100%;
+  font-style: italic;
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-top: auto;
+  padding: 15px 0;
 }
 
 /* -----------------------------------------------------------------------------
-           CONTROL ELEMENTS
-           ----------------------------------------------------------------------------- */
-/* Controls styling */
+     4. SIDEBAR CONTROLS (Buttons, Toggles, Inputs)
+     ----------------------------------------------------------------------------- */
+
+/* Control containers */
 .chronica-controls,
 .chronica-visual-controls {
   display: flex;
@@ -287,7 +191,7 @@
   margin-top: 10px;
 }
 
-/* Button styling */
+/* General Button Style */
 .chronica-btn {
   background-color: var(--background-modifier-border);
   color: var(--text-normal);
@@ -322,7 +226,65 @@
   background-color: var(--interactive-accent-hover);
 }
 
-/* Zoom controls styling */
+/* Sidebar Toggle Button (in header) */
+.chronica-sidebar-toggle {
+  background-color: transparent;
+  border: none;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  border-radius: 4px;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  z-index: 25;
+}
+
+.chronica-sidebar-toggle:hover {
+  background-color: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+/* Collapsed Sidebar Toggle Button (appears on content area) */
+.chronica-collapsed-toggle {
+  position: fixed; /* Keep original value */
+  left: 0;
+  width: 28px;
+  height: 40px;
+  background-color: var(--background-secondary-alt);
+  border: none;
+  border-radius: 0 6px 6px 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100; /* Keep original value */
+  transition: width 0.2s ease, background-color 0.2s ease;
+  color: var(--text-normal);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.chronica-collapsed-toggle svg {
+  margin: 0;
+  width: 18px;
+  height: 18px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.chronica-collapsed-toggle:hover {
+  width: 30px;
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Zoom Controls */
 .chronica-zoom-controls {
   display: flex;
   align-items: center;
@@ -331,7 +293,6 @@
   margin: 5px 0 10px;
 }
 
-/* Button styling */
 .chronica-zoom-button {
   background-color: var(--background-modifier-border);
   border: none;
@@ -384,7 +345,7 @@
   border-color: var(--interactive-accent);
 }
 
-/* Fit to screen button */
+/* Fit to Screen Button */
 .chronica-fit-to-screen {
   margin-top: 5px;
   width: 100%;
@@ -395,88 +356,66 @@
   color: var(--text-on-accent);
 }
 
-/* -----------------------------------------------------------------------------
-           MARKERS & GRID LAYOUT
-           ----------------------------------------------------------------------------- */
-/* Decade markers (horizontal, top) */
-.chronica-decade-markers {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: calc(100% - var(--left-offset));
-  height: var(--top-offset);
-  pointer-events: none;
-  z-index: 20;
-  transition: transform 0.2s ease;
-}
-
-.chronica-decade-marker {
-  position: absolute;
-  font-size: 12px;
-  color: var(--text-muted);
-  font-weight: 500;
-  text-align: center;
-  transform: translateX(-50%);
-}
-
-/* Week markers (vertical) */
-.chronica-week-marker {
-  position: absolute;
-  font-size: 12px;
-  color: var(--text-muted);
-  font-weight: 600;
-  right: 4px; /* Changed from 2px to 4px */
-  transform: translateY(-50%);
-  padding: 1px 3px; /* Slightly reduced padding */
-  border-radius: 3px;
-  z-index: 15;
-  text-align: right;
-  width: 25px; /* Reduced from 30px */
-}
-
-.chronica-week-marker:hover {
-  opacity: 1;
+/* Dropdown Select */
+.chronica-select {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 16px;
+  background-color: var(--background-secondary);
   color: var(--text-normal);
-}
-
-/* Month markers */
-.chronica-month-marker {
-  position: absolute;
-  font-size: 10px;
-  color: var(--text-muted);
-  font-weight: 400;
-  font-style: italic;
-  left: 3px; /* Changed from 5px to 3px */
-  opacity: 0.8; /* Slightly increased from 0.7 */
-  transform: translateY(-50%);
-  transition: opacity 0.2s, color 0.2s;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--container-border-radius);
+  margin-bottom: 12px;
+  cursor: pointer;
+  appearance: menulist;
+  height: auto;
+  line-height: 1.5;
+  font-weight: normal;
+  /* Re-apply specific appearance styles */
+  padding: 8px 30px 8px 10px;
   text-align: left;
-  width: 30px;
 }
 
-/* Highlight month markers on hover for better discoverability */
-.chronica-month-marker:hover {
-  opacity: 1;
+.chronica-select:focus {
+  border-color: var(--interactive-accent);
+  outline: none;
 }
 
-/* Special styling for January months */
-.chronica-month-marker.first-of-year {
-  font-weight: 500;
-  opacity: 0.9;
-  color: var(--text-accent);
+/* Styling for the auto-fill day selector in settings */
+.auto-fill-day-selector select {
+  width: 120px;
 }
 
-/* Special styling for birth month */
-.chronica-month-marker.birth-month {
-  right: auto;
-  left: 5px;
+/* Radio button controls (used in modals) */
+.chronica-radio-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 5px;
 }
 
-.chronica-month-marker.birth-month svg {
-  color: #e91e63; /* Pink color for cake icon */
+.chronica-radio-label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 4px;
+  background-color: var(--background-secondary);
 }
 
-/* Timeline grid container */
+.chronica-color-box {
+  width: 12px;
+  height: 12px;
+  margin: 0 5px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+/* -----------------------------------------------------------------------------
+     5. TIMELINE GRID & CELLS
+     ----------------------------------------------------------------------------- */
+
+/* Grid Container */
 .chronica-grid {
   display: grid;
   grid-gap: var(--cell-gap);
@@ -498,10 +437,7 @@
   content: none !important;
 }
 
-/* -----------------------------------------------------------------------------
-           GRID CELLS
-           ----------------------------------------------------------------------------- */
-/* Individual cells */
+/* Individual Grid Cells */
 .chronica-grid-cell {
   width: var(--cell-size);
   height: var(--cell-size);
@@ -510,13 +446,13 @@
   transition: transform var(--transition-speed) ease,
     box-shadow var(--transition-speed) ease,
     background-color var(--transition-speed) ease;
-  position: relative;
+  position: relative; /* Keep original value */
 }
 
-/* ── Shape Variants ── */
+/* Cell Shape Variants */
 .chronica-grid.shape-circle .chronica-grid-cell {
   border-radius: 50%;
-  clip-path: none;
+  clip-path: none; /* Keep original value */
 }
 
 .chronica-grid.shape-diamond .chronica-grid-cell {
@@ -527,14 +463,14 @@
 .chronica-grid-cell:hover {
   transform: scale(1.15);
   box-shadow: var(--hover-shadow);
-  z-index: 10;
+  z-index: 10; /* Keep original value */
 }
 
-/* Special cell states */
+/* Cell States & Colors */
 .chronica-grid-cell.present {
   z-index: 5;
-  box-shadow: 0 0 8px var(--present-color);
-  border-color: var(--present-color);
+  box-shadow: 0 0 8px var(--present-color); /* Keep original value */
+  border-color: var(--present-color); /* Keep original value */
 }
 
 .chronica-grid-cell.event {
@@ -565,14 +501,167 @@
   }
 }
 
+/* Manual/Auto Fill Styling */
+.chronica-grid-cell.filled-week {
+  border: 2px solid #8bc34a;
+}
+
+.chronica-grid-cell.filled-week:not(.event) {
+  background-color: #8bc34a;
+}
+
+.chronica-grid-cell.filled-week.event {
+  border: 2px solid #8bc34a; /* Keep original value */
+}
+
 /* -----------------------------------------------------------------------------
-           LEGEND
-           ----------------------------------------------------------------------------- */
+     6. TIMELINE MARKERS (Decade, Week, Month, Birthday)
+     ----------------------------------------------------------------------------- */
+
+/* Container for markers positioned relative to the view */
+.chronica-vertical-markers {
+  position: absolute;
+  top: var(--top-offset);
+  left: 0;
+  width: var(--left-offset);
+  height: calc(100% - var(--top-offset));
+  pointer-events: none;
+  z-index: 10; /* Keep original value */
+  display: flex;
+  flex-direction: row-reverse; /* Keep original value */
+  transition: transform 0.2s ease;
+}
+
+/* Week markers container */
+.chronica-week-markers {
+  position: relative;
+  width: var(--marker-week-column);
+  height: 100%;
+}
+
+/* Month markers container */
+.chronica-month-markers {
+  position: relative;
+  width: var(--marker-month-column);
+  flex-grow: 1;
+  height: 100%;
+}
+
+/* Horizontal Decade Markers (Top) */
+.chronica-decade-markers {
+  position: absolute;
+  top: 0;
+  left: 0; /* Keep original value */
+  width: calc(100% - var(--left-offset));
+  height: var(--top-offset);
+  pointer-events: none;
+  z-index: 20; /* Keep original value */
+  transition: transform 0.2s ease;
+}
+
+.chronica-decade-marker {
+  position: absolute;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+  text-align: center;
+  transform: translateX(-50%);
+}
+
+/* Week Number Markers (Left) */
+.chronica-week-marker {
+  position: absolute;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 600;
+  right: 4px; /* Keep original value */
+  transform: translateY(-50%);
+  padding: 1px 3px; /* Keep original value */
+  border-radius: 3px;
+  z-index: 15; /* Keep original value */
+  text-align: right;
+  width: 25px; /* Keep original value */
+}
+
+.chronica-week-marker:hover {
+  opacity: 1;
+  color: var(--text-normal);
+}
+
+/* Month Name Markers (Left) */
+.chronica-month-marker {
+  position: absolute;
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 400;
+  font-style: italic;
+  left: 3px; /* Keep original value */
+  opacity: 0.8; /* Keep original value */
+  transform: translateY(-50%);
+  transition: opacity 0.2s, color 0.2s;
+  text-align: left;
+  width: 30px; /* Keep original value */
+}
+
+.chronica-month-marker:hover {
+  opacity: 1;
+}
+
+.chronica-month-marker.first-of-year {
+  font-weight: 500;
+  opacity: 0.9;
+  color: var(--text-accent);
+}
+
+.chronica-month-marker.birth-month {
+  right: auto; /* Keep original value */
+  left: 5px; /* Keep original value */
+}
+
+.chronica-month-marker.birth-month svg {
+  color: #e91e63; /* Keep original value */
+}
+
+/* Birthday Cake Marker (Left) */
+.chronica-birthday-marker-container {
+  pointer-events: none;
+  position: absolute;
+  top: var(--top-offset);
+  left: calc(var(--left-offset) - 22px);
+  z-index: 15;
+  transform: none; /* Keep original value */
+}
+
+.birthday-cake-marker {
+  color: #f48fb1; /* Keep original value */
+  padding: 3px;
+  width: 24px; /* Keep original value */
+  height: 18px; /* Keep original value */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s;
+  transform: translateY(-2px); /* Keep original value */
+}
+
+.birthday-cake-marker:hover {
+  transform: scale(1.2);
+}
+
+.birthday-cake-marker svg {
+  color: #f48fb1; /* Keep original value */
+}
+
+/* -----------------------------------------------------------------------------
+     7. LEGEND (Sidebar)
+     ----------------------------------------------------------------------------- */
+
 .chronica-legend {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin-bottom: 15px;
+  margin-bottom: 15px; /* Keep original value */
+  /* margin-top: auto; <-- Removed this line to allow footer push */
 }
 
 .chronica-legend-item {
@@ -591,27 +680,17 @@
 }
 
 /* -----------------------------------------------------------------------------
-           FOOTER
-           ----------------------------------------------------------------------------- */
-.chronica-footer {
-  text-align: center;
-  font-style: italic;
-  font-size: 14px;
-  color: var(--text-muted);
-  margin-top: auto;
-  padding: 15px 0;
-}
+     8. MODALS (Event, Settings, Welcome, Confirmation)
+     ----------------------------------------------------------------------------- */
 
-/* -----------------------------------------------------------------------------
-           MODAL WINDOWS & FORMS
-           ----------------------------------------------------------------------------- */
-/* General modal styling */
+/* General modal improvements */
 .modal .setting-item {
+  /* Keep original value */
   border-top: 1px solid var(--background-modifier-border);
   padding-top: 18px;
 }
 
-/* Date picker enhancements */
+/* Date picker enhancements (Event Modal) */
 .chronica-date-picker-container {
   margin-bottom: 20px;
 }
@@ -624,7 +703,7 @@
   font-style: italic;
 }
 
-/* Event type management UI */
+/* Event type management UI (Manage Types Modal) */
 .event-type-add-section,
 .event-type-existing-section {
   margin-bottom: 20px;
@@ -660,7 +739,7 @@
   flex-grow: 1;
 }
 
-/* Buttons */
+/* Buttons within Manage Types Modal */
 .edit-type-button,
 .delete-type-button,
 .add-type-button,
@@ -685,32 +764,7 @@
   background-color: var(--text-muted);
 }
 
-/* Radio button controls */
-.chronica-radio-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 5px;
-}
-
-.chronica-radio-label {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  padding: 5px;
-  border-radius: 4px;
-  background-color: var(--background-secondary);
-}
-
-.chronica-color-box {
-  width: 12px;
-  height: 12px;
-  margin: 0 5px;
-  border-radius: 2px;
-  display: inline-block;
-}
-
-/* Form inputs */
+/* Form inputs within Manage Types Modal */
 .edit-name-container,
 .edit-color-container {
   margin-bottom: 15px;
@@ -723,159 +777,159 @@
   font-weight: 500;
 }
 
-/* Birthday cake marker */
-.chronica-birthday-marker-container {
-  pointer-events: none;
-  position: absolute;
-  top: var(--top-offset); /* same vertical offset as the grid */
-  left: calc(var(--left-offset) - 22px); /* shift back by half a cake’s width */
-  z-index: 15;
-  transform: none; /* reset any inline transforms */
+/* Welcome Modal */
+.chronica-welcome-modal {
+  max-width: 500px;
+  padding: 20px;
 }
 
-.birthday-cake-marker {
-  color: #f48fb1; /* Lighter pink color */
-  padding: 3px;
-  width: 24px; /* Increased size */
-  height: 18px; /* Increased size */
+.chronica-welcome-header {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.2s;
-  transform: translateY(-2px);
-}
-
-.birthday-cake-marker:hover {
-  transform: scale(1.2);
-}
-
-/* Make sure the SVG inside takes the color */
-.birthday-cake-marker svg {
-  color: #f48fb1; /* Ensure SVG takes the color */
-}
-
-/* Filled week styling */
-.chronica-grid-cell.filled-week {
-  border: 2px solid #8bc34a;
-}
-
-.chronica-grid-cell.filled-week:not(.event) {
-  background-color: #8bc34a;
-}
-
-.chronica-grid-cell.filled-week.event {
-  border: 2px solid #8bc34a;
-}
-
-/* Styling for the auto-fill day selector */
-.auto-fill-day-selector select {
-  width: 120px;
-}
-
-/* -----------------------------------------------------------------------------
-           RESPONSIVE DESIGN
-           ----------------------------------------------------------------------------- */
-
-@media (max-width: 768px) {
-  .chronica-main-container {
-    flex-direction: column;
-  }
-
-  .chronica-sidebar:not(.collapsed) {
-    width: 100%;
-    min-width: 0;
-    height: auto;
-    max-height: 200px;
-    overflow-y: auto;
-    border-right: none;
-    border-bottom: 1px solid var(--background-modifier-border);
-    padding: 10px;
-  }
-
-  .chronica-sidebar.collapsed {
-    max-height: 0;
-    padding: 0;
-  }
-
-  .chronica-sidebar-toggle {
-    top: 0 !important;
-    transform: none;
-    border-radius: 0 0 4px 4px;
-  }
-
-  .chronica-legend {
-    flex-direction: row;
-    flex-wrap: wrap;
-  }
-
-  /* Adjust container padding */
-  .chronica-view {
-    padding: 45px 15px 15px 45px;
-  }
-
-  /* Adjust markers */
-  .chronica-decade-marker,
-  .chronica-decade-label {
-    display: none !important;
-  }
-}
-
-/* -----------------------------------------------------------------------------
-           PORTRAIT MODE STYLES
-           ----------------------------------------------------------------------------- */
-
-/* Portrait mode style adjustments */
-.chronica-vertical-markers.portrait-mode {
-  transform: none; /* Remove rotation */
-  width: calc(100% - var(--top-offset));
-  height: var(--left-offset);
-  top: 0;
-  left: var(--top-offset);
+  margin-bottom: 20px;
   flex-direction: column;
 }
 
-.chronica-decade-markers.portrait-mode {
-  top: auto;
-  left: 0;
-  width: var(--left-offset);
-  height: calc(100% - var(--top-offset));
-  flex-direction: column;
+.chronica-welcome-icon {
+  width: 80px;
+  height: 80px;
+  margin-bottom: 10px;
 }
 
-.chronica-decade-marker.portrait-mode {
-  top: auto;
-  left: 50% !important;
+.chronica-welcome-icon svg {
+  width: 100%;
+  height: 100%;
+  color: var(--interactive-accent);
 }
 
-.chronica-week-marker.portrait-mode {
-  transform: none;
-  text-align: right;
-  right: auto;
-  top: 50%;
-  transform-origin: left center;
-}
-
-.chronica-month-marker.portrait-mode {
+.chronica-welcome-title {
+  margin: 0;
+  font-size: 28px;
   text-align: center;
-  font-size: 10px;
-  position: absolute;
-  transform: translateX(-50%);
 }
 
-/* Make month markers more visible in portrait mode */
-.chronica-month-markers.portrait-mode {
-  position: absolute;
-  top: 0;
-  left: var(--left-offset);
-  width: calc(100% - var(--left-offset));
-  height: var(--top-offset);
-  display: block; /* Change from flex to block */
-  padding-top: 5px;
+.chronica-welcome-subtitle {
+  margin: 10px 0;
+  font-size: 20px;
+}
+
+.chronica-welcome-intro {
+  text-align: center;
+  margin-bottom: 20px;
+  font-size: 16px;
+  font-style: italic;
+  color: var(--text-muted);
+}
+
+.chronica-welcome-setup {
+  background-color: var(--background-secondary);
+  padding: 20px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+}
+
+.chronica-welcome-birthdate {
+  margin: 20px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.chronica-welcome-label {
+  margin-bottom: 5px;
+  font-weight: 500;
+}
+
+.chronica-welcome-input {
+  font-size: 16px;
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid var(--background-modifier-border);
+  background-color: var(--background-primary);
+  color: var(--text-normal);
+}
+
+.chronica-welcome-buttons {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.chronica-welcome-button {
+  padding: 10px 15px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  border: 1px solid var(--background-modifier-border);
+  background-color: var(--background-secondary);
+  color: var(--text-normal);
+  flex: 1;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.chronica-welcome-button:hover {
+  background-color: var(--background-modifier-hover);
+}
+
+.chronica-welcome-primary-button {
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+}
+
+.chronica-welcome-primary-button:hover {
+  background-color: var(--interactive-accent-hover);
+}
+
+.chronica-welcome-accent-button {
+  background-color: var(--background-modifier-success);
+  color: var(--text-on-accent);
+  border-color: var(--background-modifier-success);
+}
+
+.chronica-welcome-accent-button:hover {
+  filter: brightness(1.1);
+}
+
+.chronica-welcome-footer {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Confirmation Modal */
+.chronica-confirmation-buttons {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 20px;
+}
+
+.chronica-confirmation-buttons button {
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.chronica-confirm-button {
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border: none;
+}
+
+.chronica-cancel-button {
+  background-color: var(--background-secondary);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
 }
 
 /* -----------------------------------------------------------------------------
-     STATISTICS PANEL
+     9. STATISTICS PANEL
      ----------------------------------------------------------------------------- */
+
+/* Handle to toggle panel visibility */
 .chronica-stats-handle {
   position: fixed;
   bottom: 0;
@@ -908,21 +962,18 @@
   height: 14px;
 }
 
-.chronica-content-area.stats-expanded {
-  padding-bottom: 0;
-}
-
+/* Main Stats Panel Container */
 .chronica-stats-panel {
   width: var(--stats-panel-width);
-  max-width: 1500px;
-  min-width: 200px;
+  max-width: 1500px; /* Keep original value */
+  min-width: 200px; /* Keep original value */
   padding: 0;
-  overflow-y: auto;
+  overflow-y: auto; /* Keep original value */
   display: flex;
   flex-direction: column;
   background-color: var(--background-primary-alt);
   border-top: 1px solid var(--background-modifier-border-hover);
-  border-radius: 6px 6px 0 0;
+  border-radius: 6px 6px 0 0; /* Keep original value */
   box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.1);
   transition: height 0.3s ease, min-height 0.3s ease, transform 0.3s ease,
     left 0.3s ease;
@@ -930,10 +981,55 @@
   bottom: 0;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 20;
+  z-index: 20; /* Keep original value */
   will-change: height, left, transform;
 }
 
+.chronica-stats-panel.expanded {
+  height: var(--stats-panel-height);
+  min-height: var(--stats-panel-min-height);
+}
+
+.chronica-stats-panel.collapsed {
+  height: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-top: none;
+}
+
+/* Panel Header */
+.chronica-stats-header {
+  display: flex;
+  align-items: center;
+  padding: 10px 15px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  background-color: var(--background-secondary-alt);
+  cursor: move;
+  cursor: grab;
+}
+
+.chronica-stats-header:active {
+  cursor: grabbing;
+}
+
+/* Panel Resize Handle (Top Center) */
+.chronica-stats-drag-handle {
+  width: 60px;
+  height: 4px;
+  background-color: var(--text-muted) !important; /* Keep original value */
+  border-radius: 10px;
+  margin: 6px auto 10px auto;
+  cursor: ns-resize;
+  position: relative; /* Keep original value */
+  opacity: 0.2 !important; /* Keep original value */
+}
+
+.chronica-stats-drag-handle:hover {
+  background-color: var(--text-muted);
+  opacity: 0.5 !important; /* Keep original value */
+}
+
+/* Horizontal Resize Handles (Left/Right Edges) */
 .chronica-stats-left-handle,
 .chronica-stats-right-handle {
   position: absolute;
@@ -953,60 +1049,19 @@
   right: 0;
 }
 
-/* Combined hover rule */
 .chronica-stats-left-handle:hover,
 .chronica-stats-right-handle:hover {
   background-color: rgba(var(--interactive-accent-rgb), 0.1);
 }
 
-.chronica-stats-panel.expanded {
-  height: var(--stats-panel-height);
-  min-height: var(--stats-panel-min-height);
-}
-
-.chronica-stats-panel.collapsed {
-  height: 0;
-  min-height: 0;
-  overflow: hidden;
-  border-top: none;
-}
-
-.chronica-stats-header {
-  display: flex;
-  align-items: center;
-  padding: 10px 15px;
-  border-bottom: 1px solid var(--background-modifier-border);
-  background-color: var(--background-secondary-alt);
-  cursor: move; /* Indicate draggable */
-  cursor: grab; /* Modern grab cursor */
-}
-
-.chronica-stats-header:active {
-  cursor: grabbing; /* Change when actively dragging */
-}
-
-.chronica-stats-drag-handle {
-  width: 60px;
-  height: 4px;
-  background-color: var(
-    --text-muted
-  ) !important; /* Use text-muted for more visibility */
-  border-radius: 10px;
-  margin: 6px auto 10px auto;
-  cursor: ns-resize;
-  position: relative;
-  opacity: 0.2 !important; /* Ensure it's visible */
-}
-
-.chronica-stats-drag-handle:hover {
-  background-color: var(--text-muted);
-  opacity: 0.5 !important;
-}
-
+/* Panel Tabs */
 .chronica-stats-tabs {
   display: flex;
   gap: 5px;
   flex-grow: 1;
+  /* Added from later styles */
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .chronica-stats-tab {
@@ -1018,6 +1073,9 @@
   background-color: transparent;
   border: none;
   transition: background-color 0.2s ease, color 0.2s ease;
+  /* Added from later styles */
+  padding: 3px 6px;
+  font-size: 12px;
 }
 
 .chronica-stats-tab:hover {
@@ -1030,6 +1088,7 @@
   color: var(--text-on-accent);
 }
 
+/* Panel Close Button */
 .chronica-stats-close {
   background-color: transparent;
   border: none;
@@ -1048,6 +1107,7 @@
   color: var(--text-normal);
 }
 
+/* Panel Content Area */
 .chronica-stats-content {
   padding: 15px;
   overflow-y: auto;
@@ -1062,49 +1122,28 @@
   display: block;
 }
 
-/* Progress indicators */
-.chronica-progress-bar {
-  width: 100%;
-  height: 10px;
-  background-color: var(--background-modifier-border);
-  border-radius: 5px;
-  margin: 10px 0;
-  overflow: hidden;
+/* Padding adjustment for content area when stats panel is open */
+.chronica-content-area.stats-expanded {
+  padding-bottom: 0; /* Keep original value */
 }
 
-.chronica-progress-bar-fill {
-  height: 100%;
-  background-color: var(--interactive-accent);
-  border-radius: 5px;
+/* Grid view adjustment when stats panel is open */
+.chronica-view {
+  transition: padding-bottom 0.3s ease; /* Keep original value */
 }
 
-.chronica-circular-progress {
-  width: 80px;
-  height: 80px;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto;
-}
+/* -----------------------------------------------------------------------------
+     10. STATISTICS PANEL - TAB SPECIFIC STYLES
+     ----------------------------------------------------------------------------- */
 
-.chronica-circular-progress svg {
-  position: absolute;
-  top: 0;
-  left: 0;
-}
-
-.chronica-circular-progress-text {
-  font-size: 18px;
-  font-weight: 600;
-}
-
-/* Stat cards and layout */
+/* --- Overview Tab --- */
 .chronica-stats-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr; /* Keep original value */
   gap: 15px;
-  margin-top: 15px;
+  margin-top: 15px; /* Keep original value */
+  /* Added from later styles */
+  margin-top: 10px;
 }
 
 .chronica-stat-card {
@@ -1112,6 +1151,9 @@
   border-radius: 6px;
   padding: 15px;
   box-shadow: var(--card-shadow);
+  /* Added from later styles */
+  padding: 12px;
+  margin-bottom: 15px;
 }
 
 .chronica-stat-title {
@@ -1132,22 +1174,6 @@
   margin-top: 5px;
 }
 
-.chronica-view {
-  /* Ensure grid view adjusts when stats panel is open */
-  transition: padding-bottom 0.3s ease;
-}
-
-.chronica-stats-tabs {
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-.chronica-stats-tab {
-  padding: 3px 6px;
-  font-size: 12px;
-}
-
-/* Improved stats layout */
 .chronica-progress-container {
   display: flex;
   align-items: center;
@@ -1156,20 +1182,52 @@
 }
 
 .chronica-circular-progress {
+  width: 80px;
+  height: 80px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  /* Added from later styles */
   width: 60px;
   height: 60px;
   flex-shrink: 0;
+}
+
+.chronica-circular-progress svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  /* Added from later styles */
+  width: 100%;
+  height: 100%;
+}
+
+.chronica-circular-progress-text {
+  font-size: 18px;
+  font-weight: 600;
+  /* Added from later styles */
+  font-size: 16px;
 }
 
 .chronica-bar-container {
   flex-grow: 1;
 }
 
-.chronica-stats-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 15px;
-  margin-top: 10px;
+.chronica-progress-bar {
+  width: 100%;
+  height: 10px;
+  background-color: var(--background-modifier-border);
+  border-radius: 5px;
+  margin: 10px 0;
+  overflow: hidden;
+}
+
+.chronica-progress-bar-fill {
+  height: 100%;
+  background-color: var(--interactive-accent);
+  border-radius: 5px;
 }
 
 .chronica-stat-section {
@@ -1180,42 +1238,7 @@
   grid-column: span 2;
 }
 
-/* Make circular progress smaller */
-.chronica-circular-progress svg {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.chronica-circular-progress-text {
-  font-size: 16px;
-  font-weight: 600;
-}
-
-/* Additional stat cards formatting */
-.chronica-stat-card {
-  padding: 12px;
-  border-radius: 6px;
-  background-color: var(--background-secondary);
-  box-shadow: var(--card-shadow);
-  margin-bottom: 15px;
-}
-
-/* Responsive adjustments */
-@media (max-width: 500px) {
-  .chronica-stats-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .chronica-stat-section,
-  .chronica-stat-card-full {
-    grid-column: span 1;
-  }
-}
-
-/* Event tab styles */
+/* --- Events Tab --- */
 .chronica-empty-state {
   text-align: center;
   padding: 40px 20px;
@@ -1335,7 +1358,7 @@
   text-align: right;
 }
 
-/* Timeline Tab Styles */
+/* --- Timeline Tab --- */
 .chronica-phase-bar {
   display: flex;
   width: 100%;
@@ -1431,8 +1454,7 @@
   font-size: 14px;
 }
 
-/* Charts Tab Styles */
-/* Charts tab redesign */
+/* --- Charts Tab --- */
 .chronica-charts-grid-container {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -1607,7 +1629,7 @@
 /* Seasonal Pattern Analysis styles */
 .chronica-seasonal-chart-container {
   width: 100%;
-  height: 280px; /* Significantly increased from 200px */
+  height: 280px; /* Keep original value */
   display: flex;
   justify-content: center;
   align-items: center;
@@ -1615,8 +1637,8 @@
 }
 
 .chronica-seasonal-chart {
-  width: 280px; /* Significantly increased from 200px */
-  height: 280px; /* Significantly increased from 200px */
+  width: 280px; /* Keep original value */
+  height: 280px; /* Keep original value */
 }
 
 /* Monthly chart */
@@ -1645,22 +1667,6 @@
 .chronica-current-bar {
   background-color: var(--text-accent);
   box-shadow: 0 0 8px rgba(var(--interactive-accent-rgb), 0.4);
-}
-
-/* Responsive adjustments */
-@media (max-width: 600px) {
-  .chronica-charts-grid-container {
-    grid-template-columns: 1fr;
-  }
-
-  .chronica-donut-container {
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .chronica-chart-legend {
-    width: 100%;
-  }
 }
 
 /* Future Planning Horizon styles */
@@ -1719,7 +1725,7 @@
   font-style: italic;
 }
 
-/* Collapsible tips styling */
+/* Collapsible tips styling (Settings) */
 .chronica-tips-container {
   margin-top: 10px;
 }
@@ -1759,151 +1765,126 @@
 }
 
 /* -----------------------------------------------------------------------------
-     WELCOME MODAL
+     11. RESPONSIVE ADJUSTMENTS
      ----------------------------------------------------------------------------- */
-.chronica-welcome-modal {
-  max-width: 500px;
-  padding: 20px;
+
+@media (max-width: 768px) {
+  .chronica-main-container {
+    flex-direction: column;
+  }
+
+  .chronica-sidebar:not(.collapsed) {
+    width: 100%;
+    min-width: 0;
+    height: auto;
+    max-height: 200px;
+    overflow-y: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--background-modifier-border);
+    padding: 10px;
+  }
+
+  .chronica-sidebar.collapsed {
+    max-height: 0;
+    padding: 0;
+  }
+
+  .chronica-sidebar-toggle {
+    top: 0 !important;
+    transform: none;
+    border-radius: 0 0 4px 4px;
+  }
+
+  .chronica-legend {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  /* Adjust container padding */
+  .chronica-view {
+    padding: 45px 15px 15px 45px;
+  }
+
+  /* Adjust markers */
+  .chronica-decade-marker,
+  .chronica-decade-label {
+    display: none !important;
+  }
 }
 
-.chronica-welcome-header {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 20px;
-  flex-direction: column;
+@media (max-width: 500px) {
+  /* Responsive adjustments from Stats Panel section */
+  .chronica-stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .chronica-stat-section,
+  .chronica-stat-card-full {
+    grid-column: span 1;
+  }
+
+  /* Responsive adjustments from Charts Tab section */
+  .chronica-charts-grid-container {
+    grid-template-columns: 1fr;
+  }
+
+  .chronica-donut-container {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .chronica-chart-legend {
+    width: 100%;
+  }
 }
 
-.chronica-welcome-icon {
-  width: 80px;
-  height: 80px;
-  margin-bottom: 10px;
+/* -----------------------------------------------------------------------------
+     12. PORTRAIT MODE SPECIFIC STYLES
+     ----------------------------------------------------------------------------- */
+
+.chronica-vertical-markers.portrait-mode {
+  transform: none; /* Keep original value */
+  width: calc(100% - var(--top-offset));
+  height: var(--left-offset);
+  top: 0;
+  left: var(--top-offset);
+  flex-direction: column; /* Keep original value */
 }
 
-.chronica-welcome-icon svg {
-  width: 100%;
-  height: 100%;
-  color: var(--interactive-accent);
+.chronica-decade-markers.portrait-mode {
+  top: auto;
+  left: 0;
+  width: var(--left-offset); /* Keep original value */
+  height: calc(100% - var(--top-offset));
+  /* flex-direction: column; <-- This was incorrect, remove */
 }
 
-.chronica-welcome-title {
-  margin: 0;
-  font-size: 28px;
+.chronica-decade-marker.portrait-mode {
+  top: auto;
+  left: 50% !important;
+}
+
+.chronica-week-marker.portrait-mode {
+  transform: none;
+  text-align: right;
+  right: auto;
+  top: 50%;
+  transform-origin: left center;
+}
+
+.chronica-month-marker.portrait-mode {
   text-align: center;
+  font-size: 10px;
+  position: absolute;
+  transform: translateX(-50%);
 }
 
-.chronica-welcome-subtitle {
-  margin: 10px 0;
-  font-size: 20px;
-}
-
-.chronica-welcome-intro {
-  text-align: center;
-  margin-bottom: 20px;
-  font-size: 16px;
-  font-style: italic;
-  color: var(--text-muted);
-}
-
-.chronica-welcome-setup {
-  background-color: var(--background-secondary);
-  padding: 20px;
-  border-radius: 10px;
-  margin-bottom: 20px;
-}
-
-.chronica-welcome-birthdate {
-  margin: 20px 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.chronica-welcome-label {
-  margin-bottom: 5px;
-  font-weight: 500;
-}
-
-.chronica-welcome-input {
-  font-size: 16px;
-  padding: 8px;
-  border-radius: 4px;
-  border: 1px solid var(--background-modifier-border);
-  background-color: var(--background-primary);
-  color: var(--text-normal);
-}
-
-.chronica-welcome-buttons {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 20px;
-}
-
-.chronica-welcome-button {
-  padding: 10px 15px;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 14px;
-  border: 1px solid var(--background-modifier-border);
-  background-color: var(--background-secondary);
-  color: var(--text-normal);
-  flex: 1;
-  text-align: center;
-  transition: all 0.2s ease;
-}
-
-.chronica-welcome-button:hover {
-  background-color: var(--background-modifier-hover);
-}
-
-.chronica-welcome-primary-button {
-  background-color: var(--interactive-accent);
-  color: var(--text-on-accent);
-  border-color: var(--interactive-accent);
-}
-
-.chronica-welcome-primary-button:hover {
-  background-color: var(--interactive-accent-hover);
-}
-
-.chronica-welcome-accent-button {
-  background-color: var(--background-modifier-success);
-  color: var(--text-on-accent);
-  border-color: var(--background-modifier-success);
-}
-
-.chronica-welcome-accent-button:hover {
-  filter: brightness(1.1);
-}
-
-.chronica-welcome-footer {
-  text-align: center;
-  font-size: 12px;
-  color: var(--text-muted);
-  font-style: italic;
-}
-
-/* Confirmation modal styling */
-.chronica-confirmation-buttons {
-  display: flex;
-  justify-content: space-around;
-  margin-top: 20px;
-}
-
-.chronica-confirmation-buttons button {
-  padding: 8px 16px;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.chronica-confirm-button {
-  background-color: var(--interactive-accent);
-  color: var(--text-on-accent);
-  border: none;
-}
-
-.chronica-cancel-button {
-  background-color: var(--background-secondary);
-  color: var(--text-normal);
-  border: 1px solid var(--background-modifier-border);
+.chronica-month-markers.portrait-mode {
+  position: absolute;
+  top: 0;
+  left: var(--left-offset);
+  width: calc(100% - var(--left-offset));
+  height: var(--top-offset);
+  display: block;
+  padding-top: 5px;
 }
