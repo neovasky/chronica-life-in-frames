@@ -493,8 +493,10 @@ Exp .chronica-sidebar-toggle:hover {
 }
 
 .chronica-grid-cell.event {
-  border-width: 2px !important;
+  border-width: 2px !important; /* Or remove !important if not needed */
+  border-style: solid; /* Make sure this is present */
   box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
+  /* We no longer set border-color or background-color here by default */
 }
 
 /* Future event highlight - subtle indicator */
@@ -747,6 +749,27 @@ Exp .chronica-sidebar-toggle:hover {
 
 .event-type-item.custom {
   background-color: var(--background-primary);
+}
+
+/* Optional: Style preset vs custom types in Manage Types modal */
+.chronica-manage-types-modal .event-type-item.preset-type {
+  background-color: var(
+    --background-secondary-alt
+  ); /* Slightly different background */
+  /* Add other styles like italics or an icon if desired */
+}
+
+.chronica-manage-types-modal .event-type-item .event-type-actions {
+  margin-left: auto; /* Push buttons to the right */
+  display: flex;
+  gap: 5px;
+}
+
+.chronica-manage-types-modal .delete-type-button {
+  background-color: var(--background-modifier-error); /* Use error color */
+}
+.chronica-manage-types-modal .delete-type-button:hover {
+  background-color: var(--background-modifier-error-hover);
 }
 
 .event-type-color {
@@ -1327,6 +1350,13 @@ Exp .chronica-sidebar-toggle:hover {
 
 .chronica-event-item:last-child {
   border-bottom: none;
+}
+
+.chronica-event-item.clickable-event {
+  cursor: pointer;
+}
+.chronica-event-item.clickable-event:hover {
+  background-color: var(--background-modifier-hover);
 }
 
 .chronica-event-color-dot {
