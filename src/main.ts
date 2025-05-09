@@ -6276,6 +6276,12 @@ class ChornicaTimelineView extends ItemView {
     ) {
       // Clear any lingering event styles if data is missing
       cell.classList.remove("event", "future-event-highlight");
+      // Remove any event-type-id classes
+      for (let i = cell.classList.length - 1; i >= 0; i--) {
+        if (cell.classList[i].startsWith("event-type-")) {
+          cell.classList.remove(cell.classList[i]);
+        }
+      }
       cell.style.backgroundColor = ""; // Let base past/present/future CSS handle it
       cell.style.borderColor = "";
       cell.style.borderWidth = "";
@@ -6292,11 +6298,19 @@ class ChornicaTimelineView extends ItemView {
     let matchedEvent: ChronicaEvent | null = null;
     for (const event of this.plugin.settings.events) {
       let isMatch = false;
-      if (event.weekKey === weekKey && !event.endWeekKey) {
+      // Direct match for single week event
+      if (
+        event.weekKey === weekKey &&
+        (!event.endWeekKey || event.endWeekKey === event.weekKey)
+      ) {
         isMatch = true;
-      } // Direct match
-      else if (event.weekKey && event.endWeekKey) {
-        // Range check
+      }
+      // Check if weekKey falls within a range event
+      else if (
+        event.weekKey &&
+        event.endWeekKey &&
+        event.endWeekKey !== event.weekKey
+      ) {
         try {
           const startYear = parseInt(event.weekKey.split("-W")[0], 10);
           const startWeek = parseInt(event.weekKey.split("-W")[1], 10);
@@ -6310,7 +6324,6 @@ class ChornicaTimelineView extends ItemView {
               isNaN
             )
           ) {
-            // Basic validation
             if (cellYear > startYear && cellYear < endYear) isMatch = true;
             else if (
               cellYear === startYear &&
@@ -6333,7 +6346,10 @@ class ChornicaTimelineView extends ItemView {
               isMatch = true;
           }
         } catch (error) {
-          /* Ignore parsing errors */
+          console.error(
+            `Chronica: Error parsing range event dates ('${event.weekKey}' to '${event.endWeekKey}') for matching:`,
+            error
+          );
         }
       }
       if (isMatch) {
@@ -6342,7 +6358,6 @@ class ChornicaTimelineView extends ItemView {
       }
     }
 
-    // If an event was found for this week
     if (matchedEvent) {
       const eventType = this.plugin.settings.eventTypes.find(
         (type) => type.id === matchedEvent!.typeId
@@ -6355,10 +6370,17 @@ class ChornicaTimelineView extends ItemView {
           "-"
         )}`;
         cell.addClass(safeTypeIdClass);
-        cell.style.backgroundColor = eventType.color + " !important"; // Apply color inline
-        cell.style.borderColor = eventType.color;
-        cell.style.borderWidth = "2px";
-        cell.style.borderStyle = "solid";
+
+        // Apply color and border using inline style with !important for background
+        cell.style.setProperty(
+          "background-color",
+          eventType.color,
+          "important"
+        );
+        cell.style.setProperty("border-color", eventType.color, "important");
+        cell.style.setProperty("border-width", "2px", "important");
+        cell.style.setProperty("border-style", "solid", "important");
+
         eventDescription = `${eventType.name}: ${matchedEvent.description}`;
         if (
           matchedEvent.endWeekKey &&
@@ -6371,14 +6393,18 @@ class ChornicaTimelineView extends ItemView {
         appliedNotePath = matchedEvent.notePath;
         eventApplied = true;
       } else {
-        // Type definition missing
         console.warn(
-          `Chronica: Type definition missing for typeId: ${matchedEvent.typeId}`
+          `Chronica: Event found for ${weekKey} but type definition missing for typeId: ${matchedEvent.typeId}`
         );
         cell.classList.add("event");
-        cell.style.borderColor = "var(--text-muted)";
-        cell.style.borderWidth = "1px";
-        cell.style.borderStyle = "dashed";
+        cell.style.setProperty(
+          "border-color",
+          "var(--text-muted)",
+          "important"
+        );
+        cell.style.setProperty("border-width", "1px", "important");
+        cell.style.setProperty("border-style", "dashed", "important");
+        cell.style.removeProperty("background-color"); // Remove background for unknown type
         eventDescription = `Unknown Type: ${matchedEvent.description} (${matchedEvent.weekKey})`;
         appliedNotePath = matchedEvent.notePath;
         eventApplied = true;
@@ -6386,30 +6412,36 @@ class ChornicaTimelineView extends ItemView {
     } else {
       // No event found, ensure no lingering event styles
       cell.classList.remove("event");
-      // Remove specific event type classes (might need a loop or regex if many types)
-      cell.className = cell.className.replace(/\bevent-type-[^ ]+/g, "").trim();
-      cell.style.backgroundColor = ""; // Let base CSS handle it
-      cell.style.borderColor = "";
-      cell.style.borderWidth = "";
-      cell.style.borderStyle = "";
+      for (let i = cell.classList.length - 1; i >= 0; i--) {
+        if (cell.classList[i].startsWith("event-type-")) {
+          cell.classList.remove(cell.classList[i]);
+        }
+      }
+      cell.style.removeProperty("background-color");
+      cell.style.removeProperty("border-color");
+      cell.style.removeProperty("border-width");
+      cell.style.removeProperty("border-style");
+      delete cell.dataset.eventFile;
     }
 
-    // Update tooltip
-    const prevTitle = cell.getAttribute("title")?.split("\n").pop() || ""; // Get base title (last line)
+    const baseTitleParts = (cell.getAttribute("title") || "").split("\n");
+    const weekDateInfo =
+      baseTitleParts.length > 1
+        ? baseTitleParts.slice(-2).join("\n")
+        : baseTitleParts[0] || ""; // Keep existing week/date info
+
     if (eventApplied && eventDescription) {
-      cell.setAttribute("title", `${eventDescription}\n${prevTitle}`);
+      cell.setAttribute("title", `${eventDescription}\n${weekDateInfo}`);
       if (appliedNotePath) {
         cell.dataset.eventFile = appliedNotePath;
       } else {
         delete cell.dataset.eventFile;
       }
     } else {
-      // Ensure only base title remains if no event applied this time
-      cell.setAttribute("title", prevTitle);
+      cell.setAttribute("title", weekDateInfo); // Reset to just week/date info
       delete cell.dataset.eventFile;
     }
 
-    // --- Highlight future events ---
     if (eventApplied) {
       const now = new Date();
       let cellDate: Date | null = null;
