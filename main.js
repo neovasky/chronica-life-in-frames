@@ -262,96 +262,117 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
      * Plugin initialization on load
      */
     async onload() {
-        // 1) Load settings FIRST to get the correct 'hasSeenWelcome' status
+        console.log("Chronica: Plugin onload sequence started.");
+        // 1) Load settings FIRST. This is crucial.
         await this.loadSettings();
-        // 2) Now check if we should show welcome modal, based on loaded settings
+        console.log("Chronica: Settings loaded/migrated. Current version:", this.settings.settingsVersion);
+        // --- Reset sync operation flag at the beginning of onload for a clean state ---
+        this.isSyncOperation = false;
+        if (this.syncOperationTimer) {
+            clearTimeout(this.syncOperationTimer);
+            this.syncOperationTimer = null;
+        }
+        console.log("Chronica: Sync operation flag reset.");
+        // --- End reset ---
+        // 2) Welcome modal check (uses loaded settings)
         if (!this.settings.hasSeenWelcome) {
-            // Delay showing welcome modal slightly to ensure UI is fully loaded
             setTimeout(() => {
+                console.log("Chronica: Showing welcome modal.");
                 const welcomeModal = new ChronicaWelcomeModal(this.app, this);
                 welcomeModal.open();
             }, 500);
         }
-        // 3) Register the timeline view
+        // 3) Register the view type
         try {
             this.registerView(TIMELINE_VIEW_TYPE, (leaf) => new ChornicaTimelineView(leaf, this));
+            console.log("Chronica: View registered.");
         }
         catch (e) {
-            // already registered on hot-reload—ignore
+            /* ignore */
         }
-        // 4) Register vault event handlers
-        this.registerEvent(this.app.vault.on("create", (file) => {
-            this.registerPotentialSyncOperation();
-            if (!this.isChronicaRelatedFile(file)) {
-                return;
-            }
-            if (!this.isSyncOperation) {
-                this.refreshAllViews();
-            }
+        // 4) Vault event handlers
+        this.registerEvent(this.app.vault.on("create", async (file) => {
+            this.registerPotentialSyncOperation(); // Sets isSyncOperation = true briefly
+            if (!this.isChronicaRelatedFile(file) || this.isSyncOperation)
+                return; // Check sync op *after* registering
+            console.log("Chronica: File created, re-scanning and refreshing.");
+            await this.scanVaultForEvents();
+            this.refreshAllViewsAfterOperation(); // Checks isSyncOperation again
         }));
-        this.registerEvent(this.app.vault.on("modify", (file) => {
+        this.registerEvent(this.app.vault.on("modify", async (file) => {
             this.registerPotentialSyncOperation();
-            if (this.isSyncOperation) {
+            if (this.isSyncOperation || !this.isChronicaRelatedFile(file))
                 return;
-            }
-            if (!this.isChronicaRelatedFile(file)) {
-                return;
-            }
-            // Potentially refresh or rescan if a modified file's frontmatter changes
-            // For now, major actions are on create/delete
+            console.log("Chronica: File modified, re-scanning and refreshing.");
+            await this.scanVaultForEvents();
+            this.refreshAllViewsAfterOperation();
         }));
         this.registerEvent(this.app.vault.on("delete", async (file) => {
-            if (!(file instanceof obsidian.TFile))
+            if (!(file instanceof obsidian.TFile) ||
+                !this.isChronicaRelatedFile(file) ||
+                this.isSyncOperation)
                 return;
-            if (!this.isChronicaRelatedFile(file))
-                return;
-            if (this.isSyncOperation)
-                return;
-            // Instead of full rescan, try to remove event linked to this specific file
-            await this.handleFileDelete(file); // Assumes handleFileDelete is updated
-            // If handleFileDelete doesn't cover all cases,
-            // then scanVaultForEvents might still be needed here.
-            // For now, handleFileDelete is more targeted.
-            // await this.scanVaultForEvents(); // This can be resource-intensive on every delete
-            // await this.saveSettings(); // saveSettings is called within handleFileDelete if changes occur
-            this.app.workspace
-                .getLeavesOfType(TIMELINE_VIEW_TYPE)
-                .forEach((leaf) => {
-                const view = leaf.view;
-                if (view &&
-                    typeof view.clearCachedEventData === "function" &&
-                    typeof view.renderView === "function") {
-                    view.clearCachedEventData();
-                    view.renderView();
-                }
-            });
+            console.log("Chronica: File deleted, handling and refreshing.");
+            await this.handleFileDelete(file);
+            // refreshAllViewsAfterOperation is called within handleFileDelete if changes were made.
+            // If not, a general refresh might be needed if the deleted file affected view but not specific events.
+            this.refreshAllViewsAfterOperation();
         }));
-        // 5) Other regular setup
+        // 5) Other setup
         obsidian.addIcon("chronica-icon", Chornica_ICON);
-        // await this.loadSettings(); // Already called at the top
-        // Scan for events AFTER settings (including migration) are loaded and welcome modal logic handled
-        await this.scanVaultForEvents();
-        this.addRibbonIcon("chronica-icon", "Open Chronica Timeline", () => {
-            this.activateView();
-        });
+        // Initial scan for events.
+        console.log("Chronica: Scheduling initial scanVaultForEvents from onload.");
+        // Delay this initial scan slightly, especially for hot reloads, to give Obsidian time to settle.
+        setTimeout(async () => {
+            console.log("Chronica: Executing delayed initial scanVaultForEvents.");
+            await this.scanVaultForEvents();
+            console.log(`Chronica: Delayed initial scan complete. Found ${this.settings.events.length} events.`);
+            // Refresh views AFTER this crucial scan is complete.
+            console.log("Chronica: Triggering refresh from delayed scan completion.");
+            this.refreshAllViewsAfterOperation();
+        }, 1000); // Increased delay for testing, e.g., 1 second. Can be tuned.
+        this.addRibbonIcon("chronica-icon", "Open Chronica Timeline", () => this.activateView());
         this.addCommand({
             id: "open-chronica-timeline",
             name: "Open Chronica Timeline",
-            callback: () => {
-                this.activateView();
-            },
+            callback: () => this.activateView(),
         });
         this.addCommand({
             id: "create-weekly-note",
             name: "Create/Open Current Week Note",
-            callback: () => {
-                this.createOrOpenWeekNote();
+            callback: () => this.createOrOpenWeekNote(),
+        });
+        this.addCommand({
+            id: "rescan-chronica-events",
+            name: "Re-scan Vault for Chronica Events",
+            callback: async () => {
+                new obsidian.Notice("Chronica: Re-scanning vault for events...");
+                await this.scanVaultForEvents();
+                new obsidian.Notice("Chronica: Event scan complete. Views refreshed.");
             },
         });
         this.addSettingTab(new ChornicaSettingTab(this.app, this));
-        // Check for auto-fill AFTER settings are loaded
-        this.checkAndAutoFill();
-        this.registerInterval(window.setInterval(() => this.checkAndAutoFill(), 1000 * 60 * 60));
+        // checkAndAutoFill relies on settings, so should be after loadSettings.
+        // It also modifies settings, so subsequent refreshes might be needed if it acts.
+        if (this.checkAndAutoFill()) {
+            // If it did something
+            this.refreshAllViewsAfterOperation();
+        }
+        this.registerInterval(window.setInterval(() => {
+            if (this.checkAndAutoFill()) {
+                this.refreshAllViewsAfterOperation();
+            }
+        }, 1000 * 60 * 60));
+        // The final refresh from the original onload is now effectively handled by the delayed scan's completion.
+        console.log("Chronica: Plugin onload sequence finished (initial scan is now delayed).");
+    }
+    // Helper method to avoid direct refresh if sync op is happening
+    refreshAllViewsAfterOperation() {
+        if (this.isSyncOperation) {
+            console.log("Chronica: Sync operation in progress, deferring full view refresh.");
+            return;
+        }
+        this.refreshAllViews();
     }
     /**
      * Public method to check if a sync operation is in progress
