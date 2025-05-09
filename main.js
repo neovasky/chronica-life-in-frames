@@ -2126,54 +2126,116 @@ class ChornicaEventModal extends obsidian.Modal {
         // --- Event Type Selection (Dropdown) ---
         const typeSetting = new obsidian.Setting(contentEl)
             .setName("Event Type")
-            .setDesc("Choose the category for this event."); // Keep or adjust description
-        // Create a wrapper for the color indicator and dropdown for better layout control
+            .setDesc("Choose the category for this event, or create a new one.");
         const controlWrapper = typeSetting.controlEl.createDiv({
             cls: "chronica-event-type-control-wrapper",
         });
-        // Create the color indicator span
         const colorIndicator = controlWrapper.createEl("span", {
             cls: "chronica-event-type-color-indicator",
         });
-        // Create the dropdown
         this.eventTypeDropdown = controlWrapper.createEl("select", {
             cls: "chronica-select",
         });
-        // Function to update the color indicator based on selected typeId
-        const updateColorIndicator = (typeId) => {
+        // Helper to update the color indicator span
+        const updateColorIndicatorUI = (typeId) => {
+            if (typeId === "CREATE_NEW_TYPE" || !typeId) {
+                colorIndicator.style.backgroundColor = "transparent";
+                return;
+            }
             const selectedType = this.plugin.settings.eventTypes.find((type) => type.id === typeId);
-            if (selectedType) {
-                colorIndicator.style.backgroundColor = selectedType.color;
+            colorIndicator.style.backgroundColor = selectedType
+                ? selectedType.color
+                : "transparent";
+        };
+        // Helper to populate the dropdown
+        // It now also ensures this.selectedTypeId is valid after population
+        const repopulateAndSelectType = (targetTypeId) => {
+            this.eventTypeDropdown.value;
+            this.eventTypeDropdown.empty();
+            if (this.plugin.settings.eventTypes &&
+                this.plugin.settings.eventTypes.length > 0) {
+                this.plugin.settings.eventTypes.forEach((type) => {
+                    const option = this.eventTypeDropdown.createEl("option");
+                    option.value = type.id;
+                    option.text = type.name;
+                });
+            }
+            const createNewOption = this.eventTypeDropdown.createEl("option");
+            createNewOption.value = "CREATE_NEW_TYPE";
+            createNewOption.text = "✨ Create New Type...";
+            let idToSelect = targetTypeId;
+            if (idToSelect &&
+                this.eventTypeDropdown.querySelector(`option[value="${idToSelect}"]`)) {
+                this.eventTypeDropdown.value = idToSelect;
+            }
+            else if (this.plugin.settings.eventTypes.length > 0) {
+                idToSelect = this.plugin.settings.eventTypes[0].id;
+                this.eventTypeDropdown.value = idToSelect;
             }
             else {
-                // Default or fallback color if type not found or no selection
-                colorIndicator.style.backgroundColor = "transparent";
+                idToSelect = "CREATE_NEW_TYPE"; // Fallback if no types exist
+                this.eventTypeDropdown.value = idToSelect;
             }
+            // CRITICALLY UPDATE this.selectedTypeId based on the actual selection
+            // unless it's CREATE_NEW_TYPE, in which case selectedTypeId should be what it was before, or default.
+            if (this.eventTypeDropdown.value !== "CREATE_NEW_TYPE") {
+                this.selectedTypeId = this.eventTypeDropdown.value;
+            }
+            // If targetTypeId was explicitly "CREATE_NEW_TYPE" or undefined and it defaulted to it,
+            // selectedTypeId should reflect the *actual underlying* type or be null.
+            // This logic is tricky; the main goal is selectedTypeId MUST NOT be "CREATE_NEW_TYPE" when saveEvent is called.
+            updateColorIndicatorUI(this.selectedTypeId); // Update based on the true selectedTypeId
         };
-        // Populate dropdown and set initial color
-        if (this.plugin.settings.eventTypes &&
-            this.plugin.settings.eventTypes.length > 0) {
-            this.plugin.settings.eventTypes.forEach((type) => {
-                const option = this.eventTypeDropdown.createEl("option");
-                option.value = type.id;
-                option.text = type.name;
-                if (type.id === this.selectedTypeId) {
-                    // this.selectedTypeId is initialized in constructor
-                    option.selected = true;
-                }
-            });
-            updateColorIndicator(this.selectedTypeId); // Set initial color
+        // Initialize this.selectedTypeId if it's not already a valid one
+        if (!this.selectedTypeId ||
+            !this.plugin.settings.eventTypes.find((type) => type.id === this.selectedTypeId)) {
+            if (this.plugin.settings.eventTypes.length > 0) {
+                this.selectedTypeId = this.plugin.settings.eventTypes[0].id;
+            }
+            else {
+                this.selectedTypeId = ""; // No valid types available initially
+            }
         }
-        else {
-            const option = this.eventTypeDropdown.createEl("option");
-            option.text = "No types configured";
-            option.disabled = true;
-            updateColorIndicator(""); // Clear indicator
-        }
-        // Add event listener to update color when dropdown changes
+        repopulateAndSelectType(this.selectedTypeId); // Initial population, trying to select current this.selectedTypeId
         this.eventTypeDropdown.addEventListener("change", () => {
-            this.selectedTypeId = this.eventTypeDropdown.value;
-            updateColorIndicator(this.selectedTypeId);
+            const dropdownValue = this.eventTypeDropdown.value;
+            if (dropdownValue === "CREATE_NEW_TYPE") {
+                // Store the ID that was selected *before* user clicked "Create New"
+                // this.selectedTypeId should already hold this valid ID from the previous selection or init.
+                const idBeforeCreating = this.selectedTypeId;
+                new CreateEventTypeModal(this.app, this.plugin, (newType) => {
+                    if (newType) {
+                        // Successfully created a new type
+                        this.selectedTypeId = newType.id; // THIS IS THE KEY: Update the modal's state
+                        repopulateAndSelectType(newType.id); // Repopulate and select the new one
+                    }
+                    else {
+                        // Creation cancelled, revert to what was selected before "Create New Type..."
+                        this.selectedTypeId = idBeforeCreating;
+                        repopulateAndSelectType(idBeforeCreating);
+                    }
+                }).open();
+                // After launching the modal, visually reset the dropdown to what was selected before "Create New"
+                // The callback will handle the final state.
+                if (idBeforeCreating &&
+                    this.eventTypeDropdown.querySelector(`option[value="${idBeforeCreating}"]`)) {
+                    this.eventTypeDropdown.value = idBeforeCreating;
+                }
+                else if (this.plugin.settings.eventTypes.length > 0) {
+                    this.eventTypeDropdown.value = this.plugin.settings.eventTypes[0].id;
+                }
+                else {
+                    this.eventTypeDropdown.value = "CREATE_NEW_TYPE";
+                }
+                updateColorIndicatorUI(this.eventTypeDropdown.value === "CREATE_NEW_TYPE"
+                    ? ""
+                    : this.eventTypeDropdown.value);
+            }
+            else {
+                // A regular, existing type was selected
+                this.selectedTypeId = dropdownValue; // Update the modal's state
+                updateColorIndicatorUI(this.selectedTypeId);
+            }
         });
         // --- Save Button ---
         new obsidian.Setting(contentEl).addButton((btn) => btn
@@ -2285,6 +2347,7 @@ class ChornicaEventModal extends obsidian.Modal {
             new obsidian.Notice("Could not determine week key.");
             return;
         }
+        await this.plugin.loadSettings(); // Ensure settings (especially eventTypes) are the absolute latest from storage
         const newEvent = {
             weekKey: this.selectedWeekKey,
             description: finalDescription,
@@ -2430,6 +2493,85 @@ class ChornicaEventModal extends obsidian.Modal {
         this.contentEl.empty();
     }
 } // End of ChornicaEventModal class
+/**
+ * Modal for creating a new event type from within the event creation flow.
+ */
+class CreateEventTypeModal extends obsidian.Modal {
+    plugin;
+    onSubmit; // Callback with the new type or null if cancelled
+    newTypeName = "";
+    newTypeColor = "#FF9800"; // Default color
+    constructor(app, plugin, onSubmit) {
+        super(app);
+        this.plugin = plugin;
+        this.onSubmit = onSubmit;
+    }
+    onOpen() {
+        const { contentEl } = this;
+        contentEl.empty();
+        contentEl.addClass("chronica-create-event-type-modal"); // Optional: for specific styling if needed
+        contentEl.createEl("h3", { text: "Create New Event Type" });
+        new obsidian.Setting(contentEl)
+            .setName("Type Name")
+            .setDesc("Enter the name for the new event type.")
+            .addText((text) => text
+            .setPlaceholder("e.g., Personal Milestone")
+            .setValue(this.newTypeName)
+            .onChange((value) => {
+            this.newTypeName = value.trim();
+        }));
+        new obsidian.Setting(contentEl)
+            .setName("Type Color")
+            .setDesc("Choose a color for this event type.")
+            .addColorPicker((picker) => picker.setValue(this.newTypeColor).onChange((value) => {
+            this.newTypeColor = value;
+        }));
+        // Using a general class for modal buttons if you have one, or just a div
+        const buttonContainer = contentEl.createDiv({
+            cls: "modal-button-container",
+        }); // Or your existing class for button groups
+        new obsidian.Setting(buttonContainer)
+            .addButton((btn) => btn
+            .setButtonText("Save Type")
+            .setCta()
+            .onClick(async () => {
+            if (!this.newTypeName) {
+                new obsidian.Notice("Please enter a type name.");
+                return;
+            }
+            // Ensure eventTypes array exists
+            if (!this.plugin.settings.eventTypes) {
+                this.plugin.settings.eventTypes = [];
+            }
+            if (this.plugin.settings.eventTypes.some((type) => type.name.toLowerCase() === this.newTypeName.toLowerCase())) {
+                new obsidian.Notice(`Event type "${this.newTypeName}" already exists.`);
+                return;
+            }
+            const newId = `custom_${Date.now()}_${Math.random()
+                .toString(36)
+                .substring(2, 7)}`;
+            const newType = {
+                id: newId,
+                name: this.newTypeName,
+                color: this.newTypeColor,
+                isPreset: false,
+            };
+            this.plugin.settings.eventTypes.push(newType);
+            await this.plugin.saveSettings();
+            this.plugin.refreshAllViews();
+            new obsidian.Notice(`Event type "${this.newTypeName}" created.`);
+            this.onSubmit(newType);
+            this.close();
+        }))
+            .addButton((btn) => btn.setButtonText("Cancel").onClick(() => {
+            this.onSubmit(null);
+            this.close();
+        }));
+    }
+    onClose() {
+        this.contentEl.empty();
+    }
+}
 /**
  * Modal for managing all event types (presets and custom).
  * Handles adding, editing (name/color), and deleting (custom only).
@@ -3853,10 +3995,20 @@ class ChornicaTimelineView extends obsidian.ItemView {
                         }
                     }
                     // If no linked event note, handle as a weekly note
-                    const weekNoteName = settings.weekNoteTemplate
-                        .replace("${year}", isoWeekInfo.year.toString())
-                        .replace("${week}", isoWeekInfo.week.toString().padStart(2, "0"));
-                    const fullPath = this.plugin.getFullPath(`${weekNoteName}.md`, false); // false = not event folder
+                    const values = {
+                        gggg: isoWeekInfo.year.toString(),
+                        ww: isoWeekInfo.week.toString().padStart(2, "0"),
+                        // Use cellStartDate for YYYY, MM, DD etc. to reflect the actual start of the cell's period
+                        YYYY: cellStartDate.getFullYear().toString(),
+                        MM: (cellStartDate.getMonth() + 1).toString().padStart(2, "0"),
+                        DD: cellStartDate.getDate().toString().padStart(2, "0"),
+                        MMMM: cellStartDate.toLocaleString("default", { month: "long" }),
+                        MMM: cellStartDate.toLocaleString("default", { month: "short" }),
+                        YY: cellStartDate.getFullYear().toString().slice(-2),
+                    };
+                    const weeklyNoteFileName = this.plugin.formatFileName(settings.weekNoteTemplate, values);
+                    // formatFileName already adds .md if not present in template string itself.
+                    const fullPath = this.plugin.getFullPath(weeklyNoteFileName, false);
                     const existingFile = this.app.vault.getAbstractFileByPath(fullPath);
                     if (existingFile instanceof obsidian.TFile) {
                         await this.plugin.safelyOpenFile(existingFile);
