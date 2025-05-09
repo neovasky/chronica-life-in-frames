@@ -262,22 +262,18 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
      * Plugin initialization on load
      */
     async onload() {
-        console.log("Chronica: Plugin onload sequence started.");
         // 1) Load settings FIRST. This is crucial.
         await this.loadSettings();
-        console.log("Chronica: Settings loaded/migrated. Current version:", this.settings.settingsVersion);
         // --- Reset sync operation flag at the beginning of onload for a clean state ---
         this.isSyncOperation = false;
         if (this.syncOperationTimer) {
             clearTimeout(this.syncOperationTimer);
             this.syncOperationTimer = null;
         }
-        console.log("Chronica: Sync operation flag reset.");
         // --- End reset ---
         // 2) Welcome modal check (uses loaded settings)
         if (!this.settings.hasSeenWelcome) {
             setTimeout(() => {
-                console.log("Chronica: Showing welcome modal.");
                 const welcomeModal = new ChronicaWelcomeModal(this.app, this);
                 welcomeModal.open();
             }, 500);
@@ -285,7 +281,6 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
         // 3) Register the view type
         try {
             this.registerView(TIMELINE_VIEW_TYPE, (leaf) => new ChornicaTimelineView(leaf, this));
-            console.log("Chronica: View registered.");
         }
         catch (e) {
             /* ignore */
@@ -295,7 +290,6 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
             this.registerPotentialSyncOperation(); // Sets isSyncOperation = true briefly
             if (!this.isChronicaRelatedFile(file) || this.isSyncOperation)
                 return; // Check sync op *after* registering
-            console.log("Chronica: File created, re-scanning and refreshing.");
             await this.scanVaultForEvents();
             this.refreshAllViewsAfterOperation(); // Checks isSyncOperation again
         }));
@@ -303,7 +297,6 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
             this.registerPotentialSyncOperation();
             if (this.isSyncOperation || !this.isChronicaRelatedFile(file))
                 return;
-            console.log("Chronica: File modified, re-scanning and refreshing.");
             await this.scanVaultForEvents();
             this.refreshAllViewsAfterOperation();
         }));
@@ -312,7 +305,6 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
                 !this.isChronicaRelatedFile(file) ||
                 this.isSyncOperation)
                 return;
-            console.log("Chronica: File deleted, handling and refreshing.");
             await this.handleFileDelete(file);
             // refreshAllViewsAfterOperation is called within handleFileDelete if changes were made.
             // If not, a general refresh might be needed if the deleted file affected view but not specific events.
@@ -321,14 +313,10 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
         // 5) Other setup
         obsidian.addIcon("chronica-icon", Chornica_ICON);
         // Initial scan for events.
-        console.log("Chronica: Scheduling initial scanVaultForEvents from onload.");
         // Delay this initial scan slightly, especially for hot reloads, to give Obsidian time to settle.
         setTimeout(async () => {
-            console.log("Chronica: Executing delayed initial scanVaultForEvents.");
             await this.scanVaultForEvents();
-            console.log(`Chronica: Delayed initial scan complete. Found ${this.settings.events.length} events.`);
             // Refresh views AFTER this crucial scan is complete.
-            console.log("Chronica: Triggering refresh from delayed scan completion.");
             this.refreshAllViewsAfterOperation();
         }, 1000); // Increased delay for testing, e.g., 1 second. Can be tuned.
         this.addRibbonIcon("chronica-icon", "Open Chronica Timeline", () => this.activateView());
@@ -363,13 +351,10 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
                 this.refreshAllViewsAfterOperation();
             }
         }, 1000 * 60 * 60));
-        // The final refresh from the original onload is now effectively handled by the delayed scan's completion.
-        console.log("Chronica: Plugin onload sequence finished (initial scan is now delayed).");
     }
     // Helper method to avoid direct refresh if sync op is happening
     refreshAllViewsAfterOperation() {
         if (this.isSyncOperation) {
-            console.log("Chronica: Sync operation in progress, deferring full view refresh.");
             return;
         }
         this.refreshAllViews();
@@ -429,17 +414,14 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
      * Scan vault for notes with event metadata and populate the unified events array.
      */
     async scanVaultForEvents() {
-        console.log("Chronica: Scanning vault for events...");
         // Ensure settings (especially eventTypes) are loaded before scanning
         if (!this.settings ||
             !this.settings.eventTypes ||
             this.settings.eventTypes.length === 0) {
-            console.error("Chronica: Settings (eventTypes) not loaded or empty before scanVaultForEvents was called. Attempting reload.");
             await this.loadSettings(); // Attempt to load/migrate settings first
             if (!this.settings ||
                 !this.settings.eventTypes ||
                 this.settings.eventTypes.length === 0) {
-                console.error("Chronica: Failed to load settings/eventTypes during scan. Aborting scan.");
                 // Maybe notify user here?
                 return;
             }
@@ -463,7 +445,6 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
                 ? eventNotesFolderPath
                 : eventNotesFolderPath + "/"
             : null;
-        console.log(`Chronica: Scanning with NotesFolder='${notesFolderPath}', EventFolder='${eventNotesFolderPath}', Separate=${useSeparateFolders}`);
         for (const file of files) {
             let includeFile = false;
             if (!normalizedNotesFolder && !normalizedEventFolder) {
@@ -495,7 +476,6 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
         const uniqueFilesToProcess = [
             ...new Map(filesToProcess.map((file) => [file.path, file])).values(),
         ];
-        console.log(`Chronica: Processing ${uniqueFilesToProcess.length} potential event files.`);
         // --- Process Files ---
         let eventCount = 0;
         for (const file of uniqueFilesToProcess) {
@@ -574,11 +554,9 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
                     if (rangeMatch) {
                         weekKey = rangeMatch[1];
                         endWeekKey = rangeMatch[2];
-                        console.log(`Chronica: Parsed range ${weekKey} to ${endWeekKey} from filename ${file.name}`);
                     }
                     else if (singleWeekMatch) {
                         weekKey = singleWeekMatch[1];
-                        console.log(`Chronica: Parsed single week ${weekKey} from filename ${file.name}`);
                     }
                 }
                 // If no valid weekKey found from either source, skip this file
@@ -601,11 +579,8 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
                 scannedEvents.push(newEvent);
                 eventCount++;
             }
-            catch (error) {
-                console.error(`Chronica: Error processing file "${file.path}":`, error);
-            }
+            catch (error) { }
         } // End of file processing loop
-        console.log(`Chronica: Scanned and processed ${eventCount} events.`);
         // Replace the settings events array with the newly scanned ones
         this.settings.events = scannedEvents;
         // Persist the newly built events list (important!)
@@ -820,7 +795,6 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
      * Load settings from storage and perform migration if necessary.
      */
     async loadSettings() {
-        console.log("Chronica: Loading settings...");
         let loadedData = await this.loadData();
         // Check if migration is needed (settingsVersion < 1 or old fields exist)
         const currentSettingsVersion = 1; // Target version for this migration
@@ -828,7 +802,6 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
         if (!loadedData) {
             // No data saved yet, use defaults
             this.settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS)); // Deep copy defaults
-            console.log("Chronica: No saved settings found, using defaults.");
             needsSaveAfterLoad = true; // Save the defaults
         }
         else {
@@ -840,7 +813,6 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
             // Check if migration to version 1 is needed
             if (!this.settings.settingsVersion ||
                 this.settings.settingsVersion < currentSettingsVersion) {
-                console.log(`Chronica: Old settings format detected (Version: ${this.settings.settingsVersion || 0}). Migrating to Version ${currentSettingsVersion}...`);
                 // Ensure new arrays exist (might be redundant due to defaults, but safe)
                 this.settings.eventTypes = this.settings.eventTypes || [];
                 this.settings.events = this.settings.events || [];
@@ -887,7 +859,6 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
                             if (parsed)
                                 migratedEvents.push({ ...parsed, typeId });
                         });
-                        console.log(`Chronica Migration: Prepared ${oldDataArray.length} events from ${oldKey}.`);
                     }
                 }
                 // 2. Migrate old custom event types
@@ -904,7 +875,6 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
                                 // Name collision with a preset, map to the preset ID
                                 finalId = existingPreset.id;
                                 customTypeNameToId.set(oldType.name, finalId); // Map old name to preset ID
-                                console.log(`Chronica Migration: Custom type name '${oldType.name}' matches preset, mapping to ID '${finalId}'.`);
                             }
                             else {
                                 // No collision, create a new custom type if it doesn't exist by name already
@@ -920,13 +890,11 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
                                     };
                                     this.settings.eventTypes.push(newType);
                                     customTypeNameToId.set(oldType.name, finalId);
-                                    console.log(`Chronica Migration: Migrated custom type '${oldType.name}' to ID '${finalId}'.`);
                                 }
                                 else {
                                     // Custom type with this name already exists (maybe from default merge?), find its ID
                                     finalId = this.settings.eventTypes.find((et) => et.name.toLowerCase() === oldType.name.toLowerCase()).id;
                                     customTypeNameToId.set(oldType.name, finalId);
-                                    console.log(`Chronica Migration: Custom type name '${oldType.name}' already exists, mapping to ID '${finalId}'.`);
                                 }
                             }
                         }
@@ -944,7 +912,6 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
                                 if (parsed)
                                     migratedEvents.push({ ...parsed, typeId: newTypeId });
                             });
-                            console.log(`Chronica Migration: Prepared ${eventsArray.length} events for migrated custom type '${oldTypeName}' (ID: ${newTypeId}).`);
                         }
                         else {
                             console.warn(`Chronica Migration: Could not find new type ID for old custom type '${oldTypeName}'. ${eventsArray?.length || 0} events not migrated.`);
@@ -963,7 +930,6 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
                 // Update version
                 this.settings.settingsVersion = currentSettingsVersion;
                 needsSaveAfterLoad = true; // Mark for saving
-                console.log("Chronica: Migration complete.");
             }
             else {
                 // Settings are already up-to-date or new, just ensure defaults are present
@@ -982,7 +948,6 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
                     console.warn("Chronica: Re-added missing preset event types.");
                     needsSaveAfterLoad = true;
                 }
-                console.log(`Chronica: Settings loaded (Version: ${this.settings.settingsVersion || "Unknown"}).`);
             }
         }
         // --- Initialize other non-event settings ---
@@ -1750,7 +1715,6 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
         });
         // If events were removed, save settings and refresh views
         if (eventsRemovedCount > 0) {
-            console.log(`Chronica: Removed ${eventsRemovedCount} event(s) linked to deleted note: ${deletedPath}`);
             await this.saveSettings();
             this.refreshAllViews(); // Update timeline to remove visual markers
             new obsidian.Notice(`Removed ${eventsRemovedCount} event link(s) from timeline.`);
@@ -1845,7 +1809,6 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
                 const fileExists = this.app.vault.getAbstractFileByPath(event.notePath);
                 if (!fileExists) {
                     invalidRemovedCount++;
-                    console.log(`Chronica: Removing event linked to non-existent note: ${event.notePath} (Desc: ${event.description})`);
                     return false; // Remove event with invalid path
                 }
             }
@@ -1853,13 +1816,9 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
         });
         // If invalid events were removed, save settings and refresh
         if (invalidRemovedCount > 0) {
-            console.log(`Chronica: Cleaned ${invalidRemovedCount} event(s) with invalid note paths.`);
             await this.saveSettings();
             this.refreshAllViews();
             new obsidian.Notice(`Cleaned ${invalidRemovedCount} invalid event link(s).`);
-        }
-        else {
-            console.log("Chronica: No invalid event links found during cleaning.");
         }
     }
 }
@@ -2431,7 +2390,6 @@ class ChornicaEventModal extends obsidian.Modal {
         let file = this.app.vault.getAbstractFileByPath(fullPath);
         // let fileCreated = false; // Not used
         if (file instanceof obsidian.TFile) {
-            console.log(`Chronica: Event note exists at ${fullPath}. Updating frontmatter.`);
             await this.app.fileManager.processFrontMatter(file, (fm) => {
                 Object.assign(fm, metadata);
             });
@@ -2454,7 +2412,6 @@ class ChornicaEventModal extends obsidian.Modal {
             }
             const finalContent = this.plugin.formatFrontmatter(metadata) + defaultNoteContent;
             const newFile = await this.app.vault.create(fullPath, finalContent);
-            console.log(`Chronica: Created event note at ${newFile.path}`);
             event.notePath = newFile.path;
             return true;
         }
@@ -5526,9 +5483,7 @@ class ChornicaSettingTab extends obsidian.PluginSettingTab {
                         this.plugin.handleFolderChange(initialValueOnFocus.trim(), this.plugin.settings.notesFolder, false);
                     }
                     else if (!this.plugin.settings.notesFolder &&
-                        initialValueOnFocus.trim()) {
-                        console.log("Weekly notes folder cleared. Notes remain in the old folder unless moved manually.");
-                    }
+                        initialValueOnFocus.trim()) ;
                     // Update initialValueOnFocus for the next focus event,
                     // or it will always compare to the value when settings tab was opened
                     initialValueOnFocus = finalValue;
@@ -5582,9 +5537,7 @@ class ChornicaSettingTab extends obsidian.PluginSettingTab {
                         this.plugin.handleFolderChange(initialValueOnFocus.trim(), this.plugin.settings.eventNotesFolder, true);
                     }
                     else if (!this.plugin.settings.eventNotesFolder &&
-                        initialValueOnFocus.trim()) {
-                        console.log("Event notes folder cleared. Notes remain in the old folder unless moved manually.");
-                    }
+                        initialValueOnFocus.trim()) ;
                     initialValueOnFocus = finalValue;
                 }
             });
