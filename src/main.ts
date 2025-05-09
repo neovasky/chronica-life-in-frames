@@ -4965,9 +4965,14 @@ class ChornicaTimelineView extends ItemView {
           cellEndDate
         )}`;
         const isoWeekInfo = this.plugin.getISOWeekData(cellStartDate);
+        // Store individual parts for potential use in applyEventStyling
+        cell.dataset.cellWeekNum = isoWeekInfo.week.toString();
+        cell.dataset.cellIsoYear = isoWeekInfo.year.toString();
+        cell.dataset.cellDateRange = dateRange;
+
         cell.setAttribute(
           "title",
-          `Week ${isoWeekInfo.week}, ${isoWeekInfo.year}\n${dateRange}`
+          `Cell: W${isoWeekInfo.week}, <span class="math-inline">\{isoWeekInfo\.year\} \(</span>{dateRange})`
         );
 
         // Positioning
@@ -6759,34 +6764,52 @@ class ChornicaTimelineView extends ItemView {
       delete cell.dataset.eventFile;
     }
 
-    // Tooltip Management: Preserve base week/date info, prepend event info if any
-    const existingTitle = cell.getAttribute("title") || "";
-    const titleParts = existingTitle.split("\n");
-    // Assume the last 1 or 2 lines are the week/date info if no event was previously on it
-    let baseDateInfo = "";
-    if (titleParts.length === 1 && titleParts[0].startsWith("Week ")) {
-      // Only week info
-      baseDateInfo = titleParts[0];
-    } else if (
-      titleParts.length >= 2 &&
-      titleParts[titleParts.length - 2].startsWith("Week ")
-    ) {
-      // Event info might be on top
-      baseDateInfo = titleParts.slice(-2).join("\n");
-    } else if (titleParts.length > 0) {
-      // Fallback to last line
-      baseDateInfo = titleParts.pop() || "";
-    }
+    // Tooltip Management:
+    const cellWeekNum = cell.dataset.cellWeekNum || "";
+    const cellIsoYear = cell.dataset.cellIsoYear || "";
+    const cellDateRange = cell.dataset.cellDateRange || "";
+    const baseCellInfo = `Cell: W${cellWeekNum}, ${cellIsoYear} (${cellDateRange})`;
 
-    if (eventApplied && eventDescription) {
-      cell.setAttribute("title", `${eventDescription}\n${baseDateInfo}`);
-      if (appliedNotePath) {
-        cell.dataset.eventFile = appliedNotePath;
+    if (eventApplied && matchedEvent) {
+      // matchedEvent implies an event was found
+      // Retrieve the eventType again based on matchedEvent.typeId
+      // This ensures 'eventType' is in scope and correct for the matched event.
+      const currentEventType = this.plugin.settings.eventTypes.find(
+        (type) => type.id === matchedEvent.typeId
+      );
+
+      let eventTitleForTooltip = matchedEvent.description;
+      let eventTypeNameForTooltip = "Unknown Type";
+      let eventPeriodForTooltip = matchedEvent.weekKey;
+
+      if (currentEventType) {
+        eventTypeNameForTooltip = currentEventType.name;
+      }
+
+      if (
+        matchedEvent.endWeekKey &&
+        matchedEvent.endWeekKey !== matchedEvent.weekKey
+      ) {
+        eventPeriodForTooltip = `${matchedEvent.weekKey} to ${matchedEvent.endWeekKey}`;
+      }
+
+      const newTitleLines = [
+        eventTitleForTooltip, // Event Title/Description first
+        `Type: ${eventTypeNameForTooltip}`, // Then Type
+        `Period: ${eventPeriodForTooltip}`, // Then Event's specific period
+        baseCellInfo, // Finally, the cell's own date info
+      ];
+      cell.setAttribute("title", newTitleLines.join("\n"));
+
+      if (matchedEvent.notePath) {
+        // Use matchedEvent.notePath directly
+        cell.dataset.eventFile = matchedEvent.notePath;
       } else {
         delete cell.dataset.eventFile;
       }
     } else {
-      cell.setAttribute("title", baseDateInfo); // Reset to just base week/date info
+      // No event, or event data is incomplete, just use the base cell info
+      cell.setAttribute("title", baseCellInfo);
       delete cell.dataset.eventFile;
     }
 

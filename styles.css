@@ -1951,6 +1951,11 @@ Exp .chronica-sidebar-toggle:hover {
   white-space: pre-wrap; /* Respect newlines in your placeholder text */
 }
 
+.chronica-custom-tooltip.has-event-color {
+  border-left-width: 5px; /* Thicker border on one side for the color accent */
+  /* The actual border-left-color would be set by JS */
+}
+
 /* Color Indicator for Event Type Dropdown in Add Event Modal */
 .setting-item-control .chronica-event-type-color-indicator {
   display: inline-block;
