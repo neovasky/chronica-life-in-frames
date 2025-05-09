@@ -4309,18 +4309,6 @@ class ChornicaTimelineView extends ItemView {
         cls: "text-muted",
       });
     }
-    // Optionally add legend for future event highlight if desired
-    const futureHighlightItem = legendEl.createEl("div", {
-      cls: "chronica-legend-item",
-    });
-    const futureColorEl = futureHighlightItem.createEl("div", {
-      cls: "chronica-legend-color future-event-highlight-legend",
-    }); // Use a specific class
-    // Style futureColorEl via CSS to show the border/style used for .future-event-highlight
-    // futureColorEl.style.border = `1px solid var(--future-event-color)`;
-    // futureColorEl.style.backgroundColor = `var(--future-cell-color)`; // Show base color
-    futureHighlightItem.createEl("span", { text: "Upcoming Event Highlight" });
-
     // Footer in sidebar
     sidebarEl.createEl("div", {
       cls: "chronica-footer",

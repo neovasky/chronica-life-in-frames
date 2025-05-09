@@ -703,6 +703,13 @@ Exp .chronica-sidebar-toggle:hover {
   flex-shrink: 0;
 }
 
+.chronica-legend-color.future-event-highlight-legend {
+  border: 1px solid var(--future-event-color); /* Mimics the border of future-event-highlight cells */
+  background-color: var(
+    --future-cell-color
+  ); /* Shows the base future cell color */
+}
+
 /* -----------------------------------------------------------------------------
      8. MODALS (Event, Settings, Welcome, Confirmation)
      ----------------------------------------------------------------------------- */
