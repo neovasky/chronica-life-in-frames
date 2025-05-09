@@ -1895,7 +1895,57 @@ Exp .chronica-sidebar-toggle:hover {
 }
 
 /* -----------------------------------------------------------------------------
-     12. PORTRAIT MODE SPECIFIC STYLES
+     12. UI HELPER ELEMENTS
+     ----------------------------------------------------------------------------- */
+
+.chronica-setting-item-name .chronica-info-bubble {
+  /* Target bubble next to setting name */
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  color: var(--text-muted);
+  cursor: help;
+}
+
+.chronica-info-bubble svg {
+  /* Style the icon itself */
+  width: 16px;
+  height: 16px;
+  opacity: 0.7;
+}
+
+.chronica-info-bubble:hover svg {
+  opacity: 1;
+  color: var(--text-normal);
+}
+
+/* Description paragraph for file naming templates */
+.chronica-template-description {
+  margin-bottom: 15px; /* Increased slightly for better separation */
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+/* Custom Tooltip Styling */
+.chronica-custom-tooltip {
+  position: absolute; /* Crucial for positioning */
+  background-color: var(
+    --background-secondary-alt
+  ); /* Or your preferred color */
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px; /* Rounded corners */
+  padding: 8px 12px; /* Better spacing */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 1000; /* Ensure it's on top */
+  font-size: var(--font-ui-smaller);
+  max-width: 300px; /* Prevent it from getting too wide */
+  pointer-events: none; /* So it doesn't interfere with mouse events on elements below */
+  white-space: pre-wrap; /* Respect newlines in your placeholder text */
+}
+
+/* -----------------------------------------------------------------------------
+     13. PORTRAIT MODE SPECIFIC STYLES
      ----------------------------------------------------------------------------- */
 
 .chronica-vertical-markers.portrait-mode {

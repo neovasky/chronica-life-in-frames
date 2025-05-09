@@ -6766,7 +6766,6 @@ class ChornicaSettingTab extends PluginSettingTab {
             if (newFolder && newFolder !== originalFolder) {
               this.plugin.handleFolderChange(originalFolder, newFolder, false);
             } else if (!newFolder && originalFolder) {
-              // Handle clearing the folder setting if needed (e.g., ask user if they want to move notes back to root)
               console.log(
                 "Weekly notes folder cleared. Notes remain in the old folder unless moved manually."
               );
@@ -6830,12 +6829,99 @@ class ChornicaSettingTab extends PluginSettingTab {
       eventFolderSetting.settingEl.classList.add("hidden");
     }
 
-    // Week note template
-    new Setting(containerEl)
+    // --- File Naming Templates Sub-section ---
+    containerEl.createEl("h3", { text: "File Naming Templates" });
+    const fileNamingDesc = containerEl.createEl("p", {
+      text: "Customize how Chronica names your week and event note files.",
+      cls: "chronica-template-description",
+    });
+
+    // Helper function to create and manage custom tooltips
+    let activeCustomTooltip: HTMLElement | null = null;
+    const createInfoBubbleWithCustomTooltip = (
+      setting: Setting, // The setting to attach the bubble to
+      placeholderText: string
+    ) => {
+      const infoBubble = document.createElement("span");
+      infoBubble.addClass("chronica-info-bubble");
+      setIcon(infoBubble, "info");
+      // No .title attribute anymore
+
+      infoBubble.addEventListener("mouseenter", (event) => {
+        if (activeCustomTooltip) activeCustomTooltip.remove();
+
+        activeCustomTooltip = document.createElement("div");
+        activeCustomTooltip.addClass("chronica-custom-tooltip");
+        activeCustomTooltip.textContent = placeholderText;
+        document.body.appendChild(activeCustomTooltip);
+
+        // Position the tooltip
+        const iconRect = infoBubble.getBoundingClientRect();
+        // Ensure tooltip is in DOM to get its dimensions, then position it.
+        // Temporarily append to calculate size, then remove if it's already there.
+        let tempAppend = false;
+        if (!activeCustomTooltip.parentElement) {
+          document.body.appendChild(activeCustomTooltip);
+          tempAppend = true;
+        }
+        const tooltipRect = activeCustomTooltip.getBoundingClientRect();
+        if (tempAppend) {
+          activeCustomTooltip.remove(); // Remove if we only added it for measurement
+          document.body.appendChild(activeCustomTooltip); // Re-append for display
+        }
+
+        // DEFAULT: Position to the LEFT of the icon, vertically centered with the icon
+        let top = iconRect.top + iconRect.height / 2 - tooltipRect.height / 2;
+        let left = iconRect.left - tooltipRect.width - 8; // 8px gap to the left
+
+        // Adjust if it goes off the LEFT edge of the screen
+        if (left < 10) {
+          // 10px buffer from left edge of window
+          // Fallback 1: Try placing it to the RIGHT of the icon
+          left = iconRect.right - 8;
+
+          // If placing it to the RIGHT also makes it go off-screen (right edge)
+          if (left + tooltipRect.width > window.innerWidth - 10) {
+            // Fallback 2: Place it centered BENEATH the icon
+            left = iconRect.left + iconRect.width / 2 - tooltipRect.width / 2;
+            top = iconRect.bottom + 8;
+          }
+        }
+
+        // Adjust if it goes off the TOP/BOTTOM edges of the screen
+        if (top + tooltipRect.height > window.innerHeight - 10) {
+          top = window.innerHeight - tooltipRect.height - 10; // Keep it from going off bottom
+        }
+        if (top < 10) {
+          top = 10; // Keep it from going off top
+        }
+
+        activeCustomTooltip.style.left = `${left}px`;
+        activeCustomTooltip.style.top = `${top}px`;
+      });
+
+      infoBubble.addEventListener("mouseleave", () => {
+        if (activeCustomTooltip) {
+          activeCustomTooltip.remove();
+          activeCustomTooltip = null;
+        }
+      });
+      setting.controlEl.prepend(infoBubble);
+    };
+
+    // --- Week Note Template Setting ---
+    const weekNotePlaceholders = `Available placeholders:
+- \${gggg}: ISO Year (e.g., 2025)
+- \${ww}: ISO Week (01-53)
+- \${YYYY}: Calendar Year (e.g., 2025)
+- \${MM}: Calendar Month (01-12)
+- \${DD}: Calendar Day (01-31)
+- \${MMMM}: Full Month Name (e.g., January)
+- \${MMM}: Short Month Name (e.g., Jan)
+- \${YY}: Short Calendar Year (e.g., 25)`;
+
+    const weekNoteSetting = new Setting(containerEl)
       .setName("Week Note Template")
-      .setDesc(
-        "Placeholders: ${gggg}, ${ww}, ${YYYY}, ${MM}, ${DD}, ${MMMM}, ${MMM}, ${YY}"
-      )
       .addText((text) =>
         text
           .setPlaceholder(DEFAULT_SETTINGS.weekNoteTemplate)
@@ -6846,13 +6932,23 @@ class ChornicaSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           })
       );
+    createInfoBubbleWithCustomTooltip(weekNoteSetting, weekNotePlaceholders);
 
-    // Event note template
-    new Setting(containerEl)
-      .setName("Event Note Template")
-      .setDesc(
-        "Single events. Placeholders: ${eventName}, ${startDate} (full), ${gggg}, ${ww}, ${YYYY}, ${MM}, ${DD}, ${MMMM}, ${MMM}, ${YY}"
-      )
+    // --- Event Note Template Setting (Single Events) ---
+    const eventNotePlaceholders = `Available placeholders:
+- \${eventName}: Name of the event
+- \${startDate}: Full start date (YYYY-MM-DD)
+- \${gggg}: ISO Year of the event's week
+- \${ww}: ISO Week of the event (01-53)
+- \${YYYY}: Calendar Year of event's start date
+- \${MM}: Calendar Month of start date (01-12)
+- \${DD}: Calendar Day of start date (01-31)
+- \${MMMM}: Full Month Name of start date
+- \${MMM}: Short Month Name of start date
+- \${YY}: Short Calendar Year of start date`;
+
+    const eventNoteSetting = new Setting(containerEl)
+      .setName("Event Note Template (Single)")
       .addText((text) =>
         text
           .setPlaceholder(DEFAULT_SETTINGS.eventNoteTemplate)
@@ -6863,13 +6959,22 @@ class ChornicaSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           })
       );
+    createInfoBubbleWithCustomTooltip(eventNoteSetting, eventNotePlaceholders);
 
-    // Range note template
-    new Setting(containerEl)
+    // --- Range Event Template Setting ---
+    const rangeNotePlaceholders = `Available placeholders:
+- \${eventName}: Name of the event
+- \${startDate}: Full start date (YYYY-MM-DD)
+- \${endDate}: Full end date (YYYY-MM-DD)
+- \${start_gggg}: ISO Year of range start week
+- \${start_ww}: ISO Week of range start week
+- \${end_gggg}: ISO Year of range end week
+- \${end_ww}: ISO Week of range end week
+- \${startDate_YYYY}, \${startDate_MM}, \${startDate_DD}, \${startDate_MMMM}, \${startDate_MMM}, \${startDate_YY} (for actual start date)
+- \${endDate_YYYY}, \${endDate_MM}, \${endDate_DD}, \${endDate_MMMM}, \${endDate_MMM}, \${endDate_YY} (for actual end date)`;
+
+    const rangeNoteSetting = new Setting(containerEl)
       .setName("Range Event Template")
-      .setDesc(
-        "Range events. Placeholders: ${eventName}, ${startDate} (full), ${endDate} (full), ${start_gggg}, ${start_ww}, ${end_gggg}, ${end_ww}, ${startDate_YYYY}..${startDate_YY}, ${endDate_YYYY}..${endDate_YY}"
-      )
       .addText((text) =>
         text
           .setPlaceholder(DEFAULT_SETTINGS.rangeNoteTemplate)
@@ -6880,6 +6985,7 @@ class ChornicaSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           })
       );
+    createInfoBubbleWithCustomTooltip(rangeNoteSetting, rangeNotePlaceholders);
 
     // --- Appearance Settings ---
     containerEl.createEl("h3", { text: "Appearance" });
