@@ -5406,21 +5406,40 @@ class ChornicaSettingTab extends obsidian.PluginSettingTab {
         // Notes folder setting (Main / Weekly)
         new obsidian.Setting(containerEl)
             .setName("Weekly Notes Folder")
-            .setDesc("Folder to store weekly notes (leave blank for vault root).")
+            .setDesc("Folder to store weekly notes (leave blank for vault root). Path will be processed after you finish typing and click outside the box.")
             .addSearch((search) => {
-            const originalFolder = this.plugin.settings.notesFolder;
+            let initialValueOnFocus = this.plugin.settings.notesFolder;
+            search.inputEl.style.width = "250px"; // Give it a decent width
             search
-                .setPlaceholder("Select folder...")
+                .setPlaceholder("Type path or select...")
                 .setValue(this.plugin.settings.notesFolder)
                 .onChange(async (value) => {
-                const newFolder = value.trim(); // Trim whitespace
-                this.plugin.settings.notesFolder = newFolder;
+                // Save the setting on every change so the value is up-to-date
+                // BUT DO NOT trigger handleFolderChange here.
+                this.plugin.settings.notesFolder = value.trim();
                 await this.plugin.saveSettings();
-                if (newFolder && newFolder !== originalFolder) {
-                    this.plugin.handleFolderChange(originalFolder, newFolder, false);
-                }
-                else if (!newFolder && originalFolder) {
-                    console.log("Weekly notes folder cleared. Notes remain in the old folder unless moved manually.");
+            });
+            // Store the value when the input gets focus
+            search.inputEl.addEventListener("focus", () => {
+                initialValueOnFocus = search.inputEl.value;
+            });
+            // Trigger handleFolderChange only on blur and if value changed
+            search.inputEl.addEventListener("blur", () => {
+                const finalValue = search.inputEl.value.trim();
+                // Only call handleFolderChange if the value actually changed from when it was focused
+                if (finalValue !== initialValueOnFocus.trim()) {
+                    // Use this.plugin.settings.notesFolder as it's already updated by onChange
+                    if (this.plugin.settings.notesFolder &&
+                        this.plugin.settings.notesFolder !== initialValueOnFocus.trim()) {
+                        this.plugin.handleFolderChange(initialValueOnFocus.trim(), this.plugin.settings.notesFolder, false);
+                    }
+                    else if (!this.plugin.settings.notesFolder &&
+                        initialValueOnFocus.trim()) {
+                        console.log("Weekly notes folder cleared. Notes remain in the old folder unless moved manually.");
+                    }
+                    // Update initialValueOnFocus for the next focus event,
+                    // or it will always compare to the value when settings tab was opened
+                    initialValueOnFocus = finalValue;
                 }
             });
             new FolderSuggest(this.app, search.inputEl, this.plugin);
@@ -5443,24 +5462,38 @@ class ChornicaSettingTab extends obsidian.PluginSettingTab {
         // Event notes folder setting (conditionally displayed)
         const eventFolderSetting = new obsidian.Setting(containerEl)
             .setName("Event Notes Folder")
-            .setDesc("Folder to store event notes (only used if toggle above is ON).")
-            .setClass("event-folder-selector") // Class used for showing/hiding
+            .setDesc("Folder for event notes (if separate). Path processed on exiting input.")
+            .setClass("event-folder-selector")
             .addSearch((search) => {
-            const originalFolder = this.plugin.settings.eventNotesFolder;
+            let initialValueOnFocus = this.plugin.settings.eventNotesFolder;
+            search.inputEl.style.width = "250px";
             search
-                .setPlaceholder("Select event notes folder...")
+                .setPlaceholder("Type path or select...")
                 .setValue(this.plugin.settings.eventNotesFolder)
                 .onChange(async (value) => {
-                const newFolder = value.trim();
-                this.plugin.settings.eventNotesFolder = newFolder;
+                // Save the setting on every change
+                this.plugin.settings.eventNotesFolder = value.trim();
                 await this.plugin.saveSettings();
-                if (this.plugin.settings.useSeparateFolders &&
-                    newFolder &&
-                    newFolder !== originalFolder) {
-                    this.plugin.handleFolderChange(originalFolder, newFolder, true);
-                }
-                else if (!newFolder && originalFolder) {
-                    console.log("Event notes folder cleared. Notes remain in the old folder unless moved manually.");
+            });
+            // Store the value when the input gets focus
+            search.inputEl.addEventListener("focus", () => {
+                initialValueOnFocus = search.inputEl.value;
+            });
+            // Trigger handleFolderChange only on blur and if value changed
+            search.inputEl.addEventListener("blur", () => {
+                const finalValue = search.inputEl.value.trim();
+                if (finalValue !== initialValueOnFocus.trim()) {
+                    if (this.plugin.settings.useSeparateFolders &&
+                        this.plugin.settings.eventNotesFolder &&
+                        this.plugin.settings.eventNotesFolder !==
+                            initialValueOnFocus.trim()) {
+                        this.plugin.handleFolderChange(initialValueOnFocus.trim(), this.plugin.settings.eventNotesFolder, true);
+                    }
+                    else if (!this.plugin.settings.eventNotesFolder &&
+                        initialValueOnFocus.trim()) {
+                        console.log("Event notes folder cleared. Notes remain in the old folder unless moved manually.");
+                    }
+                    initialValueOnFocus = finalValue;
                 }
             });
             new FolderSuggest(this.app, search.inputEl, this.plugin);
