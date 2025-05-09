@@ -1983,6 +1983,39 @@ class ChornicaEventModal extends obsidian.Modal {
                 ? this.convertWeekToDate(this.selectedWeekKey)
                 : new Date().toISOString().split("T")[0],
         });
+        const endDateSetting = new obsidian.Setting(rangeDateContainer).setName("End Date");
+        this.endDateInput = endDateSetting.controlEl.createEl("input", {
+            type: "date",
+            value: this.selectedEndWeekKey
+                ? this.convertWeekToDate(this.selectedEndWeekKey)
+                : this.startDateInput.value,
+        });
+        // Create a small element for validation messages for the date range
+        const rangeValidationMessageEl = rangeDateContainer.createEl("small", {
+            cls: "chronica-date-validation-message",
+        });
+        rangeValidationMessageEl.style.color = "var(--text-error)";
+        rangeValidationMessageEl.style.display = "none"; // Initially hidden
+        // Function to validate the date range and update UI feedback
+        const validateDateRange = () => {
+            const startDateVal = this.startDateInput.value;
+            const endDateVal = this.endDateInput.value;
+            if (startDateVal && endDateVal) {
+                // Only validate if both dates are present
+                if (new Date(endDateVal) < new Date(startDateVal)) {
+                    rangeValidationMessageEl.textContent =
+                        "End date cannot be before start date.";
+                    rangeValidationMessageEl.style.display = "block";
+                    return false; // Invalid
+                }
+            }
+            rangeValidationMessageEl.style.display = "none"; // Valid or not enough info yet
+            return true; // Valid or not enough info to be definitively invalid
+        };
+        // Set the initial min for the date picker UI, but don't update it aggressively
+        if (this.startDateInput.value) {
+            this.endDateInput.min = this.startDateInput.value;
+        }
         this.startDateInput.addEventListener("change", () => {
             const specificDate = this.startDateInput.value;
             if (specificDate) {
@@ -1992,35 +2025,35 @@ class ChornicaEventModal extends obsidian.Modal {
                 catch (e) {
                     console.error("Error parsing start date:", e);
                 }
-                // If end date is before new start date, or end date is empty, update end date
+                // If end date is now before new start date, or end date is empty, update end date input value
                 if (!this.endDateInput.value ||
                     new Date(this.endDateInput.value) < new Date(specificDate)) {
                     this.endDateInput.value = specificDate;
                     try {
-                        this.selectedEndWeekKey = this.plugin.getWeekKeyFromDate(new Date(specificDate));
+                        // Also update selectedEndWeekKey if endDateInput was changed
+                        this.selectedEndWeekKey = this.plugin.getWeekKeyFromDate(new Date(this.endDateInput.value));
                     }
                     catch (e) {
                         console.error("Error parsing end date (on start change):", e);
                     }
                 }
+                // Set the min attribute for the end date picker UI *once* the start date is committed.
+                // This helps the picker, but won't overly restrict typing.
                 this.endDateInput.min = this.startDateInput.value;
+                validateDateRange(); // Validate after potential changes
                 this.updateWeekInfo(contentEl);
             }
         });
-        const endDateSetting = new obsidian.Setting(rangeDateContainer).setName("End Date");
-        this.endDateInput = endDateSetting.controlEl.createEl("input", {
-            type: "date",
-            value: this.selectedEndWeekKey
-                ? this.convertWeekToDate(this.selectedEndWeekKey)
-                : this.startDateInput.value, // Default to start date if no end date selected
+        this.endDateInput.addEventListener("input", () => {
+            // Use 'input' for more immediate feedback while typing
+            validateDateRange(); // Check validity as user types or changes
+            // Note: We don't try to update selectedEndWeekKey on every 'input' event for performance.
+            // It will be updated on 'change' or before saving.
         });
-        this.endDateInput.min = this.startDateInput.value; // Ensure end date cannot be before start date
         this.endDateInput.addEventListener("change", () => {
+            // 'change' fires on blur or picker selection
             const specificDate = this.endDateInput.value;
-            const startDateVal = this.startDateInput.value;
-            if (specificDate &&
-                startDateVal &&
-                new Date(specificDate) >= new Date(startDateVal)) {
+            if (specificDate) {
                 try {
                     this.selectedEndWeekKey = this.plugin.getWeekKeyFromDate(new Date(specificDate));
                 }
@@ -2028,14 +2061,11 @@ class ChornicaEventModal extends obsidian.Modal {
                     console.error("Error parsing end date:", e);
                 }
             }
-            else if (startDateVal) {
-                // If invalid, reset to start date's value
-                this.endDateInput.value = startDateVal;
-                this.selectedEndWeekKey = this.selectedWeekKey; // End week same as start week
-                new obsidian.Notice("End date cannot be before start date.");
-            }
+            validateDateRange(); // Final validation on committed change
             this.updateWeekInfo(contentEl);
         });
+        // Initial validation state
+        validateDateRange();
         // Function to set the UI state for date type
         const setDateTypeUI = (isRange) => {
             this.isDateRange = isRange;
@@ -2044,13 +2074,14 @@ class ChornicaEventModal extends obsidian.Modal {
                 rangeDateRadio.checked = true;
                 singleDateContainer.style.display = "none";
                 rangeDateContainer.style.display = "block";
-                // When switching to range, ensure start and end dates are populated
                 if (this.singleDateInput.value) {
-                    // If single date had a value
                     if (!this.startDateInput.value)
                         this.startDateInput.value = this.singleDateInput.value;
-                    if (!this.endDateInput.value)
-                        this.endDateInput.value = this.singleDateInput.value; // Default end to start
+                    if (!this.endDateInput.value ||
+                        new Date(this.endDateInput.value) <
+                            new Date(this.startDateInput.value)) {
+                        this.endDateInput.value = this.startDateInput.value; // Default end to start if invalid or empty
+                    }
                 }
                 try {
                     this.selectedWeekKey = this.plugin.getWeekKeyFromDate(new Date(this.startDateInput.value));
@@ -2060,24 +2091,25 @@ class ChornicaEventModal extends obsidian.Modal {
                     this.selectedEndWeekKey = this.plugin.getWeekKeyFromDate(new Date(this.endDateInput.value));
                 }
                 catch { }
+                validateDateRange();
             }
             else {
                 singleDateRadio.checked = true;
                 rangeDateRadio.checked = false;
                 singleDateContainer.style.display = "block";
                 rangeDateContainer.style.display = "none";
-                // When switching to single, selectedWeekKey from singleDateInput
                 if (this.singleDateInput.value) {
                     try {
                         this.selectedWeekKey = this.plugin.getWeekKeyFromDate(new Date(this.singleDateInput.value));
                     }
                     catch { }
                 }
-                this.selectedEndWeekKey = ""; // Clear end date for single mode
+                this.selectedEndWeekKey = "";
+                rangeValidationMessageEl.style.display = "none";
             }
             this.updateWeekInfo(contentEl);
         };
-        // Event listeners for radio buttons
+        // Event listeners for radio buttons (should remain the same)
         singleDateRadio.addEventListener("change", () => {
             if (singleDateRadio.checked) {
                 setDateTypeUI(false);
@@ -2088,7 +2120,6 @@ class ChornicaEventModal extends obsidian.Modal {
                 setDateTypeUI(true);
             }
         });
-        // Append containers AFTER they are created and their inputs are set up
         contentEl.appendChild(singleDateContainer);
         contentEl.appendChild(rangeDateContainer);
         // Set initial state explicitly
@@ -2189,35 +2220,50 @@ class ChornicaEventModal extends obsidian.Modal {
         }
         let startDate;
         let endDate = undefined;
+        const rangeValidationMessageEl = this.contentEl.querySelector(".chronica-date-validation-message");
         if (this.isDateRange) {
             if (!this.startDateInput.value || !this.endDateInput.value) {
-                new obsidian.Notice("Please select a start and end date");
+                new obsidian.Notice("Please select a start and end date for the range.");
+                if (rangeValidationMessageEl) {
+                    rangeValidationMessageEl.textContent =
+                        "Start and end dates are required.";
+                    rangeValidationMessageEl.style.display = "block";
+                }
                 return;
             }
             startDate = new Date(this.startDateInput.value);
             endDate = new Date(this.endDateInput.value);
             if (endDate < startDate) {
-                new obsidian.Notice("End date cannot be before start date");
-                return;
+                new obsidian.Notice("End date cannot be before start date. Event not saved."); // More explicit notice
+                if (rangeValidationMessageEl) {
+                    rangeValidationMessageEl.textContent =
+                        "End date cannot be before start date.";
+                    rangeValidationMessageEl.style.display = "block";
+                }
+                return; // Prevent saving
             }
+            // If valid, clear any previous validation message
+            if (rangeValidationMessageEl)
+                rangeValidationMessageEl.style.display = "none";
             try {
                 this.selectedWeekKey = this.plugin.getWeekKeyFromDate(startDate);
             }
             catch {
-                new obsidian.Notice("Invalid start date format");
+                new obsidian.Notice("Invalid start date format.");
                 return;
             }
             try {
                 this.selectedEndWeekKey = this.plugin.getWeekKeyFromDate(endDate);
             }
             catch {
-                new obsidian.Notice("Invalid end date format");
+                new obsidian.Notice("Invalid end date format.");
                 return;
             }
         }
         else {
+            // Single Date Logic
             if (!this.singleDateInput.value) {
-                new obsidian.Notice("Please select a date");
+                new obsidian.Notice("Please select a date.");
                 return;
             }
             startDate = new Date(this.singleDateInput.value);
@@ -2225,13 +2271,13 @@ class ChornicaEventModal extends obsidian.Modal {
                 this.selectedWeekKey = this.plugin.getWeekKeyFromDate(startDate);
             }
             catch {
-                new obsidian.Notice("Invalid date format");
+                new obsidian.Notice("Invalid date format.");
                 return;
             }
-            this.selectedEndWeekKey = ""; // Clear end key
+            this.selectedEndWeekKey = "";
         }
         if (!this.selectedWeekKey) {
-            new obsidian.Notice("Could not determine week key");
+            new obsidian.Notice("Could not determine week key.");
             return;
         }
         const newEvent = {
