@@ -262,79 +262,78 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
      * Plugin initialization on load
      */
     async onload() {
-        // 1) Register the timeline view exactly once
+        // 1) Load settings FIRST to get the correct 'hasSeenWelcome' status
+        await this.loadSettings();
+        // 2) Now check if we should show welcome modal, based on loaded settings
+        if (!this.settings.hasSeenWelcome) {
+            // Delay showing welcome modal slightly to ensure UI is fully loaded
+            setTimeout(() => {
+                const welcomeModal = new ChronicaWelcomeModal(this.app, this);
+                welcomeModal.open();
+            }, 500);
+        }
+        // 3) Register the timeline view
         try {
             this.registerView(TIMELINE_VIEW_TYPE, (leaf) => new ChornicaTimelineView(leaf, this));
         }
         catch (e) {
             // already registered on hot-reload—ignore
         }
-        // 2) Re-draw whenever a new weekly note appears
+        // 4) Register vault event handlers
         this.registerEvent(this.app.vault.on("create", (file) => {
-            // Register potential sync operation for ALL files
             this.registerPotentialSyncOperation();
-            // Only continue processing for Chronica-related files
             if (!this.isChronicaRelatedFile(file)) {
                 return;
             }
-            // Only refresh if not during a likely sync operation
             if (!this.isSyncOperation) {
                 this.refreshAllViews();
             }
         }));
         this.registerEvent(this.app.vault.on("modify", (file) => {
-            // Register potential sync operation for ALL files
             this.registerPotentialSyncOperation();
-            // Protect against sync-triggered modifications
             if (this.isSyncOperation) {
                 return;
             }
-            // Skip if not a Chronica-related file
             if (!this.isChronicaRelatedFile(file)) {
                 return;
             }
-            // Safe to proceed with normal modification handling for Chronica files
-            // (The existing code just registered sync, but didn't do anything else)
+            // Potentially refresh or rescan if a modified file's frontmatter changes
+            // For now, major actions are on create/delete
         }));
-        // 3) On deletion of a week- or event-note, re-scan vault & refresh timeline
         this.registerEvent(this.app.vault.on("delete", async (file) => {
-            // Only care about actual files in our grid
             if (!(file instanceof obsidian.TFile))
                 return;
             if (!this.isChronicaRelatedFile(file))
                 return;
-            // Skip if this delete was triggered by our own sync logic
             if (this.isSyncOperation)
                 return;
-            // Rebuild all events from the remaining notes
-            await this.scanVaultForEvents();
-            // Persist the newly rebuilt event lists
-            await this.saveSettings();
-            // Immediately re-draw every open timeline so the cell vanishes
+            // Instead of full rescan, try to remove event linked to this specific file
+            await this.handleFileDelete(file); // Assumes handleFileDelete is updated
+            // If handleFileDelete doesn't cover all cases,
+            // then scanVaultForEvents might still be needed here.
+            // For now, handleFileDelete is more targeted.
+            // await this.scanVaultForEvents(); // This can be resource-intensive on every delete
+            // await this.saveSettings(); // saveSettings is called within handleFileDelete if changes occur
             this.app.workspace
                 .getLeavesOfType(TIMELINE_VIEW_TYPE)
                 .forEach((leaf) => {
                 const view = leaf.view;
-                view.clearCachedEventData();
-                view.renderView();
+                if (view &&
+                    typeof view.clearCachedEventData === "function" &&
+                    typeof view.renderView === "function") {
+                    view.clearCachedEventData();
+                    view.renderView();
+                }
             });
         }));
-        // Check if we should show welcome modal
-        if (!this.settings.hasSeenWelcome) {
-            // Delay showing welcome modal to ensure UI is fully loaded
-            setTimeout(() => {
-                const welcomeModal = new ChronicaWelcomeModal(this.app, this);
-                welcomeModal.open();
-            }, 500);
-        }
-        // 4) Now your regular setup
+        // 5) Other regular setup
         obsidian.addIcon("chronica-icon", Chornica_ICON);
-        await this.loadSettings();
+        // await this.loadSettings(); // Already called at the top
+        // Scan for events AFTER settings (including migration) are loaded and welcome modal logic handled
         await this.scanVaultForEvents();
         this.addRibbonIcon("chronica-icon", "Open Chronica Timeline", () => {
             this.activateView();
         });
-        // Add command to open timeline
         this.addCommand({
             id: "open-chronica-timeline",
             name: "Open Chronica Timeline",
@@ -342,7 +341,6 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
                 this.activateView();
             },
         });
-        // Command to create/open weekly note
         this.addCommand({
             id: "create-weekly-note",
             name: "Create/Open Current Week Note",
@@ -350,11 +348,9 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
                 this.createOrOpenWeekNote();
             },
         });
-        // Add settings tab
         this.addSettingTab(new ChornicaSettingTab(this.app, this));
-        // Check for auto-fill on plugin load
+        // Check for auto-fill AFTER settings are loaded
         this.checkAndAutoFill();
-        // Register interval to check for auto-fill (check every hour)
         this.registerInterval(window.setInterval(() => this.checkAndAutoFill(), 1000 * 60 * 60));
     }
     /**
