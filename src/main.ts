@@ -2552,23 +2552,39 @@ class ChornicaEventModal extends Modal {
     const dateTypeContainer = dateContainer.createDiv({
       cls: "date-type-selector",
     });
+
+    // Default to single date mode unless already set for range (e.g. for editing a range event later)
+    // For a brand new event from the sidebar, this.isDateRange is false by default.
+    // If this.selectedEndWeekKey has a value, it implies a range might be intended or pre-filled.
+    if (
+      this.selectedWeekKey &&
+      this.selectedEndWeekKey &&
+      this.selectedEndWeekKey !== this.selectedWeekKey
+    ) {
+      this.isDateRange = true;
+    } else {
+      this.isDateRange = false;
+    }
+
     const singleDateOption = dateTypeContainer.createEl("label", {
       cls: "date-option",
     });
     const singleDateRadio = singleDateOption.createEl("input", {
       type: "radio",
-      attr: { name: "date-type", value: "single", checked: !this.isDateRange },
+      attr: { name: "date-type", value: "single" }, // 'checked' will be set below
     });
     singleDateOption.createEl("span", { text: "Single Date" });
+
     const rangeDateOption = dateTypeContainer.createEl("label", {
       cls: "date-option",
     });
     const rangeDateRadio = rangeDateOption.createEl("input", {
       type: "radio",
-      attr: { name: "date-type", value: "range", checked: this.isDateRange },
+      attr: { name: "date-type", value: "range" }, // 'checked' will be set below
     });
     rangeDateOption.createEl("span", { text: "Date Range" });
 
+    // --- Single Date Container & Input ---
     const singleDateContainer = contentEl.createDiv({
       cls: "single-date-container",
     });
@@ -2587,17 +2603,18 @@ class ChornicaEventModal extends Modal {
             this.selectedWeekKey = this.plugin.getWeekKeyFromDate(
               new Date(specificDate)
             );
-          } catch {}
+          } catch (e) {
+            console.error("Error parsing single date:", e);
+          }
           this.updateWeekInfo(contentEl);
         }
       }
     });
 
+    // --- Range Date Container & Inputs ---
     const rangeDateContainer = contentEl.createDiv({
       cls: "range-date-container",
     });
-    rangeDateContainer.style.display = this.isDateRange ? "block" : "none"; // Use style initially
-
     const startDateSetting = new Setting(rangeDateContainer).setName(
       "Start Date"
     );
@@ -2614,7 +2631,10 @@ class ChornicaEventModal extends Modal {
           this.selectedWeekKey = this.plugin.getWeekKeyFromDate(
             new Date(specificDate)
           );
-        } catch {}
+        } catch (e) {
+          console.error("Error parsing start date:", e);
+        }
+        // If end date is before new start date, or end date is empty, update end date
         if (
           !this.endDateInput.value ||
           new Date(this.endDateInput.value) < new Date(specificDate)
@@ -2624,9 +2644,11 @@ class ChornicaEventModal extends Modal {
             this.selectedEndWeekKey = this.plugin.getWeekKeyFromDate(
               new Date(specificDate)
             );
-          } catch {}
+          } catch (e) {
+            console.error("Error parsing end date (on start change):", e);
+          }
         }
-        this.endDateInput.min = this.startDateInput.value; // Update min for end date
+        this.endDateInput.min = this.startDateInput.value;
         this.updateWeekInfo(contentEl);
       }
     });
@@ -2636,9 +2658,10 @@ class ChornicaEventModal extends Modal {
       type: "date",
       value: this.selectedEndWeekKey
         ? this.convertWeekToDate(this.selectedEndWeekKey)
-        : this.startDateInput.value,
+        : this.startDateInput.value, // Default to start date if no end date selected
     });
-    this.endDateInput.min = this.startDateInput.value; // Set initial min
+    this.endDateInput.min = this.startDateInput.value; // Ensure end date cannot be before start date
+
     this.endDateInput.addEventListener("change", () => {
       const specificDate = this.endDateInput.value;
       const startDateVal = this.startDateInput.value;
@@ -2651,66 +2674,86 @@ class ChornicaEventModal extends Modal {
           this.selectedEndWeekKey = this.plugin.getWeekKeyFromDate(
             new Date(specificDate)
           );
-        } catch {}
-        this.updateWeekInfo(contentEl);
+        } catch (e) {
+          console.error("Error parsing end date:", e);
+        }
       } else if (startDateVal) {
+        // If invalid, reset to start date's value
         this.endDateInput.value = startDateVal;
-        try {
-          this.selectedEndWeekKey = this.plugin.getWeekKeyFromDate(
-            new Date(startDateVal)
-          );
-        } catch {}
+        this.selectedEndWeekKey = this.selectedWeekKey; // End week same as start week
         new Notice("End date cannot be before start date.");
-        this.updateWeekInfo(contentEl);
       }
+      this.updateWeekInfo(contentEl);
     });
 
-    // Event listeners to toggle containers
-    singleDateRadio.addEventListener("change", () => {
-      if (singleDateRadio.checked) {
-        this.isDateRange = false;
+    // Function to set the UI state for date type
+    const setDateTypeUI = (isRange: boolean) => {
+      this.isDateRange = isRange;
+      if (isRange) {
+        singleDateRadio.checked = false;
+        rangeDateRadio.checked = true;
+        singleDateContainer.style.display = "none";
+        rangeDateContainer.style.display = "block";
+        // When switching to range, ensure start and end dates are populated
+        if (this.singleDateInput.value) {
+          // If single date had a value
+          if (!this.startDateInput.value)
+            this.startDateInput.value = this.singleDateInput.value;
+          if (!this.endDateInput.value)
+            this.endDateInput.value = this.singleDateInput.value; // Default end to start
+        }
+        try {
+          this.selectedWeekKey = this.plugin.getWeekKeyFromDate(
+            new Date(this.startDateInput.value)
+          );
+        } catch {}
+        try {
+          this.selectedEndWeekKey = this.plugin.getWeekKeyFromDate(
+            new Date(this.endDateInput.value)
+          );
+        } catch {}
+      } else {
+        singleDateRadio.checked = true;
+        rangeDateRadio.checked = false;
         singleDateContainer.style.display = "block";
         rangeDateContainer.style.display = "none";
-        const specificDate = this.singleDateInput.value;
-        if (specificDate)
+        // When switching to single, selectedWeekKey from singleDateInput
+        if (this.singleDateInput.value) {
           try {
             this.selectedWeekKey = this.plugin.getWeekKeyFromDate(
-              new Date(specificDate)
+              new Date(this.singleDateInput.value)
             );
           } catch {}
-        this.updateWeekInfo(contentEl);
+        }
+        this.selectedEndWeekKey = ""; // Clear end date for single mode
+      }
+      this.updateWeekInfo(contentEl);
+    };
+
+    // Event listeners for radio buttons
+    singleDateRadio.addEventListener("change", () => {
+      if (singleDateRadio.checked) {
+        setDateTypeUI(false);
       }
     });
     rangeDateRadio.addEventListener("change", () => {
       if (rangeDateRadio.checked) {
-        this.isDateRange = true;
-        singleDateContainer.style.display = "none";
-        rangeDateContainer.style.display = "block";
-        const startDateVal = this.startDateInput.value;
-        const endDateVal = this.endDateInput.value;
-        if (startDateVal)
-          try {
-            this.selectedWeekKey = this.plugin.getWeekKeyFromDate(
-              new Date(startDateVal)
-            );
-          } catch {}
-        if (endDateVal)
-          try {
-            this.selectedEndWeekKey = this.plugin.getWeekKeyFromDate(
-              new Date(endDateVal)
-            );
-          } catch {}
-        this.updateWeekInfo(contentEl);
+        setDateTypeUI(true);
       }
     });
 
+    // Append containers AFTER they are created and their inputs are set up
     contentEl.appendChild(singleDateContainer);
     contentEl.appendChild(rangeDateContainer);
+
+    // Set initial state explicitly
+    setDateTypeUI(this.isDateRange);
+
     contentEl.createEl("small", {
       text: "Select the date(s). The system determines the week(s) automatically.",
       cls: "chronica-helper-text",
     });
-    contentEl.createDiv({ cls: "chronica-week-info" }); // Placeholder for week info
+    contentEl.createDiv({ cls: "chronica-week-info" });
     this.updateWeekInfo(contentEl); // Initial update
 
     // --- Event Details ---
