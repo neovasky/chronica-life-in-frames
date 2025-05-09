@@ -645,26 +645,27 @@ Exp .chronica-sidebar-toggle:hover {
   color: #e91e63; /* Keep original value */
 }
 
-/* Birthday Cake Marker (Left) */
-.chronica-birthday-marker-container {
-  pointer-events: none;
-  position: absolute;
-  top: var(--top-offset);
-  left: calc(var(--left-offset) - 22px);
-  z-index: 15;
-  transform: none; /* Keep original value */
-}
-
 .birthday-cake-marker {
-  color: #f48fb1; /* Keep original value */
+  color: #f48fb1;
   padding: 3px;
-  width: 24px; /* Keep original value */
-  height: 18px; /* Keep original value */
+  width: 24px;
+  height: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: transform 0.2s;
-  transform: translateY(-2px); /* Keep original value */
+  transform: translateY(
+    -2px
+  ); /* This was from original, consider if still needed or if transform above is enough */
+}
+
+/* Birthday Cake Marker (Left) */
+.chronica-birthday-marker-container {
+  position: absolute;
+  z-index: 15;
+  transform: translate(-50%, -50%);
+  left: var(--cake-dynamic-left, 0px);
+  top: var(--cake-dynamic-top, 0px);
 }
 
 .birthday-cake-marker:hover {

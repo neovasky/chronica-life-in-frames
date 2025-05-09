@@ -4359,33 +4359,33 @@ class ChornicaTimelineView extends ItemView {
     // Birthday Marker (Cake Icon) - Placed relative to the *grid* start
     if (settings.showBirthdayMarker) {
       const [bYear, bMonth, bDay] = settings.birthday.split("-").map(Number);
-      const birthdayDate = new Date(bYear, bMonth - 1, bDay);
-      const birthWeekKey = this.plugin.getWeekKeyFromDate(birthdayDate);
-      const birthWeekIndex = this.plugin.settings.events.findIndex(
-        (e) => e.weekKey === birthWeekKey
-      ); // Find event index if needed later
-      const weeksSinceBirthForFirstBirthday = this.plugin.getFullWeekAge(
-        birthdayDate,
-        new Date(bYear + 1, bMonth - 1, bDay)
-      );
-      const birthWeekGridIndex = weeksSinceBirthForFirstBirthday % 52; // Week index within the year (0-51)
+      const birthdayDate = new Date(bYear, bMonth - 1, bDay); // Correct: JS month is 0-indexed
+      const birthMonthName = MONTH_NAMES[bMonth - 1]; // Correct: Use 0-indexed month
+
+      // The cake icon ALWAYS marks the very first visual week row (grid index 0).
+      const birthWeekGridIndex = 0;
 
       const birthdayMarkerContainer = container.createEl("div", {
         cls: "chronica-birthday-marker-container",
       });
-      // Position near the vertical markers, aligned with the birthday week row/column
+
+      // Calculate position based on gridIndex 0
+      // This effectively positions it at the start of the week axis
       const birthWeekPosition =
         birthWeekGridIndex * (cellSize + cellGap) + cellSize / 2;
 
       birthdayMarkerContainer.style.position = "absolute";
       birthdayMarkerContainer.style.zIndex = "15";
       if (isPortrait) {
-        birthdayMarkerContainer.style.left = `${birthWeekPosition}px`;
-        birthdayMarkerContainer.style.top = `${topOffset - 45}px`; // Above the month markers
+        // In portrait, weeks are horizontal. Cake should be above the first week column.
+        birthdayMarkerContainer.style.top = `${topOffset}px`;
+        birthdayMarkerContainer.style.left = `${leftOffset - 13}px`; // Position it above month markers, adjust offset if needed
         birthdayMarkerContainer.style.transform = "translateX(-50%)";
       } else {
-        birthdayMarkerContainer.style.top = `${birthWeekPosition}px`;
-        birthdayMarkerContainer.style.left = `${leftOffset - 25}px`; // Left of the month markers
+        // Landscape
+        // In landscape, weeks are vertical. Cake should be to the left of the first week row.
+        birthdayMarkerContainer.style.top = `${topOffset + 10}px`;
+        birthdayMarkerContainer.style.left = `${leftOffset - 25}px`; // Position left of other markers, adjust offset if needed
         birthdayMarkerContainer.style.transform = "translateY(-50%)";
       }
 
@@ -4393,9 +4393,10 @@ class ChornicaTimelineView extends ItemView {
         cls: "birthday-cake-marker",
       });
       setIcon(cakeEl, "cake");
+      // Use actual birth day/month/year for the tooltip
       cakeEl.setAttribute(
         "title",
-        `${MONTH_NAMES[bMonth - 1]} ${bDay}, ${bYear} (Your Birthday)`
+        `${birthMonthName} ${bDay}, ${bYear} (Your Birthday)`
       );
     }
 
