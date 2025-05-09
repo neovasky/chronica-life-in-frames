@@ -1944,6 +1944,31 @@ Exp .chronica-sidebar-toggle:hover {
   white-space: pre-wrap; /* Respect newlines in your placeholder text */
 }
 
+/* Color Indicator for Event Type Dropdown in Add Event Modal */
+.setting-item-control .chronica-event-type-color-indicator {
+  display: inline-block;
+  width: 18px; /* Adjust size as desired */
+  height: 18px; /* Adjust size as desired */
+  border-radius: 50%; /* Makes it a circle */
+  margin-right: 8px; /* Space between circle and dropdown */
+  border: 1px solid var(--background-modifier-border); /* Subtle border */
+  flex-shrink: 0; /* Prevent shrinking if space is tight */
+  /* vertical-align: middle; /* Helps align with the dropdown text if not using flex */
+  position: relative;
+  top: -5px;
+}
+
+/* Optional: If you wrap indicator and dropdown in a flex container */
+.chronica-event-type-control-wrapper {
+  display: flex;
+  align-items: center;
+  width: 100%; /* Ensure it takes full width of the control area */
+}
+
+.chronica-event-type-control-wrapper .chronica-select {
+  flex-grow: 1; /* Allow dropdown to take remaining space */
+}
+
 /* -----------------------------------------------------------------------------
      13. PORTRAIT MODE SPECIFIC STYLES
      ----------------------------------------------------------------------------- */

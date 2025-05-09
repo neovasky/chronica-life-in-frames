@@ -2165,27 +2165,56 @@ class ChornicaEventModal extends obsidian.Modal {
             this.eventDescription = value;
         }));
         // --- Event Type Selection (Dropdown) ---
-        const typeSetting = new obsidian.Setting(contentEl).setName("Event Type");
-        this.eventTypeDropdown = typeSetting.controlEl.createEl("select", {
+        const typeSetting = new obsidian.Setting(contentEl)
+            .setName("Event Type")
+            .setDesc("Choose the category for this event."); // Keep or adjust description
+        // Create a wrapper for the color indicator and dropdown for better layout control
+        const controlWrapper = typeSetting.controlEl.createDiv({
+            cls: "chronica-event-type-control-wrapper",
+        });
+        // Create the color indicator span
+        const colorIndicator = controlWrapper.createEl("span", {
+            cls: "chronica-event-type-color-indicator",
+        });
+        // Create the dropdown
+        this.eventTypeDropdown = controlWrapper.createEl("select", {
             cls: "chronica-select",
         });
+        // Function to update the color indicator based on selected typeId
+        const updateColorIndicator = (typeId) => {
+            const selectedType = this.plugin.settings.eventTypes.find((type) => type.id === typeId);
+            if (selectedType) {
+                colorIndicator.style.backgroundColor = selectedType.color;
+            }
+            else {
+                // Default or fallback color if type not found or no selection
+                colorIndicator.style.backgroundColor = "transparent";
+            }
+        };
+        // Populate dropdown and set initial color
         if (this.plugin.settings.eventTypes &&
             this.plugin.settings.eventTypes.length > 0) {
             this.plugin.settings.eventTypes.forEach((type) => {
                 const option = this.eventTypeDropdown.createEl("option");
                 option.value = type.id;
                 option.text = type.name;
-                if (type.id === this.selectedTypeId)
+                if (type.id === this.selectedTypeId) {
+                    // this.selectedTypeId is initialized in constructor
                     option.selected = true;
+                }
             });
+            updateColorIndicator(this.selectedTypeId); // Set initial color
         }
         else {
             const option = this.eventTypeDropdown.createEl("option");
             option.text = "No types configured";
             option.disabled = true;
+            updateColorIndicator(""); // Clear indicator
         }
+        // Add event listener to update color when dropdown changes
         this.eventTypeDropdown.addEventListener("change", () => {
             this.selectedTypeId = this.eventTypeDropdown.value;
+            updateColorIndicator(this.selectedTypeId);
         });
         // --- Save Button ---
         new obsidian.Setting(contentEl).addButton((btn) => btn
