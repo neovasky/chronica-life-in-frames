@@ -276,10 +276,10 @@ const DEFAULT_SETTINGS: ChornicaSettings = {
   notesFolder: "",
   useSeparateFolders: true,
   eventNotesFolder: "",
-  weekNoteTemplate: "${year}-W${week}",
-  eventNoteTemplate: "${eventName}_${startDate}_${year}-W${week}",
+  weekNoteTemplate: "${gggg}-W${ww}", // Example: 2025-W19
+  eventNoteTemplate: "${eventName}_${gggg}-W${ww}", // Example: MyEvent_2025-W19
   rangeNoteTemplate:
-    "${eventName}_${startDate}_${startYear}-W${startWeek}_to_${endYear}-W${endWeek}",
+    "${eventName}_${start_gggg}-W${start_ww}_to_${end_gggg}-W${end_ww}",
 
   // --- Filling & Interaction ---
   enableManualFill: false,
@@ -1565,59 +1565,70 @@ export default class ChornicaTimelinePlugin extends Plugin {
   }
 
   /**
-   * Create or open a note for the current week
+   * Create or open a note for the current week using template placeholders.
    */
   async createOrOpenWeekNote(): Promise<void> {
     try {
-      // ADD THIS CHECK HERE
       if (this.isSyncOperation) {
         new Notice("Sync in progress. Please try again in a moment.");
         return;
       }
 
-      const date = new Date();
-      const year = date.getFullYear();
-      const weekNum = this.getISOWeekNumber(date);
-      const fileName = `${year}-W${weekNum.toString().padStart(2, "0")}.md`;
+      const today = new Date();
+      const isoWeekData = this.getISOWeekData(today);
+
+      // Prepare all placeholder values
+      const values = {
+        gggg: isoWeekData.year.toString(),
+        ww: isoWeekData.week.toString().padStart(2, "0"),
+        YYYY: today.getFullYear().toString(),
+        MM: (today.getMonth() + 1).toString().padStart(2, "0"),
+        DD: today.getDate().toString().padStart(2, "0"),
+        MMMM: today.toLocaleString("default", { month: "long" }),
+        MMM: today.toLocaleString("default", { month: "short" }),
+        YY: today.getFullYear().toString().slice(-2),
+      };
+
+      const fileName = this.formatFileName(
+        this.settings.weekNoteTemplate,
+        values
+      );
       const fullPath = this.getFullPath(fileName, false);
-      const weekKey = `${year}-W${weekNum.toString().padStart(2, "0")}`;
+
+      // This is the standard weekKey for this note, based on ISO data
+      const weekKey = `${values.gggg}-W${values.ww}`; // <<< CORRECTED: Use gggg, ww
 
       const existingFile = this.app.vault.getAbstractFileByPath(fullPath);
 
       if (existingFile instanceof TFile) {
-        // Use our safe method instead of directly opening in active leaf
         await this.safelyOpenFile(existingFile);
       } else {
-        // Create folder if needed
-        if (
-          this.settings.notesFolder &&
-          this.settings.notesFolder.trim() !== ""
-        ) {
+        const folderPath = this.settings.notesFolder;
+        if (folderPath && folderPath.trim() !== "") {
           try {
-            const folderExists = this.app.vault.getAbstractFileByPath(
-              this.settings.notesFolder
-            );
+            const folderExists =
+              this.app.vault.getAbstractFileByPath(folderPath);
             if (!folderExists) {
-              await this.app.vault.createFolder(this.settings.notesFolder);
+              await this.app.vault.createFolder(folderPath);
             }
-          } catch (err) {}
+          } catch (err) {
+            console.error(`Chronica: Error creating folder ${folderPath}`, err);
+          }
         }
 
-        // Create basic content with empty frontmatter
-        let content = this.formatFrontmatter({}); // Add empty frontmatter
+        let content = this.formatFrontmatter({});
 
-        // Add note template
-        content += `# Week ${weekNum}, ${year}\n\n## Reflections\n\n## Tasks\n\n## Notes\n`;
+        // Updated default content to use the correct keys from the 'values' object
+        content += `# Week ${values.ww}, ${values.gggg} (Calendar: ${values.MMM} ${values.DD}, ${values.YYYY})\n\n## Reflections\n\n## Tasks\n\n## Notes\n`; // <<< CORRECTED: Use ww, gggg, MMM, DD, YYYY
 
         const newFile = await this.app.vault.create(fullPath, content);
-        // Use our safe method instead of directly opening in active leaf
         await this.safelyOpenFile(newFile);
       }
-    } catch (error) {
-      new Notice(`Error creating week note: ${error}`);
+    } catch (error: any) {
+      new Notice(`Error creating/opening week note: ${error.message}`);
+      console.error("Error in createOrOpenWeekNote:", error);
     }
   }
-
   /**
    * Calculate ISO week number and the associated ISO year for a given date
    * @param date - Date to calculate week number for
@@ -2896,71 +2907,105 @@ class ChornicaEventModal extends Modal {
       .replace(/[/\\?%*:|"<>]/g, "-")
       .replace(/\s+/g, "_");
     const dateStr = startDate.toISOString().split("T")[0];
-    const year = event.weekKey.split("-")[0];
-    const week = event.weekKey.split("-W")[1];
+    // const year = event.weekKey.split("-")[0]; // Not needed if using new placeholders
+    // const week = event.weekKey.split("-W")[1]; // Not needed if using new placeholders
     let fileName = "";
     let defaultNoteContent = "";
     const metadata: Record<string, any> = {
       event: eventName,
       name: eventName,
       description: event.description,
-      type: eventType.name,
+      type: eventType.name, // Use the user-visible NAME in frontmatter
       startDate: dateStr,
     };
 
     if (event.endWeekKey && endDate) {
-      const endWeekYear = event.endWeekKey.split("-")[0];
-      const endWeekNum = event.endWeekKey.split("-W")[1];
-      const endDateStr = endDate.toISOString().split("T")[0];
+      // This correctly checks if it's a range event
+      const endWeekYear = event.endWeekKey.split("-")[0]; // ISO Year of end week
+      const endWeekNum = event.endWeekKey.split("-W")[1]; // ISO Week of end week
+      const endDateStr = endDate.toISOString().split("T")[0]; // Calendar end date YYYY-MM-DD
       metadata.endDate = endDateStr;
+
+      // This is the values object for RANGE events
+      const values = {
+        eventName: sanitizedEventName,
+        startDate: dateStr,
+        endDate: endDateStr,
+
+        start_gggg: event.weekKey.split("-")[0], // Was start_iso_year
+        start_ww: event.weekKey.split("-W")[1], // Was start_iso_week
+
+        startDate_YYYY: startDate.getFullYear().toString(), // Was startDate_YYYY (no change needed, just ensure consistency)
+        startDate_MM: (startDate.getMonth() + 1).toString().padStart(2, "0"),
+        startDate_DD: startDate.getDate().toString().padStart(2, "0"),
+        startDate_MMMM: startDate.toLocaleString("default", { month: "long" }),
+        startDate_MMM: startDate.toLocaleString("default", { month: "short" }),
+        startDate_YY: startDate.getFullYear().toString().slice(-2),
+
+        end_gggg: event.endWeekKey!.split("-")[0], // Was end_iso_year
+        end_ww: event.endWeekKey!.split("-W")[1], // Was end_iso_week
+
+        endDate_YYYY: endDate!.getFullYear().toString(),
+        endDate_MM: (endDate!.getMonth() + 1).toString().padStart(2, "0"),
+        endDate_DD: endDate!.getDate().toString().padStart(2, "0"),
+        endDate_MMMM: endDate!.toLocaleString("default", { month: "long" }),
+        endDate_MMM: endDate!.toLocaleString("default", { month: "short" }),
+        endDate_YY: endDate!.getFullYear().toString().slice(-2),
+      };
       fileName = this.plugin.formatFileName(
         this.plugin.settings.rangeNoteTemplate,
-        {
-          eventName: sanitizedEventName,
-          startDate: dateStr,
-          startYear: year,
-          startWeek: week,
-          endYear: endWeekYear,
-          endWeek: endWeekNum,
-        }
+        values
       );
+
       const startDisp = event.weekKey.replace("W", "--W");
       const endDisp = event.endWeekKey.replace("W", "--W");
       defaultNoteContent = `# ${startDisp}_to_${endDisp} (${eventName})\n\nStart Date: ${dateStr}\nEnd Date: ${endDateStr}\nType: ${eventType.name}\nDescription: ${event.description}\n\n## Notes\n\n`;
     } else {
+      // This is for SINGLE events
+      // const isoWeekInfo = this.plugin.getISOWeekData(startDate); // Not strictly needed if event.weekKey is primary
+
+      // This is the values object for SINGLE events
+      const values = {
+        eventName: sanitizedEventName,
+        startDate: dateStr, // Full YYYY-MM-DD
+
+        gggg: event.weekKey.split("-")[0], // Was iso_year
+        ww: event.weekKey.split("-W")[1], // Was iso_week
+
+        YYYY: startDate.getFullYear().toString(), // Was date_YYYY
+        MM: (startDate.getMonth() + 1).toString().padStart(2, "0"), // Was date_MM
+        DD: startDate.getDate().toString().padStart(2, "0"), // Was date_DD
+        MMMM: startDate.toLocaleString("default", { month: "long" }), // Was date_MMMM
+        MMM: startDate.toLocaleString("default", { month: "short" }), // Was date_MMM
+        YY: startDate.getFullYear().toString().slice(-2), // Was date_YY
+      };
       fileName = this.plugin.formatFileName(
         this.plugin.settings.eventNoteTemplate,
-        {
-          eventName: sanitizedEventName,
-          startDate: dateStr,
-          year: year,
-          week: week,
-        }
+        values
       );
+
       const weekDisp = event.weekKey.replace("W", "--W");
       defaultNoteContent = `# ${weekDisp} (${eventName})\n\nDate: ${dateStr}\nType: ${eventType.name}\nDescription: ${event.description}\n\n## Notes\n\n`;
     }
 
     const fullPath = this.plugin.getFullPath(fileName, true);
     let file = this.app.vault.getAbstractFileByPath(fullPath);
-    let fileCreated = false;
+    // let fileCreated = false; // Not used
 
     if (file instanceof TFile) {
       console.log(
         `Chronica: Event note exists at ${fullPath}. Updating frontmatter.`
       );
       await this.app.fileManager.processFrontMatter(file, (fm) => {
-        // Merge new metadata into existing frontmatter
         Object.assign(fm, metadata);
       });
-      event.notePath = file.path; // Ensure event object has path
-      return true; // Note exists (updated or not)
+      event.notePath = file.path;
+      return true;
     } else {
       let folderPath = this.plugin.settings.useSeparateFolders
         ? this.plugin.settings.eventNotesFolder
         : this.plugin.settings.notesFolder;
       if (folderPath && folderPath.trim() !== "") {
-        /* ... Folder creation logic ... */
         try {
           if (!(await this.app.vault.adapter.exists(folderPath)))
             await this.app.vault.createFolder(folderPath);
@@ -2975,8 +3020,8 @@ class ChornicaEventModal extends Modal {
         this.plugin.formatFrontmatter(metadata) + defaultNoteContent;
       const newFile = await this.app.vault.create(fullPath, finalContent);
       console.log(`Chronica: Created event note at ${newFile.path}`);
-      event.notePath = newFile.path; // Store path in event object
-      return true; // Note was created
+      event.notePath = newFile.path;
+      return true;
     }
   }
 
@@ -6789,7 +6834,7 @@ class ChornicaSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName("Week Note Template")
       .setDesc(
-        "Template for week note filenames. Placeholders: ${year}, ${week}"
+        "Placeholders: ${gggg}, ${ww}, ${YYYY}, ${MM}, ${DD}, ${MMMM}, ${MMM}, ${YY}"
       )
       .addText((text) =>
         text
@@ -6806,7 +6851,7 @@ class ChornicaSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName("Event Note Template")
       .setDesc(
-        "For single-date events. Placeholders: ${eventName}, ${startDate}, ${year}, ${week}"
+        "Single events. Placeholders: ${eventName}, ${startDate} (full), ${gggg}, ${ww}, ${YYYY}, ${MM}, ${DD}, ${MMMM}, ${MMM}, ${YY}"
       )
       .addText((text) =>
         text
@@ -6823,7 +6868,7 @@ class ChornicaSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName("Range Event Template")
       .setDesc(
-        "For multi-week events. Placeholders: ${eventName}, ${startDate}, ${startYear}, ${startWeek}, ${endYear}, ${endWeek}"
+        "Range events. Placeholders: ${eventName}, ${startDate} (full), ${endDate} (full), ${start_gggg}, ${start_ww}, ${end_gggg}, ${end_ww}, ${startDate_YYYY}..${startDate_YY}, ${endDate_YYYY}..${endDate_YY}"
       )
       .addText((text) =>
         text
