@@ -1711,7 +1711,7 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
         let eventsRemovedCount = 0;
         // Filter out events whose notePath matches the deleted file's path
         this.settings.events.length;
-        this.settings.events = this.settings.events.filter(event => {
+        this.settings.events = this.settings.events.filter((event) => {
             if (event.notePath === deletedPath) {
                 eventsRemovedCount++;
                 return false; // Remove this event
@@ -1810,7 +1810,7 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
         let invalidRemovedCount = 0;
         this.settings.events.length;
         // Keep only events that either have no notePath or whose notePath exists
-        this.settings.events = this.settings.events.filter(event => {
+        this.settings.events = this.settings.events.filter((event) => {
             if (event.notePath) {
                 const fileExists = this.app.vault.getAbstractFileByPath(event.notePath);
                 if (!fileExists) {
@@ -2313,23 +2313,37 @@ class ManageEventTypesModal extends obsidian.Modal {
     // ... (full class code as provided before) ...
     plugin;
     typesListContainer; // Container for the list of types
-    constructor(app, plugin) { super(app); this.plugin = plugin; }
+    constructor(app, plugin) {
+        super(app);
+        this.plugin = plugin;
+    }
     onOpen() {
         const { contentEl } = this;
         contentEl.empty();
         contentEl.addClass("chronica-manage-types-modal");
         contentEl.createEl("h2", { text: "Manage Event Types" });
         contentEl.createEl("h3", { text: "Event Types" });
-        contentEl.createEl("p", { text: "Edit names/colors. Presets cannot be deleted." });
-        this.typesListContainer = contentEl.createDiv({ cls: "existing-types-list-container" });
+        contentEl.createEl("p", {
+            text: "Edit names/colors. Presets cannot be deleted.",
+        });
+        this.typesListContainer = contentEl.createDiv({
+            cls: "existing-types-list-container",
+        });
         this.renderTypesList();
         const addSection = contentEl.createDiv({ cls: "event-type-add-section" });
         addSection.createEl("h3", { text: "Add New Custom Type" });
-        const nameSetting = new obsidian.Setting(addSection).setName("Name").addText(text => text.setPlaceholder("New type name"));
-        const nameInput = nameSetting.controlEl.querySelector('input');
-        const colorSetting = new obsidian.Setting(addSection).setName("Color").addColorPicker(picker => picker.setValue("#FF9800"));
+        const nameSetting = new obsidian.Setting(addSection)
+            .setName("Name")
+            .addText((text) => text.setPlaceholder("New type name"));
+        const nameInput = nameSetting.controlEl.querySelector("input");
+        const colorSetting = new obsidian.Setting(addSection)
+            .setName("Color")
+            .addColorPicker((picker) => picker.setValue("#FF9800"));
         const colorInput = colorSetting.controlEl.querySelector('input[type="color"]');
-        new obsidian.Setting(addSection).addButton(button => button.setButtonText("Add Type").setCta().onClick(async () => {
+        new obsidian.Setting(addSection).addButton((button) => button
+            .setButtonText("Add Type")
+            .setCta()
+            .onClick(async () => {
             if (!nameInput || !colorInput)
                 return;
             const name = nameInput.value.trim();
@@ -2340,12 +2354,19 @@ class ManageEventTypesModal extends obsidian.Modal {
             }
             if (!this.plugin.settings.eventTypes)
                 this.plugin.settings.eventTypes = [];
-            if (this.plugin.settings.eventTypes.some(type => type.name.toLowerCase() === name.toLowerCase())) {
+            if (this.plugin.settings.eventTypes.some((type) => type.name.toLowerCase() === name.toLowerCase())) {
                 new obsidian.Notice(`Type "${name}" already exists.`);
                 return;
             }
-            const newId = `custom_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-            const newType = { id: newId, name: name, color: color, isPreset: false };
+            const newId = `custom_${Date.now()}_${Math.random()
+                .toString(36)
+                .substring(2, 7)}`;
+            const newType = {
+                id: newId,
+                name: name,
+                color: color,
+                isPreset: false,
+            };
             this.plugin.settings.eventTypes.push(newType);
             await this.plugin.saveSettings();
             new obsidian.Notice(`Event type "${name}" added.`);
@@ -2354,47 +2375,77 @@ class ManageEventTypesModal extends obsidian.Modal {
             colorInput.value = "#FF9800";
             this.plugin.refreshAllViews();
         }));
-        new obsidian.Setting(contentEl).addButton(btn => btn.setButtonText("Close").onClick(() => { this.close(); }));
+        new obsidian.Setting(contentEl).addButton((btn) => btn.setButtonText("Close").onClick(() => {
+            this.close();
+        }));
     }
     renderTypesList() {
         const container = this.typesListContainer;
         container.empty();
-        if (!this.plugin.settings.eventTypes || this.plugin.settings.eventTypes.length === 0) {
-            container.createEl("p", { text: "No event types found. Resetting to defaults." });
+        if (!this.plugin.settings.eventTypes ||
+            this.plugin.settings.eventTypes.length === 0) {
+            container.createEl("p", {
+                text: "No event types found. Resetting to defaults.",
+            });
             this.plugin.settings.eventTypes = JSON.parse(JSON.stringify(DEFAULT_SETTINGS.eventTypes));
             this.plugin.saveSettings();
         }
-        const sortedTypes = [...this.plugin.settings.eventTypes].sort((a, b) => { if (a.isPreset && !b.isPreset)
-            return -1; if (!a.isPreset && b.isPreset)
-            return 1; return a.name.localeCompare(b.name); });
+        const sortedTypes = [...this.plugin.settings.eventTypes].sort((a, b) => {
+            if (a.isPreset && !b.isPreset)
+                return -1;
+            if (!a.isPreset && b.isPreset)
+                return 1;
+            return a.name.localeCompare(b.name);
+        });
         for (const type of sortedTypes) {
-            const typeItem = container.createEl("div", { cls: `event-type-item ${type.isPreset ? 'preset-type' : 'custom-type'}` });
+            const typeItem = container.createEl("div", {
+                cls: `event-type-item ${type.isPreset ? "preset-type" : "custom-type"}`,
+            });
             const colorBox = typeItem.createEl("span", { cls: "event-type-color" });
             colorBox.style.backgroundColor = type.color;
-            const nameEl = typeItem.createEl("span", { text: type.name, cls: "event-type-name" });
+            const nameEl = typeItem.createEl("span", {
+                text: type.name,
+                cls: "event-type-name",
+            });
             if (type.isPreset)
                 nameEl.setAttribute("title", "Preset type (cannot be deleted)");
-            const buttonContainer = typeItem.createEl("div", { cls: "event-type-actions" });
-            const editButton = buttonContainer.createEl("button", { text: "", cls: "edit-type-button clickable-icon", attr: { title: `Edit '${type.name}'` } });
+            const buttonContainer = typeItem.createEl("div", {
+                cls: "event-type-actions",
+            });
+            const editButton = buttonContainer.createEl("button", {
+                text: "",
+                cls: "edit-type-button clickable-icon",
+                attr: { title: `Edit '${type.name}'` },
+            });
             obsidian.setIcon(editButton, "pencil");
             editButton.style.marginLeft = "auto"; // Default margin
-            editButton.addEventListener("click", () => { this.showEditTypeModal(type); });
+            editButton.addEventListener("click", () => {
+                this.showEditTypeModal(type);
+            });
             if (!type.isPreset) {
-                const deleteButton = buttonContainer.createEl("button", { text: "", cls: "delete-type-button clickable-icon", attr: { title: `Delete '${type.name}'` } });
+                const deleteButton = buttonContainer.createEl("button", {
+                    text: "",
+                    cls: "delete-type-button clickable-icon",
+                    attr: { title: `Delete '${type.name}'` },
+                });
                 obsidian.setIcon(deleteButton, "trash-2");
                 editButton.style.marginLeft = "0"; // Adjust margin when delete button present
                 // deleteButton.style.marginLeft = "auto"; // Push delete button right (or adjust layout via CSS flex)
                 deleteButton.addEventListener("click", async () => {
                     if (confirm(`Delete type "${type.name}"?\nEvents using it will be reassigned to "Major Life".`)) {
-                        const defaultTypeId = 'preset_major_life';
+                        const defaultTypeId = "preset_major_life";
                         let reassignedCount = 0;
                         if (!this.plugin.settings.events)
                             this.plugin.settings.events = []; // Ensure exists
-                        this.plugin.settings.events = this.plugin.settings.events.map(event => { if (event.typeId === type.id) {
-                            reassignedCount++;
-                            return { ...event, typeId: defaultTypeId };
-                        } return event; });
-                        this.plugin.settings.eventTypes = this.plugin.settings.eventTypes.filter(t => t.id !== type.id);
+                        this.plugin.settings.events = this.plugin.settings.events.map((event) => {
+                            if (event.typeId === type.id) {
+                                reassignedCount++;
+                                return { ...event, typeId: defaultTypeId };
+                            }
+                            return event;
+                        });
+                        this.plugin.settings.eventTypes =
+                            this.plugin.settings.eventTypes.filter((t) => t.id !== type.id);
                         await this.plugin.saveSettings();
                         new obsidian.Notice(`Type "${type.name}" deleted. ${reassignedCount} event(s) reassigned.`);
                         this.renderTypesList();
@@ -2410,20 +2461,33 @@ class ManageEventTypesModal extends obsidian.Modal {
         modal.titleEl.setText(`Edit Type: ${type.name}`);
         let currentName = type.name;
         let currentColor = type.color;
-        new obsidian.Setting(modal.contentEl).setName("Name").addText(text => { text.setValue(currentName).onChange(value => { currentName = value.trim(); }); });
-        new obsidian.Setting(modal.contentEl).setName("Color").addColorPicker(picker => { picker.setValue(currentColor).onChange(value => { currentColor = value; }); });
-        new obsidian.Setting(modal.contentEl).addButton(btn => btn.setButtonText("Save Changes").setCta().onClick(async () => {
+        new obsidian.Setting(modal.contentEl).setName("Name").addText((text) => {
+            text.setValue(currentName).onChange((value) => {
+                currentName = value.trim();
+            });
+        });
+        new obsidian.Setting(modal.contentEl).setName("Color").addColorPicker((picker) => {
+            picker.setValue(currentColor).onChange((value) => {
+                currentColor = value;
+            });
+        });
+        new obsidian.Setting(modal.contentEl)
+            .addButton((btn) => btn
+            .setButtonText("Save Changes")
+            .setCta()
+            .onClick(async () => {
             if (!currentName) {
                 new obsidian.Notice("Name cannot be empty.");
                 return;
             }
             if (!this.plugin.settings.eventTypes)
                 this.plugin.settings.eventTypes = [];
-            if (this.plugin.settings.eventTypes.some(t => t.id !== type.id && t.name.toLowerCase() === currentName.toLowerCase())) {
+            if (this.plugin.settings.eventTypes.some((t) => t.id !== type.id &&
+                t.name.toLowerCase() === currentName.toLowerCase())) {
                 new obsidian.Notice(`Type "${currentName}" already exists.`);
                 return;
             }
-            const typeIndex = this.plugin.settings.eventTypes.findIndex(t => t.id === type.id);
+            const typeIndex = this.plugin.settings.eventTypes.findIndex((t) => t.id === type.id);
             if (typeIndex !== -1) {
                 this.plugin.settings.eventTypes[typeIndex].name = currentName;
                 this.plugin.settings.eventTypes[typeIndex].color = currentColor;
@@ -2436,10 +2500,16 @@ class ManageEventTypesModal extends obsidian.Modal {
             else {
                 new obsidian.Notice(`Error: Could not find type with ID ${type.id}.`);
             }
-        })).addButton(btn => btn.setButtonText("Cancel").onClick(() => { modal.close(); }));
+        }))
+            .addButton((btn) => btn.setButtonText("Cancel").onClick(() => {
+            modal.close();
+        }));
         modal.open();
     }
-    onClose() { this.contentEl.empty(); this.plugin.refreshAllViews(); } // Refresh on close
+    onClose() {
+        this.contentEl.empty();
+        this.plugin.refreshAllViews();
+    } // Refresh on close
 }
 /**
  * Welcome modal shown to new users
@@ -2855,9 +2925,19 @@ class ChornicaTimelineView extends obsidian.ItemView {
         const sidebarEl = mainContainer.createEl("div", {
             cls: `chronica-sidebar ${this.isSidebarOpen ? "expanded" : "collapsed"}`,
         });
-        const sidebarHeader = sidebarEl.createEl("div", { cls: "chronica-sidebar-header" });
-        sidebarHeader.createEl("div", { cls: "chronica-title", text: "life in frames" });
-        const sidebarToggle = sidebarHeader.createEl("button", { cls: "chronica-sidebar-toggle", attr: { title: this.isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar" } });
+        const sidebarHeader = sidebarEl.createEl("div", {
+            cls: "chronica-sidebar-header",
+        });
+        sidebarHeader.createEl("div", {
+            cls: "chronica-title",
+            text: "life in frames",
+        });
+        const sidebarToggle = sidebarHeader.createEl("button", {
+            cls: "chronica-sidebar-toggle",
+            attr: {
+                title: this.isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar",
+            },
+        });
         obsidian.setIcon(sidebarToggle, this.isSidebarOpen ? "chevron-left" : "chevron-right");
         // Sidebar toggle listener (uses hidden class)
         sidebarToggle.addEventListener("click", () => {
@@ -2875,76 +2955,208 @@ class ChornicaTimelineView extends obsidian.ItemView {
         });
         // --- Sidebar Sections ---
         // Data Section
-        const dataSection = sidebarEl.createEl("div", { cls: "chronica-sidebar-section" });
-        dataSection.createEl("h3", { text: "TIMELINE DATA", cls: "section-header" });
-        const dataContainer = dataSection.createEl("div", { cls: "chronica-controls" });
-        const planEventBtn = dataContainer.createEl("button", { text: "Add Event", cls: "chronica-btn chronica-btn-primary" });
-        planEventBtn.addEventListener("click", () => { this.showAddEventModal(); });
-        const manageTypesBtn = dataContainer.createEl("button", { text: "Manage Event Types", cls: "chronica-btn chronica-btn-primary" });
-        manageTypesBtn.addEventListener("click", () => { new ManageEventTypesModal(this.app, this.plugin).open(); }); // Assumes ManageEventTypesModal class exists
+        const dataSection = sidebarEl.createEl("div", {
+            cls: "chronica-sidebar-section",
+        });
+        dataSection.createEl("h3", {
+            text: "TIMELINE DATA",
+            cls: "section-header",
+        });
+        const dataContainer = dataSection.createEl("div", {
+            cls: "chronica-controls",
+        });
+        const planEventBtn = dataContainer.createEl("button", {
+            text: "Add Event",
+            cls: "chronica-btn chronica-btn-primary",
+        });
+        planEventBtn.addEventListener("click", () => {
+            this.showAddEventModal();
+        });
+        const manageTypesBtn = dataContainer.createEl("button", {
+            text: "Manage Event Types",
+            cls: "chronica-btn chronica-btn-primary",
+        });
+        manageTypesBtn.addEventListener("click", () => {
+            new ManageEventTypesModal(this.app, this.plugin).open();
+        }); // Assumes ManageEventTypesModal class exists
         // Visualization Section
-        const viewSection = sidebarEl.createEl("div", { cls: "chronica-sidebar-section" });
-        viewSection.createEl("h3", { text: "VISUALIZATION", cls: "section-header" });
-        const viewContainer = viewSection.createEl("div", { cls: "chronica-visual-controls" });
+        const viewSection = sidebarEl.createEl("div", {
+            cls: "chronica-sidebar-section",
+        });
+        viewSection.createEl("h3", {
+            text: "VISUALIZATION",
+            cls: "section-header",
+        });
+        const viewContainer = viewSection.createEl("div", {
+            cls: "chronica-visual-controls",
+        });
         // (Keep Zoom controls, Fit to Screen button logic - unchanged)
-        const zoomControlsDiv = viewContainer.createEl("div", { cls: "chronica-zoom-controls", });
-        const zoomOutBtn = zoomControlsDiv.createEl("button", { cls: "chronica-btn chronica-zoom-button", attr: { title: "Zoom Out" }, });
+        const zoomControlsDiv = viewContainer.createEl("div", {
+            cls: "chronica-zoom-controls",
+        });
+        const zoomOutBtn = zoomControlsDiv.createEl("button", {
+            cls: "chronica-btn chronica-zoom-button",
+            attr: { title: "Zoom Out" },
+        });
         obsidian.setIcon(zoomOutBtn, "zoom-out");
-        zoomOutBtn.addEventListener("click", () => { this.zoomOut(); });
-        const zoomInput = zoomControlsDiv.createEl("input", { cls: "chronica-zoom-input", attr: { type: "number", min: "10", max: "500", step: "1", value: `${Math.round(this.plugin.settings.zoomLevel * 100)}`, title: "Enter zoom % and press ↵", }, });
-        zoomInput.addEventListener("change", async (e) => { const input = e.target; let val = parseInt(input.value, 10); if (isNaN(val))
-            val = Math.round(this.plugin.settings.zoomLevel * 100); val = Math.min(500, Math.max(10, val)); this.plugin.settings.zoomLevel = val / 100; await this.plugin.saveSettings(); this.updateZoomLevel(); input.value = `${Math.round(this.plugin.settings.zoomLevel * 100)}`; });
-        const zoomInBtn = zoomControlsDiv.createEl("button", { cls: "chronica-btn chronica-zoom-button", attr: { title: "Zoom In" }, });
+        zoomOutBtn.addEventListener("click", () => {
+            this.zoomOut();
+        });
+        const zoomInput = zoomControlsDiv.createEl("input", {
+            cls: "chronica-zoom-input",
+            attr: {
+                type: "number",
+                min: "10",
+                max: "500",
+                step: "1",
+                value: `${Math.round(this.plugin.settings.zoomLevel * 100)}`,
+                title: "Enter zoom % and press ↵",
+            },
+        });
+        zoomInput.addEventListener("change", async (e) => {
+            const input = e.target;
+            let val = parseInt(input.value, 10);
+            if (isNaN(val))
+                val = Math.round(this.plugin.settings.zoomLevel * 100);
+            val = Math.min(500, Math.max(10, val));
+            this.plugin.settings.zoomLevel = val / 100;
+            await this.plugin.saveSettings();
+            this.updateZoomLevel();
+            input.value = `${Math.round(this.plugin.settings.zoomLevel * 100)}`;
+        });
+        const zoomInBtn = zoomControlsDiv.createEl("button", {
+            cls: "chronica-btn chronica-zoom-button",
+            attr: { title: "Zoom In" },
+        });
         obsidian.setIcon(zoomInBtn, "zoom-in");
-        zoomInBtn.addEventListener("click", () => { this.zoomIn(); });
-        const fitToScreenBtn = viewContainer.createEl("button", { cls: "chronica-btn chronica-fit-to-screen", text: "Fit to Screen", attr: { title: "Automatically adjust zoom to fit entire grid on screen" }, });
-        fitToScreenBtn.addEventListener("click", () => { this.fitToScreen(); });
+        zoomInBtn.addEventListener("click", () => {
+            this.zoomIn();
+        });
+        const fitToScreenBtn = viewContainer.createEl("button", {
+            cls: "chronica-btn chronica-fit-to-screen",
+            text: "Fit to Screen",
+            attr: { title: "Automatically adjust zoom to fit entire grid on screen" },
+        });
+        fitToScreenBtn.addEventListener("click", () => {
+            this.fitToScreen();
+        });
         // Display Settings Section
-        const displaySection = sidebarEl.createEl("div", { cls: "chronica-sidebar-section" });
-        displaySection.createEl("h3", { text: "DISPLAY SETTINGS", cls: "section-header" });
-        const displayContainer = displaySection.createEl("div", { cls: "chronica-controls" });
+        const displaySection = sidebarEl.createEl("div", {
+            cls: "chronica-sidebar-section",
+        });
+        displaySection.createEl("h3", {
+            text: "DISPLAY SETTINGS",
+            cls: "section-header",
+        });
+        const displayContainer = displaySection.createEl("div", {
+            cls: "chronica-controls",
+        });
         // (Keep Cell Shape and Grid Orientation controls - unchanged)
-        displayContainer.createEl("h4", { cls: "subsection-header", text: "Cell Shape", });
-        const shapeSelect = displayContainer.createEl("select", { cls: "chronica-select chronica-dropdown", });
-        ["square", "circle", "diamond"].forEach((opt) => { const option = shapeSelect.createEl("option", { attr: { value: opt }, text: opt.charAt(0).toUpperCase() + opt.slice(1), }); if (this.plugin.settings.cellShape === opt)
-            option.selected = true; });
-        shapeSelect.addEventListener("change", async () => { this.plugin.settings.cellShape = shapeSelect.value; await this.plugin.saveSettings(); this.updateZoomLevel(); });
-        displayContainer.createEl("h4", { cls: "subsection-header", text: "Grid Orientation", });
-        const orientationBtn = displayContainer.createEl("button", { cls: "chronica-btn chronica-orientation-button", text: this.plugin.settings.gridOrientation === "landscape" ? "Switch to Portrait" : "Switch to Landscape", attr: { title: this.plugin.settings.gridOrientation === "landscape" ? "Display years as rows, weeks as columns" : "Display years as columns, weeks as rows", }, });
-        orientationBtn.addEventListener("click", async () => { this.plugin.settings.gridOrientation = this.plugin.settings.gridOrientation === "landscape" ? "portrait" : "landscape"; await this.plugin.saveSettings(); orientationBtn.textContent = this.plugin.settings.gridOrientation === "landscape" ? "Switch to Portrait" : "Switch to Landscape"; orientationBtn.setAttribute("title", this.plugin.settings.gridOrientation === "landscape" ? "Display years as rows, weeks as columns" : "Display years as columns, weeks as rows"); this.updateZoomLevel(); });
+        displayContainer.createEl("h4", {
+            cls: "subsection-header",
+            text: "Cell Shape",
+        });
+        const shapeSelect = displayContainer.createEl("select", {
+            cls: "chronica-select chronica-dropdown",
+        });
+        ["square", "circle", "diamond"].forEach((opt) => {
+            const option = shapeSelect.createEl("option", {
+                attr: { value: opt },
+                text: opt.charAt(0).toUpperCase() + opt.slice(1),
+            });
+            if (this.plugin.settings.cellShape === opt)
+                option.selected = true;
+        });
+        shapeSelect.addEventListener("change", async () => {
+            this.plugin.settings.cellShape = shapeSelect.value;
+            await this.plugin.saveSettings();
+            this.updateZoomLevel();
+        });
+        displayContainer.createEl("h4", {
+            cls: "subsection-header",
+            text: "Grid Orientation",
+        });
+        const orientationBtn = displayContainer.createEl("button", {
+            cls: "chronica-btn chronica-orientation-button",
+            text: this.plugin.settings.gridOrientation === "landscape"
+                ? "Switch to Portrait"
+                : "Switch to Landscape",
+            attr: {
+                title: this.plugin.settings.gridOrientation === "landscape"
+                    ? "Display years as rows, weeks as columns"
+                    : "Display years as columns, weeks as rows",
+            },
+        });
+        orientationBtn.addEventListener("click", async () => {
+            this.plugin.settings.gridOrientation =
+                this.plugin.settings.gridOrientation === "landscape"
+                    ? "portrait"
+                    : "landscape";
+            await this.plugin.saveSettings();
+            orientationBtn.textContent =
+                this.plugin.settings.gridOrientation === "landscape"
+                    ? "Switch to Portrait"
+                    : "Switch to Landscape";
+            orientationBtn.setAttribute("title", this.plugin.settings.gridOrientation === "landscape"
+                ? "Display years as rows, weeks as columns"
+                : "Display years as columns, weeks as rows");
+            this.updateZoomLevel();
+        });
         // Legend Section (UPDATED to use new eventTypes)
-        const legendSection = sidebarEl.createEl("div", { cls: "chronica-sidebar-section" });
+        const legendSection = sidebarEl.createEl("div", {
+            cls: "chronica-sidebar-section",
+        });
         legendSection.createEl("h3", { text: "LEGEND", cls: "section-header" });
         const legendEl = legendSection.createEl("div", { cls: "chronica-legend" });
         // Add legend items for all defined event types
-        if (this.plugin.settings.eventTypes && this.plugin.settings.eventTypes.length > 0) {
+        if (this.plugin.settings.eventTypes &&
+            this.plugin.settings.eventTypes.length > 0) {
             this.plugin.settings.eventTypes.forEach((type) => {
-                const itemEl = legendEl.createEl("div", { cls: "chronica-legend-item" });
-                const colorEl = itemEl.createEl("div", { cls: "chronica-legend-color" });
+                const itemEl = legendEl.createEl("div", {
+                    cls: "chronica-legend-item",
+                });
+                const colorEl = itemEl.createEl("div", {
+                    cls: "chronica-legend-color",
+                });
                 colorEl.style.backgroundColor = type.color; // Use color from type definition
                 itemEl.createEl("span", { text: type.name }); // Use name from type definition
             });
         }
         else {
-            legendEl.createEl('p', { text: "No event types defined.", cls: 'text-muted' });
+            legendEl.createEl("p", {
+                text: "No event types defined.",
+                cls: "text-muted",
+            });
         }
         // Optionally add legend for future event highlight if desired
-        const futureHighlightItem = legendEl.createEl("div", { cls: "chronica-legend-item" });
-        futureHighlightItem.createEl("div", { cls: "chronica-legend-color future-event-highlight-legend" }); // Use a specific class
+        const futureHighlightItem = legendEl.createEl("div", {
+            cls: "chronica-legend-item",
+        });
+        futureHighlightItem.createEl("div", {
+            cls: "chronica-legend-color future-event-highlight-legend",
+        }); // Use a specific class
         // Style futureColorEl via CSS to show the border/style used for .future-event-highlight
         // futureColorEl.style.border = `1px solid var(--future-event-color)`;
         // futureColorEl.style.backgroundColor = `var(--future-cell-color)`; // Show base color
         futureHighlightItem.createEl("span", { text: "Upcoming Event Highlight" });
         // Footer in sidebar
-        sidebarEl.createEl("div", { cls: "chronica-footer", text: this.plugin.settings.quote });
+        sidebarEl.createEl("div", {
+            cls: "chronica-footer",
+            text: this.plugin.settings.quote,
+        });
         // --- Create Content Area ---
-        const contentAreaEl = mainContainer.createEl("div", { cls: "chronica-content-area" });
+        const contentAreaEl = mainContainer.createEl("div", {
+            cls: "chronica-content-area",
+        });
         // Apply class if stats panel should be open initially
         if (this.plugin.settings.isStatsOpen) {
             contentAreaEl.classList.add("stats-expanded");
         }
         // --- Create Collapsed Sidebar Toggle ---
-        const collapsedToggle = contentAreaEl.createEl("button", { cls: "chronica-collapsed-toggle", attr: { title: "Expand Sidebar" }, });
+        const collapsedToggle = contentAreaEl.createEl("button", {
+            cls: "chronica-collapsed-toggle",
+            attr: { title: "Expand Sidebar" },
+        });
         obsidian.setIcon(collapsedToggle, "chevron-right");
         collapsedToggle.classList.toggle("hidden", this.isSidebarOpen); // Use hidden class
         collapsedToggle.addEventListener("click", () => {
@@ -3140,9 +3352,10 @@ class ChornicaTimelineView extends obsidian.ItemView {
         container.empty(); // Clear previous grid
         // Get necessary settings and calculated values
         const { settings } = this.plugin;
-        const { birthday, lifespan, gridOrientation, cellShape, startWeekOnMonday } = settings;
+        const { birthday, lifespan, gridOrientation, cellShape, startWeekOnMonday, } = settings;
         const root = document.documentElement;
-        const baseSize = parseInt(getComputedStyle(root).getPropertyValue("--base-cell-size")) || 16;
+        const baseSize = parseInt(getComputedStyle(root).getPropertyValue("--base-cell-size")) ||
+            16;
         const cellSize = Math.round(baseSize * settings.zoomLevel);
         root.style.setProperty("--cell-size", `${cellSize}px`); // Ensure CSS var is set
         const cellGap = parseInt(getComputedStyle(root).getPropertyValue("--cell-gap")) || 2;
@@ -3153,35 +3366,49 @@ class ChornicaTimelineView extends obsidian.ItemView {
         // --- Create Markers ---
         // Decade Markers
         if (settings.showDecadeMarkers) {
-            const decadeMarkersContainer = container.createEl("div", { cls: `chronica-decade-markers ${isPortrait ? "portrait-mode" : ""}` });
+            const decadeMarkersContainer = container.createEl("div", {
+                cls: `chronica-decade-markers ${isPortrait ? "portrait-mode" : ""}`,
+            });
             if (!isPortrait)
                 decadeMarkersContainer.style.left = `${leftOffset}px`;
             for (let decade = 10; decade <= lifespan; decade += 10) {
-                const marker = decadeMarkersContainer.createEl("div", { cls: `chronica-decade-marker ${isPortrait ? "portrait-mode" : ""}`, text: decade.toString() });
+                const marker = decadeMarkersContainer.createEl("div", {
+                    cls: `chronica-decade-marker ${isPortrait ? "portrait-mode" : ""}`,
+                    text: decade.toString(),
+                });
                 marker.style.position = "absolute";
                 const lastYearOfPrevDecade = decade - 1;
                 const decadePosition = this.plugin.calculateYearPosition(lastYearOfPrevDecade, cellSize, regularGap);
                 const centerPosition = decadePosition + cellSize / 2;
                 if (isPortrait) {
                     marker.style.top = `${centerPosition}px`;
-                    marker.style.left = '15px';
+                    marker.style.left = "15px";
                     marker.style.transform = "translateY(-50%)";
                 } // Adjust left for portrait
                 else {
                     marker.style.left = `${centerPosition}px`;
-                    marker.style.top = '15px';
+                    marker.style.top = "15px";
                     marker.style.transform = "translateX(-50%)";
                 } // Adjust top
             }
         }
         // Vertical Markers (Weeks & Months)
-        const markersContainer = container.createEl("div", { cls: `chronica-vertical-markers ${isPortrait ? "portrait-mode" : ""}` });
-        const weekMarkersContainer = markersContainer.createEl("div", { cls: "chronica-week-markers" });
-        const monthMarkersContainer = markersContainer.createEl("div", { cls: "chronica-month-markers" });
+        const markersContainer = container.createEl("div", {
+            cls: `chronica-vertical-markers ${isPortrait ? "portrait-mode" : ""}`,
+        });
+        const weekMarkersContainer = markersContainer.createEl("div", {
+            cls: "chronica-week-markers",
+        });
+        const monthMarkersContainer = markersContainer.createEl("div", {
+            cls: "chronica-month-markers",
+        });
         // Week Markers (Numbers 10, 20...)
         if (settings.showWeekMarkers) {
             for (let week = 10; week <= 50; week += 10) {
-                const marker = weekMarkersContainer.createEl("div", { cls: `chronica-week-marker ${isPortrait ? "portrait-mode" : ""}`, text: week.toString() });
+                const marker = weekMarkersContainer.createEl("div", {
+                    cls: `chronica-week-marker ${isPortrait ? "portrait-mode" : ""}`,
+                    text: week.toString(),
+                });
                 // Position based on cellIndex (0-51), adjusting for center alignment
                 const position = (week - 1) * (cellSize + cellGap) + cellSize / 2; // Center on the week line
                 if (isPortrait) {
@@ -3201,10 +3428,12 @@ class ChornicaTimelineView extends obsidian.ItemView {
             const [bYear, bMonth, bDay] = settings.birthday.split("-").map(Number);
             const birthdayDate = new Date(bYear, bMonth - 1, bDay);
             const birthWeekKey = this.plugin.getWeekKeyFromDate(birthdayDate);
-            this.plugin.settings.events.findIndex(e => e.weekKey === birthWeekKey); // Find event index if needed later
+            this.plugin.settings.events.findIndex((e) => e.weekKey === birthWeekKey); // Find event index if needed later
             const weeksSinceBirthForFirstBirthday = this.plugin.getFullWeekAge(birthdayDate, new Date(bYear + 1, bMonth - 1, bDay));
             const birthWeekGridIndex = weeksSinceBirthForFirstBirthday % 52; // Week index within the year (0-51)
-            const birthdayMarkerContainer = container.createEl("div", { cls: "chronica-birthday-marker-container" });
+            const birthdayMarkerContainer = container.createEl("div", {
+                cls: "chronica-birthday-marker-container",
+            });
             // Position near the vertical markers, aligned with the birthday week row/column
             const birthWeekPosition = birthWeekGridIndex * (cellSize + cellGap) + cellSize / 2;
             birthdayMarkerContainer.style.position = "absolute";
@@ -3219,47 +3448,136 @@ class ChornicaTimelineView extends obsidian.ItemView {
                 birthdayMarkerContainer.style.left = `${leftOffset - 25}px`; // Left of the month markers
                 birthdayMarkerContainer.style.transform = "translateY(-50%)";
             }
-            const cakeEl = birthdayMarkerContainer.createEl("div", { cls: "birthday-cake-marker" });
+            const cakeEl = birthdayMarkerContainer.createEl("div", {
+                cls: "birthday-cake-marker",
+            });
             obsidian.setIcon(cakeEl, "cake");
             cakeEl.setAttribute("title", `${MONTH_NAMES[bMonth - 1]} ${bDay}, ${bYear} (Your Birthday)`);
         }
         // Month Markers (Text labels)
         if (settings.showMonthMarkers) {
-            const [bYear, bMonth, bDay] = settings.birthday.split("-").map(Number);
-            const birthdayDate = new Date(bYear, bMonth - 1, bDay);
-            const monthMarkersData = this.plugin.calculateMonthMarkers(birthdayDate, lifespan, settings.monthMarkerFrequency);
-            // Filter unique month markers per grid row/column index
-            const uniqueGridIndexMarkers = new Map();
-            monthMarkersData.forEach(marker => {
-                const gridIndex = marker.weekIndex % 52; // 0-51
-                if (!uniqueGridIndexMarkers.has(gridIndex)) {
-                    uniqueGridIndexMarkers.set(gridIndex, marker);
+            const [bYear, bMonthIdx, bDay] = settings.birthday.split("-").map(Number);
+            const birthdayDate = new Date(bYear, bMonthIdx - 1, bDay); // JS month is 0-indexed
+            const birthMonthActual = birthdayDate.getMonth(); // 0-11 for comparison
+            const birthYearActual = birthdayDate.getFullYear();
+            // Calculate birthdayWeekStart (e.g., the Monday of the week the birthday falls into)
+            const birthdayWeekStartForGrid = new Date(birthdayDate);
+            const birthDayOfWeek = birthdayWeekStartForGrid.getDay(); // 0=Sun, 1=Mon
+            const startDayOfWeekNumGrid = settings.startWeekOnMonday ? 1 : 0;
+            let daysToSubtractFromBirthday = birthDayOfWeek - startDayOfWeekNumGrid;
+            if (daysToSubtractFromBirthday < 0)
+                daysToSubtractFromBirthday += 7;
+            birthdayWeekStartForGrid.setDate(birthdayWeekStartForGrid.getDate() - daysToSubtractFromBirthday);
+            birthdayWeekStartForGrid.setHours(0, 0, 0, 0);
+            // 1. Get all potential month marker instances
+            const allPotentialMonthMarkers = this.plugin.calculateMonthMarkers(birthdayDate, lifespan, settings.monthMarkerFrequency);
+            // 2. Determine which months (0-11) should be shown based on frequency/birth month
+            const monthsToDisplayIndices = new Set();
+            for (let m = 0; m < 12; m++) {
+                let shouldShow = false;
+                switch (settings.monthMarkerFrequency) {
+                    case "all":
+                        shouldShow = true;
+                        break;
+                    case "quarter":
+                        if (m % 3 === 0)
+                            shouldShow = true;
+                        break;
+                    case "half-year":
+                        if (m % 6 === 0)
+                            shouldShow = true;
+                        break;
+                    case "year":
+                        if (m === 0)
+                            shouldShow = true;
+                        break; // January
                 }
-                else {
-                    // Optional: Prioritize 'first-of-year' or 'birth-month' if multiple markers land on the same grid index
-                    const existing = uniqueGridIndexMarkers.get(gridIndex);
-                    if (marker.isFirstOfYear && !existing.isFirstOfYear)
-                        uniqueGridIndexMarkers.set(gridIndex, marker);
-                    // Birth month should be handled by the cake icon ideally
+                if (m === birthMonthActual)
+                    shouldShow = true; // Always include birth month
+                if (shouldShow)
+                    monthsToDisplayIndices.add(m);
+            }
+            // 3. Find the best instance for each required month and calculate its gridIndex
+            // Map key: month index (0-11), Value: The chosen MonthMarker object (weekIndex holds gridIndex)
+            const canonicalMonthMarkers = new Map();
+            monthsToDisplayIndices.forEach((monthIdxToDisplay) => {
+                let bestMarkerForThisMonth = null;
+                for (const potentialMarker of allPotentialMonthMarkers) {
+                    const potentialMarkerMonthIndex = MONTH_NAMES.indexOf(potentialMarker.label);
+                    if (potentialMarkerMonthIndex === monthIdxToDisplay) {
+                        if (!bestMarkerForThisMonth ||
+                            potentialMarker.weekIndex < bestMarkerForThisMonth.weekIndex) {
+                            bestMarkerForThisMonth = potentialMarker;
+                        }
+                    }
+                }
+                if (bestMarkerForThisMonth) {
+                    const markerYear = Math.floor(bestMarkerForThisMonth.monthNumber / 12) +
+                        birthYearActual;
+                    const markerMonth = bestMarkerForThisMonth.monthNumber % 12;
+                    const firstDayOfThisMarkerMonth = new Date(markerYear, markerMonth, 1);
+                    firstDayOfThisMarkerMonth.setHours(0, 0, 0, 0);
+                    const offsetInMillis = firstDayOfThisMarkerMonth.getTime() -
+                        birthdayWeekStartForGrid.getTime();
+                    let gridIndexForDisplay = Math.floor(offsetInMillis / (1000 * 60 * 60 * 24 * 7));
+                    gridIndexForDisplay = ((gridIndexForDisplay % 52) + 52) % 52; // Normalize to 0-51
+                    canonicalMonthMarkers.set(monthIdxToDisplay, {
+                        ...bestMarkerForThisMonth,
+                        weekIndex: gridIndexForDisplay, // Store the calculated gridIndex
+                    });
                 }
             });
-            uniqueGridIndexMarkers.forEach((marker, gridIndex) => {
+            // 4. Resolve collisions based on gridIndex and render
+            const finalRenderMap = new Map(); // Key: gridIndex, Value: Marker to Render
+            // Iterate 0-11 to ensure consistent priority order (Jan, Feb, ..., BirthMonth, ...)
+            for (let monthIdxKey = 0; monthIdxKey < 12; monthIdxKey++) {
+                if (!canonicalMonthMarkers.has(monthIdxKey))
+                    continue; // Skip if this month wasn't selected
+                const marker = canonicalMonthMarkers.get(monthIdxKey);
+                const gridIndex = marker.weekIndex; // This is the calculated 0-51 grid index
+                if (!finalRenderMap.has(gridIndex)) {
+                    // If grid index is free, add this marker
+                    finalRenderMap.set(gridIndex, marker);
+                }
+                else {
+                    // Collision: Decide which marker wins for this grid index
+                    const existingMarker = finalRenderMap.get(gridIndex);
+                    const existingMonthIndex = MONTH_NAMES.indexOf(existingMarker.label);
+                    // --- REVISED TIE-BREAKING (Birth Month > Jan > Others) ---
+                    if (monthIdxKey === birthMonthActual) {
+                        // Current IS Birth Month -> It wins
+                        finalRenderMap.set(gridIndex, marker);
+                    }
+                    else if (existingMonthIndex === birthMonthActual) ;
+                    else if (monthIdxKey === 0) {
+                        // Current is Jan (and not Birth Month) -> It wins
+                        finalRenderMap.set(gridIndex, marker);
+                    }
+                    else ;
+                    // Implicitly: If neither is Jan nor Birth Month, the one processed first stays.
+                    // --- END REVISED TIE-BREAKING ---
+                }
+            }
+            // 5. Render the markers from the final map
+            finalRenderMap.forEach((marker) => {
+                // marker.weekIndex is the gridIndex
+                const markerGridIndex = marker.weekIndex; // Use the stored gridIndex for positioning
                 const markerEl = monthMarkersContainer.createEl("div", {
-                    cls: `chronica-month-marker ${marker.isFirstOfYear ? "first-of-year" : ""} ${marker.isBirthMonth ? "birth-month" : ""} ${isPortrait ? "portrait-mode" : ""}`,
-                    text: marker.label
+                    cls: `chronica-month-marker ${isPortrait ? "portrait-mode" : ""} ${marker.isFirstOfYear ? "first-of-year" : ""} ${marker.isBirthMonth ? "birth-month" : ""}`,
+                    text: marker.label,
                 });
-                const position = gridIndex * (cellSize + cellGap) + cellSize / 2; // Center on week line
+                const position = markerGridIndex * (cellSize + cellGap) + cellSize / 2;
                 markerEl.setAttribute("title", marker.fullLabel);
                 if (isPortrait) {
                     markerEl.style.left = `${position}px`;
                     markerEl.style.top = `${topOffset - 25}px`;
                     markerEl.style.transform = "translateX(-50%)";
-                } // Position above grid
+                }
                 else {
                     markerEl.style.top = `${position}px`;
                     markerEl.style.left = "5px";
                     markerEl.style.transform = "translateY(-50%)";
-                } // Position left of grid (inside marker area)
+                }
             });
         }
         // --- Create Grid ---
@@ -3270,7 +3588,9 @@ class ChornicaTimelineView extends obsidian.ItemView {
         gridEl.style.top = `${topOffset}px`;
         gridEl.style.left = `${leftOffset}px`;
         const now = new Date();
-        const [birthYearNum, birthMonthNum, birthDayNum] = settings.birthday.split("-").map(Number);
+        const [birthYearNum, birthMonthNum, birthDayNum] = settings.birthday
+            .split("-")
+            .map(Number);
         const birthdayDate = new Date(birthYearNum, birthMonthNum - 1, birthDayNum);
         this.plugin.getFullWeekAge(birthdayDate, now);
         const currentWeekKey = this.plugin.getWeekKeyFromDate(now);
@@ -3288,8 +3608,9 @@ class ChornicaTimelineView extends obsidian.ItemView {
             birthdayWeekStart.setDate(birthdayWeekStart.getDate() - daysToSubtract);
             const nextBirthday = new Date(birthdayDate);
             nextBirthday.setFullYear(displayYear + 1);
-            const totalDaysInYear = Math.round((nextBirthday.getTime() - birthdayWeekStart.getTime()) / (1000 * 60 * 60 * 24));
-            for (let cellIndex = 0; cellIndex < 52; cellIndex++) { // Always 52 cells visually per year row/column
+            const totalDaysInYear = Math.round((nextBirthday.getTime() - birthdayWeekStart.getTime()) /
+                (1000 * 60 * 60 * 24));
+            for (let cellIndex = 0; cellIndex < 52; cellIndex++) {
                 const cell = gridEl.createEl("div", { cls: "chronica-grid-cell" });
                 // Calculate start/end dates for this specific cell's period
                 const cellStartDate = new Date(birthdayWeekStart);
@@ -3305,14 +3626,30 @@ class ChornicaTimelineView extends obsidian.ItemView {
                         nextDaysToSub += 7;
                     nextBirthdayWeekStart.setDate(nextBirthdayWeekStart.getDate() - nextDaysToSub);
                     // End date is day before next birthday week starts
-                    cellEndDate.setTime(nextBirthdayWeekStart.getTime() - (24 * 60 * 60 * 1000));
+                    cellEndDate.setTime(nextBirthdayWeekStart.getTime() - 24 * 60 * 60 * 1000);
                 }
                 // Determine ISO week key for linking notes/events (might span across cell boundary)
                 // We use the start date of the cell's period to determine the primary week key
                 const weekKey = this.plugin.getWeekKeyFromDate(cellStartDate);
                 cell.dataset.weekKey = weekKey;
                 // Format dates for tooltip
-                const formatDate = (date) => { const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]; return `${months[date.getMonth()]} ${date.getDate()}`; };
+                const formatDate = (date) => {
+                    const months = [
+                        "Jan",
+                        "Feb",
+                        "Mar",
+                        "Apr",
+                        "May",
+                        "Jun",
+                        "Jul",
+                        "Aug",
+                        "Sep",
+                        "Oct",
+                        "Nov",
+                        "Dec",
+                    ];
+                    return `${months[date.getMonth()]} ${date.getDate()}`;
+                };
                 const dateRange = `${formatDate(cellStartDate)} - ${formatDate(cellEndDate)}`;
                 const isoWeekInfo = this.plugin.getISOWeekData(cellStartDate);
                 cell.setAttribute("title", `Week ${isoWeekInfo.week}, ${isoWeekInfo.year}\n${dateRange}`);
@@ -3342,7 +3679,9 @@ class ChornicaTimelineView extends obsidian.ItemView {
                 // Apply event styling (reads new structure, applies inline colors/borders)
                 this.applyEventStyling(cell, weekKey); // This now uses the refactored logic
                 // Apply filled week styling (only if not the current week and manual fill is on)
-                if (!isCurrentWeek && !settings.enableAutoFill && settings.filledWeeks?.includes(weekKey)) {
+                if (!isCurrentWeek &&
+                    !settings.enableAutoFill &&
+                    settings.filledWeeks?.includes(weekKey)) {
                     cell.addClass("filled-week");
                     // Background for filled is handled by CSS, border might be too
                     // If specific styling is needed and NOT overridden by event, add here:
@@ -3377,8 +3716,8 @@ class ChornicaTimelineView extends obsidian.ItemView {
                     }
                     // If no linked event note, handle as a weekly note
                     const weekNoteName = settings.weekNoteTemplate
-                        .replace('${year}', isoWeekInfo.year.toString())
-                        .replace('${week}', isoWeekInfo.week.toString().padStart(2, '0'));
+                        .replace("${year}", isoWeekInfo.year.toString())
+                        .replace("${week}", isoWeekInfo.week.toString().padStart(2, "0"));
                     const fullPath = this.plugin.getFullPath(`${weekNoteName}.md`, false); // false = not event folder
                     const existingFile = this.app.vault.getAbstractFileByPath(fullPath);
                     if (existingFile instanceof obsidian.TFile) {
@@ -3389,7 +3728,7 @@ class ChornicaTimelineView extends obsidian.ItemView {
                         const folderPath = settings.notesFolder;
                         if (folderPath && folderPath.trim() !== "") {
                             try {
-                                if (!await this.app.vault.adapter.exists(folderPath))
+                                if (!(await this.app.vault.adapter.exists(folderPath)))
                                     await this.app.vault.createFolder(folderPath);
                             }
                             catch (err) {
@@ -4727,21 +5066,24 @@ class ChornicaTimelineView extends obsidian.ItemView {
         });
     }
     /**
-       * Applies styling to a cell if an event exists for the given week key.
-       * Reads from the new unified this.settings.events and this.settings.eventTypes.
-       * @param cell - The HTML element for the grid cell.
-       * @param weekKey - The week key (YYYY-WXX) to check for events.
-       * @returns True if an event style was applied, false otherwise.
-       */
+     * Applies styling to a cell if an event exists for the given week key.
+     * Reads from the new unified this.settings.events and this.settings.eventTypes.
+     * @param cell - The HTML element for the grid cell.
+     * @param weekKey - The week key (YYYY-WXX) to check for events.
+     * @returns True if an event style was applied, false otherwise.
+     */
     applyEventStyling(cell, weekKey) {
         // Ensure events and eventTypes arrays exist and have data
-        if (!this.plugin.settings.events || this.plugin.settings.events.length === 0 || !this.plugin.settings.eventTypes || this.plugin.settings.eventTypes.length === 0) {
+        if (!this.plugin.settings.events ||
+            this.plugin.settings.events.length === 0 ||
+            !this.plugin.settings.eventTypes ||
+            this.plugin.settings.eventTypes.length === 0) {
             // Clear any lingering event styles if data is missing
             cell.classList.remove("event", "future-event-highlight");
-            cell.style.backgroundColor = ''; // Let base past/present/future CSS handle it
-            cell.style.borderColor = '';
-            cell.style.borderWidth = '';
-            cell.style.borderStyle = '';
+            cell.style.backgroundColor = ""; // Let base past/present/future CSS handle it
+            cell.style.borderColor = "";
+            cell.style.borderWidth = "";
+            cell.style.borderStyle = "";
             delete cell.dataset.eventFile;
             return false;
         }
@@ -4755,7 +5097,8 @@ class ChornicaTimelineView extends obsidian.ItemView {
             if (event.weekKey === weekKey && !event.endWeekKey) {
                 isMatch = true;
             } // Direct match
-            else if (event.weekKey && event.endWeekKey) { // Range check
+            else if (event.weekKey && event.endWeekKey) {
+                // Range check
                 try {
                     const startYear = parseInt(event.weekKey.split("-W")[0], 10);
                     const startWeek = parseInt(event.weekKey.split("-W")[1], 10);
@@ -4763,18 +5106,28 @@ class ChornicaTimelineView extends obsidian.ItemView {
                     const endWeek = parseInt(event.endWeekKey.split("-W")[1], 10);
                     const cellYear = parseInt(weekKey.split("-W")[0], 10);
                     const cellWeek = parseInt(weekKey.split("-W")[1], 10);
-                    if (![startYear, startWeek, endYear, endWeek, cellYear, cellWeek].some(isNaN)) { // Basic validation
+                    if (![startYear, startWeek, endYear, endWeek, cellYear, cellWeek].some(isNaN)) {
+                        // Basic validation
                         if (cellYear > startYear && cellYear < endYear)
                             isMatch = true;
-                        else if (cellYear === startYear && cellYear < endYear && cellWeek >= startWeek)
+                        else if (cellYear === startYear &&
+                            cellYear < endYear &&
+                            cellWeek >= startWeek)
                             isMatch = true;
-                        else if (cellYear > startYear && cellYear === endYear && cellWeek <= endWeek)
+                        else if (cellYear > startYear &&
+                            cellYear === endYear &&
+                            cellWeek <= endWeek)
                             isMatch = true;
-                        else if (cellYear === startYear && cellYear === endYear && cellWeek >= startWeek && cellWeek <= endWeek)
+                        else if (cellYear === startYear &&
+                            cellYear === endYear &&
+                            cellWeek >= startWeek &&
+                            cellWeek <= endWeek)
                             isMatch = true;
                     }
                 }
-                catch (error) { /* Ignore parsing errors */ }
+                catch (error) {
+                    /* Ignore parsing errors */
+                }
             }
             if (isMatch) {
                 matchedEvent = event;
@@ -4783,17 +5136,18 @@ class ChornicaTimelineView extends obsidian.ItemView {
         }
         // If an event was found for this week
         if (matchedEvent) {
-            const eventType = this.plugin.settings.eventTypes.find(type => type.id === matchedEvent.typeId);
+            const eventType = this.plugin.settings.eventTypes.find((type) => type.id === matchedEvent.typeId);
             if (eventType) {
                 cell.classList.add("event");
-                const safeTypeIdClass = `event-type-${eventType.id.replace(/[^a-zA-Z0-9-_]/g, '-')}`;
+                const safeTypeIdClass = `event-type-${eventType.id.replace(/[^a-zA-Z0-9-_]/g, "-")}`;
                 cell.addClass(safeTypeIdClass);
-                cell.style.backgroundColor = eventType.color + ' !important'; // Apply color inline
+                cell.style.backgroundColor = eventType.color + " !important"; // Apply color inline
                 cell.style.borderColor = eventType.color;
-                cell.style.borderWidth = '2px';
-                cell.style.borderStyle = 'solid';
+                cell.style.borderWidth = "2px";
+                cell.style.borderStyle = "solid";
                 eventDescription = `${eventType.name}: ${matchedEvent.description}`;
-                if (matchedEvent.endWeekKey && matchedEvent.endWeekKey !== matchedEvent.weekKey) {
+                if (matchedEvent.endWeekKey &&
+                    matchedEvent.endWeekKey !== matchedEvent.weekKey) {
                     eventDescription += ` (${matchedEvent.weekKey} to ${matchedEvent.endWeekKey})`;
                 }
                 else {
@@ -4802,12 +5156,13 @@ class ChornicaTimelineView extends obsidian.ItemView {
                 appliedNotePath = matchedEvent.notePath;
                 eventApplied = true;
             }
-            else { // Type definition missing
+            else {
+                // Type definition missing
                 console.warn(`Chronica: Type definition missing for typeId: ${matchedEvent.typeId}`);
                 cell.classList.add("event");
-                cell.style.borderColor = 'var(--text-muted)';
-                cell.style.borderWidth = '1px';
-                cell.style.borderStyle = 'dashed';
+                cell.style.borderColor = "var(--text-muted)";
+                cell.style.borderWidth = "1px";
+                cell.style.borderStyle = "dashed";
                 eventDescription = `Unknown Type: ${matchedEvent.description} (${matchedEvent.weekKey})`;
                 appliedNotePath = matchedEvent.notePath;
                 eventApplied = true;
@@ -4817,14 +5172,14 @@ class ChornicaTimelineView extends obsidian.ItemView {
             // No event found, ensure no lingering event styles
             cell.classList.remove("event");
             // Remove specific event type classes (might need a loop or regex if many types)
-            cell.className = cell.className.replace(/\bevent-type-[^ ]+/g, '').trim();
-            cell.style.backgroundColor = ''; // Let base CSS handle it
-            cell.style.borderColor = '';
-            cell.style.borderWidth = '';
-            cell.style.borderStyle = '';
+            cell.className = cell.className.replace(/\bevent-type-[^ ]+/g, "").trim();
+            cell.style.backgroundColor = ""; // Let base CSS handle it
+            cell.style.borderColor = "";
+            cell.style.borderWidth = "";
+            cell.style.borderStyle = "";
         }
         // Update tooltip
-        const prevTitle = cell.getAttribute("title")?.split('\n').pop() || ''; // Get base title (last line)
+        const prevTitle = cell.getAttribute("title")?.split("\n").pop() || ""; // Get base title (last line)
         if (eventApplied && eventDescription) {
             cell.setAttribute("title", `${eventDescription}\n${prevTitle}`);
             if (appliedNotePath) {

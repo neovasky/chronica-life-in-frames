@@ -786,34 +786,40 @@ export default class ChornicaTimelinePlugin extends Plugin {
 
         // Priority 1: Use startDate/endDate from frontmatter if available
         if (frontmatter.startDate) {
-              try {
-                // Handle potential variations in date string format if necessary
-                const startDate = new Date(frontmatter.startDate);
-                 if (isNaN(startDate.getTime())) throw new Error("Invalid start date format"); // Check if date is valid
+          try {
+            // Handle potential variations in date string format if necessary
+            const startDate = new Date(frontmatter.startDate);
+            if (isNaN(startDate.getTime()))
+              throw new Error("Invalid start date format"); // Check if date is valid
 
-                weekKey = this.getWeekKeyFromDate(startDate); // <<< CORRECTED: Use 'this.' directly
+            weekKey = this.getWeekKeyFromDate(startDate); // <<< CORRECTED: Use 'this.' directly
 
-                if (frontmatter.endDate) {
-                     const endDate = new Date(frontmatter.endDate);
-                     if (isNaN(endDate.getTime())) throw new Error("Invalid end date format");
+            if (frontmatter.endDate) {
+              const endDate = new Date(frontmatter.endDate);
+              if (isNaN(endDate.getTime()))
+                throw new Error("Invalid end date format");
 
-                    // Ensure end date is after start date
-                    if (endDate >= startDate) {
-                         endWeekKey = this.getWeekKeyFromDate(endDate); // <<< CORRECTED: Use 'this.' directly
-                         // If start and end are same week, treat as single event
-                         if (weekKey === endWeekKey) {
-                             endWeekKey = null;
-                         }
-                    } else {
-                         console.warn(`Chronica: End date is before start date in note "${file.path}". Treating as single week event.`);
-                         endWeekKey = null; // Treat as single week
-                    }
+              // Ensure end date is after start date
+              if (endDate >= startDate) {
+                endWeekKey = this.getWeekKeyFromDate(endDate); // <<< CORRECTED: Use 'this.' directly
+                // If start and end are same week, treat as single event
+                if (weekKey === endWeekKey) {
+                  endWeekKey = null;
                 }
-            } catch (e: any) {
-                 console.warn(`Chronica: Could not parse startDate/endDate in note "${file.path}". ${e.message}. Attempting filename parse.`);
-                 weekKey = null; // Reset weekKey so filename parse is attempted
-                 endWeekKey = null;
+              } else {
+                console.warn(
+                  `Chronica: End date is before start date in note "${file.path}". Treating as single week event.`
+                );
+                endWeekKey = null; // Treat as single week
+              }
             }
+          } catch (e: any) {
+            console.warn(
+              `Chronica: Could not parse startDate/endDate in note "${file.path}". ${e.message}. Attempting filename parse.`
+            );
+            weekKey = null; // Reset weekKey so filename parse is attempted
+            endWeekKey = null;
+          }
         }
 
         // Priority 2: Use filename convention if no dates in frontmatter or parsing failed
@@ -1591,7 +1597,7 @@ export default class ChornicaTimelinePlugin extends Plugin {
           } catch (err) {}
         }
 
-    // Create basic content with empty frontmatter
+        // Create basic content with empty frontmatter
         let content = this.formatFrontmatter({}); // Add empty frontmatter
 
         // Add note template
@@ -2275,39 +2281,43 @@ export default class ChornicaTimelinePlugin extends Plugin {
    * @param file - File that was deleted
    */
   async handleFileDelete(file: TFile): Promise<void> {
-     // Ensure settings and events are loaded
-     if (!this.settings || !this.settings.events) {
-         console.warn("Chronica: Settings or events not loaded during file delete handling.");
-         return;
-     }
+    // Ensure settings and events are loaded
+    if (!this.settings || !this.settings.events) {
+      console.warn(
+        "Chronica: Settings or events not loaded during file delete handling."
+      );
+      return;
+    }
 
-     const deletedPath = file.path;
-     let eventsRemovedCount = 0;
+    const deletedPath = file.path;
+    let eventsRemovedCount = 0;
 
-     // Filter out events whose notePath matches the deleted file's path
-     const originalLength = this.settings.events.length;
-     this.settings.events = this.settings.events.filter(event => {
-         if (event.notePath === deletedPath) {
-             eventsRemovedCount++;
-             return false; // Remove this event
-         }
-         return true; // Keep this event
-     });
-
-     // If events were removed, save settings and refresh views
-     if (eventsRemovedCount > 0) {
-         console.log(`Chronica: Removed ${eventsRemovedCount} event(s) linked to deleted note: ${deletedPath}`);
-         await this.saveSettings();
-         this.refreshAllViews(); // Update timeline to remove visual markers
-         new Notice(`Removed ${eventsRemovedCount} event link(s) from timeline.`);
-     }
-      // If the deleted file was potentially a weekly note itself (not linked via event notePath),
-      // a simple refresh might be enough, handled by the generic delete handler in onload.
-      // However, explicitly refreshing ensures the view updates if the deleted note *was* the source.
-      else {
-           this.refreshAllViews();
+    // Filter out events whose notePath matches the deleted file's path
+    const originalLength = this.settings.events.length;
+    this.settings.events = this.settings.events.filter((event) => {
+      if (event.notePath === deletedPath) {
+        eventsRemovedCount++;
+        return false; // Remove this event
       }
-   }
+      return true; // Keep this event
+    });
+
+    // If events were removed, save settings and refresh views
+    if (eventsRemovedCount > 0) {
+      console.log(
+        `Chronica: Removed ${eventsRemovedCount} event(s) linked to deleted note: ${deletedPath}`
+      );
+      await this.saveSettings();
+      this.refreshAllViews(); // Update timeline to remove visual markers
+      new Notice(`Removed ${eventsRemovedCount} event link(s) from timeline.`);
+    }
+    // If the deleted file was potentially a weekly note itself (not linked via event notePath),
+    // a simple refresh might be enough, handled by the generic delete handler in onload.
+    // However, explicitly refreshing ensures the view updates if the deleted note *was* the source.
+    else {
+      this.refreshAllViews();
+    }
+  }
 
   /**
    * Get a dedicated leaf for Chronica operations
@@ -2390,38 +2400,44 @@ export default class ChornicaTimelinePlugin extends Plugin {
    * Removes events from settings whose linked notePath no longer exists.
    */
   public async cleanInvalidEvents(): Promise<void> {
-     // Ensure settings and events are loaded
-     if (!this.settings || !this.settings.events) {
-         console.warn("Chronica: Settings or events not loaded during cleanInvalidEvents.");
-         return;
-     }
+    // Ensure settings and events are loaded
+    if (!this.settings || !this.settings.events) {
+      console.warn(
+        "Chronica: Settings or events not loaded during cleanInvalidEvents."
+      );
+      return;
+    }
 
-     let invalidRemovedCount = 0;
-     const originalLength = this.settings.events.length;
+    let invalidRemovedCount = 0;
+    const originalLength = this.settings.events.length;
 
-     // Keep only events that either have no notePath or whose notePath exists
-     this.settings.events = this.settings.events.filter(event => {
-         if (event.notePath) {
-             const fileExists = this.app.vault.getAbstractFileByPath(event.notePath);
-             if (!fileExists) {
-                 invalidRemovedCount++;
-                 console.log(`Chronica: Removing event linked to non-existent note: ${event.notePath} (Desc: ${event.description})`);
-                 return false; // Remove event with invalid path
-             }
-         }
-         return true; // Keep event if no path or path is valid
-     });
+    // Keep only events that either have no notePath or whose notePath exists
+    this.settings.events = this.settings.events.filter((event) => {
+      if (event.notePath) {
+        const fileExists = this.app.vault.getAbstractFileByPath(event.notePath);
+        if (!fileExists) {
+          invalidRemovedCount++;
+          console.log(
+            `Chronica: Removing event linked to non-existent note: ${event.notePath} (Desc: ${event.description})`
+          );
+          return false; // Remove event with invalid path
+        }
+      }
+      return true; // Keep event if no path or path is valid
+    });
 
-     // If invalid events were removed, save settings and refresh
-     if (invalidRemovedCount > 0) {
-         console.log(`Chronica: Cleaned ${invalidRemovedCount} event(s) with invalid note paths.`);
-         await this.saveSettings();
-         this.refreshAllViews();
-         new Notice(`Cleaned ${invalidRemovedCount} invalid event link(s).`);
-     } else {
-         console.log("Chronica: No invalid event links found during cleaning.");
-     }
-   }
+    // If invalid events were removed, save settings and refresh
+    if (invalidRemovedCount > 0) {
+      console.log(
+        `Chronica: Cleaned ${invalidRemovedCount} event(s) with invalid note paths.`
+      );
+      await this.saveSettings();
+      this.refreshAllViews();
+      new Notice(`Cleaned ${invalidRemovedCount} invalid event link(s).`);
+    } else {
+      console.log("Chronica: No invalid event links found during cleaning.");
+    }
+  }
 }
 
 // -----------------------------------------------------------------------
@@ -2977,90 +2993,243 @@ class ChornicaEventModal extends Modal {
  * Handles adding, editing (name/color), and deleting (custom only).
  */
 class ManageEventTypesModal extends Modal {
-    // ... (full class code as provided before) ...
-     plugin: ChornicaTimelinePlugin;
-     typesListContainer!: HTMLElement; // Container for the list of types
+  // ... (full class code as provided before) ...
+  plugin: ChornicaTimelinePlugin;
+  typesListContainer!: HTMLElement; // Container for the list of types
 
-     constructor(app: App, plugin: ChornicaTimelinePlugin) { super(app); this.plugin = plugin; }
+  constructor(app: App, plugin: ChornicaTimelinePlugin) {
+    super(app);
+    this.plugin = plugin;
+  }
 
-     onOpen(): void {
-       const { contentEl } = this; contentEl.empty(); contentEl.addClass("chronica-manage-types-modal"); contentEl.createEl("h2", { text: "Manage Event Types" });
-       contentEl.createEl("h3", { text: "Event Types" }); contentEl.createEl("p", { text: "Edit names/colors. Presets cannot be deleted." });
-       this.typesListContainer = contentEl.createDiv({ cls: "existing-types-list-container" }); this.renderTypesList();
-       const addSection = contentEl.createDiv({ cls: "event-type-add-section" }); addSection.createEl("h3", { text: "Add New Custom Type" });
-       const nameSetting = new Setting(addSection).setName("Name").addText(text => text.setPlaceholder("New type name"));
-       const nameInput = nameSetting.controlEl.querySelector('input') as HTMLInputElement;
-       const colorSetting = new Setting(addSection).setName("Color").addColorPicker(picker => picker.setValue("#FF9800"));
-       const colorInput = colorSetting.controlEl.querySelector('input[type="color"]') as HTMLInputElement;
-       new Setting(addSection).addButton(button => button.setButtonText("Add Type").setCta().onClick(async () => {
-           if (!nameInput || !colorInput) return;
-           const name = nameInput.value.trim(); const color = colorInput.value;
-           if (!name) { new Notice("Please enter a name."); return; }
-           if (!this.plugin.settings.eventTypes) this.plugin.settings.eventTypes = [];
-           if (this.plugin.settings.eventTypes.some(type => type.name.toLowerCase() === name.toLowerCase())) { new Notice(`Type "${name}" already exists.`); return; }
-           const newId = `custom_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-           const newType: ChronicaEventType = { id: newId, name: name, color: color, isPreset: false };
-           this.plugin.settings.eventTypes.push(newType); await this.plugin.saveSettings();
-           new Notice(`Event type "${name}" added.`); this.renderTypesList(); nameInput.value = ""; colorInput.value = "#FF9800";
-           this.plugin.refreshAllViews();
-       }));
-       new Setting(contentEl).addButton(btn => btn.setButtonText("Close").onClick(() => { this.close(); }));
-     }
+  onOpen(): void {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.addClass("chronica-manage-types-modal");
+    contentEl.createEl("h2", { text: "Manage Event Types" });
+    contentEl.createEl("h3", { text: "Event Types" });
+    contentEl.createEl("p", {
+      text: "Edit names/colors. Presets cannot be deleted.",
+    });
+    this.typesListContainer = contentEl.createDiv({
+      cls: "existing-types-list-container",
+    });
+    this.renderTypesList();
+    const addSection = contentEl.createDiv({ cls: "event-type-add-section" });
+    addSection.createEl("h3", { text: "Add New Custom Type" });
+    const nameSetting = new Setting(addSection)
+      .setName("Name")
+      .addText((text) => text.setPlaceholder("New type name"));
+    const nameInput = nameSetting.controlEl.querySelector(
+      "input"
+    ) as HTMLInputElement;
+    const colorSetting = new Setting(addSection)
+      .setName("Color")
+      .addColorPicker((picker) => picker.setValue("#FF9800"));
+    const colorInput = colorSetting.controlEl.querySelector(
+      'input[type="color"]'
+    ) as HTMLInputElement;
+    new Setting(addSection).addButton((button) =>
+      button
+        .setButtonText("Add Type")
+        .setCta()
+        .onClick(async () => {
+          if (!nameInput || !colorInput) return;
+          const name = nameInput.value.trim();
+          const color = colorInput.value;
+          if (!name) {
+            new Notice("Please enter a name.");
+            return;
+          }
+          if (!this.plugin.settings.eventTypes)
+            this.plugin.settings.eventTypes = [];
+          if (
+            this.plugin.settings.eventTypes.some(
+              (type) => type.name.toLowerCase() === name.toLowerCase()
+            )
+          ) {
+            new Notice(`Type "${name}" already exists.`);
+            return;
+          }
+          const newId = `custom_${Date.now()}_${Math.random()
+            .toString(36)
+            .substring(2, 7)}`;
+          const newType: ChronicaEventType = {
+            id: newId,
+            name: name,
+            color: color,
+            isPreset: false,
+          };
+          this.plugin.settings.eventTypes.push(newType);
+          await this.plugin.saveSettings();
+          new Notice(`Event type "${name}" added.`);
+          this.renderTypesList();
+          nameInput.value = "";
+          colorInput.value = "#FF9800";
+          this.plugin.refreshAllViews();
+        })
+    );
+    new Setting(contentEl).addButton((btn) =>
+      btn.setButtonText("Close").onClick(() => {
+        this.close();
+      })
+    );
+  }
 
-     renderTypesList(): void {
-       const container = this.typesListContainer; container.empty();
-       if (!this.plugin.settings.eventTypes || this.plugin.settings.eventTypes.length === 0) {
-         container.createEl("p", { text: "No event types found. Resetting to defaults." });
-         this.plugin.settings.eventTypes = JSON.parse(JSON.stringify(DEFAULT_SETTINGS.eventTypes));
-         this.plugin.saveSettings();
-       }
-       const sortedTypes = [...this.plugin.settings.eventTypes].sort((a, b) => { if (a.isPreset && !b.isPreset) return -1; if (!a.isPreset && b.isPreset) return 1; return a.name.localeCompare(b.name); });
-       for (const type of sortedTypes) {
-         const typeItem = container.createEl("div", { cls: `event-type-item ${type.isPreset ? 'preset-type' : 'custom-type'}` });
-         const colorBox = typeItem.createEl("span", { cls: "event-type-color" }); colorBox.style.backgroundColor = type.color;
-         const nameEl = typeItem.createEl("span", { text: type.name, cls: "event-type-name" }); if (type.isPreset) nameEl.setAttribute("title", "Preset type (cannot be deleted)");
-         const buttonContainer = typeItem.createEl("div", { cls: "event-type-actions" });
-         const editButton = buttonContainer.createEl("button", { text: "", cls: "edit-type-button clickable-icon", attr: { title: `Edit '${type.name}'` } }); setIcon(editButton, "pencil"); editButton.style.marginLeft = "auto"; // Default margin
-         editButton.addEventListener("click", () => { this.showEditTypeModal(type); });
-         if (!type.isPreset) {
-           const deleteButton = buttonContainer.createEl("button", { text: "", cls: "delete-type-button clickable-icon", attr: { title: `Delete '${type.name}'` } }); setIcon(deleteButton, "trash-2");
-           editButton.style.marginLeft = "0"; // Adjust margin when delete button present
-           // deleteButton.style.marginLeft = "auto"; // Push delete button right (or adjust layout via CSS flex)
+  renderTypesList(): void {
+    const container = this.typesListContainer;
+    container.empty();
+    if (
+      !this.plugin.settings.eventTypes ||
+      this.plugin.settings.eventTypes.length === 0
+    ) {
+      container.createEl("p", {
+        text: "No event types found. Resetting to defaults.",
+      });
+      this.plugin.settings.eventTypes = JSON.parse(
+        JSON.stringify(DEFAULT_SETTINGS.eventTypes)
+      );
+      this.plugin.saveSettings();
+    }
+    const sortedTypes = [...this.plugin.settings.eventTypes].sort((a, b) => {
+      if (a.isPreset && !b.isPreset) return -1;
+      if (!a.isPreset && b.isPreset) return 1;
+      return a.name.localeCompare(b.name);
+    });
+    for (const type of sortedTypes) {
+      const typeItem = container.createEl("div", {
+        cls: `event-type-item ${type.isPreset ? "preset-type" : "custom-type"}`,
+      });
+      const colorBox = typeItem.createEl("span", { cls: "event-type-color" });
+      colorBox.style.backgroundColor = type.color;
+      const nameEl = typeItem.createEl("span", {
+        text: type.name,
+        cls: "event-type-name",
+      });
+      if (type.isPreset)
+        nameEl.setAttribute("title", "Preset type (cannot be deleted)");
+      const buttonContainer = typeItem.createEl("div", {
+        cls: "event-type-actions",
+      });
+      const editButton = buttonContainer.createEl("button", {
+        text: "",
+        cls: "edit-type-button clickable-icon",
+        attr: { title: `Edit '${type.name}'` },
+      });
+      setIcon(editButton, "pencil");
+      editButton.style.marginLeft = "auto"; // Default margin
+      editButton.addEventListener("click", () => {
+        this.showEditTypeModal(type);
+      });
+      if (!type.isPreset) {
+        const deleteButton = buttonContainer.createEl("button", {
+          text: "",
+          cls: "delete-type-button clickable-icon",
+          attr: { title: `Delete '${type.name}'` },
+        });
+        setIcon(deleteButton, "trash-2");
+        editButton.style.marginLeft = "0"; // Adjust margin when delete button present
+        // deleteButton.style.marginLeft = "auto"; // Push delete button right (or adjust layout via CSS flex)
 
-           deleteButton.addEventListener("click", async () => {
-             if (confirm(`Delete type "${type.name}"?\nEvents using it will be reassigned to "Major Life".`)) {
-               const defaultTypeId = 'preset_major_life'; let reassignedCount = 0;
-               if (!this.plugin.settings.events) this.plugin.settings.events = []; // Ensure exists
-               this.plugin.settings.events = this.plugin.settings.events.map(event => { if (event.typeId === type.id) { reassignedCount++; return { ...event, typeId: defaultTypeId }; } return event; });
-               this.plugin.settings.eventTypes = this.plugin.settings.eventTypes.filter(t => t.id !== type.id);
-               await this.plugin.saveSettings(); new Notice(`Type "${type.name}" deleted. ${reassignedCount} event(s) reassigned.`); this.renderTypesList(); this.plugin.refreshAllViews();
-             }
-           });
-         }
-       }
-     }
+        deleteButton.addEventListener("click", async () => {
+          if (
+            confirm(
+              `Delete type "${type.name}"?\nEvents using it will be reassigned to "Major Life".`
+            )
+          ) {
+            const defaultTypeId = "preset_major_life";
+            let reassignedCount = 0;
+            if (!this.plugin.settings.events) this.plugin.settings.events = []; // Ensure exists
+            this.plugin.settings.events = this.plugin.settings.events.map(
+              (event) => {
+                if (event.typeId === type.id) {
+                  reassignedCount++;
+                  return { ...event, typeId: defaultTypeId };
+                }
+                return event;
+              }
+            );
+            this.plugin.settings.eventTypes =
+              this.plugin.settings.eventTypes.filter((t) => t.id !== type.id);
+            await this.plugin.saveSettings();
+            new Notice(
+              `Type "${type.name}" deleted. ${reassignedCount} event(s) reassigned.`
+            );
+            this.renderTypesList();
+            this.plugin.refreshAllViews();
+          }
+        });
+      }
+    }
+  }
 
+  showEditTypeModal(type: ChronicaEventType): void {
+    const modal = new Modal(this.app);
+    modal.contentEl.addClass("chronica-edit-type-modal");
+    modal.titleEl.setText(`Edit Type: ${type.name}`);
+    let currentName = type.name;
+    let currentColor = type.color;
+    new Setting(modal.contentEl).setName("Name").addText((text) => {
+      text.setValue(currentName).onChange((value) => {
+        currentName = value.trim();
+      });
+    });
+    new Setting(modal.contentEl).setName("Color").addColorPicker((picker) => {
+      picker.setValue(currentColor).onChange((value) => {
+        currentColor = value;
+      });
+    });
+    new Setting(modal.contentEl)
+      .addButton((btn) =>
+        btn
+          .setButtonText("Save Changes")
+          .setCta()
+          .onClick(async () => {
+            if (!currentName) {
+              new Notice("Name cannot be empty.");
+              return;
+            }
+            if (!this.plugin.settings.eventTypes)
+              this.plugin.settings.eventTypes = [];
+            if (
+              this.plugin.settings.eventTypes.some(
+                (t) =>
+                  t.id !== type.id &&
+                  t.name.toLowerCase() === currentName.toLowerCase()
+              )
+            ) {
+              new Notice(`Type "${currentName}" already exists.`);
+              return;
+            }
+            const typeIndex = this.plugin.settings.eventTypes.findIndex(
+              (t) => t.id === type.id
+            );
+            if (typeIndex !== -1) {
+              this.plugin.settings.eventTypes[typeIndex].name = currentName;
+              this.plugin.settings.eventTypes[typeIndex].color = currentColor;
+              await this.plugin.saveSettings();
+              new Notice(`Type "${currentName}" updated.`);
+              modal.close();
+              this.renderTypesList();
+              this.plugin.refreshAllViews();
+            } else {
+              new Notice(`Error: Could not find type with ID ${type.id}.`);
+            }
+          })
+      )
+      .addButton((btn) =>
+        btn.setButtonText("Cancel").onClick(() => {
+          modal.close();
+        })
+      );
+    modal.open();
+  }
 
-     showEditTypeModal(type: ChronicaEventType): void {
-       const modal = new Modal(this.app); modal.contentEl.addClass("chronica-edit-type-modal"); modal.titleEl.setText(`Edit Type: ${type.name}`);
-       let currentName = type.name; let currentColor = type.color;
-       new Setting(modal.contentEl).setName("Name").addText(text => { text.setValue(currentName).onChange(value => { currentName = value.trim(); }); });
-       new Setting(modal.contentEl).setName("Color").addColorPicker(picker => { picker.setValue(currentColor).onChange(value => { currentColor = value; }); });
-       new Setting(modal.contentEl).addButton(btn => btn.setButtonText("Save Changes").setCta().onClick(async () => {
-           if (!currentName) { new Notice("Name cannot be empty."); return; }
-           if (!this.plugin.settings.eventTypes) this.plugin.settings.eventTypes = [];
-           if (this.plugin.settings.eventTypes.some(t => t.id !== type.id && t.name.toLowerCase() === currentName.toLowerCase())) { new Notice(`Type "${currentName}" already exists.`); return; }
-           const typeIndex = this.plugin.settings.eventTypes.findIndex(t => t.id === type.id);
-           if (typeIndex !== -1) {
-             this.plugin.settings.eventTypes[typeIndex].name = currentName; this.plugin.settings.eventTypes[typeIndex].color = currentColor;
-             await this.plugin.saveSettings(); new Notice(`Type "${currentName}" updated.`); modal.close(); this.renderTypesList(); this.plugin.refreshAllViews();
-           } else { new Notice(`Error: Could not find type with ID ${type.id}.`); }
-         })).addButton(btn => btn.setButtonText("Cancel").onClick(() => { modal.close(); }));
-       modal.open();
-     }
-
-     onClose(): void { this.contentEl.empty(); this.plugin.refreshAllViews(); } // Refresh on close
-   } 
+  onClose(): void {
+    this.contentEl.empty();
+    this.plugin.refreshAllViews();
+  } // Refresh on close
+}
 
 /**
  * Welcome modal shown to new users
@@ -3424,12 +3593,12 @@ class ChornicaTimelineView extends ItemView {
       // Remove *any* class starting with "event-type-"
       const classesToRemove = [];
       for (let i = 0; i < cellEl.classList.length; i++) {
-          if (cellEl.classList[i].startsWith("event-type-")) {
-              classesToRemove.push(cellEl.classList[i]);
-          }
+        if (cellEl.classList[i].startsWith("event-type-")) {
+          classesToRemove.push(cellEl.classList[i]);
+        }
       }
       if (classesToRemove.length > 0) {
-          cellEl.classList.remove(...classesToRemove);
+        cellEl.classList.remove(...classesToRemove);
       }
 
       // Clear only event-related inline styles (leave positioning intact)
@@ -3601,10 +3770,23 @@ class ChornicaTimelineView extends ItemView {
     const sidebarEl = mainContainer.createEl("div", {
       cls: `chronica-sidebar ${this.isSidebarOpen ? "expanded" : "collapsed"}`,
     });
-    const sidebarHeader = sidebarEl.createEl("div", { cls: "chronica-sidebar-header" });
-    sidebarHeader.createEl("div", { cls: "chronica-title", text: "life in frames" });
-    const sidebarToggle = sidebarHeader.createEl("button", { cls: "chronica-sidebar-toggle", attr: { title: this.isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar" } });
-    setIcon(sidebarToggle, this.isSidebarOpen ? "chevron-left" : "chevron-right");
+    const sidebarHeader = sidebarEl.createEl("div", {
+      cls: "chronica-sidebar-header",
+    });
+    sidebarHeader.createEl("div", {
+      cls: "chronica-title",
+      text: "life in frames",
+    });
+    const sidebarToggle = sidebarHeader.createEl("button", {
+      cls: "chronica-sidebar-toggle",
+      attr: {
+        title: this.isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar",
+      },
+    });
+    setIcon(
+      sidebarToggle,
+      this.isSidebarOpen ? "chevron-left" : "chevron-right"
+    );
     // Sidebar toggle listener (uses hidden class)
     sidebarToggle.addEventListener("click", () => {
       this.isSidebarOpen = !this.isSidebarOpen;
@@ -3612,101 +3794,263 @@ class ChornicaTimelineView extends ItemView {
       this.plugin.saveSettings();
       sidebarEl.classList.toggle("collapsed", !this.isSidebarOpen);
       sidebarEl.classList.toggle("expanded", this.isSidebarOpen);
-      setIcon(sidebarToggle, this.isSidebarOpen ? "chevron-left" : "chevron-right");
-      sidebarToggle.setAttribute("title", this.isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar");
-      const collapsedToggle = contentAreaEl?.querySelector(".chronica-collapsed-toggle") as HTMLElement | null;
-      if (collapsedToggle) collapsedToggle.classList.toggle("hidden", this.isSidebarOpen);
+      setIcon(
+        sidebarToggle,
+        this.isSidebarOpen ? "chevron-left" : "chevron-right"
+      );
+      sidebarToggle.setAttribute(
+        "title",
+        this.isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"
+      );
+      const collapsedToggle = contentAreaEl?.querySelector(
+        ".chronica-collapsed-toggle"
+      ) as HTMLElement | null;
+      if (collapsedToggle)
+        collapsedToggle.classList.toggle("hidden", this.isSidebarOpen);
       this.updateStatsPanelLayout();
     });
 
     // --- Sidebar Sections ---
     // Data Section
-    const dataSection = sidebarEl.createEl("div", { cls: "chronica-sidebar-section" });
-    dataSection.createEl("h3", { text: "TIMELINE DATA", cls: "section-header" });
-    const dataContainer = dataSection.createEl("div", { cls: "chronica-controls" });
-    const planEventBtn = dataContainer.createEl("button", { text: "Add Event", cls: "chronica-btn chronica-btn-primary" });
-    planEventBtn.addEventListener("click", () => { this.showAddEventModal(); });
-    const manageTypesBtn = dataContainer.createEl("button", { text: "Manage Event Types", cls: "chronica-btn chronica-btn-primary" });
-    manageTypesBtn.addEventListener("click", () => { new ManageEventTypesModal(this.app, this.plugin).open(); }); // Assumes ManageEventTypesModal class exists
+    const dataSection = sidebarEl.createEl("div", {
+      cls: "chronica-sidebar-section",
+    });
+    dataSection.createEl("h3", {
+      text: "TIMELINE DATA",
+      cls: "section-header",
+    });
+    const dataContainer = dataSection.createEl("div", {
+      cls: "chronica-controls",
+    });
+    const planEventBtn = dataContainer.createEl("button", {
+      text: "Add Event",
+      cls: "chronica-btn chronica-btn-primary",
+    });
+    planEventBtn.addEventListener("click", () => {
+      this.showAddEventModal();
+    });
+    const manageTypesBtn = dataContainer.createEl("button", {
+      text: "Manage Event Types",
+      cls: "chronica-btn chronica-btn-primary",
+    });
+    manageTypesBtn.addEventListener("click", () => {
+      new ManageEventTypesModal(this.app, this.plugin).open();
+    }); // Assumes ManageEventTypesModal class exists
 
     // Visualization Section
-    const viewSection = sidebarEl.createEl("div", { cls: "chronica-sidebar-section" });
-    viewSection.createEl("h3", { text: "VISUALIZATION", cls: "section-header" });
-    const viewContainer = viewSection.createEl("div", { cls: "chronica-visual-controls" });
+    const viewSection = sidebarEl.createEl("div", {
+      cls: "chronica-sidebar-section",
+    });
+    viewSection.createEl("h3", {
+      text: "VISUALIZATION",
+      cls: "section-header",
+    });
+    const viewContainer = viewSection.createEl("div", {
+      cls: "chronica-visual-controls",
+    });
     // (Keep Zoom controls, Fit to Screen button logic - unchanged)
-     const zoomControlsDiv = viewContainer.createEl("div", { cls: "chronica-zoom-controls", });
-     const zoomOutBtn = zoomControlsDiv.createEl("button", { cls: "chronica-btn chronica-zoom-button", attr: { title: "Zoom Out" }, }); setIcon(zoomOutBtn, "zoom-out"); zoomOutBtn.addEventListener("click", () => { this.zoomOut(); });
-     const zoomInput = zoomControlsDiv.createEl("input", { cls: "chronica-zoom-input", attr: { type: "number", min: "10", max: "500", step: "1", value: `${Math.round(this.plugin.settings.zoomLevel * 100)}`, title: "Enter zoom % and press ↵", }, }); zoomInput.addEventListener("change", async (e) => { const input = e.target as HTMLInputElement; let val = parseInt(input.value, 10); if (isNaN(val)) val = Math.round(this.plugin.settings.zoomLevel * 100); val = Math.min(500, Math.max(10, val)); this.plugin.settings.zoomLevel = val / 100; await this.plugin.saveSettings(); this.updateZoomLevel(); input.value = `${Math.round(this.plugin.settings.zoomLevel * 100)}`; });
-     const zoomInBtn = zoomControlsDiv.createEl("button", { cls: "chronica-btn chronica-zoom-button", attr: { title: "Zoom In" }, }); setIcon(zoomInBtn, "zoom-in"); zoomInBtn.addEventListener("click", () => { this.zoomIn(); });
-     const fitToScreenBtn = viewContainer.createEl("button", { cls: "chronica-btn chronica-fit-to-screen", text: "Fit to Screen", attr: { title: "Automatically adjust zoom to fit entire grid on screen" }, }); fitToScreenBtn.addEventListener("click", () => { this.fitToScreen(); });
-
+    const zoomControlsDiv = viewContainer.createEl("div", {
+      cls: "chronica-zoom-controls",
+    });
+    const zoomOutBtn = zoomControlsDiv.createEl("button", {
+      cls: "chronica-btn chronica-zoom-button",
+      attr: { title: "Zoom Out" },
+    });
+    setIcon(zoomOutBtn, "zoom-out");
+    zoomOutBtn.addEventListener("click", () => {
+      this.zoomOut();
+    });
+    const zoomInput = zoomControlsDiv.createEl("input", {
+      cls: "chronica-zoom-input",
+      attr: {
+        type: "number",
+        min: "10",
+        max: "500",
+        step: "1",
+        value: `${Math.round(this.plugin.settings.zoomLevel * 100)}`,
+        title: "Enter zoom % and press ↵",
+      },
+    });
+    zoomInput.addEventListener("change", async (e) => {
+      const input = e.target as HTMLInputElement;
+      let val = parseInt(input.value, 10);
+      if (isNaN(val)) val = Math.round(this.plugin.settings.zoomLevel * 100);
+      val = Math.min(500, Math.max(10, val));
+      this.plugin.settings.zoomLevel = val / 100;
+      await this.plugin.saveSettings();
+      this.updateZoomLevel();
+      input.value = `${Math.round(this.plugin.settings.zoomLevel * 100)}`;
+    });
+    const zoomInBtn = zoomControlsDiv.createEl("button", {
+      cls: "chronica-btn chronica-zoom-button",
+      attr: { title: "Zoom In" },
+    });
+    setIcon(zoomInBtn, "zoom-in");
+    zoomInBtn.addEventListener("click", () => {
+      this.zoomIn();
+    });
+    const fitToScreenBtn = viewContainer.createEl("button", {
+      cls: "chronica-btn chronica-fit-to-screen",
+      text: "Fit to Screen",
+      attr: { title: "Automatically adjust zoom to fit entire grid on screen" },
+    });
+    fitToScreenBtn.addEventListener("click", () => {
+      this.fitToScreen();
+    });
 
     // Display Settings Section
-    const displaySection = sidebarEl.createEl("div", { cls: "chronica-sidebar-section" });
-    displaySection.createEl("h3", { text: "DISPLAY SETTINGS", cls: "section-header" });
-    const displayContainer = displaySection.createEl("div", { cls: "chronica-controls" });
+    const displaySection = sidebarEl.createEl("div", {
+      cls: "chronica-sidebar-section",
+    });
+    displaySection.createEl("h3", {
+      text: "DISPLAY SETTINGS",
+      cls: "section-header",
+    });
+    const displayContainer = displaySection.createEl("div", {
+      cls: "chronica-controls",
+    });
     // (Keep Cell Shape and Grid Orientation controls - unchanged)
-    displayContainer.createEl("h4", { cls: "subsection-header", text: "Cell Shape", });
-    const shapeSelect = displayContainer.createEl("select", { cls: "chronica-select chronica-dropdown", }); ["square", "circle", "diamond"].forEach((opt) => { const option = shapeSelect.createEl("option", { attr: { value: opt }, text: opt.charAt(0).toUpperCase() + opt.slice(1), }); if (this.plugin.settings.cellShape === opt) option.selected = true; }); shapeSelect.addEventListener("change", async () => { this.plugin.settings.cellShape = shapeSelect.value as any; await this.plugin.saveSettings(); this.updateZoomLevel(); });
-    displayContainer.createEl("h4", { cls: "subsection-header", text: "Grid Orientation", });
-    const orientationBtn = displayContainer.createEl("button", { cls: "chronica-btn chronica-orientation-button", text: this.plugin.settings.gridOrientation === "landscape" ? "Switch to Portrait" : "Switch to Landscape", attr: { title: this.plugin.settings.gridOrientation === "landscape" ? "Display years as rows, weeks as columns" : "Display years as columns, weeks as rows", }, }); orientationBtn.addEventListener("click", async () => { this.plugin.settings.gridOrientation = this.plugin.settings.gridOrientation === "landscape" ? "portrait" : "landscape"; await this.plugin.saveSettings(); orientationBtn.textContent = this.plugin.settings.gridOrientation === "landscape" ? "Switch to Portrait" : "Switch to Landscape"; orientationBtn.setAttribute( "title", this.plugin.settings.gridOrientation === "landscape" ? "Display years as rows, weeks as columns" : "Display years as columns, weeks as rows" ); this.updateZoomLevel(); });
-
+    displayContainer.createEl("h4", {
+      cls: "subsection-header",
+      text: "Cell Shape",
+    });
+    const shapeSelect = displayContainer.createEl("select", {
+      cls: "chronica-select chronica-dropdown",
+    });
+    ["square", "circle", "diamond"].forEach((opt) => {
+      const option = shapeSelect.createEl("option", {
+        attr: { value: opt },
+        text: opt.charAt(0).toUpperCase() + opt.slice(1),
+      });
+      if (this.plugin.settings.cellShape === opt) option.selected = true;
+    });
+    shapeSelect.addEventListener("change", async () => {
+      this.plugin.settings.cellShape = shapeSelect.value as any;
+      await this.plugin.saveSettings();
+      this.updateZoomLevel();
+    });
+    displayContainer.createEl("h4", {
+      cls: "subsection-header",
+      text: "Grid Orientation",
+    });
+    const orientationBtn = displayContainer.createEl("button", {
+      cls: "chronica-btn chronica-orientation-button",
+      text:
+        this.plugin.settings.gridOrientation === "landscape"
+          ? "Switch to Portrait"
+          : "Switch to Landscape",
+      attr: {
+        title:
+          this.plugin.settings.gridOrientation === "landscape"
+            ? "Display years as rows, weeks as columns"
+            : "Display years as columns, weeks as rows",
+      },
+    });
+    orientationBtn.addEventListener("click", async () => {
+      this.plugin.settings.gridOrientation =
+        this.plugin.settings.gridOrientation === "landscape"
+          ? "portrait"
+          : "landscape";
+      await this.plugin.saveSettings();
+      orientationBtn.textContent =
+        this.plugin.settings.gridOrientation === "landscape"
+          ? "Switch to Portrait"
+          : "Switch to Landscape";
+      orientationBtn.setAttribute(
+        "title",
+        this.plugin.settings.gridOrientation === "landscape"
+          ? "Display years as rows, weeks as columns"
+          : "Display years as columns, weeks as rows"
+      );
+      this.updateZoomLevel();
+    });
 
     // Legend Section (UPDATED to use new eventTypes)
-    const legendSection = sidebarEl.createEl("div", { cls: "chronica-sidebar-section" });
+    const legendSection = sidebarEl.createEl("div", {
+      cls: "chronica-sidebar-section",
+    });
     legendSection.createEl("h3", { text: "LEGEND", cls: "section-header" });
     const legendEl = legendSection.createEl("div", { cls: "chronica-legend" });
 
     // Add legend items for all defined event types
-     if (this.plugin.settings.eventTypes && this.plugin.settings.eventTypes.length > 0) {
-         this.plugin.settings.eventTypes.forEach((type) => {
-             const itemEl = legendEl.createEl("div", { cls: "chronica-legend-item" });
-             const colorEl = itemEl.createEl("div", { cls: "chronica-legend-color" });
-             colorEl.style.backgroundColor = type.color; // Use color from type definition
-             itemEl.createEl("span", { text: type.name }); // Use name from type definition
-         });
-     } else {
-          legendEl.createEl('p', {text: "No event types defined.", cls: 'text-muted'});
-     }
-     // Optionally add legend for future event highlight if desired
-      const futureHighlightItem = legendEl.createEl("div", { cls: "chronica-legend-item" });
-      const futureColorEl = futureHighlightItem.createEl("div", { cls: "chronica-legend-color future-event-highlight-legend"}); // Use a specific class
-      // Style futureColorEl via CSS to show the border/style used for .future-event-highlight
-      // futureColorEl.style.border = `1px solid var(--future-event-color)`;
-      // futureColorEl.style.backgroundColor = `var(--future-cell-color)`; // Show base color
-      futureHighlightItem.createEl("span", { text: "Upcoming Event Highlight" });
-
+    if (
+      this.plugin.settings.eventTypes &&
+      this.plugin.settings.eventTypes.length > 0
+    ) {
+      this.plugin.settings.eventTypes.forEach((type) => {
+        const itemEl = legendEl.createEl("div", {
+          cls: "chronica-legend-item",
+        });
+        const colorEl = itemEl.createEl("div", {
+          cls: "chronica-legend-color",
+        });
+        colorEl.style.backgroundColor = type.color; // Use color from type definition
+        itemEl.createEl("span", { text: type.name }); // Use name from type definition
+      });
+    } else {
+      legendEl.createEl("p", {
+        text: "No event types defined.",
+        cls: "text-muted",
+      });
+    }
+    // Optionally add legend for future event highlight if desired
+    const futureHighlightItem = legendEl.createEl("div", {
+      cls: "chronica-legend-item",
+    });
+    const futureColorEl = futureHighlightItem.createEl("div", {
+      cls: "chronica-legend-color future-event-highlight-legend",
+    }); // Use a specific class
+    // Style futureColorEl via CSS to show the border/style used for .future-event-highlight
+    // futureColorEl.style.border = `1px solid var(--future-event-color)`;
+    // futureColorEl.style.backgroundColor = `var(--future-cell-color)`; // Show base color
+    futureHighlightItem.createEl("span", { text: "Upcoming Event Highlight" });
 
     // Footer in sidebar
-    sidebarEl.createEl("div", { cls: "chronica-footer", text: this.plugin.settings.quote });
+    sidebarEl.createEl("div", {
+      cls: "chronica-footer",
+      text: this.plugin.settings.quote,
+    });
 
     // --- Create Content Area ---
-    const contentAreaEl = mainContainer.createEl("div", { cls: "chronica-content-area" });
+    const contentAreaEl = mainContainer.createEl("div", {
+      cls: "chronica-content-area",
+    });
     // Apply class if stats panel should be open initially
-     if (this.plugin.settings.isStatsOpen) {
-         contentAreaEl.classList.add("stats-expanded");
-     }
+    if (this.plugin.settings.isStatsOpen) {
+      contentAreaEl.classList.add("stats-expanded");
+    }
 
     // --- Create Collapsed Sidebar Toggle ---
-    const collapsedToggle = contentAreaEl.createEl("button", { cls: "chronica-collapsed-toggle", attr: { title: "Expand Sidebar" }, });
+    const collapsedToggle = contentAreaEl.createEl("button", {
+      cls: "chronica-collapsed-toggle",
+      attr: { title: "Expand Sidebar" },
+    });
     setIcon(collapsedToggle, "chevron-right");
     collapsedToggle.classList.toggle("hidden", this.isSidebarOpen); // Use hidden class
     collapsedToggle.addEventListener("click", () => {
       this.isSidebarOpen = true;
       this.plugin.settings.isSidebarOpen = true;
       this.plugin.saveSettings();
-      const sidebar = mainContainer.querySelector(".chronica-sidebar") as HTMLElement | null;
-      if (sidebar) { sidebar.classList.remove("collapsed"); sidebar.classList.add("expanded"); const sideToggle = sidebar.querySelector(".chronica-sidebar-toggle"); if (sideToggle instanceof HTMLElement) { setIcon(sideToggle, "chevron-left"); sideToggle.setAttribute("title", "Collapse Sidebar"); } }
+      const sidebar = mainContainer.querySelector(
+        ".chronica-sidebar"
+      ) as HTMLElement | null;
+      if (sidebar) {
+        sidebar.classList.remove("collapsed");
+        sidebar.classList.add("expanded");
+        const sideToggle = sidebar.querySelector(".chronica-sidebar-toggle");
+        if (sideToggle instanceof HTMLElement) {
+          setIcon(sideToggle, "chevron-left");
+          sideToggle.setAttribute("title", "Collapse Sidebar");
+        }
+      }
       collapsedToggle.classList.add("hidden"); // Use hidden class
       this.updateStatsPanelLayout();
     });
-
 
     // --- Create Main View and Stats Panel ---
     const viewEl = contentAreaEl.createEl("div", { cls: "chronica-view" });
     this.renderWeeksGrid(viewEl); // Render grid
     this.renderStatsPanel(contentAreaEl); // Render stats panel (which reads new data structure internally now)
-
   } // End of renderView
 
   /**
@@ -3924,117 +4268,287 @@ class ChornicaTimelineView extends ItemView {
 
     // Get necessary settings and calculated values
     const { settings } = this.plugin;
-    const { birthday, lifespan, gridOrientation, cellShape, startWeekOnMonday } = settings;
+    const {
+      birthday,
+      lifespan,
+      gridOrientation,
+      cellShape,
+      startWeekOnMonday,
+    } = settings;
     const root = document.documentElement;
-    const baseSize = parseInt(getComputedStyle(root).getPropertyValue("--base-cell-size")) || 16;
+    const baseSize =
+      parseInt(getComputedStyle(root).getPropertyValue("--base-cell-size")) ||
+      16;
     const cellSize = Math.round(baseSize * settings.zoomLevel);
     root.style.setProperty("--cell-size", `${cellSize}px`); // Ensure CSS var is set
-    const cellGap = parseInt(getComputedStyle(root).getPropertyValue("--cell-gap")) || 2;
-    const leftOffset = parseInt(getComputedStyle(root).getPropertyValue("--left-offset")) || 70;
-    const topOffset = parseInt(getComputedStyle(root).getPropertyValue("--top-offset")) || 50;
+    const cellGap =
+      parseInt(getComputedStyle(root).getPropertyValue("--cell-gap")) || 2;
+    const leftOffset =
+      parseInt(getComputedStyle(root).getPropertyValue("--left-offset")) || 70;
+    const topOffset =
+      parseInt(getComputedStyle(root).getPropertyValue("--top-offset")) || 50;
     const regularGap = cellGap;
     const isPortrait = gridOrientation === "portrait";
 
     // --- Create Markers ---
     // Decade Markers
     if (settings.showDecadeMarkers) {
-      const decadeMarkersContainer = container.createEl("div", { cls: `chronica-decade-markers ${isPortrait ? "portrait-mode" : ""}` });
+      const decadeMarkersContainer = container.createEl("div", {
+        cls: `chronica-decade-markers ${isPortrait ? "portrait-mode" : ""}`,
+      });
       if (!isPortrait) decadeMarkersContainer.style.left = `${leftOffset}px`;
       for (let decade = 10; decade <= lifespan; decade += 10) {
-        const marker = decadeMarkersContainer.createEl("div", { cls: `chronica-decade-marker ${isPortrait ? "portrait-mode" : ""}`, text: decade.toString() });
+        const marker = decadeMarkersContainer.createEl("div", {
+          cls: `chronica-decade-marker ${isPortrait ? "portrait-mode" : ""}`,
+          text: decade.toString(),
+        });
         marker.style.position = "absolute";
         const lastYearOfPrevDecade = decade - 1;
-        const decadePosition = this.plugin.calculateYearPosition(lastYearOfPrevDecade, cellSize, regularGap);
+        const decadePosition = this.plugin.calculateYearPosition(
+          lastYearOfPrevDecade,
+          cellSize,
+          regularGap
+        );
         const centerPosition = decadePosition + cellSize / 2;
-        if (isPortrait) { marker.style.top = `${centerPosition}px`; marker.style.left = '15px'; marker.style.transform = "translateY(-50%)"; } // Adjust left for portrait
-        else { marker.style.left = `${centerPosition}px`; marker.style.top = '15px'; marker.style.transform = "translateX(-50%)"; } // Adjust top
+        if (isPortrait) {
+          marker.style.top = `${centerPosition}px`;
+          marker.style.left = "15px";
+          marker.style.transform = "translateY(-50%)";
+        } // Adjust left for portrait
+        else {
+          marker.style.left = `${centerPosition}px`;
+          marker.style.top = "15px";
+          marker.style.transform = "translateX(-50%)";
+        } // Adjust top
       }
     }
 
     // Vertical Markers (Weeks & Months)
-    const markersContainer = container.createEl("div", { cls: `chronica-vertical-markers ${isPortrait ? "portrait-mode" : ""}` });
-    const weekMarkersContainer = markersContainer.createEl("div", { cls: "chronica-week-markers" });
-    const monthMarkersContainer = markersContainer.createEl("div", { cls: "chronica-month-markers" });
+    const markersContainer = container.createEl("div", {
+      cls: `chronica-vertical-markers ${isPortrait ? "portrait-mode" : ""}`,
+    });
+    const weekMarkersContainer = markersContainer.createEl("div", {
+      cls: "chronica-week-markers",
+    });
+    const monthMarkersContainer = markersContainer.createEl("div", {
+      cls: "chronica-month-markers",
+    });
 
     // Week Markers (Numbers 10, 20...)
     if (settings.showWeekMarkers) {
       for (let week = 10; week <= 50; week += 10) {
-        const marker = weekMarkersContainer.createEl("div", { cls: `chronica-week-marker ${isPortrait ? "portrait-mode" : ""}`, text: week.toString() });
+        const marker = weekMarkersContainer.createEl("div", {
+          cls: `chronica-week-marker ${isPortrait ? "portrait-mode" : ""}`,
+          text: week.toString(),
+        });
         // Position based on cellIndex (0-51), adjusting for center alignment
-        const position = (week -1) * (cellSize + cellGap) + cellSize / 2; // Center on the week line
-         if (isPortrait) { marker.style.left = `${position}px`; marker.style.top = `${topOffset - 25}px`; marker.style.transform = "translateX(-50%)"; } // Position above grid
-         else { marker.style.top = `${position}px`; marker.style.right = "4px"; marker.style.transform = "translateY(-50%)"; } // Position left of grid
+        const position = (week - 1) * (cellSize + cellGap) + cellSize / 2; // Center on the week line
+        if (isPortrait) {
+          marker.style.left = `${position}px`;
+          marker.style.top = `${topOffset - 25}px`;
+          marker.style.transform = "translateX(-50%)";
+        } // Position above grid
+        else {
+          marker.style.top = `${position}px`;
+          marker.style.right = "4px";
+          marker.style.transform = "translateY(-50%)";
+        } // Position left of grid
       }
     }
 
-     // Birthday Marker (Cake Icon) - Placed relative to the *grid* start
-     if (settings.showBirthdayMarker) {
-         const [bYear, bMonth, bDay] = settings.birthday.split("-").map(Number);
-         const birthdayDate = new Date(bYear, bMonth - 1, bDay);
-         const birthWeekKey = this.plugin.getWeekKeyFromDate(birthdayDate);
-         const birthWeekIndex = this.plugin.settings.events.findIndex(e => e.weekKey === birthWeekKey); // Find event index if needed later
-         const weeksSinceBirthForFirstBirthday = this.plugin.getFullWeekAge(birthdayDate, new Date(bYear + 1, bMonth - 1, bDay));
-         const birthWeekGridIndex = weeksSinceBirthForFirstBirthday % 52; // Week index within the year (0-51)
+    // Birthday Marker (Cake Icon) - Placed relative to the *grid* start
+    if (settings.showBirthdayMarker) {
+      const [bYear, bMonth, bDay] = settings.birthday.split("-").map(Number);
+      const birthdayDate = new Date(bYear, bMonth - 1, bDay);
+      const birthWeekKey = this.plugin.getWeekKeyFromDate(birthdayDate);
+      const birthWeekIndex = this.plugin.settings.events.findIndex(
+        (e) => e.weekKey === birthWeekKey
+      ); // Find event index if needed later
+      const weeksSinceBirthForFirstBirthday = this.plugin.getFullWeekAge(
+        birthdayDate,
+        new Date(bYear + 1, bMonth - 1, bDay)
+      );
+      const birthWeekGridIndex = weeksSinceBirthForFirstBirthday % 52; // Week index within the year (0-51)
 
+      const birthdayMarkerContainer = container.createEl("div", {
+        cls: "chronica-birthday-marker-container",
+      });
+      // Position near the vertical markers, aligned with the birthday week row/column
+      const birthWeekPosition =
+        birthWeekGridIndex * (cellSize + cellGap) + cellSize / 2;
 
-          const birthdayMarkerContainer = container.createEl("div", { cls: "chronica-birthday-marker-container" });
-         // Position near the vertical markers, aligned with the birthday week row/column
-         const birthWeekPosition = birthWeekGridIndex * (cellSize + cellGap) + cellSize / 2;
+      birthdayMarkerContainer.style.position = "absolute";
+      birthdayMarkerContainer.style.zIndex = "15";
+      if (isPortrait) {
+        birthdayMarkerContainer.style.left = `${birthWeekPosition}px`;
+        birthdayMarkerContainer.style.top = `${topOffset - 45}px`; // Above the month markers
+        birthdayMarkerContainer.style.transform = "translateX(-50%)";
+      } else {
+        birthdayMarkerContainer.style.top = `${birthWeekPosition}px`;
+        birthdayMarkerContainer.style.left = `${leftOffset - 25}px`; // Left of the month markers
+        birthdayMarkerContainer.style.transform = "translateY(-50%)";
+      }
 
-         birthdayMarkerContainer.style.position = "absolute";
-          birthdayMarkerContainer.style.zIndex = "15";
-         if (isPortrait) {
-              birthdayMarkerContainer.style.left = `${birthWeekPosition}px`;
-              birthdayMarkerContainer.style.top = `${topOffset - 45}px`; // Above the month markers
-              birthdayMarkerContainer.style.transform = "translateX(-50%)";
-         } else {
-              birthdayMarkerContainer.style.top = `${birthWeekPosition}px`;
-              birthdayMarkerContainer.style.left = `${leftOffset - 25}px`; // Left of the month markers
-              birthdayMarkerContainer.style.transform = "translateY(-50%)";
-         }
+      const cakeEl = birthdayMarkerContainer.createEl("div", {
+        cls: "birthday-cake-marker",
+      });
+      setIcon(cakeEl, "cake");
+      cakeEl.setAttribute(
+        "title",
+        `${MONTH_NAMES[bMonth - 1]} ${bDay}, ${bYear} (Your Birthday)`
+      );
+    }
 
-         const cakeEl = birthdayMarkerContainer.createEl("div", { cls: "birthday-cake-marker" });
-         setIcon(cakeEl, "cake");
-         cakeEl.setAttribute("title", `${MONTH_NAMES[bMonth-1]} ${bDay}, ${bYear} (Your Birthday)`);
-     }
+    // Month Markers (Text labels)
+    if (settings.showMonthMarkers) {
+      const [bYear, bMonthIdx, bDay] = settings.birthday.split("-").map(Number);
+      const birthdayDate = new Date(bYear, bMonthIdx - 1, bDay); // JS month is 0-indexed
+      const birthMonthActual = birthdayDate.getMonth(); // 0-11 for comparison
+      const birthYearActual = birthdayDate.getFullYear();
 
+      // Calculate birthdayWeekStart (e.g., the Monday of the week the birthday falls into)
+      const birthdayWeekStartForGrid = new Date(birthdayDate);
+      const birthDayOfWeek = birthdayWeekStartForGrid.getDay(); // 0=Sun, 1=Mon
+      const startDayOfWeekNumGrid = settings.startWeekOnMonday ? 1 : 0;
+      let daysToSubtractFromBirthday = birthDayOfWeek - startDayOfWeekNumGrid;
+      if (daysToSubtractFromBirthday < 0) daysToSubtractFromBirthday += 7;
+      birthdayWeekStartForGrid.setDate(
+        birthdayWeekStartForGrid.getDate() - daysToSubtractFromBirthday
+      );
+      birthdayWeekStartForGrid.setHours(0, 0, 0, 0);
 
-     // Month Markers (Text labels)
-     if (settings.showMonthMarkers) {
-         const [bYear, bMonth, bDay] = settings.birthday.split("-").map(Number);
-         const birthdayDate = new Date(bYear, bMonth - 1, bDay);
-         const monthMarkersData = this.plugin.calculateMonthMarkers(birthdayDate, lifespan, settings.monthMarkerFrequency);
+      // 1. Get all potential month marker instances
+      const allPotentialMonthMarkers = this.plugin.calculateMonthMarkers(
+        birthdayDate,
+        lifespan,
+        settings.monthMarkerFrequency
+      );
 
-         // Filter unique month markers per grid row/column index
-         const uniqueGridIndexMarkers = new Map<number, MonthMarker>();
-          monthMarkersData.forEach(marker => {
-             const gridIndex = marker.weekIndex % 52; // 0-51
-             if (!uniqueGridIndexMarkers.has(gridIndex)) {
-                 uniqueGridIndexMarkers.set(gridIndex, marker);
-             } else {
-                 // Optional: Prioritize 'first-of-year' or 'birth-month' if multiple markers land on the same grid index
-                 const existing = uniqueGridIndexMarkers.get(gridIndex)!;
-                 if (marker.isFirstOfYear && !existing.isFirstOfYear) uniqueGridIndexMarkers.set(gridIndex, marker);
-                 // Birth month should be handled by the cake icon ideally
-             }
+      // 2. Determine which months (0-11) should be shown based on frequency/birth month
+      const monthsToDisplayIndices = new Set<number>();
+      for (let m = 0; m < 12; m++) {
+        let shouldShow = false;
+        switch (settings.monthMarkerFrequency) {
+          case "all":
+            shouldShow = true;
+            break;
+          case "quarter":
+            if (m % 3 === 0) shouldShow = true;
+            break;
+          case "half-year":
+            if (m % 6 === 0) shouldShow = true;
+            break;
+          case "year":
+            if (m === 0) shouldShow = true;
+            break; // January
+        }
+        if (m === birthMonthActual) shouldShow = true; // Always include birth month
+        if (shouldShow) monthsToDisplayIndices.add(m);
+      }
+
+      // 3. Find the best instance for each required month and calculate its gridIndex
+      // Map key: month index (0-11), Value: The chosen MonthMarker object (weekIndex holds gridIndex)
+      const canonicalMonthMarkers = new Map<number, MonthMarker>();
+      monthsToDisplayIndices.forEach((monthIdxToDisplay) => {
+        let bestMarkerForThisMonth: MonthMarker | null = null;
+        for (const potentialMarker of allPotentialMonthMarkers) {
+          const potentialMarkerMonthIndex = MONTH_NAMES.indexOf(
+            potentialMarker.label
+          );
+          if (potentialMarkerMonthIndex === monthIdxToDisplay) {
+            if (
+              !bestMarkerForThisMonth ||
+              potentialMarker.weekIndex < bestMarkerForThisMonth.weekIndex
+            ) {
+              bestMarkerForThisMonth = potentialMarker;
+            }
+          }
+        }
+
+        if (bestMarkerForThisMonth) {
+          const markerYear =
+            Math.floor(bestMarkerForThisMonth.monthNumber! / 12) +
+            birthYearActual;
+          const markerMonth = bestMarkerForThisMonth.monthNumber! % 12;
+          const firstDayOfThisMarkerMonth = new Date(
+            markerYear,
+            markerMonth,
+            1
+          );
+          firstDayOfThisMarkerMonth.setHours(0, 0, 0, 0);
+          const offsetInMillis =
+            firstDayOfThisMarkerMonth.getTime() -
+            birthdayWeekStartForGrid.getTime();
+          let gridIndexForDisplay = Math.floor(
+            offsetInMillis / (1000 * 60 * 60 * 24 * 7)
+          );
+          gridIndexForDisplay = ((gridIndexForDisplay % 52) + 52) % 52; // Normalize to 0-51
+
+          canonicalMonthMarkers.set(monthIdxToDisplay, {
+            ...bestMarkerForThisMonth,
+            weekIndex: gridIndexForDisplay, // Store the calculated gridIndex
           });
+        }
+      });
 
+      // 4. Resolve collisions based on gridIndex and render
+      const finalRenderMap = new Map<number, MonthMarker>(); // Key: gridIndex, Value: Marker to Render
 
-         uniqueGridIndexMarkers.forEach((marker, gridIndex) => {
-             const markerEl = monthMarkersContainer.createEl("div", {
-                 cls: `chronica-month-marker ${marker.isFirstOfYear ? "first-of-year" : ""} ${marker.isBirthMonth ? "birth-month" : ""} ${isPortrait ? "portrait-mode" : ""}`,
-                 text: marker.label
-             });
+      // Iterate 0-11 to ensure consistent priority order (Jan, Feb, ..., BirthMonth, ...)
+      for (let monthIdxKey = 0; monthIdxKey < 12; monthIdxKey++) {
+        if (!canonicalMonthMarkers.has(monthIdxKey)) continue; // Skip if this month wasn't selected
 
-             const position = gridIndex * (cellSize + cellGap) + cellSize / 2; // Center on week line
-             markerEl.setAttribute("title", marker.fullLabel);
+        const marker = canonicalMonthMarkers.get(monthIdxKey)!;
+        const gridIndex = marker.weekIndex; // This is the calculated 0-51 grid index
 
-              if (isPortrait) { markerEl.style.left = `${position}px`; markerEl.style.top = `${topOffset - 25}px`; markerEl.style.transform = "translateX(-50%)"; } // Position above grid
-             else { markerEl.style.top = `${position}px`; markerEl.style.left = "5px"; markerEl.style.transform = "translateY(-50%)"; } // Position left of grid (inside marker area)
+        if (!finalRenderMap.has(gridIndex)) {
+          // If grid index is free, add this marker
+          finalRenderMap.set(gridIndex, marker);
+        } else {
+          // Collision: Decide which marker wins for this grid index
+          const existingMarker = finalRenderMap.get(gridIndex)!;
+          const existingMonthIndex = MONTH_NAMES.indexOf(existingMarker.label);
 
-         });
-     }
+          // --- REVISED TIE-BREAKING (Birth Month > Jan > Others) ---
+          if (monthIdxKey === birthMonthActual) {
+            // Current IS Birth Month -> It wins
+            finalRenderMap.set(gridIndex, marker);
+          } else if (existingMonthIndex === birthMonthActual) {
+            // Existing is Birth Month -> It stays
+          } else if (monthIdxKey === 0) {
+            // Current is Jan (and not Birth Month) -> It wins
+            finalRenderMap.set(gridIndex, marker);
+          } else if (existingMonthIndex === 0) {
+            // Existing is Jan (and not Birth Month) -> It stays
+          }
+          // Implicitly: If neither is Jan nor Birth Month, the one processed first stays.
+          // --- END REVISED TIE-BREAKING ---
+        }
+      }
 
+      // 5. Render the markers from the final map
+      finalRenderMap.forEach((marker) => {
+        // marker.weekIndex is the gridIndex
+        const markerGridIndex = marker.weekIndex; // Use the stored gridIndex for positioning
+        const markerEl = monthMarkersContainer.createEl("div", {
+          cls: `chronica-month-marker ${isPortrait ? "portrait-mode" : ""} ${
+            marker.isFirstOfYear ? "first-of-year" : ""
+          } ${marker.isBirthMonth ? "birth-month" : ""}`, // Use isBirthMonth flag from marker
+          text: marker.label,
+        });
+        const position = markerGridIndex * (cellSize + cellGap) + cellSize / 2;
+        markerEl.setAttribute("title", marker.fullLabel);
+        if (isPortrait) {
+          markerEl.style.left = `${position}px`;
+          markerEl.style.top = `${topOffset - 25}px`;
+          markerEl.style.transform = "translateX(-50%)";
+        } else {
+          markerEl.style.top = `${position}px`;
+          markerEl.style.left = "5px";
+          markerEl.style.transform = "translateY(-50%)";
+        }
+      });
+    }
 
     // --- Create Grid ---
     const gridEl = container.createEl("div", { cls: "chronica-grid" });
@@ -4045,7 +4559,9 @@ class ChornicaTimelineView extends ItemView {
     gridEl.style.left = `${leftOffset}px`;
 
     const now = new Date();
-    const [birthYearNum, birthMonthNum, birthDayNum] = settings.birthday.split("-").map(Number);
+    const [birthYearNum, birthMonthNum, birthDayNum] = settings.birthday
+      .split("-")
+      .map(Number);
     const birthdayDate = new Date(birthYearNum, birthMonthNum - 1, birthDayNum);
     const ageInWeeks = this.plugin.getFullWeekAge(birthdayDate, now);
     const currentWeekKey = this.plugin.getWeekKeyFromDate(now);
@@ -4053,7 +4569,8 @@ class ChornicaTimelineView extends ItemView {
     // --- Create Cells ---
     for (let yearIndex = 0; yearIndex < lifespan; yearIndex++) {
       const displayYear = birthdayDate.getFullYear() + yearIndex;
-      const yearBirthday = new Date(birthdayDate); yearBirthday.setFullYear(displayYear);
+      const yearBirthday = new Date(birthdayDate);
+      yearBirthday.setFullYear(displayYear);
       const startDayOfWeekNum = startWeekOnMonday ? 1 : 0;
       const birthdayWeekStart = new Date(yearBirthday);
       const birthdayDayOfWeek = birthdayWeekStart.getDay();
@@ -4061,10 +4578,15 @@ class ChornicaTimelineView extends ItemView {
       if (daysToSubtract < 0) daysToSubtract += 7;
       birthdayWeekStart.setDate(birthdayWeekStart.getDate() - daysToSubtract);
 
-      const nextBirthday = new Date(birthdayDate); nextBirthday.setFullYear(displayYear + 1);
-      const totalDaysInYear = Math.round((nextBirthday.getTime() - birthdayWeekStart.getTime()) / (1000 * 60 * 60 * 24));
+      const nextBirthday = new Date(birthdayDate);
+      nextBirthday.setFullYear(displayYear + 1);
+      const totalDaysInYear = Math.round(
+        (nextBirthday.getTime() - birthdayWeekStart.getTime()) /
+          (1000 * 60 * 60 * 24)
+      );
 
-      for (let cellIndex = 0; cellIndex < 52; cellIndex++) { // Always 52 cells visually per year row/column
+      for (let cellIndex = 0; cellIndex < 52; cellIndex++) {
+        // Always 52 cells visually per year row/column
         const weekIndex = yearIndex * 52 + cellIndex; // Overall index
         const cell = gridEl.createEl("div", { cls: "chronica-grid-cell" });
 
@@ -4074,16 +4596,19 @@ class ChornicaTimelineView extends ItemView {
         const cellEndDate = new Date(cellStartDate);
         cellEndDate.setDate(cellStartDate.getDate() + 6);
         // Adjust last cell's end date if the year has > 364 days relative to birthday week start
-         if (cellIndex === 51 && totalDaysInYear > 364) {
-             const nextBirthdayWeekStart = new Date(nextBirthday);
-             const nextBdayDayOfWeek = nextBirthdayWeekStart.getDay();
-             let nextDaysToSub = nextBdayDayOfWeek - startDayOfWeekNum;
-             if (nextDaysToSub < 0) nextDaysToSub += 7;
-             nextBirthdayWeekStart.setDate(nextBirthdayWeekStart.getDate() - nextDaysToSub);
-             // End date is day before next birthday week starts
-             cellEndDate.setTime(nextBirthdayWeekStart.getTime() - (24 * 60 * 60 * 1000));
-         }
-
+        if (cellIndex === 51 && totalDaysInYear > 364) {
+          const nextBirthdayWeekStart = new Date(nextBirthday);
+          const nextBdayDayOfWeek = nextBirthdayWeekStart.getDay();
+          let nextDaysToSub = nextBdayDayOfWeek - startDayOfWeekNum;
+          if (nextDaysToSub < 0) nextDaysToSub += 7;
+          nextBirthdayWeekStart.setDate(
+            nextBirthdayWeekStart.getDate() - nextDaysToSub
+          );
+          // End date is day before next birthday week starts
+          cellEndDate.setTime(
+            nextBirthdayWeekStart.getTime() - 24 * 60 * 60 * 1000
+          );
+        }
 
         // Determine ISO week key for linking notes/events (might span across cell boundary)
         // We use the start date of the cell's period to determine the primary week key
@@ -4091,18 +4616,49 @@ class ChornicaTimelineView extends ItemView {
         cell.dataset.weekKey = weekKey;
 
         // Format dates for tooltip
-        const formatDate = (date: Date): string => { const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]; return `${months[date.getMonth()]} ${date.getDate()}`; };
-        const dateRange = `${formatDate(cellStartDate)} - ${formatDate(cellEndDate)}`;
+        const formatDate = (date: Date): string => {
+          const months = [
+            "Jan",
+            "Feb",
+            "Mar",
+            "Apr",
+            "May",
+            "Jun",
+            "Jul",
+            "Aug",
+            "Sep",
+            "Oct",
+            "Nov",
+            "Dec",
+          ];
+          return `${months[date.getMonth()]} ${date.getDate()}`;
+        };
+        const dateRange = `${formatDate(cellStartDate)} - ${formatDate(
+          cellEndDate
+        )}`;
         const isoWeekInfo = this.plugin.getISOWeekData(cellStartDate);
-        cell.setAttribute("title", `Week ${isoWeekInfo.week}, ${isoWeekInfo.year}\n${dateRange}`);
+        cell.setAttribute(
+          "title",
+          `Week ${isoWeekInfo.week}, ${isoWeekInfo.year}\n${dateRange}`
+        );
 
         // Positioning
         cell.style.position = "absolute";
-        const yearPos = this.plugin.calculateYearPosition(yearIndex, cellSize, regularGap);
+        const yearPos = this.plugin.calculateYearPosition(
+          yearIndex,
+          cellSize,
+          regularGap
+        );
         const weekPos = cellIndex * (cellSize + regularGap);
-        if (isPortrait) { cell.style.left = `${weekPos}px`; cell.style.top = `${yearPos}px`; }
-        else { cell.style.left = `${yearPos}px`; cell.style.top = `${weekPos}px`; }
-        cell.style.width = `${cellSize}px`; cell.style.height = `${cellSize}px`;
+        if (isPortrait) {
+          cell.style.left = `${weekPos}px`;
+          cell.style.top = `${yearPos}px`;
+        } else {
+          cell.style.left = `${yearPos}px`;
+          cell.style.top = `${weekPos}px`;
+        }
+        cell.style.width = `${cellSize}px`;
+        cell.style.height = `${cellSize}px`;
 
         // --- Styling & Classes ---
         const isCurrentWeek = weekKey === currentWeekKey;
@@ -4114,39 +4670,53 @@ class ChornicaTimelineView extends ItemView {
         // Apply event styling (reads new structure, applies inline colors/borders)
         this.applyEventStyling(cell, weekKey); // This now uses the refactored logic
 
-         // Apply filled week styling (only if not the current week and manual fill is on)
-         if (!isCurrentWeek && !settings.enableAutoFill && settings.filledWeeks?.includes(weekKey)) {
-             cell.addClass("filled-week");
-             // Background for filled is handled by CSS, border might be too
-             // If specific styling is needed and NOT overridden by event, add here:
-             // if (!cell.classList.contains('event')) { cell.style.backgroundColor = '#8bc34a'; }
-         }
-
+        // Apply filled week styling (only if not the current week and manual fill is on)
+        if (
+          !isCurrentWeek &&
+          !settings.enableAutoFill &&
+          settings.filledWeeks?.includes(weekKey)
+        ) {
+          cell.addClass("filled-week");
+          // Background for filled is handled by CSS, border might be too
+          // If specific styling is needed and NOT overridden by event, add here:
+          // if (!cell.classList.contains('event')) { cell.style.backgroundColor = '#8bc34a'; }
+        }
 
         // --- Event Handlers ---
         cell.addEventListener("click", async (event) => {
           // Check for folder selection first
-          if (!this.plugin.settings.hasSeenFolders) { new ChornicaFolderSelectionModal(this.app, this.plugin).open(); return; }
+          if (!this.plugin.settings.hasSeenFolders) {
+            new ChornicaFolderSelectionModal(this.app, this.plugin).open();
+            return;
+          }
           // Shift+Click to add event
-          if (event.shiftKey) { new ChornicaEventModal(this.app, this.plugin, weekKey).open(); return; }
+          if (event.shiftKey) {
+            new ChornicaEventModal(this.app, this.plugin, weekKey).open();
+            return;
+          }
 
           // Check if event styling added a note path to the cell
           const linkedNotePath = cell.dataset.eventFile;
           if (linkedNotePath) {
-            const noteFile = this.app.vault.getAbstractFileByPath(linkedNotePath);
-            if (noteFile instanceof TFile) { await this.plugin.safelyOpenFile(noteFile); return; }
-            else {
-                 console.warn(`Chronica: Linked note path not found: ${linkedNotePath}. Removing link.`);
-                 delete cell.dataset.eventFile;
-                 // Optional: We could rescan here, but might be slow. Let next scan handle it.
-                 // await this.plugin.scanVaultForEvents();
+            const noteFile =
+              this.app.vault.getAbstractFileByPath(linkedNotePath);
+            if (noteFile instanceof TFile) {
+              await this.plugin.safelyOpenFile(noteFile);
+              return;
+            } else {
+              console.warn(
+                `Chronica: Linked note path not found: ${linkedNotePath}. Removing link.`
+              );
+              delete cell.dataset.eventFile;
+              // Optional: We could rescan here, but might be slow. Let next scan handle it.
+              // await this.plugin.scanVaultForEvents();
             }
           }
 
           // If no linked event note, handle as a weekly note
           const weekNoteName = settings.weekNoteTemplate
-                               .replace('${year}', isoWeekInfo.year.toString())
-                               .replace('${week}', isoWeekInfo.week.toString().padStart(2, '0'));
+            .replace("${year}", isoWeekInfo.year.toString())
+            .replace("${week}", isoWeekInfo.week.toString().padStart(2, "0"));
           const fullPath = this.plugin.getFullPath(`${weekNoteName}.md`, false); // false = not event folder
           const existingFile = this.app.vault.getAbstractFileByPath(fullPath);
 
@@ -4156,8 +4726,15 @@ class ChornicaTimelineView extends ItemView {
             // Create folder if needed
             const folderPath = settings.notesFolder;
             if (folderPath && folderPath.trim() !== "") {
-                 try { if (!await this.app.vault.adapter.exists(folderPath)) await this.app.vault.createFolder(folderPath); }
-                 catch (err) { console.error(`Chronica: Error creating folder ${folderPath}`, err); }
+              try {
+                if (!(await this.app.vault.adapter.exists(folderPath)))
+                  await this.app.vault.createFolder(folderPath);
+              } catch (err) {
+                console.error(
+                  `Chronica: Error creating folder ${folderPath}`,
+                  err
+                );
+              }
             }
             // Add basic template
             let content = this.plugin.formatFrontmatter({}); // Empty frontmatter
@@ -4172,11 +4749,15 @@ class ChornicaTimelineView extends ItemView {
           if (settings.enableAutoFill || cellStartDate < now) return; // Allow manual only if enabled AND it's a future/present week
           event.preventDefault();
           const filledIndex = settings.filledWeeks.indexOf(weekKey);
-          if (filledIndex >= 0) { settings.filledWeeks.splice(filledIndex, 1); cell.removeClass("filled-week"); }
-          else { settings.filledWeeks.push(weekKey); cell.addClass("filled-week"); }
+          if (filledIndex >= 0) {
+            settings.filledWeeks.splice(filledIndex, 1);
+            cell.removeClass("filled-week");
+          } else {
+            settings.filledWeeks.push(weekKey);
+            cell.addClass("filled-week");
+          }
           this.plugin.saveSettings(); // Save immediately on change
         });
-
       } // End cellIndex loop
     } // End yearIndex loop
   } // End renderWeeksGrid
@@ -5677,7 +6258,7 @@ class ChornicaTimelineView extends ItemView {
     });
   }
 
-/**
+  /**
    * Applies styling to a cell if an event exists for the given week key.
    * Reads from the new unified this.settings.events and this.settings.eventTypes.
    * @param cell - The HTML element for the grid cell.
@@ -5686,15 +6267,20 @@ class ChornicaTimelineView extends ItemView {
    */
   applyEventStyling(cell: HTMLElement, weekKey: string): boolean {
     // Ensure events and eventTypes arrays exist and have data
-    if (!this.plugin.settings.events || this.plugin.settings.events.length === 0 || !this.plugin.settings.eventTypes || this.plugin.settings.eventTypes.length === 0) {
-        // Clear any lingering event styles if data is missing
-        cell.classList.remove("event", "future-event-highlight");
-        cell.style.backgroundColor = ''; // Let base past/present/future CSS handle it
-        cell.style.borderColor = '';
-        cell.style.borderWidth = '';
-        cell.style.borderStyle = '';
-        delete cell.dataset.eventFile;
-        return false;
+    if (
+      !this.plugin.settings.events ||
+      this.plugin.settings.events.length === 0 ||
+      !this.plugin.settings.eventTypes ||
+      this.plugin.settings.eventTypes.length === 0
+    ) {
+      // Clear any lingering event styles if data is missing
+      cell.classList.remove("event", "future-event-highlight");
+      cell.style.backgroundColor = ""; // Let base past/present/future CSS handle it
+      cell.style.borderColor = "";
+      cell.style.borderWidth = "";
+      cell.style.borderStyle = "";
+      delete cell.dataset.eventFile;
+      return false;
     }
 
     let eventApplied = false;
@@ -5704,86 +6290,147 @@ class ChornicaTimelineView extends ItemView {
     // Find the FIRST event matching this weekKey
     let matchedEvent: ChronicaEvent | null = null;
     for (const event of this.plugin.settings.events) {
-         let isMatch = false;
-         if (event.weekKey === weekKey && !event.endWeekKey) { isMatch = true; } // Direct match
-         else if (event.weekKey && event.endWeekKey) { // Range check
-             try {
-                 const startYear = parseInt(event.weekKey.split("-W")[0], 10);
-                 const startWeek = parseInt(event.weekKey.split("-W")[1], 10);
-                 const endYear = parseInt(event.endWeekKey.split("-W")[0], 10);
-                 const endWeek = parseInt(event.endWeekKey.split("-W")[1], 10);
-                 const cellYear = parseInt(weekKey.split("-W")[0], 10);
-                 const cellWeek = parseInt(weekKey.split("-W")[1], 10);
+      let isMatch = false;
+      if (event.weekKey === weekKey && !event.endWeekKey) {
+        isMatch = true;
+      } // Direct match
+      else if (event.weekKey && event.endWeekKey) {
+        // Range check
+        try {
+          const startYear = parseInt(event.weekKey.split("-W")[0], 10);
+          const startWeek = parseInt(event.weekKey.split("-W")[1], 10);
+          const endYear = parseInt(event.endWeekKey.split("-W")[0], 10);
+          const endWeek = parseInt(event.endWeekKey.split("-W")[1], 10);
+          const cellYear = parseInt(weekKey.split("-W")[0], 10);
+          const cellWeek = parseInt(weekKey.split("-W")[1], 10);
 
-                 if (![startYear, startWeek, endYear, endWeek, cellYear, cellWeek].some(isNaN)) { // Basic validation
-                     if (cellYear > startYear && cellYear < endYear) isMatch = true;
-                     else if (cellYear === startYear && cellYear < endYear && cellWeek >= startWeek) isMatch = true;
-                     else if (cellYear > startYear && cellYear === endYear && cellWeek <= endWeek) isMatch = true;
-                     else if (cellYear === startYear && cellYear === endYear && cellWeek >= startWeek && cellWeek <= endWeek) isMatch = true;
-                 }
-             } catch (error) { /* Ignore parsing errors */ }
-         }
-         if (isMatch) { matchedEvent = event; break; }
+          if (
+            ![startYear, startWeek, endYear, endWeek, cellYear, cellWeek].some(
+              isNaN
+            )
+          ) {
+            // Basic validation
+            if (cellYear > startYear && cellYear < endYear) isMatch = true;
+            else if (
+              cellYear === startYear &&
+              cellYear < endYear &&
+              cellWeek >= startWeek
+            )
+              isMatch = true;
+            else if (
+              cellYear > startYear &&
+              cellYear === endYear &&
+              cellWeek <= endWeek
+            )
+              isMatch = true;
+            else if (
+              cellYear === startYear &&
+              cellYear === endYear &&
+              cellWeek >= startWeek &&
+              cellWeek <= endWeek
+            )
+              isMatch = true;
+          }
+        } catch (error) {
+          /* Ignore parsing errors */
+        }
+      }
+      if (isMatch) {
+        matchedEvent = event;
+        break;
+      }
     }
 
     // If an event was found for this week
     if (matchedEvent) {
-        const eventType = this.plugin.settings.eventTypes.find(type => type.id === matchedEvent!.typeId);
+      const eventType = this.plugin.settings.eventTypes.find(
+        (type) => type.id === matchedEvent!.typeId
+      );
 
-        if (eventType) {
-            cell.classList.add("event");
-            const safeTypeIdClass = `event-type-${eventType.id.replace(/[^a-zA-Z0-9-_]/g, '-')}`;
-            cell.addClass(safeTypeIdClass);
-            cell.style.backgroundColor = eventType.color + ' !important'; // Apply color inline
-            cell.style.borderColor = eventType.color;
-            cell.style.borderWidth = '2px';
-            cell.style.borderStyle = 'solid';
-            eventDescription = `${eventType.name}: ${matchedEvent.description}`;
-            if (matchedEvent.endWeekKey && matchedEvent.endWeekKey !== matchedEvent.weekKey) { eventDescription += ` (${matchedEvent.weekKey} to ${matchedEvent.endWeekKey})`; }
-            else { eventDescription += ` (${matchedEvent.weekKey})`; }
-            appliedNotePath = matchedEvent.notePath;
-            eventApplied = true;
-        } else { // Type definition missing
-            console.warn(`Chronica: Type definition missing for typeId: ${matchedEvent.typeId}`);
-            cell.classList.add("event");
-            cell.style.borderColor = 'var(--text-muted)'; cell.style.borderWidth = '1px'; cell.style.borderStyle = 'dashed';
-            eventDescription = `Unknown Type: ${matchedEvent.description} (${matchedEvent.weekKey})`;
-            appliedNotePath = matchedEvent.notePath;
-            eventApplied = true;
+      if (eventType) {
+        cell.classList.add("event");
+        const safeTypeIdClass = `event-type-${eventType.id.replace(
+          /[^a-zA-Z0-9-_]/g,
+          "-"
+        )}`;
+        cell.addClass(safeTypeIdClass);
+        cell.style.backgroundColor = eventType.color + " !important"; // Apply color inline
+        cell.style.borderColor = eventType.color;
+        cell.style.borderWidth = "2px";
+        cell.style.borderStyle = "solid";
+        eventDescription = `${eventType.name}: ${matchedEvent.description}`;
+        if (
+          matchedEvent.endWeekKey &&
+          matchedEvent.endWeekKey !== matchedEvent.weekKey
+        ) {
+          eventDescription += ` (${matchedEvent.weekKey} to ${matchedEvent.endWeekKey})`;
+        } else {
+          eventDescription += ` (${matchedEvent.weekKey})`;
         }
+        appliedNotePath = matchedEvent.notePath;
+        eventApplied = true;
+      } else {
+        // Type definition missing
+        console.warn(
+          `Chronica: Type definition missing for typeId: ${matchedEvent.typeId}`
+        );
+        cell.classList.add("event");
+        cell.style.borderColor = "var(--text-muted)";
+        cell.style.borderWidth = "1px";
+        cell.style.borderStyle = "dashed";
+        eventDescription = `Unknown Type: ${matchedEvent.description} (${matchedEvent.weekKey})`;
+        appliedNotePath = matchedEvent.notePath;
+        eventApplied = true;
+      }
     } else {
-         // No event found, ensure no lingering event styles
-         cell.classList.remove("event");
-         // Remove specific event type classes (might need a loop or regex if many types)
-         cell.className = cell.className.replace(/\bevent-type-[^ ]+/g, '').trim();
-         cell.style.backgroundColor = ''; // Let base CSS handle it
-         cell.style.borderColor = '';
-         cell.style.borderWidth = '';
-         cell.style.borderStyle = '';
+      // No event found, ensure no lingering event styles
+      cell.classList.remove("event");
+      // Remove specific event type classes (might need a loop or regex if many types)
+      cell.className = cell.className.replace(/\bevent-type-[^ ]+/g, "").trim();
+      cell.style.backgroundColor = ""; // Let base CSS handle it
+      cell.style.borderColor = "";
+      cell.style.borderWidth = "";
+      cell.style.borderStyle = "";
     }
 
     // Update tooltip
-    const prevTitle = cell.getAttribute("title")?.split('\n').pop() || ''; // Get base title (last line)
+    const prevTitle = cell.getAttribute("title")?.split("\n").pop() || ""; // Get base title (last line)
     if (eventApplied && eventDescription) {
-         cell.setAttribute("title", `${eventDescription}\n${prevTitle}`);
-         if(appliedNotePath) { cell.dataset.eventFile = appliedNotePath; }
-         else { delete cell.dataset.eventFile; }
+      cell.setAttribute("title", `${eventDescription}\n${prevTitle}`);
+      if (appliedNotePath) {
+        cell.dataset.eventFile = appliedNotePath;
+      } else {
+        delete cell.dataset.eventFile;
+      }
     } else {
-         // Ensure only base title remains if no event applied this time
-         cell.setAttribute("title", prevTitle);
-         delete cell.dataset.eventFile;
+      // Ensure only base title remains if no event applied this time
+      cell.setAttribute("title", prevTitle);
+      delete cell.dataset.eventFile;
     }
 
     // --- Highlight future events ---
     if (eventApplied) {
-        const now = new Date(); let cellDate: Date | null = null;
-        try { const [y, w] = weekKey.split("-W").map(Number); cellDate = new Date(y, 0, 1 + (w - 1) * 7); } catch {}
-        if(cellDate) {
-            const sixMonthsFromNow = new Date(now.getTime() + 6 * 30 * 24 * 60 * 60 * 1000);
-            if (cellDate > now && cellDate < sixMonthsFromNow) { cell.classList.add("future-event-highlight"); }
-            else { cell.classList.remove("future-event-highlight"); }
-        } else { cell.classList.remove("future-event-highlight"); }
-    } else { cell.classList.remove("future-event-highlight"); }
+      const now = new Date();
+      let cellDate: Date | null = null;
+      try {
+        const [y, w] = weekKey.split("-W").map(Number);
+        cellDate = new Date(y, 0, 1 + (w - 1) * 7);
+      } catch {}
+      if (cellDate) {
+        const sixMonthsFromNow = new Date(
+          now.getTime() + 6 * 30 * 24 * 60 * 60 * 1000
+        );
+        if (cellDate > now && cellDate < sixMonthsFromNow) {
+          cell.classList.add("future-event-highlight");
+        } else {
+          cell.classList.remove("future-event-highlight");
+        }
+      } else {
+        cell.classList.remove("future-event-highlight");
+      }
+    } else {
+      cell.classList.remove("future-event-highlight");
+    }
 
     return eventApplied;
   }
