@@ -1120,8 +1120,12 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
         let result = template;
         // Replace all placeholders in the template
         for (const [key, value] of Object.entries(values)) {
-            const placeholder = "${" + key + "}";
-            result = result.replace(new RegExp(placeholder, "g"), value.toString());
+            // Escape special characters in the key for use in RegExp
+            const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); // $& means the whole matched string
+            const placeholderRegExp = new RegExp(`\\$\\{${escapedKey}\\}`, "g"); // Look for ${key}
+            // Ensure value is a string, provide fallback if it's null/undefined
+            const valueStr = value !== null && value !== undefined ? value.toString() : "";
+            result = result.replace(placeholderRegExp, valueStr);
         }
         // Ensure the extension is .md
         if (!result.endsWith(".md")) {
@@ -2780,8 +2784,8 @@ class ChornicaTimelineView extends obsidian.ItemView {
         cells.forEach((cell) => {
             const cellEl = cell;
             // Clear data attributes
-            delete cellEl.dataset.checkingEvents; // Still relevant if async checks happen
             delete cellEl.dataset.eventFile;
+            // delete cellEl.dataset.checkingEvents; // This was from an old async pattern, likely safe to remove
             // Clear generic event class and future highlight
             cellEl.classList.remove("event", "future-event-highlight");
             // Remove *any* class starting with "event-type-"
@@ -2794,12 +2798,12 @@ class ChornicaTimelineView extends obsidian.ItemView {
             if (classesToRemove.length > 0) {
                 cellEl.classList.remove(...classesToRemove);
             }
-            // Clear only event-related inline styles (leave positioning intact)
-            cellEl.style.backgroundColor = "";
-            cellEl.style.borderColor = "";
-            cellEl.style.borderWidth = "";
-            cellEl.style.borderStyle = "";
-            // Do NOT clear: cell.style.position, top, left, width, height
+            // Clear only event-related inline styles, allowing base past/present/future CSS to take over
+            cellEl.style.removeProperty("background-color");
+            cellEl.style.removeProperty("border-color");
+            cellEl.style.removeProperty("border-width");
+            cellEl.style.removeProperty("border-style");
+            // Do NOT clear: cell.style.position, top, left, width, height if set by grid rendering
         });
     }
     /**
@@ -5084,26 +5088,23 @@ class ChornicaTimelineView extends obsidian.ItemView {
                     cell.classList.remove(cell.classList[i]);
                 }
             }
-            cell.style.backgroundColor = ""; // Let base past/present/future CSS handle it
-            cell.style.borderColor = "";
-            cell.style.borderWidth = "";
-            cell.style.borderStyle = "";
+            cell.style.removeProperty("background-color");
+            cell.style.removeProperty("border-color");
+            cell.style.removeProperty("border-width");
+            cell.style.removeProperty("border-style");
             delete cell.dataset.eventFile;
             return false;
         }
         let eventApplied = false;
-        let eventDescription = ""; // Store description for tooltip
+        let eventDescription = "";
         let appliedNotePath = undefined;
-        // Find the FIRST event matching this weekKey
         let matchedEvent = null;
         for (const event of this.plugin.settings.events) {
             let isMatch = false;
-            // Direct match for single week event
             if (event.weekKey === weekKey &&
                 (!event.endWeekKey || event.endWeekKey === event.weekKey)) {
                 isMatch = true;
             }
-            // Check if weekKey falls within a range event
             else if (event.weekKey &&
                 event.endWeekKey &&
                 event.endWeekKey !== event.weekKey) {
@@ -5133,7 +5134,7 @@ class ChornicaTimelineView extends obsidian.ItemView {
                     }
                 }
                 catch (error) {
-                    console.error(`Chronica: Error parsing range event dates ('${event.weekKey}' to '${event.endWeekKey}') for matching:`, error);
+                    /* Silent parse error */
                 }
             }
             if (isMatch) {
@@ -5147,7 +5148,6 @@ class ChornicaTimelineView extends obsidian.ItemView {
                 cell.classList.add("event");
                 const safeTypeIdClass = `event-type-${eventType.id.replace(/[^a-zA-Z0-9-_]/g, "-")}`;
                 cell.addClass(safeTypeIdClass);
-                // Apply color and border using inline style with !important for background
                 cell.style.setProperty("background-color", eventType.color, "important");
                 cell.style.setProperty("border-color", eventType.color, "important");
                 cell.style.setProperty("border-width", "2px", "important");
@@ -5164,19 +5164,19 @@ class ChornicaTimelineView extends obsidian.ItemView {
                 eventApplied = true;
             }
             else {
-                console.warn(`Chronica: Event found for ${weekKey} but type definition missing for typeId: ${matchedEvent.typeId}`);
-                cell.classList.add("event");
-                cell.style.setProperty("border-color", "var(--text-muted)", "important");
+                console.warn(`Chronica: Type definition missing for typeId: ${matchedEvent.typeId}`);
+                cell.classList.add("event"); // Base style for unknown but existing event
+                cell.style.setProperty("border-color", "var(--text-faint)", "important");
                 cell.style.setProperty("border-width", "1px", "important");
                 cell.style.setProperty("border-style", "dashed", "important");
-                cell.style.removeProperty("background-color"); // Remove background for unknown type
-                eventDescription = `Unknown Type: ${matchedEvent.description} (${matchedEvent.weekKey})`;
+                cell.style.removeProperty("background-color"); // No specific background
+                eventDescription = `Unknown Event Type: ${matchedEvent.description} (${matchedEvent.weekKey})`;
                 appliedNotePath = matchedEvent.notePath;
                 eventApplied = true;
             }
         }
         else {
-            // No event found, ensure no lingering event styles
+            // No event found, ensure all event-specific styles and classes are cleared
             cell.classList.remove("event");
             for (let i = cell.classList.length - 1; i >= 0; i--) {
                 if (cell.classList[i].startsWith("event-type-")) {
@@ -5189,12 +5189,26 @@ class ChornicaTimelineView extends obsidian.ItemView {
             cell.style.removeProperty("border-style");
             delete cell.dataset.eventFile;
         }
-        const baseTitleParts = (cell.getAttribute("title") || "").split("\n");
-        const weekDateInfo = baseTitleParts.length > 1
-            ? baseTitleParts.slice(-2).join("\n")
-            : baseTitleParts[0] || ""; // Keep existing week/date info
+        // Tooltip Management: Preserve base week/date info, prepend event info if any
+        const existingTitle = cell.getAttribute("title") || "";
+        const titleParts = existingTitle.split("\n");
+        // Assume the last 1 or 2 lines are the week/date info if no event was previously on it
+        let baseDateInfo = "";
+        if (titleParts.length === 1 && titleParts[0].startsWith("Week ")) {
+            // Only week info
+            baseDateInfo = titleParts[0];
+        }
+        else if (titleParts.length >= 2 &&
+            titleParts[titleParts.length - 2].startsWith("Week ")) {
+            // Event info might be on top
+            baseDateInfo = titleParts.slice(-2).join("\n");
+        }
+        else if (titleParts.length > 0) {
+            // Fallback to last line
+            baseDateInfo = titleParts.pop() || "";
+        }
         if (eventApplied && eventDescription) {
-            cell.setAttribute("title", `${eventDescription}\n${weekDateInfo}`);
+            cell.setAttribute("title", `${eventDescription}\n${baseDateInfo}`);
             if (appliedNotePath) {
                 cell.dataset.eventFile = appliedNotePath;
             }
@@ -5203,10 +5217,12 @@ class ChornicaTimelineView extends obsidian.ItemView {
             }
         }
         else {
-            cell.setAttribute("title", weekDateInfo); // Reset to just week/date info
+            cell.setAttribute("title", baseDateInfo); // Reset to just base week/date info
             delete cell.dataset.eventFile;
         }
+        // Future Event Highlight
         if (eventApplied) {
+            // Only highlight if there's an event
             const now = new Date();
             let cellDate = null;
             try {
