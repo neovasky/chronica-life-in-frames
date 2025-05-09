@@ -4105,11 +4105,34 @@ class ChornicaTimelineView extends ItemView {
   } // End of renderView
 
   /**
-   * Show modal for adding an event
+   * Show modal for adding an event.
+   * Ensures folder selection has occurred before opening the event modal.
    */
-  showAddEventModal(): void {
-    const modal = new ChornicaEventModal(this.app, this.plugin);
-    modal.open();
+  showAddEventModal(preselectedWeekKey: string | null = null): void {
+    // Added optional preselectedWeekKey
+    // First, check if folders have been configured
+    if (!this.plugin.settings.hasSeenFolders) {
+      new Notice("Please select your notes folders first."); // Optional: Inform the user
+      const folderModal = new ChornicaFolderSelectionModal(
+        this.app,
+        this.plugin
+      );
+      folderModal.open();
+      // When ChornicaFolderSelectionModal closes and sets hasSeenFolders,
+      // the user would then click "Add Event" again.
+      // Alternatively, you could pass a callback to ChornicaFolderSelectionModal
+      // to automatically open the event modal after successful folder selection,
+      // but for now, this simpler approach requires the user to re-initiate.
+      return;
+    }
+
+    // If folders are set, proceed to open the event modal
+    const eventModal = new ChornicaEventModal(
+      this.app,
+      this.plugin,
+      preselectedWeekKey
+    );
+    eventModal.open();
   }
 
   /**
@@ -4741,6 +4764,7 @@ class ChornicaTimelineView extends ItemView {
             new ChornicaFolderSelectionModal(this.app, this.plugin).open();
             return;
           }
+
           // Shift+Click to add event
           if (event.shiftKey) {
             new ChornicaEventModal(this.app, this.plugin, weekKey).open();

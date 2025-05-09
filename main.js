@@ -3220,11 +3220,26 @@ class ChornicaTimelineView extends obsidian.ItemView {
         this.renderStatsPanel(contentAreaEl); // Render stats panel (which reads new data structure internally now)
     } // End of renderView
     /**
-     * Show modal for adding an event
+     * Show modal for adding an event.
+     * Ensures folder selection has occurred before opening the event modal.
      */
-    showAddEventModal() {
-        const modal = new ChornicaEventModal(this.app, this.plugin);
-        modal.open();
+    showAddEventModal(preselectedWeekKey = null) {
+        // Added optional preselectedWeekKey
+        // First, check if folders have been configured
+        if (!this.plugin.settings.hasSeenFolders) {
+            new obsidian.Notice("Please select your notes folders first."); // Optional: Inform the user
+            const folderModal = new ChornicaFolderSelectionModal(this.app, this.plugin);
+            folderModal.open();
+            // When ChornicaFolderSelectionModal closes and sets hasSeenFolders,
+            // the user would then click "Add Event" again.
+            // Alternatively, you could pass a callback to ChornicaFolderSelectionModal
+            // to automatically open the event modal after successful folder selection,
+            // but for now, this simpler approach requires the user to re-initiate.
+            return;
+        }
+        // If folders are set, proceed to open the event modal
+        const eventModal = new ChornicaEventModal(this.app, this.plugin, preselectedWeekKey);
+        eventModal.open();
     }
     /**
      * Zoom in the grid view
@@ -5419,7 +5434,7 @@ class ChornicaSettingTab extends obsidian.PluginSettingTab {
         // --- File Naming Templates Sub-section ---
         containerEl.createEl("h3", { text: "File Naming Templates" });
         containerEl.createEl("p", {
-            text: "Customize how Chronica names your week and event note files. Hover over the 'ℹ️' for available placeholders. Use '/' to create subfolders.",
+            text: "Customize how Chronica names your week and event note files.",
             cls: "chronica-template-description",
         });
         // Helper function to create and manage custom tooltips
