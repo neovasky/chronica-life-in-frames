@@ -2052,3 +2052,47 @@ Exp .chronica-sidebar-toggle:hover {
 /* -----------------------------------------------------------------------------
      14. GRID CELL TOOLTIPS
      ----------------------------------------------------------------------------- */
+.chronica-grid-cell-tooltip {
+  position: absolute; /* Crucial for JS positioning */
+  background-color: var(
+    --background-secondary-alt
+  ); /* Or --background-primary for a different feel */
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(
+    --container-border-radius
+  ); /* Rounded corners from your theme */
+  padding: 10px 15px; /* More spacious padding */
+  box-shadow: var(--card-shadow); /* Consistent shadow */
+  z-index: 10000; /* Ensure it's on top of other elements, including grid cells */
+  font-size: var(--font-ui-small); /* Consistent font size */
+  max-width: 350px; /* Allow more width */
+  pointer-events: none; /* Tooltip should not interfere with mouse events on elements below it */
+  white-space: pre-wrap; /* Respect newlines in content */
+  opacity: 0; /* Initially hidden for animation */
+  transform: scale(0.95) translateY(5px); /* Initial state for animation */
+  transition: opacity 0.1s ease-out, transform 0.1s ease-out; /* Quick, subtle transition */
+  /* Add a placeholder for the accent bar - adjust as needed */
+  border-left: 3px solid transparent; /* Accent bar, transparent by default */
+}
+
+.chronica-grid-cell-tooltip.visible {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+
+/* Styling for the content within the tooltip (optional, but good for structure) */
+.chronica-tooltip-content-line {
+  display: block; /* Each line of info on its own line */
+  margin-bottom: 4px; /* Space between lines */
+}
+
+.chronica-tooltip-content-line:last-child {
+  margin-bottom: 0; /* No margin for the last line */
+}
+
+.chronica-tooltip-event-name {
+  font-weight: bold;
+  color: var(--text-title-h3); /* Or a more prominent color */
+  margin-bottom: 6px;
+}

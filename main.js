@@ -2929,7 +2929,12 @@ class ChornicaTimelineView extends obsidian.ItemView {
     /** Track sidebar open/closed state */
     isSidebarOpen;
     isStatsOpen;
+    // Properties for managing the custom grid cell tooltip
+    activeGridCellTooltip = null;
+    tooltipTimeoutId = null; // For hover delay to show
+    clearTooltipTimeoutId = null; // For fade-out delay before removal
     isNarrowViewport() {
+        // This function was also part of your class
         return window.innerWidth <= 768;
     }
     constructor(leaf, plugin) {
@@ -3932,7 +3937,6 @@ class ChornicaTimelineView extends obsidian.ItemView {
                 cell.dataset.cellWeekNum = isoWeekInfo.week.toString();
                 cell.dataset.cellIsoYear = isoWeekInfo.year.toString();
                 cell.dataset.cellDateRange = dateRange;
-                cell.setAttribute("title", `Cell: W${isoWeekInfo.week}, <span class="math-inline">\{isoWeekInfo\.year\} \(</span>{dateRange})`);
                 // Positioning
                 cell.style.position = "absolute";
                 const yearPos = this.plugin.calculateYearPosition(yearIndex, cellSize, regularGap);
@@ -3967,15 +3971,92 @@ class ChornicaTimelineView extends obsidian.ItemView {
                     // If specific styling is needed and NOT overridden by event, add here:
                     // if (!cell.classList.contains('event')) { cell.style.backgroundColor = '#8bc34a'; }
                 }
-                // --- Event Handlers ---
+                // --- Custom Tooltip Logic (NEW - STAGE 1) ---
+                // Base content for the tooltip - this will be made more dynamic in Stage 2
+                const createTooltipContent = (currentCell) => {
+                    // For Stage 1, we only display the basic cell information.
+                    // isoWeekInfo and dateRange are available from the outer scope of the cellIndex loop.
+                    // In Stage 2, this function will read data from currentCell.dataset to show event info.
+                    const weekNum = currentCell.dataset.cellWeekNum || isoWeekInfo.week.toString();
+                    currentCell.dataset.cellIsoYear || isoWeekInfo.year.toString();
+                    currentCell.dataset.cellDateRange || dateRange;
+                    return `Week ${weekNum}, <span class="math-inline">\{year\}\\n</span>{specificDateRange}`;
+                };
+                cell.addEventListener("mouseenter", (eventMouse) => {
+                    // Clear any existing timeout that would hide a tooltip
+                    if (this.clearTooltipTimeoutId) {
+                        clearTimeout(this.clearTooltipTimeoutId);
+                        this.clearTooltipTimeoutId = null;
+                    }
+                    // Clear any previous timeout that was set to show a tooltip
+                    if (this.tooltipTimeoutId) {
+                        clearTimeout(this.tooltipTimeoutId);
+                    }
+                    // Set a new timeout to show the tooltip after a delay
+                    this.tooltipTimeoutId = window.setTimeout(() => {
+                        // If there's an old tooltip from a different cell, remove it immediately before showing new one
+                        if (this.activeGridCellTooltip &&
+                            this.activeGridCellTooltip.parentElement) {
+                            this.activeGridCellTooltip.remove();
+                        }
+                        this.activeGridCellTooltip = document.createElement("div");
+                        this.activeGridCellTooltip.addClass("chronica-grid-cell-tooltip");
+                        this.activeGridCellTooltip.textContent = createTooltipContent(cell); // Pass the current cell
+                        document.body.appendChild(this.activeGridCellTooltip);
+                        const cellRect = cell.getBoundingClientRect();
+                        const tooltipRect = this.activeGridCellTooltip.getBoundingClientRect();
+                        let top = cellRect.bottom + 8; // Increased default gap slightly
+                        let left = cellRect.left + cellRect.width / 2 - tooltipRect.width / 2;
+                        if (left < 5)
+                            left = 5;
+                        if (left + tooltipRect.width > window.innerWidth - 5) {
+                            left = window.innerWidth - tooltipRect.width - 5;
+                        }
+                        if (top + tooltipRect.height > window.innerHeight - 5) {
+                            top = cellRect.top - tooltipRect.height - 8; // Position above
+                        }
+                        if (top < 5)
+                            top = 5;
+                        this.activeGridCellTooltip.style.left = `${left + window.scrollX}px`;
+                        this.activeGridCellTooltip.style.top = `${top + window.scrollY}px`;
+                        // Add 'visible' class after a tiny delay for CSS transition
+                        // Note: This inner timeout is for the animation, the outer one is for hover intent
+                        setTimeout(() => {
+                            this.activeGridCellTooltip?.addClass("visible");
+                        }, 10);
+                    }, 500); // 500ms delay - adjust as you see fit (this was a common default for browser titles)
+                });
+                cell.addEventListener("mouseleave", (eventMouse) => {
+                    // Clear the timeout that would show the tooltip if mouse leaves before delay
+                    if (this.tooltipTimeoutId) {
+                        clearTimeout(this.tooltipTimeoutId);
+                        this.tooltipTimeoutId = null;
+                    }
+                    // If the tooltip is currently active, start its fade-out process
+                    if (this.activeGridCellTooltip &&
+                        this.activeGridCellTooltip.parentElement) {
+                        this.activeGridCellTooltip.removeClass("visible");
+                        // Set a timeout to remove the tooltip from DOM after its fade-out animation
+                        this.clearTooltipTimeoutId = window.setTimeout(() => {
+                            if (this.activeGridCellTooltip) {
+                                this.activeGridCellTooltip.remove();
+                                this.activeGridCellTooltip = null;
+                            }
+                        }, 150); // Match CSS transition duration for opacity/transform
+                    }
+                });
+                // --- End Custom Tooltip Logic ---
+                // --- Existing Event Handlers ---
                 cell.addEventListener("click", async (event) => {
+                    // Original event arg name is fine here
                     // Check for folder selection first
                     if (!this.plugin.settings.hasSeenFolders) {
                         new ChornicaFolderSelectionModal(this.app, this.plugin).open();
                         return;
                     }
-                    // Shift+Click to add event
+                    // Shift+Click to add event - IN STAGE 3 THIS WILL BE MODIFIED FOR EVENT CELLS
                     if (event.shiftKey) {
+                        // For now, this always opens "Add Event". Stage 3 will make it "Edit Event" for event cells.
                         new ChornicaEventModal(this.app, this.plugin, weekKey).open();
                         return;
                     }
@@ -3988,17 +4069,14 @@ class ChornicaTimelineView extends obsidian.ItemView {
                             return;
                         }
                         else {
-                            console.warn(`Chronica: Linked note path not found: ${linkedNotePath}. Removing link.`);
+                            // console.warn was removed by user
                             delete cell.dataset.eventFile;
-                            // Optional: We could rescan here, but might be slow. Let next scan handle it.
-                            // await this.plugin.scanVaultForEvents();
                         }
                     }
                     // If no linked event note, handle as a weekly note
                     const values = {
                         gggg: isoWeekInfo.year.toString(),
                         ww: isoWeekInfo.week.toString().padStart(2, "0"),
-                        // Use cellStartDate for YYYY, MM, DD etc. to reflect the actual start of the cell's period
                         YYYY: cellStartDate.getFullYear().toString(),
                         MM: (cellStartDate.getMonth() + 1).toString().padStart(2, "0"),
                         DD: cellStartDate.getDate().toString().padStart(2, "0"),
@@ -4007,14 +4085,12 @@ class ChornicaTimelineView extends obsidian.ItemView {
                         YY: cellStartDate.getFullYear().toString().slice(-2),
                     };
                     const weeklyNoteFileName = this.plugin.formatFileName(settings.weekNoteTemplate, values);
-                    // formatFileName already adds .md if not present in template string itself.
                     const fullPath = this.plugin.getFullPath(weeklyNoteFileName, false);
                     const existingFile = this.app.vault.getAbstractFileByPath(fullPath);
                     if (existingFile instanceof obsidian.TFile) {
                         await this.plugin.safelyOpenFile(existingFile);
                     }
                     else {
-                        // Create folder if needed
                         const folderPath = settings.notesFolder;
                         if (folderPath && folderPath.trim() !== "") {
                             try {
@@ -4022,11 +4098,10 @@ class ChornicaTimelineView extends obsidian.ItemView {
                                     await this.app.vault.createFolder(folderPath);
                             }
                             catch (err) {
-                                console.error(`Chronica: Error creating folder ${folderPath}`, err);
+                                // console.error was removed
                             }
                         }
-                        // Add basic template
-                        let content = this.plugin.formatFrontmatter({}); // Empty frontmatter
+                        let content = this.plugin.formatFrontmatter({});
                         content += `# Week ${isoWeekInfo.week}, ${isoWeekInfo.year}\n\n## Reflections\n\n## Tasks\n\n## Notes\n`;
                         const newFile = await this.app.vault.create(fullPath, content);
                         await this.plugin.safelyOpenFile(newFile);
@@ -4034,22 +4109,19 @@ class ChornicaTimelineView extends obsidian.ItemView {
                 });
                 // Context menu for manual fill
                 cell.addEventListener("contextmenu", (event) => {
+                    // Original event arg name is fine here
                     if (settings.enableManualFill && cellStartDate >= now) {
-                        event.preventDefault(); // Prevent default browser context menu
+                        event.preventDefault();
                         const filledIndex = settings.filledWeeks.indexOf(weekKey);
                         if (filledIndex >= 0) {
-                            // Week is currently filled, so unfill it
                             settings.filledWeeks.splice(filledIndex, 1);
                             cell.removeClass("filled-week");
-                            // NO MORE INLINE STYLE MANIPULATION FOR FILLING/UNFILLING HERE
                         }
                         else {
-                            // Week is not filled, so fill it
                             settings.filledWeeks.push(weekKey);
                             cell.addClass("filled-week");
-                            // NO MORE INLINE STYLE MANIPULATION FOR FILLING/UNFILLING HERE
                         }
-                        this.plugin.saveSettings(); // Save settings after change
+                        this.plugin.saveSettings();
                     }
                 });
             } // End cellIndex loop
@@ -5481,10 +5553,9 @@ class ChornicaTimelineView extends obsidian.ItemView {
             delete cell.dataset.eventFile;
         }
         // Tooltip Management:
-        const cellWeekNum = cell.dataset.cellWeekNum || "";
-        const cellIsoYear = cell.dataset.cellIsoYear || "";
-        const cellDateRange = cell.dataset.cellDateRange || "";
-        const baseCellInfo = `Cell: W${cellWeekNum}, ${cellIsoYear} (${cellDateRange})`;
+        cell.dataset.cellWeekNum || "";
+        cell.dataset.cellIsoYear || "";
+        cell.dataset.cellDateRange || "";
         if (eventApplied && matchedEvent) {
             // matchedEvent implies an event was found
             // Extract typeId to a local variable to satisfy TypeScript
@@ -5501,13 +5572,6 @@ class ChornicaTimelineView extends obsidian.ItemView {
                 matchedEvent.endWeekKey !== matchedEvent.weekKey) {
                 eventPeriodForTooltip = `${matchedEvent.weekKey} to ${matchedEvent.endWeekKey}`;
             }
-            const newTitleLines = [
-                eventTitleForTooltip,
-                `Type: ${eventTypeNameForTooltip}`,
-                `Period: ${eventPeriodForTooltip}`,
-                baseCellInfo, // Finally, the cell's own date info
-            ];
-            cell.setAttribute("title", newTitleLines.join("\n"));
             if (matchedEvent.notePath) {
                 // Use matchedEvent.notePath directly
                 cell.dataset.eventFile = matchedEvent.notePath;
@@ -5515,11 +5579,20 @@ class ChornicaTimelineView extends obsidian.ItemView {
             else {
                 delete cell.dataset.eventFile;
             }
+            // Store event details in data attributes for the custom tooltip to pick up later (Stage 2)
+            // This is a preparatory step for Stage 2 where the custom tooltip will read these.
+            cell.dataset.tooltipEventType = eventTypeNameForTooltip;
+            cell.dataset.tooltipEventPeriod = eventPeriodForTooltip;
+            cell.dataset.tooltipEventTitle = eventTitleForTooltip; // Or matchedEvent.description
         }
         else {
-            // No event, or event data is incomplete, just use the base cell info
-            cell.setAttribute("title", baseCellInfo);
+            // No event, or event data is incomplete
+            // cell.setAttribute("title", baseCellInfo); // DELETED - No longer setting native title for non-event cells
             delete cell.dataset.eventFile;
+            // Clear any event-specific data attributes if no event
+            delete cell.dataset.tooltipEventType;
+            delete cell.dataset.tooltipEventPeriod;
+            delete cell.dataset.tooltipEventTitle;
         }
         // Future Event Highlight
         if (eventApplied) {
