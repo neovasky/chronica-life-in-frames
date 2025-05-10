@@ -125,6 +125,7 @@ const DEFAULT_SETTINGS = {
     hasSeenWelcome: false,
     manualFillColor: "#8bc34a",
     tooltipDetailLevel: "expanded",
+    enableTooltipNotePreview: true,
     hasSeenFolders: false,
 };
 /** SVG icon for the Chronica Timeline */
@@ -1011,6 +1012,11 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
         if (this.settings.tooltipDetailLevel === undefined) {
             this.settings.tooltipDetailLevel = DEFAULT_SETTINGS.tooltipDetailLevel;
             needsSaveAfterLoad = true; // If you're using this flag
+        }
+        if (this.settings.enableTooltipNotePreview === undefined) {
+            this.settings.enableTooltipNotePreview =
+                DEFAULT_SETTINGS.enableTooltipNotePreview;
+            needsSaveAfterLoad = true;
         }
         // Save if migration happened or defaults were added/fixed
         if (needsSaveAfterLoad) {
@@ -6323,6 +6329,17 @@ class ChornicaSettingTab extends obsidian.PluginSettingTab {
             // For immediate effect on an open view, you might consider a partial refresh
             // or just accept that it applies on next hover.
             // this.refreshAllViews(); // Uncomment if you want immediate full grid refresh
+        }));
+        new obsidian.Setting(containerEl)
+            .setName("Enable Note Preview in Tooltip")
+            .setDesc("Show links to associated weekly or event notes in the tooltip (Expanded view only). May slightly impact performance on hover if snippets are fetched (future).")
+            .addToggle((toggle) => toggle
+            .setValue(this.plugin.settings.enableTooltipNotePreview)
+            .onChange(async (value) => {
+            this.plugin.settings.enableTooltipNotePreview = value;
+            await this.plugin.saveSettings();
+            // No immediate view refresh is strictly necessary,
+            // as the tooltip will pick it up on the next hover.
         }));
         // --- Marker Visibility Settings ---
         containerEl.createEl("h3", { text: "Marker Visibility" });
