@@ -2121,28 +2121,37 @@ Exp .chronica-sidebar-toggle:hover {
 }
 
 .chronica-tooltip-event-title {
-  /* Renamed and styled */
   font-weight: bold;
   font-size: calc(var(--font-ui-small) + 1px); /* Slightly larger for title */
   color: var(--text-normal); /* Or var(--text-accent) for more prominence */
   margin-bottom: 6px;
-  display: block; /* Ensure it takes its own line if not the only content */
+  display: block;
+  max-height: 80px;
+  overflow-y: auto;
+  padding-right: 5px;
+}
+
+.chronica-tooltip-line {
+  display: block;
+  margin-bottom: 5px;
+  line-height: 1.4;
+}
+.chronica-tooltip-line:last-child {
+  margin-bottom: 0;
 }
 
 .chronica-tooltip-label {
-  /* NEW: For labels like "Type:", "Period:", "Cell:" */
-  font-weight: 500; /* Slightly bolder than regular text */
-  color: var(--text-muted); /* Muted color for labels */
+  font-weight: 500;
+  color: var(--text-muted);
   margin-right: 5px;
 }
 
 .chronica-tooltip-description {
-  /* NEW: For event descriptions */
   font-style: italic;
-  color: var(--text-faint); /* Or var(--text-muted) */
+  color: var(--text-muted);
   margin-top: 4px;
-  font-size: calc(var(--font-ui-small) - 1px); /* Slightly smaller */
-  max-height: 60px; /* Limit height, for example 3 lines */
-  overflow-y: auto; /* Add scroll if description is too long */
-  padding-right: 5px; /* Space for scrollbar */
+  font-size: calc(var(--font-ui-small) - 1px);
+  max-height: 60px;
+  overflow-y: auto;
+  padding-right: 5px;
 }
