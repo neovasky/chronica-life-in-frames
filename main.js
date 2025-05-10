@@ -5714,57 +5714,63 @@ class ChornicaSettingTab extends obsidian.PluginSettingTab {
             const infoBubble = document.createElement("span");
             infoBubble.addClass("chronica-info-bubble");
             obsidian.setIcon(infoBubble, "info");
-            // No .title attribute anymore
             infoBubble.addEventListener("mouseenter", (event) => {
-                if (activeCustomTooltip)
-                    activeCustomTooltip.remove();
-                activeCustomTooltip = document.createElement("div");
-                activeCustomTooltip.addClass("chronica-custom-tooltip");
-                activeCustomTooltip.textContent = placeholderText;
-                document.body.appendChild(activeCustomTooltip);
-                // Position the tooltip
-                const iconRect = infoBubble.getBoundingClientRect();
-                // Ensure tooltip is in DOM to get its dimensions, then position it.
-                // Temporarily append to calculate size, then remove if it's already there.
-                let tempAppend = false;
-                if (!activeCustomTooltip.parentElement) {
+                if (activeCustomTooltip) {
+                    activeCustomTooltip.classList.remove("visible"); // Start fade out
+                    // Allow time for fade-out before removing
+                    setTimeout(() => {
+                        activeCustomTooltip?.remove();
+                        activeCustomTooltip = null; // Clear reference after removal
+                        // Create new tooltip after old one is gone
+                        createNewTooltip();
+                    }, 150); // Match CSS transition time
+                }
+                else {
+                    createNewTooltip();
+                }
+                function createNewTooltip() {
+                    activeCustomTooltip = document.createElement("div");
+                    activeCustomTooltip.addClass("chronica-custom-tooltip");
+                    activeCustomTooltip.textContent = placeholderText;
                     document.body.appendChild(activeCustomTooltip);
-                    tempAppend = true;
-                }
-                const tooltipRect = activeCustomTooltip.getBoundingClientRect();
-                if (tempAppend) {
-                    activeCustomTooltip.remove(); // Remove if we only added it for measurement
-                    document.body.appendChild(activeCustomTooltip); // Re-append for display
-                }
-                // DEFAULT: Position to the LEFT of the icon, vertically centered with the icon
-                let top = iconRect.top + iconRect.height / 2 - tooltipRect.height / 2;
-                let left = iconRect.left - tooltipRect.width - 8; // 8px gap to the left
-                // Adjust if it goes off the LEFT edge of the screen
-                if (left < 10) {
-                    // 10px buffer from left edge of window
-                    // Fallback 1: Try placing it to the RIGHT of the icon
-                    left = iconRect.right - 8;
-                    // If placing it to the RIGHT also makes it go off-screen (right edge)
-                    if (left + tooltipRect.width > window.innerWidth - 10) {
-                        // Fallback 2: Place it centered BENEATH the icon
-                        left = iconRect.left + iconRect.width / 2 - tooltipRect.width / 2;
-                        top = iconRect.bottom + 8;
+                    // Position the tooltip
+                    const iconRect = infoBubble.getBoundingClientRect();
+                    const tooltipRect = activeCustomTooltip.getBoundingClientRect(); // Get rect after appending
+                    let top = iconRect.top + iconRect.height / 2 - tooltipRect.height / 2;
+                    let left = iconRect.left - tooltipRect.width - 10; // 10px gap to the left
+                    if (left < 5) {
+                        // Check if off-screen left
+                        left = iconRect.right + 10; // Position to the right
+                        if (left + tooltipRect.width > window.innerWidth - 5) {
+                            // Check if off-screen right
+                            left = iconRect.left + iconRect.width / 2 - tooltipRect.width / 2; // Center below
+                            top = iconRect.bottom + 10;
+                        }
                     }
+                    if (top < 5) {
+                        // Check if off-screen top
+                        top = 5;
+                    }
+                    if (top + tooltipRect.height > window.innerHeight - 5) {
+                        // Check if off-screen bottom
+                        top = window.innerHeight - tooltipRect.height - 5;
+                    }
+                    activeCustomTooltip.style.left = `${left}px`;
+                    activeCustomTooltip.style.top = `${top}px`;
+                    // Trigger the animation by adding the visible class after a short delay
+                    setTimeout(() => {
+                        activeCustomTooltip?.addClass("visible");
+                    }, 10); // Small delay to ensure CSS transition applies
                 }
-                // Adjust if it goes off the TOP/BOTTOM edges of the screen
-                if (top + tooltipRect.height > window.innerHeight - 10) {
-                    top = window.innerHeight - tooltipRect.height - 10; // Keep it from going off bottom
-                }
-                if (top < 10) {
-                    top = 10; // Keep it from going off top
-                }
-                activeCustomTooltip.style.left = `${left}px`;
-                activeCustomTooltip.style.top = `${top}px`;
             });
             infoBubble.addEventListener("mouseleave", () => {
                 if (activeCustomTooltip) {
-                    activeCustomTooltip.remove();
-                    activeCustomTooltip = null;
+                    activeCustomTooltip.classList.remove("visible"); // Start fade out
+                    // Allow time for fade-out before removing
+                    setTimeout(() => {
+                        activeCustomTooltip?.remove();
+                        activeCustomTooltip = null; // Clear reference after removal
+                    }, 150); // Match CSS transition time
                 }
             });
             setting.controlEl.prepend(infoBubble);

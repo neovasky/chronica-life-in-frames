@@ -1935,20 +1935,29 @@ Exp .chronica-sidebar-toggle:hover {
 
 /* Custom Tooltip Styling */
 .chronica-custom-tooltip {
-  position: absolute; /* Crucial for positioning */
-  background-color: var(
-    --background-secondary-alt
-  ); /* Or your preferred color */
+  position: absolute;
+  background-color: var(--background-secondary-alt);
   color: var(--text-normal);
   border: 1px solid var(--background-modifier-border);
-  border-radius: 6px; /* Rounded corners */
-  padding: 8px 12px; /* Better spacing */
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  z-index: 1000; /* Ensure it's on top */
-  font-size: var(--font-ui-smaller);
-  max-width: 300px; /* Prevent it from getting too wide */
-  pointer-events: none; /* So it doesn't interfere with mouse events on elements below */
-  white-space: pre-wrap; /* Respect newlines in your placeholder text */
+  border-radius: var(
+    --container-border-radius
+  ); /* UPDATED: Use variable for consistency */
+  padding: 10px 15px; /* UPDATED: Slightly more padding */
+  box-shadow: var(--card-shadow); /* UPDATED: Use variable for consistency */
+  z-index: 1000;
+  font-size: var(--font-ui-small); /* UPDATED: Consistent font size */
+  max-width: 350px; /* UPDATED: Slightly wider */
+  pointer-events: none;
+  white-space: pre-wrap;
+  opacity: 0; /* Initially hidden */
+  transform: scale(0.95) translateY(5px); /* Initial state for animation */
+  transition: opacity 0.15s ease-out, transform 0.15s ease-out; /* Smooth transition */
+}
+
+.chronica-custom-tooltip.visible {
+  /* NEW class to control visibility and animation */
+  opacity: 1;
+  transform: scale(1) translateY(0);
 }
 
 .chronica-custom-tooltip.has-event-color {
