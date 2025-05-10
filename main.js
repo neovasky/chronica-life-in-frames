@@ -3822,9 +3822,11 @@ class ChornicaTimelineView extends obsidian.ItemView {
         if (settings.showBirthdayMarker) {
             const [bYear, bMonth, bDay] = settings.birthday.split("-").map(Number);
             const birthMonthName = MONTH_NAMES[bMonth - 1]; // Correct: Use 0-indexed month
+            const birthdayFormatted = `${birthMonthName} ${bDay}, ${bYear}`;
             const birthdayMarkerContainer = container.createEl("div", {
                 cls: "chronica-birthday-marker-container",
             });
+            // YOUR EXACT POSITIONING LOGIC:
             birthdayMarkerContainer.style.position = "absolute";
             birthdayMarkerContainer.style.zIndex = "15";
             if (isPortrait) {
@@ -3844,8 +3846,91 @@ class ChornicaTimelineView extends obsidian.ItemView {
                 cls: "birthday-cake-marker",
             });
             obsidian.setIcon(cakeEl, "cake");
-            // Use actual birth day/month/year for the tooltip
-            cakeEl.setAttribute("title", `${birthMonthName} ${bDay}, ${bYear} (Your Birthday)`);
+            // REMOVED: cakeEl.setAttribute("title", ...);
+            // ---- NEW: Custom Tooltip for Birthday Marker ----
+            const createBirthdayTooltipContent = () => {
+                const tooltipContainer = document.createDocumentFragment();
+                tooltipContainer.createEl("span", {
+                    text: `${birthdayFormatted} (Your Birthday)`,
+                    cls: "chronica-tooltip-line", // Use existing class for basic line styling
+                });
+                return {
+                    fragment: tooltipContainer,
+                    hintClass: "tooltip-birthday",
+                    customColor: "",
+                };
+            };
+            cakeEl.addEventListener("mouseenter", (eventMouse) => {
+                if (this.clearTooltipTimeoutId) {
+                    clearTimeout(this.clearTooltipTimeoutId);
+                    this.clearTooltipTimeoutId = null;
+                }
+                if (this.tooltipTimeoutId) {
+                    clearTimeout(this.tooltipTimeoutId);
+                    this.tooltipTimeoutId = null;
+                }
+                if (this.activeGridCellTooltip &&
+                    this.activeGridCellTooltip.parentElement) {
+                    this.activeGridCellTooltip.remove();
+                    this.activeGridCellTooltip = null;
+                }
+                this.tooltipTimeoutId = window.setTimeout(() => {
+                    if (this.activeGridCellTooltip &&
+                        this.activeGridCellTooltip.parentElement) {
+                        this.activeGridCellTooltip.remove(); // Ensure any existing one is gone
+                    }
+                    this.activeGridCellTooltip = document.createElement("div");
+                    this.activeGridCellTooltip.addClass("chronica-grid-cell-tooltip");
+                    const { fragment, hintClass } = createBirthdayTooltipContent();
+                    this.activeGridCellTooltip.appendChild(fragment);
+                    if (hintClass) {
+                        this.activeGridCellTooltip.addClass(hintClass);
+                    }
+                    document.body.appendChild(this.activeGridCellTooltip);
+                    const markerRect = cakeEl.getBoundingClientRect();
+                    const tooltipRect = this.activeGridCellTooltip.getBoundingClientRect();
+                    let top = markerRect.bottom + 8;
+                    let left = markerRect.left + markerRect.width / 2 - tooltipRect.width / 2;
+                    if (left < 5)
+                        left = 5;
+                    if (left + tooltipRect.width > window.innerWidth - 5) {
+                        left = window.innerWidth - tooltipRect.width - 5;
+                    }
+                    if (top + tooltipRect.height > window.innerHeight - 5) {
+                        top = markerRect.top - tooltipRect.height - 8;
+                    }
+                    if (top < 5)
+                        top = 5;
+                    this.activeGridCellTooltip.style.left = `${left + window.scrollX}px`;
+                    this.activeGridCellTooltip.style.top = `${top + window.scrollY}px`;
+                    setTimeout(() => {
+                        this.activeGridCellTooltip?.addClass("visible");
+                    }, 10);
+                    this.tooltipTimeoutId = null;
+                }, 500);
+            });
+            cakeEl.addEventListener("mouseleave", (eventMouse) => {
+                if (this.tooltipTimeoutId) {
+                    clearTimeout(this.tooltipTimeoutId);
+                    this.tooltipTimeoutId = null;
+                }
+                if (this.activeGridCellTooltip &&
+                    this.activeGridCellTooltip.parentElement) {
+                    this.activeGridCellTooltip.removeClass("visible");
+                    if (this.clearTooltipTimeoutId) {
+                        clearTimeout(this.clearTooltipTimeoutId);
+                    }
+                    this.clearTooltipTimeoutId = window.setTimeout(() => {
+                        if (this.activeGridCellTooltip &&
+                            this.activeGridCellTooltip.parentElement) {
+                            this.activeGridCellTooltip.remove();
+                        }
+                        this.activeGridCellTooltip = null;
+                        this.clearTooltipTimeoutId = null;
+                    }, 150);
+                }
+            });
+            // ---- END NEW ----
         }
         // Month Markers (Text labels)
         if (settings.showMonthMarkers) {

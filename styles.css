@@ -2107,14 +2107,17 @@ Exp .chronica-sidebar-toggle:hover {
 .chronica-grid-cell-tooltip.tooltip-event-type-preset_education_career {
   border-left-color: var(--education-career-color);
 }
-/* For custom event types, the color will be set via inline style on the border-left-color by JS */
+/* Style for the birthday marker's tooltip hint */
+.chronica-grid-cell-tooltip.tooltip-birthday {
+  border-left-color: #f48fb1; /* Use the birthday cake icon's color */
+}
 
-/* Content Structure Styling - Refined */
+/* Content Structure Styling */
 .chronica-tooltip-line {
   /* Renamed for clarity */
   display: block;
-  margin-bottom: 5px; /* Slightly more space between lines */
-  line-height: 1.4; /* Improve readability */
+  margin-bottom: 5px;
+  line-height: 1.4;
 }
 .chronica-tooltip-line:last-child {
   margin-bottom: 0;
