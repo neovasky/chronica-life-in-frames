@@ -3972,15 +3972,14 @@ class ChornicaTimelineView extends obsidian.ItemView {
                     // if (!cell.classList.contains('event')) { cell.style.backgroundColor = '#8bc34a'; }
                 }
                 // --- Custom Tooltip Logic (NEW - STAGE 1) ---
-                // Base content for the tooltip - this will be made more dynamic in Stage 2
                 const createTooltipContent = (currentCell) => {
-                    // For Stage 1, we only display the basic cell information.
-                    // isoWeekInfo and dateRange are available from the outer scope of the cellIndex loop.
-                    // In Stage 2, this function will read data from currentCell.dataset to show event info.
+                    // For Stage 1, retrieve the basic cell information from data attributes
+                    // Fallback to loop-scoped variables if data attributes are somehow missing (though they should be set)
                     const weekNum = currentCell.dataset.cellWeekNum || isoWeekInfo.week.toString();
-                    currentCell.dataset.cellIsoYear || isoWeekInfo.year.toString();
-                    currentCell.dataset.cellDateRange || dateRange;
-                    return `Week ${weekNum}, <span class="math-inline">\{year\}\\n</span>{specificDateRange}`;
+                    const year = currentCell.dataset.cellIsoYear || isoWeekInfo.year.toString(); // Corrected assignment
+                    const specificDateRange = currentCell.dataset.cellDateRange || dateRange; // Corrected assignment
+                    // Return a plain text string with a newline for Stage 1
+                    return `Week ${weekNum}, ${year}\n${specificDateRange}`;
                 };
                 cell.addEventListener("mouseenter", (eventMouse) => {
                     // Clear any existing timeout that would hide a tooltip
