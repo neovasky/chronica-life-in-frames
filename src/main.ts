@@ -3094,18 +3094,36 @@ class ChornicaEventModal extends Modal {
 
     if (this.isEditMode && this.originalEvent) {
       // --- EDIT MODE ---
-      const eventIndex = this.plugin.settings.events.findIndex(
-        // A more robust find would be by a unique event ID if they had one.
-        // For now, matching by the original reference if possible, or key properties.
-        // This assumes this.originalEvent is the actual object from the settings.events array.
-        (event) => event === this.originalEvent
+      // Find the event to update by matching its original properties,
+      // as the array reference might have changed due to background scans.
+      const original = this.originalEvent; // Local const for easier access
+      const eventToUpdate = this.plugin.settings.events.find(
+        (eventInSettings) => {
+          // Match based on key properties that defined the event when it was opened for editing.
+          // Note: If events could have identical weekKey, name, description, and typeId,
+          // this could still pick the wrong one if multiple such identical events exist.
+          // A truly unique event ID would be the best solution for future robustness.
+          const periodMatches =
+            original.endWeekKey && original.endWeekKey !== original.weekKey
+              ? eventInSettings.weekKey === original.weekKey &&
+                eventInSettings.endWeekKey === original.endWeekKey
+              : eventInSettings.weekKey === original.weekKey &&
+                (!eventInSettings.endWeekKey ||
+                  eventInSettings.endWeekKey === eventInSettings.weekKey);
+
+          return (
+            periodMatches &&
+            eventInSettings.name === original.name && // original.name could be undefined
+            eventInSettings.description === original.description &&
+            eventInSettings.typeId === original.typeId &&
+            eventInSettings.notePath === original.notePath
+          ); // Also match notePath if it existed
+        }
       );
 
-      if (eventIndex !== -1) {
-        const eventToUpdate = this.plugin.settings.events[eventIndex];
-
+      if (eventToUpdate) {
         // Preserve original notePath unless significant changes necessitate a new note
-        const oldNotePath = eventToUpdate.notePath;
+        // const oldNotePath = eventToUpdate.notePath; // eventToUpdate IS the object from settings
 
         eventToUpdate.weekKey = this.selectedWeekKey;
         eventToUpdate.name = nameForEventObject;
@@ -3118,36 +3136,31 @@ class ChornicaEventModal extends Modal {
             ? this.selectedEndWeekKey
             : undefined;
 
-        // Logic for updating/creating note (could be refactored for more clarity)
-        // We pass the updated event object to createOrUpdateEventNote
-        // The 'eventName' for note naming should be finalEventName from modal input
+        // Logic for updating/creating note
         const noteProcessed = await this.createOrUpdateEventNote(
-          eventToUpdate,
+          eventToUpdate, // Pass the event object from the settings array
           finalEventName,
           startDate,
           endDate
         );
-        if (noteProcessed && eventToUpdate.notePath) {
-          // createOrUpdateEventNote should have updated eventToUpdate.notePath if it created a new note
-        } else if (!noteProcessed) {
-          // Failed to process note, but event data in settings is updated
-          new Notice(
-            "Event updated in settings, but failed to update/create note file."
-          );
+        // eventToUpdate.notePath is updated by createOrUpdateEventNote directly on the object from settings
+        if (!noteProcessed && !eventToUpdate.notePath) {
+          // If note processing failed AND there's no note path, something might be wrong.
+          // However, the event data itself is updated in eventToUpdate.
         }
 
         await this.plugin.saveSettings();
         new Notice(`Event "${nameForEventObject}" updated.`);
       } else {
         new Notice(
-          "Error: Original event not found for update. Could not save changes."
+          "Error: Original event not found for update. Could not save changes. The event might have been modified or deleted externally."
         );
+        // Do not proceed with adding a new event if edit failed this way.
         this.close();
         this.refreshViews();
         return;
       }
     } else {
-      // --- ADD MODE ---
       const newEvent: ChronicaEvent = {
         weekKey: this.selectedWeekKey,
         name: nameForEventObject,
@@ -5116,6 +5129,29 @@ class ChornicaTimelineView extends ItemView {
         cell.dataset.cellIsoYear = isoWeekInfo.year.toString();
         cell.dataset.cellDateRange = dateRange;
 
+        // ----  Determine and store potential weekly note path ----
+        const weeklyNotePlaceholderValues = {
+          gggg: isoWeekInfo.year.toString(),
+          ww: isoWeekInfo.week.toString().padStart(2, "0"),
+          YYYY: cellStartDate.getFullYear().toString(),
+          MM: (cellStartDate.getMonth() + 1).toString().padStart(2, "0"),
+          DD: cellStartDate.getDate().toString().padStart(2, "0"),
+          MMMM: cellStartDate.toLocaleString("default", { month: "long" }),
+          MMM: cellStartDate.toLocaleString("default", { month: "short" }),
+          YY: cellStartDate.getFullYear().toString().slice(-2),
+        };
+        const potentialWeeklyNoteName = this.plugin.formatFileName(
+          settings.weekNoteTemplate,
+          weeklyNotePlaceholderValues
+        );
+        // Get full path, false indicates it's NOT an event note for folder purposes
+        const potentialWeeklyNotePath = this.plugin.getFullPath(
+          potentialWeeklyNoteName,
+          false
+        );
+        cell.dataset.weeklyNotePath = potentialWeeklyNotePath;
+        // ---- END  ----
+
         // Positioning
         cell.style.position = "absolute";
         const yearPos = this.plugin.calculateYearPosition(
@@ -5294,6 +5330,47 @@ class ChornicaTimelineView extends ItemView {
               colorHintClass = "tooltip-present";
             else if (hoveredCell.classList.contains("future"))
               colorHintClass = "tooltip-future";
+          }
+
+          if (settings.enableTooltipNotePreview && !isCompact) {
+            const eventNotePath = hoveredCell.dataset.eventFile;
+            const weeklyNotePath = hoveredCell.dataset.weeklyNotePath;
+
+            if (eventNotePath) {
+              const eventNoteLine = tooltipContainer.createEl("span", {
+                cls: "chronica-tooltip-line chronica-tooltip-notelink", // Added new class
+              });
+              eventNoteLine.createEl("span", {
+                text: "Event Note:",
+                cls: "chronica-tooltip-label",
+              });
+              // Extract filename from path
+              const eventNoteFilename = eventNotePath.substring(
+                eventNotePath.lastIndexOf("/") + 1
+              );
+              eventNoteLine.appendText(eventNoteFilename);
+            }
+
+            if (weeklyNotePath) {
+              // Only show weekly note if it's different from event note or if no event note
+              if (
+                !eventNotePath ||
+                (eventNotePath && weeklyNotePath !== eventNotePath)
+              ) {
+                const weeklyNoteLine = tooltipContainer.createEl("span", {
+                  cls: "chronica-tooltip-line chronica-tooltip-notelink", // Added new class
+                });
+                weeklyNoteLine.createEl("span", {
+                  text: "Weekly Note:",
+                  cls: "chronica-tooltip-label",
+                });
+                // Extract filename from path
+                const weeklyNoteFilename = weeklyNotePath.substring(
+                  weeklyNotePath.lastIndexOf("/") + 1
+                );
+                weeklyNoteLine.appendText(weeklyNoteFilename);
+              }
+            }
           }
 
           // Fallback content

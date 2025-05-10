@@ -2155,3 +2155,13 @@ Exp .chronica-sidebar-toggle:hover {
   overflow-y: auto;
   padding-right: 5px;
 }
+
+/* Styling for the "Event Note:" or "Weekly Note:" label part within a note information line */
+/* The parent span has both .chronica-tooltip-line and .chronica-tooltip-notelink */
+.chronica-tooltip-notelink .chronica-tooltip-label {
+  color: var(
+    --text-faint
+  ); /* Makes the "Event Note:" or "Weekly Note:" label fainter */
+  font-weight: normal; /* Ensures the label isn't bold if other .chronica-tooltip-label are */
+  margin-right: 4px; /* Adds a small space between the label and the appended filename */
+}
