@@ -1878,7 +1878,7 @@ class ChornicaEventModal extends obsidian.Modal {
         }
         else if (targetDataOrEvent && typeof targetDataOrEvent === "object") {
             // It's a ChronicaEvent object for editing
-            this.originalEvent = targetDataOrEvent;
+            this.originalEvent = targetDataOrEvent; // Explicitly cast
             this.isEditMode = true;
             // Pre-fill modal properties from the event being edited
             this.selectedWeekKey = this.originalEvent.weekKey;
@@ -1897,15 +1897,17 @@ class ChornicaEventModal extends obsidian.Modal {
         else {
             // Default for new event if no targetDataOrEvent (e.g., "Add Event" from sidebar)
             this.isEditMode = false;
-            // selectedWeekKey might be set based on current view or a default
+            // selectedWeekKey might be set based on current view or a default,
+            // or could be initialized if needed (e.g., to current week).
         }
         // Ensure eventTypes is loaded and selectedTypeId is valid
         if (!this.plugin.settings.eventTypes ||
             this.plugin.settings.eventTypes.length === 0) {
-            this.selectedTypeId = "";
+            this.selectedTypeId = ""; // No types available
         }
         else if (!this.plugin.settings.eventTypes.some((et) => et.id === this.selectedTypeId)) {
-            // If current selectedTypeId is invalid (e.g. from an old event) or not set, default to first available
+            // If current selectedTypeId is invalid (e.g., from an old event or not set),
+            // default to the first available type.
             this.selectedTypeId = this.plugin.settings.eventTypes[0].id;
         }
     }
@@ -4291,6 +4293,25 @@ class ChornicaTimelineView extends obsidian.ItemView {
                 // --- End Custom Tooltip Logic ---
                 // --- Existing Event Handlers ---
                 cell.addEventListener("click", async (event) => {
+                    // ---- NEW: Force hide/cleanup tooltip on any cell click ----
+                    if (this.tooltipTimeoutId) {
+                        // If a "show" timeout is pending
+                        clearTimeout(this.tooltipTimeoutId);
+                        this.tooltipTimeoutId = null;
+                    }
+                    // Clear any pending "hide/clear" timeout for a *previous* tooltip,
+                    // as its fade-out might be interrupted by this click.
+                    if (this.clearTooltipTimeoutId) {
+                        clearTimeout(this.clearTooltipTimeoutId);
+                        this.clearTooltipTimeoutId = null;
+                    }
+                    // If a tooltip is currently active and visible (managed by this.activeGridCellTooltip)
+                    if (this.activeGridCellTooltip &&
+                        this.activeGridCellTooltip.parentElement) {
+                        this.activeGridCellTooltip.remove(); // Remove it from DOM immediately
+                    }
+                    this.activeGridCellTooltip = null; // CRITICAL: Always nullify the reference.
+                    // ---- END NEW ----
                     // Original event arg name is fine here
                     // Check for folder selection first
                     if (!this.plugin.settings.hasSeenFolders) {
@@ -4299,39 +4320,51 @@ class ChornicaTimelineView extends obsidian.ItemView {
                     }
                     // Shift+Click to add or edit event
                     if (event.shiftKey) {
-                        const eventTitleFromDataset = cell.dataset.tooltipEventTitle; // This holds event.name (or .description fallback)
-                        const eventDescFromDataset = cell.dataset.tooltipEventDescription;
+                        const eventTitleFromDataset = cell.dataset.tooltipEventTitle;
+                        const eventDescriptionFromDataset = cell.dataset.tooltipEventDescription;
                         const eventTypeFromDataset = cell.dataset.tooltipEventType;
+                        const eventPeriodFromDataset = cell.dataset.tooltipEventPeriod;
                         let eventToEdit = undefined;
                         if (eventTitleFromDataset) {
-                            // If dataset indicates an event might be here
-                            // Try to find the exact event object from the settings
-                            eventToEdit = this.plugin.settings.events.find((evt) => evt.weekKey === weekKey && // weekKey of the current cell
-                                (evt.name === eventTitleFromDataset ||
-                                    (!evt.name && evt.description === eventTitleFromDataset)) &&
-                                (eventDescFromDataset
-                                    ? evt.description === eventDescFromDataset
-                                    : true) && // Match description if available
-                                evt.typeId ===
-                                    this.plugin.settings.eventTypes.find((et) => et.name === eventTypeFromDataset)?.id // Match typeId
-                            );
-                            // More robust find if multiple events per week:
-                            // If you store an event's index or a unique ID in a data attribute like `cell.dataset.eventId`,
-                            // you could use that for a more direct lookup:
-                            // const eventId = cell.dataset.eventId;
-                            // if (eventId) {
-                            //   eventToEdit = this.plugin.settings.events.find(evt => evt.id === eventId); // Assuming events have unique IDs
-                            // }
+                            // If the cell is styled as part of an event
+                            eventToEdit = this.plugin.settings.events.find((evt) => {
+                                // 1. Match Event Type
+                                const typeNameMatches = this.plugin.settings.eventTypes.find((et) => et.id === evt.typeId)?.name === eventTypeFromDataset;
+                                if (!typeNameMatches)
+                                    return false;
+                                // 2. Match Event Period
+                                let currentEventPeriodFormatted;
+                                if (evt.endWeekKey && evt.endWeekKey !== evt.weekKey) {
+                                    currentEventPeriodFormatted = `${evt.weekKey} to ${evt.endWeekKey}`;
+                                }
+                                else {
+                                    currentEventPeriodFormatted = evt.weekKey;
+                                }
+                                const periodMatches = currentEventPeriodFormatted === eventPeriodFromDataset;
+                                if (!periodMatches)
+                                    return false;
+                                // 3. Match Event Title (considering name can be from evt.name or evt.description)
+                                const titleMatches = (evt.name || evt.description) === eventTitleFromDataset;
+                                if (!titleMatches)
+                                    return false;
+                                // 4. Match Event Description (considering description can be empty)
+                                const descriptionMatches = (evt.description || "") ===
+                                    (eventDescriptionFromDataset || "");
+                                if (!descriptionMatches)
+                                    return false;
+                                // If all conditions pass, this is the event
+                                return true;
+                            });
                         }
                         if (eventToEdit) {
                             // EDIT MODE: Found an existing event for this cell
                             new ChornicaEventModal(this.app, this.plugin, eventToEdit).open();
                         }
                         else {
-                            // ADD MODE: No specific event found, or it's an empty cell
+                            // ADD MODE: No specific event found for editing
                             new ChornicaEventModal(this.app, this.plugin, weekKey).open();
                         }
-                        return;
+                        return; // Important: return after handling shift-click
                     }
                     // Check if event styling added a note path to the cell
                     const linkedNotePath = cell.dataset.eventFile;
