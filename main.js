@@ -2517,11 +2517,10 @@ class ChornicaEventModal extends obsidian.Modal {
         };
         if (event.endWeekKey && endDate) {
             // This correctly checks if it's a range event
-            event.endWeekKey.split("-")[0]; // ISO Year of end week
-            event.endWeekKey.split("-W")[1]; // ISO Week of end week
-            const endDateStr = endDate.toISOString().split("T")[0]; // Calendar end date YYYY-MM-DD
+            event.endWeekKey.split("-")[0];
+            event.endWeekKey.split("-W")[1];
+            const endDateStr = endDate.toISOString().split("T")[0];
             metadata.endDate = endDateStr;
-            // This is the values object for RANGE events
             const values = {
                 eventName: sanitizedEventName,
                 startDate: dateStr,
@@ -2544,14 +2543,11 @@ class ChornicaEventModal extends obsidian.Modal {
                 endDate_YY: endDate.getFullYear().toString().slice(-2),
             };
             fileName = this.plugin.formatFileName(this.plugin.settings.rangeNoteTemplate, values);
-            const startDisp = event.weekKey.replace("W", "--W");
-            const endDisp = event.endWeekKey.replace("W", "--W");
-            defaultNoteContent = `# ${startDisp}_to_${endDisp} (${eventName})\n\nStart Date: ${dateStr}\nEnd Date: ${endDateStr}\nType: ${eventType.name}\nDescription: ${event.description}\n\n## Notes\n\n`;
+            // FURTHER MINIMIZED defaultNoteContent for range events:
+            defaultNoteContent = `\n## **Event Notes**\n\n`; // Starts with a newline for separation from frontmatter
         }
         else {
             // This is for SINGLE events
-            // const isoWeekInfo = this.plugin.getISOWeekData(startDate); // Not strictly needed if event.weekKey is primary
-            // This is the values object for SINGLE events
             const values = {
                 eventName: sanitizedEventName,
                 startDate: dateStr,
@@ -2562,11 +2558,11 @@ class ChornicaEventModal extends obsidian.Modal {
                 DD: startDate.getDate().toString().padStart(2, "0"),
                 MMMM: startDate.toLocaleString("default", { month: "long" }),
                 MMM: startDate.toLocaleString("default", { month: "short" }),
-                YY: startDate.getFullYear().toString().slice(-2), // Was date_YY
+                YY: startDate.getFullYear().toString().slice(-2),
             };
             fileName = this.plugin.formatFileName(this.plugin.settings.eventNoteTemplate, values);
-            const weekDisp = event.weekKey.replace("W", "--W");
-            defaultNoteContent = `# ${weekDisp} (${eventName})\n\nDate: ${dateStr}\nType: ${eventType.name}\nDescription: ${event.description}\n\n## Notes\n\n`;
+            // FURTHER MINIMIZED defaultNoteContent for single events:
+            defaultNoteContent = `\n## **Event Notes**\n\n`; // Starts with a newline for separation from frontmatter
         }
         const fullPath = this.plugin.getFullPath(fileName, true);
         let file = this.app.vault.getAbstractFileByPath(fullPath);

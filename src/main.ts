@@ -3233,30 +3233,25 @@ class ChornicaEventModal extends Modal {
 
     if (event.endWeekKey && endDate) {
       // This correctly checks if it's a range event
-      const endWeekYear = event.endWeekKey.split("-")[0]; // ISO Year of end week
-      const endWeekNum = event.endWeekKey.split("-W")[1]; // ISO Week of end week
-      const endDateStr = endDate.toISOString().split("T")[0]; // Calendar end date YYYY-MM-DD
+      const endWeekYear = event.endWeekKey.split("-")[0];
+      const endWeekNum = event.endWeekKey.split("-W")[1];
+      const endDateStr = endDate.toISOString().split("T")[0];
       metadata.endDate = endDateStr;
 
-      // This is the values object for RANGE events
       const values = {
         eventName: sanitizedEventName,
         startDate: dateStr,
         endDate: endDateStr,
-
-        start_gggg: event.weekKey.split("-")[0], // Was start_iso_year
-        start_ww: event.weekKey.split("-W")[1], // Was start_iso_week
-
-        startDate_YYYY: startDate.getFullYear().toString(), // Was startDate_YYYY (no change needed, just ensure consistency)
+        start_gggg: event.weekKey.split("-")[0],
+        start_ww: event.weekKey.split("-W")[1],
+        startDate_YYYY: startDate.getFullYear().toString(),
         startDate_MM: (startDate.getMonth() + 1).toString().padStart(2, "0"),
         startDate_DD: startDate.getDate().toString().padStart(2, "0"),
         startDate_MMMM: startDate.toLocaleString("default", { month: "long" }),
         startDate_MMM: startDate.toLocaleString("default", { month: "short" }),
         startDate_YY: startDate.getFullYear().toString().slice(-2),
-
-        end_gggg: event.endWeekKey!.split("-")[0], // Was end_iso_year
-        end_ww: event.endWeekKey!.split("-W")[1], // Was end_iso_week
-
+        end_gggg: event.endWeekKey!.split("-")[0],
+        end_ww: event.endWeekKey!.split("-W")[1],
         endDate_YYYY: endDate!.getFullYear().toString(),
         endDate_MM: (endDate!.getMonth() + 1).toString().padStart(2, "0"),
         endDate_DD: endDate!.getDate().toString().padStart(2, "0"),
@@ -3269,35 +3264,29 @@ class ChornicaEventModal extends Modal {
         values
       );
 
-      const startDisp = event.weekKey.replace("W", "--W");
-      const endDisp = event.endWeekKey.replace("W", "--W");
-      defaultNoteContent = `# ${startDisp}_to_${endDisp} (${eventName})\n\nStart Date: ${dateStr}\nEnd Date: ${endDateStr}\nType: ${eventType.name}\nDescription: ${event.description}\n\n## Notes\n\n`;
+      // FURTHER MINIMIZED defaultNoteContent for range events:
+      defaultNoteContent = `\n## **Event Notes**\n\n`; // Starts with a newline for separation from frontmatter
     } else {
       // This is for SINGLE events
-      // const isoWeekInfo = this.plugin.getISOWeekData(startDate); // Not strictly needed if event.weekKey is primary
-
-      // This is the values object for SINGLE events
       const values = {
         eventName: sanitizedEventName,
-        startDate: dateStr, // Full YYYY-MM-DD
-
-        gggg: event.weekKey.split("-")[0], // Was iso_year
-        ww: event.weekKey.split("-W")[1], // Was iso_week
-
-        YYYY: startDate.getFullYear().toString(), // Was date_YYYY
-        MM: (startDate.getMonth() + 1).toString().padStart(2, "0"), // Was date_MM
-        DD: startDate.getDate().toString().padStart(2, "0"), // Was date_DD
-        MMMM: startDate.toLocaleString("default", { month: "long" }), // Was date_MMMM
-        MMM: startDate.toLocaleString("default", { month: "short" }), // Was date_MMM
-        YY: startDate.getFullYear().toString().slice(-2), // Was date_YY
+        startDate: dateStr,
+        gggg: event.weekKey.split("-")[0],
+        ww: event.weekKey.split("-W")[1],
+        YYYY: startDate.getFullYear().toString(),
+        MM: (startDate.getMonth() + 1).toString().padStart(2, "0"),
+        DD: startDate.getDate().toString().padStart(2, "0"),
+        MMMM: startDate.toLocaleString("default", { month: "long" }),
+        MMM: startDate.toLocaleString("default", { month: "short" }),
+        YY: startDate.getFullYear().toString().slice(-2),
       };
       fileName = this.plugin.formatFileName(
         this.plugin.settings.eventNoteTemplate,
         values
       );
 
-      const weekDisp = event.weekKey.replace("W", "--W");
-      defaultNoteContent = `# ${weekDisp} (${eventName})\n\nDate: ${dateStr}\nType: ${eventType.name}\nDescription: ${event.description}\n\n## Notes\n\n`;
+      // FURTHER MINIMIZED defaultNoteContent for single events:
+      defaultNoteContent = `\n## **Event Notes**\n\n`; // Starts with a newline for separation from frontmatter
     }
 
     const fullPath = this.plugin.getFullPath(fileName, true);
