@@ -5476,9 +5476,10 @@ class ChornicaTimelineView extends obsidian.ItemView {
         const baseCellInfo = `Cell: W${cellWeekNum}, ${cellIsoYear} (${cellDateRange})`;
         if (eventApplied && matchedEvent) {
             // matchedEvent implies an event was found
-            // Retrieve the eventType again based on matchedEvent.typeId
-            // This ensures 'eventType' is in scope and correct for the matched event.
-            const currentEventType = this.plugin.settings.eventTypes.find((type) => type.id === matchedEvent.typeId);
+            // Extract typeId to a local variable to satisfy TypeScript
+            const typeId = matchedEvent.typeId;
+            // Use the local variable in the callback instead of directly accessing matchedEvent
+            const currentEventType = this.plugin.settings.eventTypes.find((type) => type.id === typeId);
             let eventTitleForTooltip = matchedEvent.description;
             let eventTypeNameForTooltip = "Unknown Type";
             let eventPeriodForTooltip = matchedEvent.weekKey;
