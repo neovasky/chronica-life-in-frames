@@ -3971,40 +3971,156 @@ class ChornicaTimelineView extends obsidian.ItemView {
                     // If specific styling is needed and NOT overridden by event, add here:
                     // if (!cell.classList.contains('event')) { cell.style.backgroundColor = '#8bc34a'; }
                 }
-                // --- Custom Tooltip Logic (NEW - STAGE 1) ---
-                const createTooltipContent = (currentCell) => {
-                    // For Stage 1, retrieve the basic cell information from data attributes
-                    // Fallback to loop-scoped variables if data attributes are somehow missing (though they should be set)
-                    const weekNum = currentCell.dataset.cellWeekNum || isoWeekInfo.week.toString();
-                    const year = currentCell.dataset.cellIsoYear || isoWeekInfo.year.toString(); // Corrected assignment
-                    const specificDateRange = currentCell.dataset.cellDateRange || dateRange; // Corrected assignment
-                    // Return a plain text string with a newline for Stage 1
-                    return `Week ${weekNum}, ${year}\n${specificDateRange}`;
+                // --- Custom Tooltip Logic (STAGE 2 - Rich Content & Color Hint) ---
+                const createTooltipContent = (hoveredCell) => {
+                    const tooltipContainer = document.createDocumentFragment(); // Use a fragment to build content efficiently
+                    // Base cell info (always present)
+                    const cellWeekNum = hoveredCell.dataset.cellWeekNum || "";
+                    const cellIsoYear = hoveredCell.dataset.cellIsoYear || "";
+                    const cellDateRange = hoveredCell.dataset.cellDateRange || ""; // This is "MMM D - MMM D"
+                    // Event-specific info (from data attributes set by applyEventStyling)
+                    const eventTitle = hoveredCell.dataset.tooltipEventTitle;
+                    const eventType = hoveredCell.dataset.tooltipEventType;
+                    const eventPeriod = hoveredCell.dataset.tooltipEventPeriod; // This is "YYYY-WXX to YYYY-WXX" or "YYYY-WXX"
+                    let colorHintClass = "";
+                    let eventTypeColor = ""; // For custom event type inline style
+                    if (eventTitle) {
+                        // If there's an event
+                        // Event Title
+                        tooltipContainer.createEl("span", {
+                            text: eventTitle,
+                            cls: "chronica-tooltip-event-title",
+                        });
+                        // Event Type
+                        if (eventType) {
+                            const typeLine = tooltipContainer.createEl("span", {
+                                cls: "chronica-tooltip-line",
+                            });
+                            typeLine.createEl("span", {
+                                text: "Type:",
+                                cls: "chronica-tooltip-label",
+                            });
+                            typeLine.appendText(eventType);
+                            // Determine color hint class or specific color for event
+                            const matchedEventType = this.plugin.settings.eventTypes.find((t) => t.name === eventType || t.id === eventType);
+                            if (matchedEventType) {
+                                if (matchedEventType.isPreset) {
+                                    colorHintClass = `tooltip-event-type-${matchedEventType.id.replace(/[^a-zA-Z0-9-_]/g, "-")}`;
+                                }
+                                else {
+                                    eventTypeColor = matchedEventType.color; // Store custom color for inline style
+                                }
+                            }
+                        }
+                        // Event Period (Only for range events, or if different from cell's own display)
+                        // Point 3 & 6 refinement:
+                        // If it's a single-date event (eventPeriod is just YYYY-WXX), and this weekKey matches the cell's weekKey,
+                        // we might not need to show this "Period" line if the "Cell" line already conveys the single week.
+                        // For a multi-week event, eventPeriod will be "YYYY-WXX to YYYY-WXX".
+                        if (eventPeriod && eventPeriod.includes("to")) {
+                            // Clearly a range event
+                            const periodLine = tooltipContainer.createEl("span", {
+                                cls: "chronica-tooltip-line",
+                            });
+                            periodLine.createEl("span", {
+                                text: "Period:",
+                                cls: "chronica-tooltip-label",
+                            });
+                            periodLine.appendText(eventPeriod);
+                        }
+                        // Cell Info (for event cells, this shows the specific cell's context within the event)
+                        // Point 5 & 6 refinement: For date-range events, show Www, YYYY (MMM D - D)
+                        // For single date events, the 'Cell:' line might be redundant if 'Period:' shows the same single week.
+                        // However, for now, let's always show the cell's specific range for clarity.
+                        const cellInfoLine = tooltipContainer.createEl("span", {
+                            cls: "chronica-tooltip-line",
+                        });
+                        cellInfoLine.createEl("span", {
+                            text: "Cell:",
+                            cls: "chronica-tooltip-label",
+                        });
+                        // Smart date formatting for cellDateRange (Point 7)
+                        const [startDateStr, endDateStr] = cellDateRange.split(" - ");
+                        let formattedCellRange = cellDateRange;
+                        if (startDateStr && endDateStr) {
+                            const startMonth = startDateStr.substring(0, 3);
+                            const endMonth = endDateStr.substring(0, 3);
+                            if (startMonth === endMonth) {
+                                formattedCellRange = `${startDateStr} - ${endDateStr.substring(4)}`; // e.g., "Oct 4 - 10"
+                            }
+                            else {
+                                formattedCellRange = cellDateRange; // e.g., "Oct 28 - Nov 3"
+                            }
+                        }
+                        cellInfoLine.appendText(`W${cellWeekNum}, ${cellIsoYear} (${formattedCellRange})`);
+                    }
+                    else {
+                        // No event on this cell
+                        // Just show basic cell info, formatted nicely
+                        const weekLine = tooltipContainer.createEl("span", {
+                            cls: "chronica-tooltip-line",
+                        });
+                        weekLine.appendText(`Week ${cellWeekNum}, ${cellIsoYear}`);
+                        const rangeLine = tooltipContainer.createEl("span", {
+                            cls: "chronica-tooltip-line",
+                        });
+                        // Smart date formatting for cellDateRange (Point 7)
+                        const [startDateStr, endDateStr] = cellDateRange.split(" - ");
+                        let formattedCellRange = cellDateRange;
+                        if (startDateStr && endDateStr) {
+                            const startMonth = startDateStr.substring(0, 3);
+                            const endMonth = endDateStr.substring(0, 3);
+                            if (startMonth === endMonth) {
+                                formattedCellRange = `${startDateStr} - ${endDateStr.substring(4)}`;
+                            }
+                            else {
+                                formattedCellRange = cellDateRange;
+                            }
+                        }
+                        rangeLine.appendText(formattedCellRange);
+                        // Determine color hint for non-event cells
+                        if (hoveredCell.classList.contains("past"))
+                            colorHintClass = "tooltip-past";
+                        else if (hoveredCell.classList.contains("present"))
+                            colorHintClass = "tooltip-present";
+                        else if (hoveredCell.classList.contains("future"))
+                            colorHintClass = "tooltip-future";
+                    }
+                    return {
+                        fragment: tooltipContainer,
+                        hintClass: colorHintClass,
+                        customColor: eventTypeColor,
+                    };
                 };
                 cell.addEventListener("mouseenter", (eventMouse) => {
-                    // Clear any existing timeout that would hide a tooltip
                     if (this.clearTooltipTimeoutId) {
                         clearTimeout(this.clearTooltipTimeoutId);
                         this.clearTooltipTimeoutId = null;
                     }
-                    // Clear any previous timeout that was set to show a tooltip
                     if (this.tooltipTimeoutId) {
                         clearTimeout(this.tooltipTimeoutId);
                     }
-                    // Set a new timeout to show the tooltip after a delay
                     this.tooltipTimeoutId = window.setTimeout(() => {
-                        // If there's an old tooltip from a different cell, remove it immediately before showing new one
                         if (this.activeGridCellTooltip &&
                             this.activeGridCellTooltip.parentElement) {
                             this.activeGridCellTooltip.remove();
                         }
                         this.activeGridCellTooltip = document.createElement("div");
                         this.activeGridCellTooltip.addClass("chronica-grid-cell-tooltip");
-                        this.activeGridCellTooltip.textContent = createTooltipContent(cell); // Pass the current cell
+                        const { fragment, hintClass, customColor } = createTooltipContent(cell); // Get structured content
+                        this.activeGridCellTooltip.appendChild(fragment); // Append the document fragment
+                        // Apply color hint class
+                        if (hintClass) {
+                            this.activeGridCellTooltip.addClass(hintClass);
+                        }
+                        else if (customColor) {
+                            // For custom event types, apply color directly to the border
+                            this.activeGridCellTooltip.style.borderLeftColor = customColor;
+                        }
                         document.body.appendChild(this.activeGridCellTooltip);
                         const cellRect = cell.getBoundingClientRect();
                         const tooltipRect = this.activeGridCellTooltip.getBoundingClientRect();
-                        let top = cellRect.bottom + 8; // Increased default gap slightly
+                        let top = cellRect.bottom + 8;
                         let left = cellRect.left + cellRect.width / 2 - tooltipRect.width / 2;
                         if (left < 5)
                             left = 5;
@@ -4012,36 +4128,32 @@ class ChornicaTimelineView extends obsidian.ItemView {
                             left = window.innerWidth - tooltipRect.width - 5;
                         }
                         if (top + tooltipRect.height > window.innerHeight - 5) {
-                            top = cellRect.top - tooltipRect.height - 8; // Position above
+                            top = cellRect.top - tooltipRect.height - 8;
                         }
                         if (top < 5)
                             top = 5;
                         this.activeGridCellTooltip.style.left = `${left + window.scrollX}px`;
                         this.activeGridCellTooltip.style.top = `${top + window.scrollY}px`;
-                        // Add 'visible' class after a tiny delay for CSS transition
-                        // Note: This inner timeout is for the animation, the outer one is for hover intent
                         setTimeout(() => {
                             this.activeGridCellTooltip?.addClass("visible");
                         }, 10);
-                    }, 500); // 500ms delay - adjust as you see fit (this was a common default for browser titles)
+                    }, 500);
                 });
+                // mouseleave listener remains the same as in your previous correct version
                 cell.addEventListener("mouseleave", (eventMouse) => {
-                    // Clear the timeout that would show the tooltip if mouse leaves before delay
                     if (this.tooltipTimeoutId) {
                         clearTimeout(this.tooltipTimeoutId);
                         this.tooltipTimeoutId = null;
                     }
-                    // If the tooltip is currently active, start its fade-out process
                     if (this.activeGridCellTooltip &&
                         this.activeGridCellTooltip.parentElement) {
                         this.activeGridCellTooltip.removeClass("visible");
-                        // Set a timeout to remove the tooltip from DOM after its fade-out animation
                         this.clearTooltipTimeoutId = window.setTimeout(() => {
                             if (this.activeGridCellTooltip) {
                                 this.activeGridCellTooltip.remove();
                                 this.activeGridCellTooltip = null;
                             }
-                        }, 150); // Match CSS transition duration for opacity/transform
+                        }, 150);
                     }
                 });
                 // --- End Custom Tooltip Logic ---

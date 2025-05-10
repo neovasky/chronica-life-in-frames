@@ -2053,27 +2053,26 @@ Exp .chronica-sidebar-toggle:hover {
      14. GRID CELL TOOLTIPS
      ----------------------------------------------------------------------------- */
 .chronica-grid-cell-tooltip {
-  position: absolute; /* Crucial for JS positioning */
-  background-color: var(
-    --background-secondary-alt
-  ); /* Or --background-primary for a different feel */
+  position: absolute;
+  background-color: var(--background-secondary-alt);
   color: var(--text-normal);
   border: 1px solid var(--background-modifier-border);
-  border-radius: var(
-    --container-border-radius
-  ); /* Rounded corners from your theme */
-  padding: 10px 15px; /* More spacious padding */
-  box-shadow: var(--card-shadow); /* Consistent shadow */
-  z-index: 10000; /* Ensure it's on top of other elements, including grid cells */
-  font-size: var(--font-ui-small); /* Consistent font size */
-  max-width: 350px; /* Allow more width */
-  pointer-events: none; /* Tooltip should not interfere with mouse events on elements below it */
-  white-space: pre-wrap; /* Respect newlines in content */
-  opacity: 0; /* Initially hidden for animation */
-  transform: scale(0.95) translateY(5px); /* Initial state for animation */
-  transition: opacity 0.1s ease-out, transform 0.1s ease-out; /* Quick, subtle transition */
-  /* Add a placeholder for the accent bar - adjust as needed */
-  border-left: 3px solid transparent; /* Accent bar, transparent by default */
+  border-radius: var(--container-border-radius);
+  padding: 10px 15px;
+  box-shadow: var(--card-shadow);
+  z-index: 10000;
+  font-size: var(--font-ui-small);
+  max-width: 350px;
+  pointer-events: none;
+  white-space: pre-wrap;
+  opacity: 0;
+  transform: scale(0.95) translateY(5px);
+  transition: opacity 0.1s ease-out, transform 0.1s ease-out;
+  /* MODIFIED: Accent bar - ensure it's distinct from main border */
+  border-left: 4px solid transparent; /* Made slightly thicker */
+  /* Add padding to the right of the accent bar if the bar is inside the padding area.
+     If border-left is outside, then this main padding: 10px 15px; is fine.
+     Assuming border-left is part of the overall border. */
 }
 
 .chronica-grid-cell-tooltip.visible {
@@ -2081,18 +2080,69 @@ Exp .chronica-sidebar-toggle:hover {
   transform: scale(1) translateY(0);
 }
 
-/* Styling for the content within the tooltip (optional, but good for structure) */
-.chronica-tooltip-content-line {
-  display: block; /* Each line of info on its own line */
-  margin-bottom: 4px; /* Space between lines */
+/* Color Hint Styling - ADD THESE NEW RULES */
+.chronica-grid-cell-tooltip.tooltip-past {
+  border-left-color: var(--past-cell-color);
+}
+.chronica-grid-cell-tooltip.tooltip-present {
+  border-left-color: var(--present-cell-color);
+}
+.chronica-grid-cell-tooltip.tooltip-future {
+  border-left-color: var(--future-cell-color);
+}
+/* Event type colors will be added dynamically if needed, or we can predefine some for presets */
+/* Example for a preset event type (ID: preset_travel) */
+.chronica-grid-cell-tooltip.tooltip-event-type-preset_travel {
+  border-left-color: var(
+    --travel-color
+  ); /* Assuming --travel-color is defined */
+}
+/* Add similar rules for other preset event types using their IDs and color variables */
+.chronica-grid-cell-tooltip.tooltip-event-type-preset_major_life {
+  border-left-color: var(--major-life-color);
+}
+.chronica-grid-cell-tooltip.tooltip-event-type-preset_relationship {
+  border-left-color: var(--relationship-color);
+}
+.chronica-grid-cell-tooltip.tooltip-event-type-preset_education_career {
+  border-left-color: var(--education-career-color);
+}
+/* For custom event types, the color will be set via inline style on the border-left-color by JS */
+
+/* Content Structure Styling - Refined */
+.chronica-tooltip-line {
+  /* Renamed for clarity */
+  display: block;
+  margin-bottom: 5px; /* Slightly more space between lines */
+  line-height: 1.4; /* Improve readability */
+}
+.chronica-tooltip-line:last-child {
+  margin-bottom: 0;
 }
 
-.chronica-tooltip-content-line:last-child {
-  margin-bottom: 0; /* No margin for the last line */
-}
-
-.chronica-tooltip-event-name {
+.chronica-tooltip-event-title {
+  /* Renamed and styled */
   font-weight: bold;
-  color: var(--text-title-h3); /* Or a more prominent color */
+  font-size: calc(var(--font-ui-small) + 1px); /* Slightly larger for title */
+  color: var(--text-normal); /* Or var(--text-accent) for more prominence */
   margin-bottom: 6px;
+  display: block; /* Ensure it takes its own line if not the only content */
+}
+
+.chronica-tooltip-label {
+  /* NEW: For labels like "Type:", "Period:", "Cell:" */
+  font-weight: 500; /* Slightly bolder than regular text */
+  color: var(--text-muted); /* Muted color for labels */
+  margin-right: 5px;
+}
+
+.chronica-tooltip-description {
+  /* NEW: For event descriptions */
+  font-style: italic;
+  color: var(--text-faint); /* Or var(--text-muted) */
+  margin-top: 4px;
+  font-size: calc(var(--font-ui-small) - 1px); /* Slightly smaller */
+  max-height: 60px; /* Limit height, for example 3 lines */
+  overflow-y: auto; /* Add scroll if description is too long */
+  padding-right: 5px; /* Space for scrollbar */
 }
