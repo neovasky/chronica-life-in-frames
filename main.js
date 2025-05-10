@@ -123,6 +123,7 @@ const DEFAULT_SETTINGS = {
     statsPanelWidth: 700,
     // --- Onboarding ---
     hasSeenWelcome: false,
+    manualFillColor: "#8bc34a",
     hasSeenFolders: false,
 };
 /** SVG icon for the Chronica Timeline */
@@ -264,6 +265,10 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
     async onload() {
         // 1) Load settings FIRST. This is crucial.
         await this.loadSettings();
+        // After await this.loadSettings();
+        if (this.settings.manualFillColor) {
+            document.documentElement.style.setProperty("--manual-fill-color", this.settings.manualFillColor);
+        }
         // --- Reset sync operation flag at the beginning of onload for a clean state ---
         this.isSyncOperation = false;
         if (this.syncOperationTimer) {
@@ -993,6 +998,8 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
             this.settings.eventNoteTemplate = DEFAULT_SETTINGS.eventNoteTemplate;
         if (this.settings.rangeNoteTemplate === undefined)
             this.settings.rangeNoteTemplate = DEFAULT_SETTINGS.rangeNoteTemplate;
+        if (this.settings.manualFillColor === undefined)
+            this.settings.manualFillColor = DEFAULT_SETTINGS.manualFillColor;
         // Save if migration happened or defaults were added/fixed
         if (needsSaveAfterLoad) {
             await this.saveSettings();
@@ -4027,19 +4034,23 @@ class ChornicaTimelineView extends obsidian.ItemView {
                 });
                 // Context menu for manual fill
                 cell.addEventListener("contextmenu", (event) => {
-                    if (settings.enableAutoFill || cellStartDate < now)
-                        return; // Allow manual only if enabled AND it's a future/present week
-                    event.preventDefault();
-                    const filledIndex = settings.filledWeeks.indexOf(weekKey);
-                    if (filledIndex >= 0) {
-                        settings.filledWeeks.splice(filledIndex, 1);
-                        cell.removeClass("filled-week");
+                    if (settings.enableManualFill && cellStartDate >= now) {
+                        event.preventDefault(); // Prevent default browser context menu
+                        const filledIndex = settings.filledWeeks.indexOf(weekKey);
+                        if (filledIndex >= 0) {
+                            // Week is currently filled, so unfill it
+                            settings.filledWeeks.splice(filledIndex, 1);
+                            cell.removeClass("filled-week");
+                            // NO MORE INLINE STYLE MANIPULATION FOR FILLING/UNFILLING HERE
+                        }
+                        else {
+                            // Week is not filled, so fill it
+                            settings.filledWeeks.push(weekKey);
+                            cell.addClass("filled-week");
+                            // NO MORE INLINE STYLE MANIPULATION FOR FILLING/UNFILLING HERE
+                        }
+                        this.plugin.saveSettings(); // Save settings after change
                     }
-                    else {
-                        settings.filledWeeks.push(weekKey);
-                        cell.addClass("filled-week");
-                    }
-                    this.plugin.saveSettings(); // Save immediately on change
                 });
             } // End cellIndex loop
         } // End yearIndex loop
@@ -6008,10 +6019,15 @@ class ChornicaSettingTab extends obsidian.PluginSettingTab {
             this.plugin.settings.enableAutoFill = value;
             this.plugin.settings.enableManualFill = !value; // Manual fill is inverse
             await this.plugin.saveSettings();
-            // Show/hide day selector based on toggle state
+            // Show/hide day selector and manual fill color picker based on toggle state
             const daySelectorEl = containerEl.querySelector(".auto-fill-day-selector");
+            const manualFillColorEl = containerEl.querySelector(".manual-fill-color-selector" // New class for the color picker setting
+            );
             if (daySelectorEl) {
-                daySelectorEl.classList.toggle("hidden", !value);
+                daySelectorEl.classList.toggle("hidden", !value); // Hidden if auto-fill is OFF
+            }
+            if (manualFillColorEl) {
+                manualFillColorEl.classList.toggle("hidden", value); // Hidden if auto-fill is ON (i.e., manual fill is OFF)
             }
             // Update status indicator text
             let statusIndicator = containerEl.querySelector(".chronica-fill-mode-status");
@@ -6022,17 +6038,20 @@ class ChornicaSettingTab extends obsidian.PluginSettingTab {
                 statusIndicator.textContent = statusText;
             }
             else {
-                // If it doesn't exist, create it after the day selector setting
+                // If it doesn't exist, create it after the relevant conditional setting
                 statusIndicator = containerEl.createEl("div", {
                     cls: "chronica-fill-mode-status",
                     text: statusText,
                 });
-                const daySel = containerEl.querySelector(".auto-fill-day-selector");
-                if (daySel) {
-                    daySel.insertAdjacentElement("afterend", statusIndicator);
+                // Place it after the last visible setting in this group
+                const lastVisibleSetting = value
+                    ? daySelectorEl
+                    : manualFillColorEl;
+                if (lastVisibleSetting) {
+                    lastVisibleSetting.insertAdjacentElement("afterend", statusIndicator);
                 }
                 else {
-                    // Fallback: append after the toggle itself if day selector missing
+                    // Fallback if somehow both are null (shouldn't happen)
                     autoFillToggleSetting.settingEl.insertAdjacentElement("afterend", statusIndicator);
                 }
             }
@@ -6061,7 +6080,21 @@ class ChornicaSettingTab extends obsidian.PluginSettingTab {
                 await this.plugin.saveSettings();
             });
         });
-        // Create the initial status indicator text element AFTER daySelector setting
+        // Manual Fill Color Picker (conditionally displayed) - NEW
+        const manualFillColorPickerSetting = new obsidian.Setting(containerEl)
+            .setName("Manual Fill Color")
+            .setDesc("Color for manually filled weeks (requires Auto-Fill OFF).")
+            .setClass("manual-fill-color-selector") // New class for show/hide
+            .addColorPicker((colorPicker) => colorPicker
+            .setValue(this.plugin.settings.manualFillColor ||
+            DEFAULT_SETTINGS.manualFillColor)
+            .onChange(async (value) => {
+            this.plugin.settings.manualFillColor = value;
+            await this.plugin.saveSettings();
+            document.documentElement.style.setProperty("--manual-fill-color", value);
+            this.refreshAllViews(); // Refresh to see color change on grid
+        }));
+        // Create the initial status indicator text element AFTER all related settings
         const initialStatusText = this.plugin.settings.enableAutoFill
             ? "Auto-fill is active."
             : "Manual fill is active (right-click future weeks).";
@@ -6069,13 +6102,17 @@ class ChornicaSettingTab extends obsidian.PluginSettingTab {
             cls: "chronica-fill-mode-status",
             text: initialStatusText,
         });
-        daySelector.settingEl.insertAdjacentElement("afterend", statusEl); // Place it
-        // Hide day selector initially if auto-fill is disabled
-        if (!this.plugin.settings.enableAutoFill) {
+        // Insert statusEl after the last setting in this logical group (clear filled weeks button)
+        // We'll add the "Clear Filled Weeks" button next, then place statusEl after it.
+        // Hide day selector OR manual fill color initially based on auto-fill state
+        if (this.plugin.settings.enableAutoFill) {
+            manualFillColorPickerSetting.settingEl.classList.add("hidden");
+        }
+        else {
             daySelector.settingEl.classList.add("hidden");
         }
         // Clear filled weeks button
-        new obsidian.Setting(containerEl)
+        const clearFilledSetting = new obsidian.Setting(containerEl) // get a reference to this setting
             .setName("Clear Filled Weeks")
             .setDesc("Remove all manual/auto filled week markings (does not delete notes or events).")
             .addButton((button) => {
@@ -6088,6 +6125,8 @@ class ChornicaSettingTab extends obsidian.PluginSettingTab {
                 }
             });
         });
+        // Now, insert statusEl after the "Clear Filled Weeks" button's setting element
+        clearFilledSetting.settingEl.insertAdjacentElement("afterend", statusEl);
         // --- Other Display/Interaction Settings ---
         containerEl.createEl("h3", { text: "Other Display Options" });
         // Week start day setting

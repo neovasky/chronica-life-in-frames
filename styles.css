@@ -31,6 +31,7 @@
   --travel-color: #2196f3;
   --education-career-color: #d2b55b;
   --major-life-color: #4caf50;
+  --manual-fill-color: #8bc34a;
   --stats-panel-height: 170px;
   --stats-panel-min-height: 150px;
   --stats-panel-max-height: 600px;
@@ -524,16 +525,23 @@ Exp .chronica-sidebar-toggle:hover {
 
 /* Manual/Auto Fill Styling */
 .chronica-grid-cell.filled-week {
-  border: 2px solid #8bc34a;
+  border-width: 2px; /* Define structure */
+  border-style: solid; /* Define structure */
+  border-color: var(
+    --manual-fill-color
+  ); /* Color from variable for ALL filled cells */
 }
 
 .chronica-grid-cell.filled-week:not(.event) {
-  background-color: #8bc34a;
+  background-color: var(
+    --manual-fill-color
+  ); /* Background for non-event filled cells from variable */
 }
 
-.chronica-grid-cell.filled-week.event {
-  border: 2px solid #8bc34a; /* Keep original value */
-}
+/* No separate .chronica-grid-cell.filled-week.event needed for border-color
+   if the general .filled-week rule above handles it with the CSS variable.
+   The event's specific background color (from applyEventStyling) will still show through
+   because this rule for background-color only applies to :not(.event). */
 
 /* -----------------------------------------------------------------------------
      6. TIMELINE MARKERS (Decade, Week, Month, Birthday)
@@ -2040,3 +2048,7 @@ Exp .chronica-sidebar-toggle:hover {
   display: block;
   padding-top: 5px;
 }
+
+/* -----------------------------------------------------------------------------
+     14. GRID CELL TOOLTIPS
+     ----------------------------------------------------------------------------- */
