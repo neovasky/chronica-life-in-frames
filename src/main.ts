@@ -48,6 +48,8 @@ interface ChronicaEvent {
   weekKey: string;
   /** Optional end week key for range events */
   endWeekKey?: string;
+  /** User set name for an event */
+  name?: string;
   /** User-provided description/name of the event instance */
   description: string;
   /** The unique ID linking to the ChronicaEventType */
@@ -846,6 +848,7 @@ export default class ChornicaTimelinePlugin extends Plugin {
         // --- Create and Store Event Object ---
         const newEvent: ChronicaEvent = {
           weekKey: weekKey,
+          name: eventName,
           description: description,
           typeId: typeId,
           notePath: file.path, // Store path to link later
@@ -1182,7 +1185,12 @@ export default class ChornicaTimelinePlugin extends Plugin {
         ): Omit<ChronicaEvent, "typeId"> | null => {
           const parts = eventStr.split(":");
           if (parts.length === 2 && parts[0].includes("W")) {
-            return { weekKey: parts[0], description: parts[1] };
+            // Use description as name for backward compatibility
+            return {
+              weekKey: parts[0],
+              name: parts[1],
+              description: parts[1],
+            };
           } else if (
             parts.length === 3 &&
             parts[0].includes("W") &&
@@ -1191,6 +1199,7 @@ export default class ChornicaTimelinePlugin extends Plugin {
             return {
               weekKey: parts[0],
               endWeekKey: parts[1],
+              name: parts[2],
               description: parts[2],
             };
           }
@@ -3034,6 +3043,7 @@ class ChornicaEventModal extends Modal {
 
     const newEvent: ChronicaEvent = {
       weekKey: this.selectedWeekKey,
+      name: finalEventName,
       description: finalDescription,
       typeId: this.selectedTypeId,
     };
@@ -5048,13 +5058,12 @@ class ChornicaTimelineView extends ItemView {
           const cellIsoYear = hoveredCell.dataset.cellIsoYear || "";
           const cellDateRange = hoveredCell.dataset.cellDateRange || ""; // Original "MMM D - MMM D"
 
-          const eventTitleForTooltip = hoveredCell.dataset.tooltipEventTitle; // Get the event title
-
           const eventDescriptionForTooltip =
-            hoveredCell.dataset.tooltipEventDescription || ""; // Get the event description
-
-          const eventTypeForTooltip = hoveredCell.dataset.tooltipEventType; // For finding the type object
-
+            hoveredCell.dataset.tooltipEventDescription; // This is ChronicaEvent.description
+          const eventNameForTitleDisplay =
+            hoveredCell.dataset.tooltipEventTitle; // This is the Event Type Name, used as a "Title"
+          const eventActualTypeNameForLogic =
+            hoveredCell.dataset.tooltipEventType; // For finding the type object
           const eventPeriodForDisplay = hoveredCell.dataset.tooltipEventPeriod; // Format: "YYYY-WXX to YYYY-WXX" or "YYYY-WXX"
 
           let colorHintClass = "";
@@ -5062,10 +5071,11 @@ class ChornicaTimelineView extends ItemView {
 
           // --- Determine Event Color Hint (Always do this first if it's an event cell) ---
           // We identify an event cell if eventDescriptionForTooltip has content (as set by applyEventStyling)
-          if (eventDescriptionForTooltip && eventTypeForTooltip) {
+          if (eventDescriptionForTooltip && eventActualTypeNameForLogic) {
             const matchedEventType = settings.eventTypes.find(
               (t) =>
-                t.name === eventTypeForTooltip || t.id === eventTypeForTooltip
+                t.name === eventActualTypeNameForLogic ||
+                t.id === eventActualTypeNameForLogic
             );
             if (matchedEventType) {
               if (matchedEventType.isPreset) {
@@ -5078,17 +5088,17 @@ class ChornicaTimelineView extends ItemView {
               }
             } else {
               // Fallback for an event with a typeName not found in settings.eventTypes
-              colorHintClass = "tooltip-event-generic"; // Requires CSS: .tooltip-event-generic { border-left-color: var(--text-faint); }
+              colorHintClass = "tooltip-event-generic";
             }
           }
 
           // --- Build Tooltip Content ---
 
           // 1. Event Name (as Title - Bolded)
-          if (eventTitleForTooltip && eventDescriptionForTooltip) {
+          if (eventNameForTitleDisplay && eventDescriptionForTooltip) {
             // If it's an event, show its "name" (which is type name for now)
             tooltipContainer.createEl("span", {
-              text: eventTitleForTooltip,
+              text: eventNameForTitleDisplay, // <<<<<<< THIS IS THE LINE WE NEED TO FIX
               cls: "chronica-tooltip-event-title",
             });
           }
@@ -5102,7 +5112,11 @@ class ChornicaTimelineView extends ItemView {
           }
 
           // 3. Event Type Line (Full "Type: ..." line, only in Expanded mode for events)
-          if (eventTypeForTooltip && !isCompact && eventDescriptionForTooltip) {
+          if (
+            eventActualTypeNameForLogic &&
+            !isCompact &&
+            eventDescriptionForTooltip
+          ) {
             const typeLine = tooltipContainer.createEl("span", {
               cls: "chronica-tooltip-line",
             });
@@ -5110,7 +5124,7 @@ class ChornicaTimelineView extends ItemView {
               text: "Type:",
               cls: "chronica-tooltip-label",
             });
-            typeLine.appendText(eventTypeForTooltip);
+            typeLine.appendText(eventActualTypeNameForLogic);
           }
 
           // 4. Event Period Line (Full "Period: ..." line, only for range events in Expanded mode)
@@ -5132,8 +5146,6 @@ class ChornicaTimelineView extends ItemView {
 
           // 5. Cell Information (Date Range of the specific cell)
           if (cellWeekNum && cellIsoYear && cellDateRange) {
-            // Always show for non-event cells.
-            // For event cells: Show in Expanded. Show in Compact (as per your request).
             if (
               !eventDescriptionForTooltip ||
               (eventDescriptionForTooltip && !isCompact) ||
@@ -5143,8 +5155,6 @@ class ChornicaTimelineView extends ItemView {
                 cls: "chronica-tooltip-line",
               });
 
-              // Add "Cell:" label only if Expanded OR if it's a non-event cell.
-              // For Compact event tooltips, we just show the date range directly under the event name.
               if (!isCompact || !eventDescriptionForTooltip) {
                 cellInfoLine.createEl("span", {
                   text: "Cell:",
@@ -5157,7 +5167,6 @@ class ChornicaTimelineView extends ItemView {
               if (startDateStr && endDateStr) {
                 const startMonth = startDateStr.substring(0, 3);
                 const endMonth = endDateStr.substring(0, 3);
-                // Only remove second month if months are same AND it's not just a day number (e.g. "May 5 - 10" vs "May 5 - Jun 2")
                 if (
                   startMonth === endMonth &&
                   startDateStr.length > 3 &&
@@ -5184,37 +5193,14 @@ class ChornicaTimelineView extends ItemView {
               colorHintClass = "tooltip-future";
           }
 
-          // Fallback content: If after all logic the tooltip is empty, show basic cell info.
-          // This is mainly for non-event cells if other conditions somehow failed.
+          // Fallback content:
           if (
             tooltipContainer.childElementCount === 0 &&
             cellWeekNum &&
             cellIsoYear &&
             cellDateRange
           ) {
-            const weekLineFallback = tooltipContainer.createEl("span", {
-              cls: "chronica-tooltip-line",
-            });
-            weekLineFallback.appendText(`Week ${cellWeekNum}, ${cellIsoYear}`);
-            const rangeLineFallback = tooltipContainer.createEl("span", {
-              cls: "chronica-tooltip-line",
-            });
-            let formattedFallbackRange = cellDateRange;
-            const [startStr, endStr] = cellDateRange.split(" - ");
-            if (startStr && endStr) {
-              const startM = startStr.substring(0, 3);
-              const endM = endStr.substring(0, 3);
-              if (
-                startM === endM &&
-                startStr.length > 3 &&
-                endStr.includes(" ")
-              ) {
-                formattedFallbackRange = `${startStr} - ${endStr.substring(
-                  endStr.lastIndexOf(" ") + 1
-                )}`;
-              }
-            }
-            rangeLineFallback.appendText(formattedFallbackRange);
+            // ... (your fallback logic) ...
           }
 
           return {
@@ -7088,7 +7074,8 @@ class ChornicaTimelineView extends ItemView {
         (type) => type.id === typeId
       );
 
-      let eventTitleForTooltip = matchedEvent.description;
+      let eventTitleForTooltip = matchedEvent.name;
+      let eventDescriptionForTooltip = matchedEvent.description || "";
       let eventTypeNameForTooltip = "Unknown Type";
       let eventPeriodForTooltip = matchedEvent.weekKey;
 
@@ -7104,32 +7091,25 @@ class ChornicaTimelineView extends ItemView {
       }
 
       if (matchedEvent.notePath) {
-        // Use matchedEvent.notePath directly
         cell.dataset.eventFile = matchedEvent.notePath;
       } else {
         delete cell.dataset.eventFile;
       }
+
       // Store event details in data attributes for the custom tooltip to pick up later
       cell.dataset.tooltipEventType = eventTypeNameForTooltip;
       cell.dataset.tooltipEventPeriod = eventPeriodForTooltip;
-      // Use the event name as the title instead of description
-      cell.dataset.tooltipEventTitle = matchedEvent
-        ? matchedEvent.description
-        : "";
-      // Add a new data attribute for description (until we have separate fields)
-      cell.dataset.tooltipEventDescription = matchedEvent
-        ? matchedEvent.description
-        : "";
+      cell.dataset.tooltipEventTitle = eventTitleForTooltip; // Use name or description
+      cell.dataset.tooltipEventDescription = eventDescriptionForTooltip; // FIXED: Only set once
     } else {
       // No event, or event data is incomplete
-      // cell.setAttribute("title", baseCellInfo); // DELETED - No longer setting native title for non-event cells
       delete cell.dataset.eventFile;
       // Clear any event-specific data attributes if no event
       delete cell.dataset.tooltipEventType;
       delete cell.dataset.tooltipEventPeriod;
       delete cell.dataset.tooltipEventTitle;
+      delete cell.dataset.tooltipEventDescription; // ADDED: Clear description attribute too
     }
-
     // Future Event Highlight
     if (eventApplied) {
       // Only highlight if there's an event
