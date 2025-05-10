@@ -1,0 +1,125 @@
+{
+  "birthday": "2003-07-18",
+  "lifespan": 90,
+  "settingsVersion": 1,
+  "eventTypes": [
+    {
+      "id": "preset_major_life",
+      "name": "Major Life",
+      "color": "#4CAF50",
+      "isPreset": true
+    },
+    {
+      "id": "preset_travel",
+      "name": "Travel",
+      "color": "#2196F3",
+      "isPreset": true
+    },
+    {
+      "id": "preset_relationship",
+      "name": "Relationship",
+      "color": "#E91E63",
+      "isPreset": true
+    },
+    {
+      "id": "preset_education_career",
+      "name": "Education/Career",
+      "color": "#D2B55B",
+      "isPreset": true
+    }
+  ],
+  "events": [
+    {
+      "weekKey": "2027-W18",
+      "name": "test iso name",
+      "description": "test name for the drop down menu test",
+      "typeId": "preset_major_life",
+      "notePath": "PHILOSOPHY & THINKING/Life in Frames/event notes/test_iso_name_2027-W18.md"
+    },
+    {
+      "weekKey": "2025-W32",
+      "name": "test highlight",
+      "description": "test highlight",
+      "typeId": "preset_relationship",
+      "notePath": "PHILOSOPHY & THINKING/Life in Frames/event notes/test_highlight_2025-W32.md"
+    },
+    {
+      "weekKey": "2000-W51",
+      "name": "Test access",
+      "description": "test",
+      "typeId": "preset_major_life",
+      "notePath": "PHILOSOPHY & THINKING/Life in Frames/event notes/Test_access_2000-W51.md"
+    },
+    {
+      "weekKey": "2027-W40",
+      "name": "test custom",
+      "description": "custom",
+      "typeId": "preset_major_life",
+      "notePath": "PHILOSOPHY & THINKING/Life in Frames/event notes/test_custom_2027-W40.md"
+    },
+    {
+      "weekKey": "2022-W44",
+      "name": "India Trip",
+      "description": "India",
+      "typeId": "preset_travel",
+      "notePath": "PHILOSOPHY & THINKING/Life in Frames/event notes/India_Trip_2022-W44_to_2022-W47.md",
+      "endWeekKey": "2022-W47"
+    },
+    {
+      "weekKey": "2029-W19",
+      "name": "test color",
+      "description": "test color",
+      "typeId": "preset_major_life",
+      "notePath": "PHILOSOPHY & THINKING/Life in Frames/event notes/test_color_2029-W19.md"
+    },
+    {
+      "weekKey": "2030-W28",
+      "name": "test",
+      "description": "test",
+      "typeId": "preset_major_life",
+      "notePath": "PHILOSOPHY & THINKING/Life in Frames/event notes/test_2030-W28.md"
+    },
+    {
+      "weekKey": "2027-W18",
+      "name": "test",
+      "description": "test",
+      "typeId": "preset_major_life",
+      "notePath": "PHILOSOPHY & THINKING/Life in Frames/event notes/test_2027-W18.md"
+    }
+  ],
+  "defaultView": "weeks",
+  "cellShape": "square",
+  "gridOrientation": "landscape",
+  "pastCellColor": "#6A7BA3",
+  "presentCellColor": "#a882ff",
+  "futureCellColor": "#d8e2e6",
+  "quote": "the only true luxury is time.",
+  "showDecadeMarkers": true,
+  "showWeekMarkers": true,
+  "showMonthMarkers": true,
+  "showBirthdayMarker": true,
+  "monthMarkerFrequency": "year",
+  "zoomLevel": 1,
+  "defaultFitToScreen": false,
+  "notesFolder": "",
+  "useSeparateFolders": true,
+  "eventNotesFolder": "",
+  "weekNoteTemplate": "${gggg}-W${ww}",
+  "eventNoteTemplate": "${eventName}_${gggg}-W${ww}",
+  "rangeNoteTemplate": "${eventName}_${start_gggg}-W${start_ww}_to_${end_gggg}-W${end_ww}",
+  "enableManualFill": false,
+  "enableAutoFill": true,
+  "autoFillDay": 1,
+  "filledWeeks": [],
+  "startWeekOnMonday": true,
+  "isSidebarOpen": false,
+  "isStatsOpen": false,
+  "activeStatsTab": "overview",
+  "statsPanelHeight": 470,
+  "statsPanelHorizontalOffset": 0,
+  "statsPanelWidth": 700,
+  "hasSeenWelcome": true,
+  "manualFillColor": "#8bc34a",
+  "tooltipDetailLevel": "expanded",
+  "hasSeenFolders": false
+}

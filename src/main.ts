@@ -311,11 +311,11 @@ const DEFAULT_SETTINGS: ChornicaSettings = {
 
 /** SVG icon for the Chronica Timeline */
 const Chornica_ICON = `<svg viewBox="0 0 100 100" width="100" height="100" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" stroke-width="4"/>
-  <line x1="50" y1="15" x2="50" y2="50" stroke="currentColor" stroke-width="4"/>
-  <line x1="50" y1="50" x2="75" y2="60" stroke="currentColor" stroke-width="4"/>
-  <circle cx="50" cy="50" r="5" fill="currentColor"/>
-</svg>`;
+    <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" stroke-width="4"/>
+    <line x1="50" y1="15" x2="50" y2="50" stroke="currentColor" stroke-width="4"/>
+    <line x1="50" y1="50" x2="75" y2="60" stroke="currentColor" stroke-width="4"/>
+    <circle cx="50" cy="50" r="5" fill="currentColor"/>
+  </svg>`;
 
 // Gap between decades (larger than regular gap)
 const DECADE_GAP = 6; // px
@@ -2430,47 +2430,78 @@ export default class ChornicaTimelinePlugin extends Plugin {
  */
 
 class ChornicaEventModal extends Modal {
-  // ... (full class code as provided before) ...
   plugin: ChornicaTimelinePlugin;
-  selectedWeekKey: string = ""; // Renamed from selectedDate for clarity
+  selectedWeekKey: string = "";
   selectedEndWeekKey: string = "";
   isDateRange: boolean = false;
   eventDescription: string = "";
-  eventName: string = ""; // Keep event name for note title generation
-  selectedTypeId: string = "preset_major_life"; // Default to Major Life ID
+  eventName: string = "";
+  selectedTypeId: string = "preset_major_life";
 
   // Input element references
   singleDateInput!: HTMLInputElement;
   startDateInput!: HTMLInputElement;
   endDateInput!: HTMLInputElement;
-  eventTypeDropdown!: HTMLSelectElement; // Changed from radio/color
+  eventTypeDropdown!: HTMLSelectElement;
+  // Reference for the description input element
+  private eventDescriptionInputEl!: HTMLInputElement; // Or HTMLTextAreaElement if you change it
+  // Reference for the event name input element
+  private eventNameInputEl!: HTMLInputElement;
+
+  // NEW Properties for Edit Mode
+  private originalEvent: ChronicaEvent | null = null;
+  private isEditMode: boolean = false;
 
   constructor(
     app: App,
     plugin: ChornicaTimelinePlugin,
-    preselectedWeekKey: string | null = null // Expecting YYYY-WXX format now
+    targetDataOrEvent: string | ChronicaEvent | null // Can be weekKey for new, or event object for edit
   ) {
     super(app);
     this.plugin = plugin;
 
-    if (preselectedWeekKey) {
-      // Assume preselected is already in correct YYYY-WXX format
-      this.selectedWeekKey = preselectedWeekKey;
+    if (typeof targetDataOrEvent === "string") {
+      // It's a weekKey for a new event
+      this.selectedWeekKey = targetDataOrEvent;
+      this.isEditMode = false;
+    } else if (targetDataOrEvent && typeof targetDataOrEvent === "object") {
+      // It's a ChronicaEvent object for editing
+      this.originalEvent = targetDataOrEvent;
+      this.isEditMode = true;
+
+      // Pre-fill modal properties from the event being edited
+      this.selectedWeekKey = this.originalEvent.weekKey;
+      this.selectedEndWeekKey = this.originalEvent.endWeekKey || "";
+      this.eventName = this.originalEvent.name || ""; // Use stored name
+      this.eventDescription = this.originalEvent.description; // Use stored description
+      this.selectedTypeId = this.originalEvent.typeId;
+
+      if (
+        this.originalEvent.endWeekKey &&
+        this.originalEvent.endWeekKey !== this.originalEvent.weekKey
+      ) {
+        this.isDateRange = true;
+      } else {
+        this.isDateRange = false;
+      }
+    } else {
+      // Default for new event if no targetDataOrEvent (e.g., "Add Event" from sidebar)
+      this.isEditMode = false;
+      // selectedWeekKey might be set based on current view or a default
     }
 
-    // Ensure eventTypes is loaded and default selectedTypeId exists
+    // Ensure eventTypes is loaded and selectedTypeId is valid
     if (
       !this.plugin.settings.eventTypes ||
       this.plugin.settings.eventTypes.length === 0
     ) {
-      console.error("Chronica: No event types available in settings!");
-      this.selectedTypeId = ""; // No valid default
+      this.selectedTypeId = "";
     } else if (
       !this.plugin.settings.eventTypes.some(
         (et) => et.id === this.selectedTypeId
       )
     ) {
-      // If default Major Life is missing for some reason, select the first available type
+      // If current selectedTypeId is invalid (e.g. from an old event) or not set, default to first available
       this.selectedTypeId = this.plugin.settings.eventTypes[0].id;
     }
   }
@@ -2505,7 +2536,11 @@ class ChornicaEventModal extends Modal {
   onOpen(): void {
     const { contentEl } = this;
     contentEl.empty();
-    contentEl.createEl("h2", { text: "Add Life Event" });
+
+    // Set modal title based on mode
+    contentEl.createEl("h2", {
+      text: this.isEditMode ? "Edit Life Event" : "Add Life Event",
+    });
 
     // --- Date selection ---
     const dateContainer = contentEl.createDiv({
@@ -2765,23 +2800,27 @@ class ChornicaEventModal extends Modal {
     new Setting(contentEl)
       .setName("Event Name / Title")
       .setDesc("Short title (used for note name if created)")
-      .addText((text) =>
+      .addText((text) => {
+        this.eventNameInputEl = text.inputEl; // Store reference
         text
           .setPlaceholder("e.g., Trip to Paris, Project Launch")
+          .setValue(this.eventName) // THIS WILL PRE-FILL (this.eventName is set in constructor for edit mode)
           .onChange((value) => {
             this.eventName = value;
-          })
-      );
+          });
+      });
     new Setting(contentEl)
       .setName("Description")
       .setDesc("Details about the event (shown on hover)")
-      .addText((text) =>
+      .addText((text) => {
+        this.eventDescriptionInputEl = text.inputEl; // Store reference
         text
           .setPlaceholder("e.g., Explored museums, finished phase 1")
+          .setValue(this.eventDescription) // THIS WILL PRE-FILL (this.eventDescription is set in constructor for edit mode)
           .onChange((value) => {
             this.eventDescription = value;
-          })
-      );
+          });
+      });
 
     // --- Event Type Selection (Dropdown) ---
     const typeSetting = new Setting(contentEl)
@@ -2927,7 +2966,7 @@ class ChornicaEventModal extends Modal {
     // --- Save Button ---
     new Setting(contentEl).addButton((btn) =>
       btn
-        .setButtonText("Save Event")
+        .setButtonText(this.isEditMode ? "Update Event" : "Save Event") // Dynamically set button text
         .setCta()
         .onClick(() => {
           this.saveEvent();
@@ -2960,16 +2999,14 @@ class ChornicaEventModal extends Modal {
   async saveEvent(): Promise<void> {
     const finalEventName = this.eventName.trim();
     const finalDescription = this.eventDescription.trim() || finalEventName;
-    if (!finalEventName) {
-      new Notice("Please add an event name");
-      return;
-    }
-    if (!finalDescription) {
-      new Notice("Please add an event description");
+
+    if (!finalEventName && !finalDescription) {
+      // If both are empty, there's nothing to save as a title/desc
+      new Notice("Please add an event name or description.");
       return;
     }
     if (!this.selectedTypeId) {
-      new Notice("Please select an event type");
+      new Notice("Please select an event type.");
       return;
     }
 
@@ -2994,15 +3031,14 @@ class ChornicaEventModal extends Modal {
       endDate = new Date(this.endDateInput.value);
 
       if (endDate < startDate) {
-        new Notice("End date cannot be before start date. Event not saved."); // More explicit notice
+        new Notice("End date cannot be before start date. Event not saved.");
         if (rangeValidationMessageEl) {
           rangeValidationMessageEl.textContent =
             "End date cannot be before start date.";
           rangeValidationMessageEl.style.display = "block";
         }
-        return; // Prevent saving
+        return;
       }
-      // If valid, clear any previous validation message
       if (rangeValidationMessageEl)
         rangeValidationMessageEl.style.display = "none";
 
@@ -3019,7 +3055,6 @@ class ChornicaEventModal extends Modal {
         return;
       }
     } else {
-      // Single Date Logic
       if (!this.singleDateInput.value) {
         new Notice("Please select a date.");
         return;
@@ -3031,7 +3066,7 @@ class ChornicaEventModal extends Modal {
         new Notice("Invalid date format.");
         return;
       }
-      this.selectedEndWeekKey = "";
+      this.selectedEndWeekKey = ""; // Ensure it's cleared for single dates
     }
 
     if (!this.selectedWeekKey) {
@@ -3039,41 +3074,104 @@ class ChornicaEventModal extends Modal {
       return;
     }
 
-    await this.plugin.loadSettings(); // Ensure settings (especially eventTypes) are the absolute latest from storage
+    await this.plugin.loadSettings();
 
-    const newEvent: ChronicaEvent = {
-      weekKey: this.selectedWeekKey,
-      name: finalEventName,
-      description: finalDescription,
-      typeId: this.selectedTypeId,
-    };
-    if (
-      this.isDateRange &&
-      this.selectedEndWeekKey &&
-      this.selectedEndWeekKey !== this.selectedWeekKey
-    ) {
-      newEvent.endWeekKey = this.selectedEndWeekKey;
-    }
+    // Determine the actual event name to use (prioritize modal's eventName field)
+    const nameForEventObject = finalEventName || finalDescription;
+    // Ensure description is set, defaulting to nameForEventObject if user left description field blank
+    const descriptionForEventObject = finalDescription || nameForEventObject;
 
-    this.plugin.settings.events.push(newEvent); // Add to unified array
-
-    let noteCreatedOrFound = false;
-    try {
-      noteCreatedOrFound = await this.createOrUpdateEventNote(
-        newEvent,
-        finalEventName,
-        startDate,
-        endDate
+    if (this.isEditMode && this.originalEvent) {
+      // --- EDIT MODE ---
+      const eventIndex = this.plugin.settings.events.findIndex(
+        // A more robust find would be by a unique event ID if they had one.
+        // For now, matching by the original reference if possible, or key properties.
+        // This assumes this.originalEvent is the actual object from the settings.events array.
+        (event) => event === this.originalEvent
       );
-      // Optional: Link note path back even if note existed?
-      // We stored path inside createOrUpdateEventNote now
-    } catch (e) {
-      console.error("Chronica: Failed to create/update event note.", e);
-      new Notice("Event saved to settings, but failed to create/update note.");
+
+      if (eventIndex !== -1) {
+        const eventToUpdate = this.plugin.settings.events[eventIndex];
+
+        // Preserve original notePath unless significant changes necessitate a new note
+        const oldNotePath = eventToUpdate.notePath;
+
+        eventToUpdate.weekKey = this.selectedWeekKey;
+        eventToUpdate.name = nameForEventObject;
+        eventToUpdate.description = descriptionForEventObject;
+        eventToUpdate.typeId = this.selectedTypeId;
+        eventToUpdate.endWeekKey =
+          this.isDateRange &&
+          this.selectedEndWeekKey &&
+          this.selectedEndWeekKey !== this.selectedWeekKey
+            ? this.selectedEndWeekKey
+            : undefined;
+
+        // Logic for updating/creating note (could be refactored for more clarity)
+        // We pass the updated event object to createOrUpdateEventNote
+        // The 'eventName' for note naming should be finalEventName from modal input
+        const noteProcessed = await this.createOrUpdateEventNote(
+          eventToUpdate,
+          finalEventName,
+          startDate,
+          endDate
+        );
+        if (noteProcessed && eventToUpdate.notePath) {
+          // createOrUpdateEventNote should have updated eventToUpdate.notePath if it created a new note
+        } else if (!noteProcessed) {
+          // Failed to process note, but event data in settings is updated
+          new Notice(
+            "Event updated in settings, but failed to update/create note file."
+          );
+        }
+
+        await this.plugin.saveSettings();
+        new Notice(`Event "${nameForEventObject}" updated.`);
+      } else {
+        new Notice(
+          "Error: Original event not found for update. Could not save changes."
+        );
+        this.close();
+        this.refreshViews();
+        return;
+      }
+    } else {
+      // --- ADD MODE ---
+      const newEvent: ChronicaEvent = {
+        weekKey: this.selectedWeekKey,
+        name: nameForEventObject,
+        description: descriptionForEventObject,
+        typeId: this.selectedTypeId,
+      };
+      if (
+        this.isDateRange &&
+        this.selectedEndWeekKey &&
+        this.selectedEndWeekKey !== this.selectedWeekKey
+      ) {
+        newEvent.endWeekKey = this.selectedEndWeekKey;
+      }
+
+      // Attempt to create note and link its path
+      try {
+        await this.createOrUpdateEventNote(
+          newEvent,
+          finalEventName,
+          startDate,
+          endDate
+        );
+        // newEvent.notePath will be set within createOrUpdateEventNote if successful
+      } catch (e) {
+        console.error("Chronica: Failed to create event note during add.", e);
+        new Notice(
+          "Event saved to settings, but failed to create linked note."
+        );
+      }
+
+      this.plugin.settings.events.push(newEvent);
+      await this.plugin.saveSettings();
+      new Notice(`Event "${nameForEventObject}" added.`);
     }
 
-    await this.plugin.saveSettings();
-    new Notice(`Event "${finalDescription}" added.`);
     this.close();
     this.refreshViews();
   }
@@ -5047,35 +5145,34 @@ class ChornicaTimelineView extends ItemView {
           // if (!cell.classList.contains('event')) { cell.style.backgroundColor = '#8bc34a'; }
         }
 
-        // --- Custom Tooltip Logic (STAGE 3.1 - Consolidated & Refined) ---
+        // --- Custom Tooltip Logic (FINAL CORRECTION TO LOCAL VARIABLES & BOLD TITLE) ---
         const createTooltipContent = (hoveredCell: HTMLElement) => {
           const settings = this.plugin.settings;
           const isCompact = settings.tooltipDetailLevel === "compact";
           const tooltipContainer = document.createDocumentFragment();
 
-          // Data from cell's dataset (set during cell creation & applyEventStyling)
+          // Data from cell's dataset
           const cellWeekNum = hoveredCell.dataset.cellWeekNum || "";
           const cellIsoYear = hoveredCell.dataset.cellIsoYear || "";
-          const cellDateRange = hoveredCell.dataset.cellDateRange || ""; // Original "MMM D - MMM D"
+          const cellDateRange = hoveredCell.dataset.cellDateRange || "";
 
-          const eventDescriptionForTooltip =
-            hoveredCell.dataset.tooltipEventDescription; // This is ChronicaEvent.description
-          const eventNameForTitleDisplay =
-            hoveredCell.dataset.tooltipEventTitle; // This is the Event Type Name, used as a "Title"
-          const eventActualTypeNameForLogic =
-            hoveredCell.dataset.tooltipEventType; // For finding the type object
-          const eventPeriodForDisplay = hoveredCell.dataset.tooltipEventPeriod; // Format: "YYYY-WXX to YYYY-WXX" or "YYYY-WXX"
+          // **** CORRECTED LOCAL VARIABLE ASSIGNMENTS ****
+          const eventNameActual = hoveredCell.dataset.tooltipEventTitle; // This is the Event Name (from dataset.tooltipEventTitle)
+          const eventDescriptionActual =
+            hoveredCell.dataset.tooltipEventDescription || ""; // This is the Event Description
+          const eventTypeNameActual = hoveredCell.dataset.tooltipEventType; // This is the Event Type Name
+          const eventPeriodActual = hoveredCell.dataset.tooltipEventPeriod;
+          // **** END CORRECTED LOCAL VARIABLE ASSIGNMENTS ****
 
           let colorHintClass = "";
-          let eventTypeColor = ""; // For custom event type inline style
+          let eventTypeColor = "";
 
-          // --- Determine Event Color Hint (Always do this first if it's an event cell) ---
-          // We identify an event cell if eventDescriptionForTooltip has content (as set by applyEventStyling)
-          if (eventDescriptionForTooltip && eventActualTypeNameForLogic) {
+          // --- Determine Event Color Hint ---
+          // Use eventNameActual to confirm it's an event context, and eventTypeNameActual for the type.
+          if (eventNameActual && eventTypeNameActual) {
             const matchedEventType = settings.eventTypes.find(
               (t) =>
-                t.name === eventActualTypeNameForLogic ||
-                t.id === eventActualTypeNameForLogic
+                t.name === eventTypeNameActual || t.id === eventTypeNameActual
             );
             if (matchedEventType) {
               if (matchedEventType.isPreset) {
@@ -5084,10 +5181,9 @@ class ChornicaTimelineView extends ItemView {
                   "-"
                 )}`;
               } else {
-                eventTypeColor = matchedEventType.color; // Store custom color for inline style
+                eventTypeColor = matchedEventType.color;
               }
             } else {
-              // Fallback for an event with a typeName not found in settings.eventTypes
               colorHintClass = "tooltip-event-generic";
             }
           }
@@ -5095,28 +5191,24 @@ class ChornicaTimelineView extends ItemView {
           // --- Build Tooltip Content ---
 
           // 1. Event Name (as Title - Bolded)
-          if (eventNameForTitleDisplay && eventDescriptionForTooltip) {
-            // If it's an event, show its "name" (which is type name for now)
+          if (eventNameActual) {
+            // If there is an event name from dataset.tooltipEventTitle
             tooltipContainer.createEl("span", {
-              text: eventNameForTitleDisplay, // <<<<<<< THIS IS THE LINE WE NEED TO FIX
+              text: eventNameActual, // **** USE THE CORRECT VARIABLE FOR THE EVENT'S ACTUAL NAME ****
               cls: "chronica-tooltip-event-title",
             });
           }
 
           // 2. Event Description (Italic, only in Expanded mode for events)
-          if (eventDescriptionForTooltip && !isCompact) {
+          if (eventDescriptionActual && !isCompact) {
             tooltipContainer.createEl("span", {
-              text: eventDescriptionForTooltip,
+              text: eventDescriptionActual, // Use the actual event description
               cls: "chronica-tooltip-description chronica-tooltip-line",
             });
           }
 
           // 3. Event Type Line (Full "Type: ..." line, only in Expanded mode for events)
-          if (
-            eventActualTypeNameForLogic &&
-            !isCompact &&
-            eventDescriptionForTooltip
-          ) {
+          if (eventTypeNameActual && !isCompact && eventNameActual) {
             const typeLine = tooltipContainer.createEl("span", {
               cls: "chronica-tooltip-line",
             });
@@ -5124,15 +5216,15 @@ class ChornicaTimelineView extends ItemView {
               text: "Type:",
               cls: "chronica-tooltip-label",
             });
-            typeLine.appendText(eventActualTypeNameForLogic);
+            typeLine.appendText(eventTypeNameActual);
           }
 
           // 4. Event Period Line (Full "Period: ..." line, only for range events in Expanded mode)
           if (
-            eventPeriodForDisplay &&
-            eventPeriodForDisplay.includes("to") &&
+            eventPeriodActual &&
+            eventPeriodActual.includes("to") &&
             !isCompact &&
-            eventDescriptionForTooltip
+            eventNameActual
           ) {
             const periodLine = tooltipContainer.createEl("span", {
               cls: "chronica-tooltip-line",
@@ -5141,21 +5233,21 @@ class ChornicaTimelineView extends ItemView {
               text: "Period:",
               cls: "chronica-tooltip-label",
             });
-            periodLine.appendText(eventPeriodForDisplay);
+            periodLine.appendText(eventPeriodActual);
           }
 
           // 5. Cell Information (Date Range of the specific cell)
           if (cellWeekNum && cellIsoYear && cellDateRange) {
             if (
-              !eventDescriptionForTooltip ||
-              (eventDescriptionForTooltip && !isCompact) ||
-              (eventDescriptionForTooltip && isCompact)
+              !eventNameActual || // It's a non-event cell
+              (eventNameActual && !isCompact) || // It's an event cell in Expanded mode
+              (eventNameActual && isCompact) // It's an event cell in Compact mode
             ) {
               const cellInfoLine = tooltipContainer.createEl("span", {
                 cls: "chronica-tooltip-line",
               });
 
-              if (!isCompact || !eventDescriptionForTooltip) {
+              if (!isCompact || !eventNameActual) {
                 cellInfoLine.createEl("span", {
                   text: "Cell:",
                   cls: "chronica-tooltip-label",
@@ -5183,8 +5275,8 @@ class ChornicaTimelineView extends ItemView {
             }
           }
 
-          // Determine color hint for non-event cells (if not already set by an event)
-          if (!eventDescriptionForTooltip) {
+          // Determine color hint for non-event cells
+          if (!eventNameActual) {
             if (hoveredCell.classList.contains("past"))
               colorHintClass = "tooltip-past";
             else if (hoveredCell.classList.contains("present"))
@@ -5193,14 +5285,36 @@ class ChornicaTimelineView extends ItemView {
               colorHintClass = "tooltip-future";
           }
 
-          // Fallback content:
+          // Fallback content
           if (
             tooltipContainer.childElementCount === 0 &&
             cellWeekNum &&
             cellIsoYear &&
             cellDateRange
           ) {
-            // ... (your fallback logic) ...
+            const weekLineFallback = tooltipContainer.createEl("span", {
+              cls: "chronica-tooltip-line",
+            });
+            weekLineFallback.appendText(`Week ${cellWeekNum}, ${cellIsoYear}`);
+            const rangeLineFallback = tooltipContainer.createEl("span", {
+              cls: "chronica-tooltip-line",
+            });
+            let formattedFallbackRange = cellDateRange;
+            const [startStr, endStr] = cellDateRange.split(" - ");
+            if (startStr && endStr) {
+              const startM = startStr.substring(0, 3);
+              const endM = endStr.substring(0, 3);
+              if (
+                startM === endM &&
+                startStr.length > 3 &&
+                endStr.includes(" ")
+              ) {
+                formattedFallbackRange = `${startStr} - ${endStr.substring(
+                  endStr.lastIndexOf(" ") + 1
+                )}`;
+              }
+            }
+            rangeLineFallback.appendText(formattedFallbackRange);
           }
 
           return {
@@ -5324,10 +5438,47 @@ class ChornicaTimelineView extends ItemView {
             return;
           }
 
-          // Shift+Click to add event - IN STAGE 3 THIS WILL BE MODIFIED FOR EVENT CELLS
+          // Shift+Click to add or edit event
           if (event.shiftKey) {
-            // For now, this always opens "Add Event". Stage 3 will make it "Edit Event" for event cells.
-            new ChornicaEventModal(this.app, this.plugin, weekKey).open();
+            const eventTitleFromDataset = cell.dataset.tooltipEventTitle; // This holds event.name (or .description fallback)
+            const eventDescFromDataset = cell.dataset.tooltipEventDescription;
+            const eventTypeFromDataset = cell.dataset.tooltipEventType;
+
+            let eventToEdit: ChronicaEvent | undefined = undefined;
+
+            if (eventTitleFromDataset) {
+              // If dataset indicates an event might be here
+              // Try to find the exact event object from the settings
+              eventToEdit = this.plugin.settings.events.find(
+                (evt) =>
+                  evt.weekKey === weekKey && // weekKey of the current cell
+                  (evt.name === eventTitleFromDataset ||
+                    (!evt.name && evt.description === eventTitleFromDataset)) &&
+                  (eventDescFromDataset
+                    ? evt.description === eventDescFromDataset
+                    : true) && // Match description if available
+                  evt.typeId ===
+                    this.plugin.settings.eventTypes.find(
+                      (et) => et.name === eventTypeFromDataset
+                    )?.id // Match typeId
+              );
+
+              // More robust find if multiple events per week:
+              // If you store an event's index or a unique ID in a data attribute like `cell.dataset.eventId`,
+              // you could use that for a more direct lookup:
+              // const eventId = cell.dataset.eventId;
+              // if (eventId) {
+              //   eventToEdit = this.plugin.settings.events.find(evt => evt.id === eventId); // Assuming events have unique IDs
+              // }
+            }
+
+            if (eventToEdit) {
+              // EDIT MODE: Found an existing event for this cell
+              new ChornicaEventModal(this.app, this.plugin, eventToEdit).open();
+            } else {
+              // ADD MODE: No specific event found, or it's an empty cell
+              new ChornicaEventModal(this.app, this.plugin, weekKey).open();
+            }
             return;
           }
 
@@ -7579,14 +7730,14 @@ class ChornicaSettingTab extends PluginSettingTab {
     };
     // --- Week Note Template Setting ---
     const weekNotePlaceholders = `Available placeholders:
-- \${gggg}: ISO Year (e.g., 2025)
-- \${ww}: ISO Week (01-53)
-- \${YYYY}: Calendar Year (e.g., 2025)
-- \${MM}: Calendar Month (01-12)
-- \${DD}: Calendar Day (01-31)
-- \${MMMM}: Full Month Name (e.g., January)
-- \${MMM}: Short Month Name (e.g., Jan)
-- \${YY}: Short Calendar Year (e.g., 25)`;
+  - \${gggg}: ISO Year (e.g., 2025)
+  - \${ww}: ISO Week (01-53)
+  - \${YYYY}: Calendar Year (e.g., 2025)
+  - \${MM}: Calendar Month (01-12)
+  - \${DD}: Calendar Day (01-31)
+  - \${MMMM}: Full Month Name (e.g., January)
+  - \${MMM}: Short Month Name (e.g., Jan)
+  - \${YY}: Short Calendar Year (e.g., 25)`;
 
     const weekNoteSetting = new Setting(containerEl)
       .setName("Week Note Template")
@@ -7604,16 +7755,16 @@ class ChornicaSettingTab extends PluginSettingTab {
 
     // --- Event Note Template Setting (Single Events) ---
     const eventNotePlaceholders = `Available placeholders:
-- \${eventName}: Name of the event
-- \${startDate}: Full start date (YYYY-MM-DD)
-- \${gggg}: ISO Year of the event's week
-- \${ww}: ISO Week of the event (01-53)
-- \${YYYY}: Calendar Year of event's start date
-- \${MM}: Calendar Month of start date (01-12)
-- \${DD}: Calendar Day of start date (01-31)
-- \${MMMM}: Full Month Name of start date
-- \${MMM}: Short Month Name of start date
-- \${YY}: Short Calendar Year of start date`;
+  - \${eventName}: Name of the event
+  - \${startDate}: Full start date (YYYY-MM-DD)
+  - \${gggg}: ISO Year of the event's week
+  - \${ww}: ISO Week of the event (01-53)
+  - \${YYYY}: Calendar Year of event's start date
+  - \${MM}: Calendar Month of start date (01-12)
+  - \${DD}: Calendar Day of start date (01-31)
+  - \${MMMM}: Full Month Name of start date
+  - \${MMM}: Short Month Name of start date
+  - \${YY}: Short Calendar Year of start date`;
 
     const eventNoteSetting = new Setting(containerEl)
       .setName("Event Note Template (Single)")
@@ -7631,15 +7782,15 @@ class ChornicaSettingTab extends PluginSettingTab {
 
     // --- Range Event Template Setting ---
     const rangeNotePlaceholders = `Available placeholders:
-- \${eventName}: Name of the event
-- \${startDate}: Full start date (YYYY-MM-DD)
-- \${endDate}: Full end date (YYYY-MM-DD)
-- \${start_gggg}: ISO Year of range start week
-- \${start_ww}: ISO Week of range start week
-- \${end_gggg}: ISO Year of range end week
-- \${end_ww}: ISO Week of range end week
-- \${startDate_YYYY}, \${startDate_MM}, \${startDate_DD}, \${startDate_MMMM}, \${startDate_MMM}, \${startDate_YY} (for actual start date)
-- \${endDate_YYYY}, \${endDate_MM}, \${endDate_DD}, \${endDate_MMMM}, \${endDate_MMM}, \${endDate_YY} (for actual end date)`;
+  - \${eventName}: Name of the event
+  - \${startDate}: Full start date (YYYY-MM-DD)
+  - \${endDate}: Full end date (YYYY-MM-DD)
+  - \${start_gggg}: ISO Year of range start week
+  - \${start_ww}: ISO Week of range start week
+  - \${end_gggg}: ISO Year of range end week
+  - \${end_ww}: ISO Week of range end week
+  - \${startDate_YYYY}, \${startDate_MM}, \${startDate_DD}, \${startDate_MMMM}, \${startDate_MMM}, \${startDate_YY} (for actual start date)
+  - \${endDate_YYYY}, \${endDate_MM}, \${endDate_DD}, \${endDate_MMMM}, \${endDate_MMM}, \${endDate_YY} (for actual end date)`;
 
     const rangeNoteSetting = new Setting(containerEl)
       .setName("Range Event Template")
