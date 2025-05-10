@@ -5048,11 +5048,13 @@ class ChornicaTimelineView extends ItemView {
           const cellIsoYear = hoveredCell.dataset.cellIsoYear || "";
           const cellDateRange = hoveredCell.dataset.cellDateRange || ""; // Original "MMM D - MMM D"
 
+          const eventTitleForTooltip = hoveredCell.dataset.tooltipEventTitle; // Get the event title
+
           const eventDescriptionForTooltip =
-            hoveredCell.dataset.tooltipEventTitle; // This is ChronicaEvent.description
-          const eventNameForTitleDisplay = hoveredCell.dataset.tooltipEventType; // This is the Event Type Name, used as a "Title"
-          const eventActualTypeNameForLogic =
-            hoveredCell.dataset.tooltipEventType; // For finding the type object
+            hoveredCell.dataset.tooltipEventDescription || ""; // Get the event description
+
+          const eventTypeForTooltip = hoveredCell.dataset.tooltipEventType; // For finding the type object
+
           const eventPeriodForDisplay = hoveredCell.dataset.tooltipEventPeriod; // Format: "YYYY-WXX to YYYY-WXX" or "YYYY-WXX"
 
           let colorHintClass = "";
@@ -5060,11 +5062,10 @@ class ChornicaTimelineView extends ItemView {
 
           // --- Determine Event Color Hint (Always do this first if it's an event cell) ---
           // We identify an event cell if eventDescriptionForTooltip has content (as set by applyEventStyling)
-          if (eventDescriptionForTooltip && eventActualTypeNameForLogic) {
+          if (eventDescriptionForTooltip && eventTypeForTooltip) {
             const matchedEventType = settings.eventTypes.find(
               (t) =>
-                t.name === eventActualTypeNameForLogic ||
-                t.id === eventActualTypeNameForLogic
+                t.name === eventTypeForTooltip || t.id === eventTypeForTooltip
             );
             if (matchedEventType) {
               if (matchedEventType.isPreset) {
@@ -5084,10 +5085,10 @@ class ChornicaTimelineView extends ItemView {
           // --- Build Tooltip Content ---
 
           // 1. Event Name (as Title - Bolded)
-          if (eventNameForTitleDisplay && eventDescriptionForTooltip) {
+          if (eventTitleForTooltip && eventDescriptionForTooltip) {
             // If it's an event, show its "name" (which is type name for now)
             tooltipContainer.createEl("span", {
-              text: eventNameForTitleDisplay,
+              text: eventTitleForTooltip,
               cls: "chronica-tooltip-event-title",
             });
           }
@@ -5101,11 +5102,7 @@ class ChornicaTimelineView extends ItemView {
           }
 
           // 3. Event Type Line (Full "Type: ..." line, only in Expanded mode for events)
-          if (
-            eventActualTypeNameForLogic &&
-            !isCompact &&
-            eventDescriptionForTooltip
-          ) {
+          if (eventTypeForTooltip && !isCompact && eventDescriptionForTooltip) {
             const typeLine = tooltipContainer.createEl("span", {
               cls: "chronica-tooltip-line",
             });
@@ -5113,7 +5110,7 @@ class ChornicaTimelineView extends ItemView {
               text: "Type:",
               cls: "chronica-tooltip-label",
             });
-            typeLine.appendText(eventActualTypeNameForLogic);
+            typeLine.appendText(eventTypeForTooltip);
           }
 
           // 4. Event Period Line (Full "Period: ..." line, only for range events in Expanded mode)
@@ -7112,11 +7109,17 @@ class ChornicaTimelineView extends ItemView {
       } else {
         delete cell.dataset.eventFile;
       }
-      // Store event details in data attributes for the custom tooltip to pick up later (Stage 2)
-      // This is a preparatory step for Stage 2 where the custom tooltip will read these.
+      // Store event details in data attributes for the custom tooltip to pick up later
       cell.dataset.tooltipEventType = eventTypeNameForTooltip;
       cell.dataset.tooltipEventPeriod = eventPeriodForTooltip;
-      cell.dataset.tooltipEventTitle = eventTitleForTooltip; // Or matchedEvent.description
+      // Use the event name as the title instead of description
+      cell.dataset.tooltipEventTitle = matchedEvent
+        ? matchedEvent.description
+        : "";
+      // Add a new data attribute for description (until we have separate fields)
+      cell.dataset.tooltipEventDescription = matchedEvent
+        ? matchedEvent.description
+        : "";
     } else {
       // No event, or event data is incomplete
       // cell.setAttribute("title", baseCellInfo); // DELETED - No longer setting native title for non-event cells

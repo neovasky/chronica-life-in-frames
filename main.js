@@ -3985,17 +3985,16 @@ class ChornicaTimelineView extends obsidian.ItemView {
                     const cellWeekNum = hoveredCell.dataset.cellWeekNum || "";
                     const cellIsoYear = hoveredCell.dataset.cellIsoYear || "";
                     const cellDateRange = hoveredCell.dataset.cellDateRange || ""; // Original "MMM D - MMM D"
-                    const eventDescriptionForTooltip = hoveredCell.dataset.tooltipEventTitle; // This is ChronicaEvent.description
-                    const eventNameForTitleDisplay = hoveredCell.dataset.tooltipEventType; // This is the Event Type Name, used as a "Title"
-                    const eventActualTypeNameForLogic = hoveredCell.dataset.tooltipEventType; // For finding the type object
+                    const eventTitleForTooltip = hoveredCell.dataset.tooltipEventTitle; // Get the event title
+                    const eventDescriptionForTooltip = hoveredCell.dataset.tooltipEventDescription || ""; // Get the event description
+                    const eventTypeForTooltip = hoveredCell.dataset.tooltipEventType; // For finding the type object
                     const eventPeriodForDisplay = hoveredCell.dataset.tooltipEventPeriod; // Format: "YYYY-WXX to YYYY-WXX" or "YYYY-WXX"
                     let colorHintClass = "";
                     let eventTypeColor = ""; // For custom event type inline style
                     // --- Determine Event Color Hint (Always do this first if it's an event cell) ---
                     // We identify an event cell if eventDescriptionForTooltip has content (as set by applyEventStyling)
-                    if (eventDescriptionForTooltip && eventActualTypeNameForLogic) {
-                        const matchedEventType = settings.eventTypes.find((t) => t.name === eventActualTypeNameForLogic ||
-                            t.id === eventActualTypeNameForLogic);
+                    if (eventDescriptionForTooltip && eventTypeForTooltip) {
+                        const matchedEventType = settings.eventTypes.find((t) => t.name === eventTypeForTooltip || t.id === eventTypeForTooltip);
                         if (matchedEventType) {
                             if (matchedEventType.isPreset) {
                                 colorHintClass = `tooltip-event-type-${matchedEventType.id.replace(/[^a-zA-Z0-9-_]/g, "-")}`;
@@ -4011,10 +4010,10 @@ class ChornicaTimelineView extends obsidian.ItemView {
                     }
                     // --- Build Tooltip Content ---
                     // 1. Event Name (as Title - Bolded)
-                    if (eventNameForTitleDisplay && eventDescriptionForTooltip) {
+                    if (eventTitleForTooltip && eventDescriptionForTooltip) {
                         // If it's an event, show its "name" (which is type name for now)
                         tooltipContainer.createEl("span", {
-                            text: eventNameForTitleDisplay,
+                            text: eventTitleForTooltip,
                             cls: "chronica-tooltip-event-title",
                         });
                     }
@@ -4026,9 +4025,7 @@ class ChornicaTimelineView extends obsidian.ItemView {
                         });
                     }
                     // 3. Event Type Line (Full "Type: ..." line, only in Expanded mode for events)
-                    if (eventActualTypeNameForLogic &&
-                        !isCompact &&
-                        eventDescriptionForTooltip) {
+                    if (eventTypeForTooltip && !isCompact && eventDescriptionForTooltip) {
                         const typeLine = tooltipContainer.createEl("span", {
                             cls: "chronica-tooltip-line",
                         });
@@ -4036,7 +4033,7 @@ class ChornicaTimelineView extends obsidian.ItemView {
                             text: "Type:",
                             cls: "chronica-tooltip-label",
                         });
-                        typeLine.appendText(eventActualTypeNameForLogic);
+                        typeLine.appendText(eventTypeForTooltip);
                     }
                     // 4. Event Period Line (Full "Period: ..." line, only for range events in Expanded mode)
                     if (eventPeriodForDisplay &&
@@ -5723,7 +5720,7 @@ class ChornicaTimelineView extends obsidian.ItemView {
             const typeId = matchedEvent.typeId;
             // Use the local variable in the callback instead of directly accessing matchedEvent
             const currentEventType = this.plugin.settings.eventTypes.find((type) => type.id === typeId);
-            let eventTitleForTooltip = matchedEvent.description;
+            matchedEvent.description;
             let eventTypeNameForTooltip = "Unknown Type";
             let eventPeriodForTooltip = matchedEvent.weekKey;
             if (currentEventType) {
@@ -5740,11 +5737,17 @@ class ChornicaTimelineView extends obsidian.ItemView {
             else {
                 delete cell.dataset.eventFile;
             }
-            // Store event details in data attributes for the custom tooltip to pick up later (Stage 2)
-            // This is a preparatory step for Stage 2 where the custom tooltip will read these.
+            // Store event details in data attributes for the custom tooltip to pick up later
             cell.dataset.tooltipEventType = eventTypeNameForTooltip;
             cell.dataset.tooltipEventPeriod = eventPeriodForTooltip;
-            cell.dataset.tooltipEventTitle = eventTitleForTooltip; // Or matchedEvent.description
+            // Use the event name as the title instead of description
+            cell.dataset.tooltipEventTitle = matchedEvent
+                ? matchedEvent.description
+                : "";
+            // Add a new data attribute for description (until we have separate fields)
+            cell.dataset.tooltipEventDescription = matchedEvent
+                ? matchedEvent.description
+                : "";
         }
         else {
             // No event, or event data is incomplete
