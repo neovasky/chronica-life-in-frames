@@ -5433,46 +5433,44 @@ class ChornicaTimelineView extends ItemView {
               colorHintClass = "tooltip-future";
           }
 
+          // ---- REVISED: Add Note File Paths to Tooltip ----
           if (settings.enableTooltipNotePreview && !isCompact) {
             const eventNotePath = hoveredCell.dataset.eventFile;
             const weeklyNotePath = hoveredCell.dataset.weeklyNotePath;
 
+            let eventNoteDisplayed = false; // Flag to track if event note was shown
+
             if (eventNotePath) {
+              const eventNoteFilename = eventNotePath.substring(
+                eventNotePath.lastIndexOf("/") + 1
+              );
               const eventNoteLine = tooltipContainer.createEl("span", {
-                cls: "chronica-tooltip-line chronica-tooltip-notelink", // Added new class
+                cls: "chronica-tooltip-line chronica-tooltip-notelink",
               });
               eventNoteLine.createEl("span", {
                 text: "Event Note:",
                 cls: "chronica-tooltip-label",
               });
-              // Extract filename from path
-              const eventNoteFilename = eventNotePath.substring(
-                eventNotePath.lastIndexOf("/") + 1
-              );
               eventNoteLine.appendText(eventNoteFilename);
+              eventNoteDisplayed = true;
             }
 
-            if (weeklyNotePath) {
-              // Only show weekly note if it's different from event note or if no event note
-              if (
-                !eventNotePath ||
-                (eventNotePath && weeklyNotePath !== eventNotePath)
-              ) {
-                const weeklyNoteLine = tooltipContainer.createEl("span", {
-                  cls: "chronica-tooltip-line chronica-tooltip-notelink", // Added new class
-                });
-                weeklyNoteLine.createEl("span", {
-                  text: "Weekly Note:",
-                  cls: "chronica-tooltip-label",
-                });
-                // Extract filename from path
-                const weeklyNoteFilename = weeklyNotePath.substring(
-                  weeklyNotePath.lastIndexOf("/") + 1
-                );
-                weeklyNoteLine.appendText(weeklyNoteFilename);
-              }
+            // Only show Weekly Note if NO Event Note was displayed for this cell, AND a weeklyNotePath exists.
+            if (!eventNoteDisplayed && weeklyNotePath) {
+              const weeklyNoteFilename = weeklyNotePath.substring(
+                weeklyNotePath.lastIndexOf("/") + 1
+              );
+              const weeklyNoteLine = tooltipContainer.createEl("span", {
+                cls: "chronica-tooltip-line chronica-tooltip-notelink",
+              });
+              weeklyNoteLine.createEl("span", {
+                text: "Weekly Note:",
+                cls: "chronica-tooltip-label",
+              });
+              weeklyNoteLine.appendText(weeklyNoteFilename);
             }
           }
+          // ---- END REVISED ----
 
           // Fallback content
           if (
