@@ -7973,8 +7973,6 @@ class ChornicaSettingTab extends PluginSettingTab {
       .setClass("chronica-folder-input-setting")
       .addSearch((search) => {
         let initialValueOnFocus = this.plugin.settings.notesFolder;
-        search.inputEl.style.width = "250px"; // Give it a decent width
-
         search
           .setPlaceholder("Type path or select...")
           .setValue(this.plugin.settings.notesFolder)
