@@ -2227,3 +2227,13 @@ Exp .chronica-sidebar-toggle:hover {
   overflow-y: auto; /* Allow scrolling for longer snippets */
   margin-top: 2px;
 }
+
+/* -----------------------------------------------------------------------------
+     15. SETTINGS UI
+     ----------------------------------------------------------------------------- */
+
+/* Settings Tab Specific Input Width */
+.chronica-folder-input-setting .setting-item-control input[type="search"],
+.chronica-folder-input-setting .setting-item-control input[type="text"] {
+  width: 250px;
+}

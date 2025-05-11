@@ -7872,7 +7872,6 @@ class MarkerSettingsModal extends Modal {
     // Show or hide frequency dropdown based on month markers toggle
     monthMarkerSetting.setClass("month-marker-frequency");
     if (!this.plugin.settings.showMonthMarkers) {
-      monthMarkerSetting.settingEl.style.display = "none";
     }
 
     // Close button
@@ -7979,6 +7978,7 @@ class ChornicaSettingTab extends PluginSettingTab {
       .setDesc(
         "Folder to store weekly notes (leave blank for vault root). Path will be processed after you finish typing and click outside the box."
       )
+      .setClass("chronica-folder-input-setting")
       .addSearch((search) => {
         let initialValueOnFocus = this.plugin.settings.notesFolder;
         search.inputEl.style.width = "250px"; // Give it a decent width
@@ -8055,9 +8055,9 @@ class ChornicaSettingTab extends PluginSettingTab {
         "Folder for event notes (if separate). Path processed on exiting input."
       )
       .setClass("event-folder-selector")
+      .setClass("chronica-folder-input-setting")
       .addSearch((search) => {
         let initialValueOnFocus = this.plugin.settings.eventNotesFolder;
-        search.inputEl.style.width = "250px";
 
         search
           .setPlaceholder("Type path or select...")
@@ -8401,28 +8401,20 @@ class ChornicaSettingTab extends PluginSettingTab {
             | "compact";
           await this.plugin.saveSettings();
 
-          // ---- NEW: Toggle visibility of the note preview setting ----
+          // Toggle visibility of the note preview setting ----
           if (value === "expanded") {
-            notePreviewSettingEl.style.display = ""; // Show the setting
+            notePreviewSettingEl.classList.remove("hidden");
           } else {
-            notePreviewSettingEl.style.display = "none"; // Hide the setting
-            // Optionally, you could also set enableTooltipNotePreview to false here
-            // if you want to disable it automatically when compact mode is chosen.
-            // Example:
-            // this.plugin.settings.enableTooltipNotePreview = false;
-            // await this.plugin.saveSettings();
-            // And update the toggle's visual state if you have a reference to it:
-            // previewToggle.setValue(false); // Assuming 'previewToggle' is the toggle component
+            notePreviewSettingEl.classList.add("hidden");
           }
-          // ---- END NEW ----
         })
     );
 
-    // ---- NEW: Set initial visibility for the note preview setting ----
+    // Set initial visibility for the note preview setting ----
     if (this.plugin.settings.tooltipDetailLevel === "expanded") {
-      notePreviewSettingEl.style.display = "";
+      notePreviewSettingEl.classList.remove("hidden");
     } else {
-      notePreviewSettingEl.style.display = "none";
+      notePreviewSettingEl.classList.add("hidden");
     }
 
     // --- Marker Visibility Settings ---
