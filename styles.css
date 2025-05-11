@@ -960,6 +960,10 @@ Exp .chronica-sidebar-toggle:hover {
   font-style: italic;
 }
 
+.chronica-modal-emphasis-text {
+  font-size: 13px;
+}
+
 /* Confirmation Modal */
 .chronica-confirmation-buttons {
   display: flex;

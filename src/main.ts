@@ -414,14 +414,13 @@ class ChornicaFolderSelectionModal extends Modal {
     });
     footerDiv.createEl("strong", {
       text: "Please create your dedicated folders in your vault before selecting them here.",
-      attr: { style: "font-size: 13px;" },
+      cls: "chronica-modal-emphasis-text", // MODIFIED LINE: Replaced attr: { style: ... } with cls
     });
 
     container.createEl("div", {
       cls: "chronica-welcome-footer",
       text: "You can change these folders later under Settings → Chronica: Life in Frames. ",
     });
-
     saveBtn.addEventListener("click", () => {
       const weekVal = (weekInput as HTMLInputElement).value.trim();
       const eventVal = (eventInput as HTMLInputElement).value.trim();
