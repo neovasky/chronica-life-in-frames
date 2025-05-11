@@ -218,7 +218,7 @@ class ChornicaFolderSelectionModal extends obsidian.Modal {
         });
         footerDiv.createEl("strong", {
             text: "Please create your dedicated folders in your vault before selecting them here.",
-            attr: { style: "font-size: 13px;" },
+            cls: "chronica-modal-emphasis-text", // MODIFIED LINE: Replaced attr: { style: ... } with cls
         });
         container.createEl("div", {
             cls: "chronica-welcome-footer",
@@ -2027,25 +2027,32 @@ class ChornicaEventModal extends obsidian.Modal {
         });
         // Create a small element for validation messages for the date range
         const rangeValidationMessageEl = rangeDateContainer.createEl("small", {
-            cls: "chronica-date-validation-message",
+            cls: "chronica-date-validation-message", // Class for styling (color, margin, etc.)
         });
-        rangeValidationMessageEl.style.color = "var(--text-error)";
-        rangeValidationMessageEl.style.display = "none"; // Initially hidden
+        rangeValidationMessageEl.classList.add("hidden"); // Initially hidden using the class
         // Function to validate the date range and update UI feedback
         const validateDateRange = () => {
             const startDateVal = this.startDateInput.value;
             const endDateVal = this.endDateInput.value;
-            if (startDateVal && endDateVal) {
-                // Only validate if both dates are present
-                if (new Date(endDateVal) < new Date(startDateVal)) {
-                    rangeValidationMessageEl.textContent =
-                        "End date cannot be before start date.";
-                    rangeValidationMessageEl.style.display = "block";
-                    return false; // Invalid
+            const isValid = () => {
+                // Helper to avoid multiple returns affecting class toggle
+                if (startDateVal && endDateVal) {
+                    if (new Date(endDateVal) < new Date(startDateVal)) {
+                        rangeValidationMessageEl.textContent =
+                            "End date cannot be before start date.";
+                        return false; // Invalid
+                    }
                 }
+                return true; // Valid or not enough info to be definitively invalid
+            };
+            if (!isValid()) {
+                rangeValidationMessageEl.classList.remove("hidden"); // SHOW
             }
-            rangeValidationMessageEl.style.display = "none"; // Valid or not enough info yet
-            return true; // Valid or not enough info to be definitively invalid
+            else {
+                rangeValidationMessageEl.classList.add("hidden"); // HIDE
+                rangeValidationMessageEl.textContent = ""; // Clear text when hiding
+            }
+            return isValid(); // Return the actual validation status
         };
         // Set the initial min for the date picker UI, but don't update it aggressively
         if (this.startDateInput.value) {
@@ -2107,15 +2114,17 @@ class ChornicaEventModal extends obsidian.Modal {
             if (isRange) {
                 singleDateRadio.checked = false;
                 rangeDateRadio.checked = true;
-                singleDateContainer.style.display = "none";
-                rangeDateContainer.style.display = "block";
+                singleDateContainer.classList.add("hidden"); // MODIFIED LINE
+                rangeDateContainer.classList.remove("hidden"); // MODIFIED LINE
+                // ... rest of the if block (ensure startDateInput and endDateInput values are set correctly)
                 if (this.singleDateInput.value) {
+                    // This logic should remain
                     if (!this.startDateInput.value)
                         this.startDateInput.value = this.singleDateInput.value;
                     if (!this.endDateInput.value ||
                         new Date(this.endDateInput.value) <
                             new Date(this.startDateInput.value)) {
-                        this.endDateInput.value = this.startDateInput.value; // Default end to start if invalid or empty
+                        this.endDateInput.value = this.startDateInput.value;
                     }
                 }
                 try {
@@ -2126,21 +2135,24 @@ class ChornicaEventModal extends obsidian.Modal {
                     this.selectedEndWeekKey = this.plugin.getWeekKeyFromDate(new Date(this.endDateInput.value));
                 }
                 catch { }
-                validateDateRange();
+                validateDateRange(); // This should also remain
             }
             else {
                 singleDateRadio.checked = true;
                 rangeDateRadio.checked = false;
-                singleDateContainer.style.display = "block";
-                rangeDateContainer.style.display = "none";
+                singleDateContainer.classList.remove("hidden"); // MODIFIED LINE
+                rangeDateContainer.classList.add("hidden"); // MODIFIED LINE
+                // ... rest of the else block (ensure selectedWeekKey is set correctly)
                 if (this.singleDateInput.value) {
+                    // This logic should remain
                     try {
                         this.selectedWeekKey = this.plugin.getWeekKeyFromDate(new Date(this.singleDateInput.value));
                     }
                     catch { }
                 }
-                this.selectedEndWeekKey = "";
-                rangeValidationMessageEl.style.display = "none";
+                this.selectedEndWeekKey = ""; // This should remain
+                rangeValidationMessageEl.classList.add("hidden");
+                rangeValidationMessageEl.textContent = "";
             }
             this.updateWeekInfo(contentEl);
         };
@@ -2206,13 +2218,16 @@ class ChornicaEventModal extends obsidian.Modal {
         // Helper to update the color indicator span
         const updateColorIndicatorUI = (typeId) => {
             if (typeId === "CREATE_NEW_TYPE" || !typeId) {
-                colorIndicator.style.backgroundColor = "transparent";
+                colorIndicator.style.removeProperty("--event-type-indicator-color"); // MODIFIED: Use this to revert to default (transparent)
                 return;
             }
             const selectedType = this.plugin.settings.eventTypes.find((type) => type.id === typeId);
-            colorIndicator.style.backgroundColor = selectedType
-                ? selectedType.color
-                : "transparent";
+            if (selectedType) {
+                colorIndicator.style.setProperty("--event-type-indicator-color", selectedType.color); // MODIFIED LINE
+            }
+            else {
+                colorIndicator.style.removeProperty("--event-type-indicator-color"); // MODIFIED: Use this to revert to default (transparent)
+            }
         };
         // Helper to populate the dropdown
         // It now also ensures this.selectedTypeId is valid after population

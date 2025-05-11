@@ -779,6 +779,7 @@ Exp .chronica-sidebar-toggle:hover {
   margin-left: auto; /* Push buttons to the right */
   display: flex;
   gap: 5px;
+  justify-content: flex-end;
 }
 
 .chronica-manage-types-modal .delete-type-button {
@@ -793,6 +794,7 @@ Exp .chronica-sidebar-toggle:hover {
   height: 16px;
   border-radius: 3px;
   margin-right: 10px;
+  background-color: var(--event-type-list-color, transparent);
 }
 
 .event-type-name {
@@ -807,7 +809,6 @@ Exp .chronica-sidebar-toggle:hover {
 .save-edit-button,
 .cancel-edit-button {
   padding: 4px 8px;
-  margin-left: 5px;
   border-radius: 4px;
   border: none;
   cursor: pointer;
@@ -969,6 +970,12 @@ Exp .chronica-sidebar-toggle:hover {
   display: flex;
   justify-content: space-around;
   margin-top: 20px;
+}
+
+.chronica-date-validation-message {
+  color: var(--text-error);
+  margin-top: 4px; /* Optional: Add some spacing */
+  font-size: var(--font-ui-smaller); /* Optional: Make it a bit smaller */
 }
 
 .chronica-confirmation-buttons button {
@@ -1986,9 +1993,12 @@ Exp .chronica-sidebar-toggle:hover {
   margin-right: 8px; /* Space between circle and dropdown */
   border: 1px solid var(--background-modifier-border); /* Subtle border */
   flex-shrink: 0; /* Prevent shrinking if space is tight */
-  /* vertical-align: middle; /* Helps align with the dropdown text if not using flex */
   position: relative;
   top: -5px;
+  background-color: var(
+    --event-type-indicator-color,
+    transparent
+  ); /* MODIFIED LINE: Use CSS variable, default to transparent */
 }
 
 /* Optional: If you wrap indicator and dropdown in a flex container */
