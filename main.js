@@ -3102,9 +3102,6 @@ class ChornicaTimelineView extends obsidian.ItemView {
             const deltaX = startX - e.clientX;
             const newWidth = Math.max(400, Math.min(1200, startWidth + deltaX));
             document.documentElement.style.setProperty("--stats-panel-width", `${newWidth}px`);
-            statsPanel.style.width = `${newWidth}px`;
-            statsPanel.style.minWidth = `${newWidth}px`;
-            statsPanel.style.maxWidth = `${newWidth}px`;
             this.plugin.settings.statsPanelWidth = newWidth;
         };
         // Right handle drag (increases width)
@@ -3121,9 +3118,6 @@ class ChornicaTimelineView extends obsidian.ItemView {
             const deltaX = e.clientX - startX;
             const newWidth = Math.max(400, Math.min(1200, startWidth + deltaX));
             document.documentElement.style.setProperty("--stats-panel-width", `${newWidth}px`);
-            statsPanel.style.width = `${newWidth}px`;
-            statsPanel.style.minWidth = `${newWidth}px`;
-            statsPanel.style.maxWidth = `${newWidth}px`;
             this.plugin.settings.statsPanelWidth = newWidth;
         };
         const onMouseUp = () => {
@@ -4739,27 +4733,20 @@ class ChornicaTimelineView extends obsidian.ItemView {
             }
         });
         statsHandle.addEventListener("click", () => {
-            // Flip state
             this.isStatsOpen = !this.isStatsOpen;
             this.plugin.settings.isStatsOpen = this.isStatsOpen;
             this.plugin.saveSettings();
-            // Update classes
             statsPanel.classList.toggle("expanded", this.isStatsOpen);
             statsPanel.classList.toggle("collapsed", !this.isStatsOpen);
-            // Important: Set explicit panel height when expanding
             if (this.isStatsOpen) {
-                statsPanel.style.height = `${this.plugin.settings.statsPanelHeight}px`;
+                // Ensure the CSS variable is current, as the .expanded class relies on it.
                 document.documentElement.style.setProperty("--stats-panel-height", `${this.plugin.settings.statsPanelHeight}px`);
+                // statsPanel.style.height is now handled by CSS via .expanded class
             }
-            else {
-                statsPanel.style.height = "0";
-            }
-            // Update content area padding
             const contentArea = this.containerEl.querySelector(".chronica-content-area");
             if (contentArea) {
                 contentArea.classList.toggle("stats-expanded", this.isStatsOpen);
             }
-            // Update tooltip text
             statsHandle.setAttribute("title", this.isStatsOpen ? "Hide Statistics" : "Show Statistics");
         });
         // Setup resize functionality with simplified approach
@@ -4805,7 +4792,7 @@ class ChornicaTimelineView extends obsidian.ItemView {
             // Update CSS variable for height
             document.documentElement.style.setProperty("--stats-panel-height", `${newHeight}px`);
             // Update panel height and position
-            statsPanel.style.height = `${newHeight}px`;
+            this.plugin.settings.statsPanelHeight = newHeight;
             statsPanel.style.transform = `translateX(calc(-50% + ${newOffset}px))`;
             // Update the handle position to match
             const statsHandle = this.containerEl.querySelector(".chronica-stats-handle");
@@ -4836,32 +4823,31 @@ class ChornicaTimelineView extends obsidian.ItemView {
         const sidebar = this.containerEl.querySelector(".chronica-sidebar");
         if (!statsPanel || !contentArea || !statsHandle)
             return;
-        // Set panel height
-        const panelHeight = this.plugin.settings.statsPanelHeight;
-        document.documentElement.style.setProperty("--stats-panel-height", `${panelHeight}px`);
-        // Get horizontal offset
+        // Ensure CSS variables are up-to-date from settings
+        const panelHeightSetting = this.plugin.settings.statsPanelHeight;
+        const panelWidthSetting = this.plugin.settings.statsPanelWidth;
+        document.documentElement.style.setProperty("--stats-panel-height", `${panelHeightSetting}px`);
+        document.documentElement.style.setProperty("--stats-panel-width", `${panelWidthSetting}px`);
         const horizontalOffset = this.plugin.settings.statsPanelHorizontalOffset || 0;
-        // Get the total window width and calculate the available width
-        this.containerEl.clientWidth;
         const sidebarWidth = this.isSidebarOpen && sidebar ? sidebar.getBoundingClientRect().width : 0;
-        // Calculate the center of the available space
         const offsetX = this.isSidebarOpen ? sidebarWidth / 2 : 0;
-        // Position the handle and panel base positions (before transform)
         statsPanel.style.left = `calc(50% + ${offsetX}px)`;
         statsHandle.style.left = `calc(50% + ${offsetX}px)`;
-        // Apply horizontal offset via transform
         statsPanel.style.transform = `translateX(calc(-50% + ${horizontalOffset}px))`;
         statsHandle.style.transform = `translateX(calc(-50% + ${horizontalOffset}px))`;
-        // Set height based on panel state
         if (this.isStatsOpen) {
             contentArea.classList.add("stats-expanded");
-            statsPanel.style.height = `${panelHeight}px`;
-            statsPanel.style.width = `${this.plugin.settings.statsPanelWidth}px`;
+            if (!statsPanel.classList.contains("expanded")) {
+                statsPanel.classList.add("expanded");
+                statsPanel.classList.remove("collapsed");
+            }
         }
         else {
             contentArea.classList.remove("stats-expanded");
-            statsPanel.style.height = "0";
-            contentArea.style.paddingBottom = "0";
+            if (!statsPanel.classList.contains("collapsed")) {
+                statsPanel.classList.add("collapsed");
+                statsPanel.classList.remove("expanded");
+            }
         }
     }
     /**
