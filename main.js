@@ -2373,7 +2373,7 @@ class ChornicaEventModal extends obsidian.Modal {
                 if (rangeValidationMessageEl) {
                     rangeValidationMessageEl.textContent =
                         "Start and end dates are required.";
-                    rangeValidationMessageEl.style.display = "block";
+                    rangeValidationMessageEl.classList.remove("hidden");
                 }
                 return;
             }
@@ -2384,12 +2384,12 @@ class ChornicaEventModal extends obsidian.Modal {
                 if (rangeValidationMessageEl) {
                     rangeValidationMessageEl.textContent =
                         "End date cannot be before start date.";
-                    rangeValidationMessageEl.style.display = "block";
+                    rangeValidationMessageEl.classList.remove("hidden");
                 }
                 return;
             }
             if (rangeValidationMessageEl)
-                rangeValidationMessageEl.style.display = "none";
+                rangeValidationMessageEl.classList.add("hidden");
             try {
                 this.selectedWeekKey = this.plugin.getWeekKeyFromDate(startDate);
             }
