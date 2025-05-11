@@ -7833,24 +7833,13 @@ class MarkerSettingsModal extends Modal {
           });
       });
 
-    // Month markers setting
-    new Setting(contentEl)
-      .setName("Month Markers")
-      .setDesc("Show month markers along the left side (Jan, Feb, Mar, ...)")
-      .addToggle((toggle) => {
-        toggle
-          .setValue(this.plugin.settings.showMonthMarkers)
-          .onChange(async (value) => {
-            this.plugin.settings.showMonthMarkers = value;
-            await this.plugin.saveSettings();
-            this.refreshCallback();
-          });
-      });
-
-    // Month marker frequency dropdown
-    const monthMarkerSetting = new Setting(contentEl)
+    // Month marker frequency dropdown - DEFINE IT FIRST so it's in scope
+    const monthMarkerFrequencySetting = new Setting(contentEl)
       .setName("Month Marker Frequency")
-      .setDesc("Choose how often month markers appear")
+      .setDesc(
+        "Choose how often month markers appear (requires 'Month Markers' to be ON)"
+      )
+      // .setClass("month-marker-frequency-setting") // Optional: if you want to target it via a specific class in CSS for other reasons
       .addDropdown((dropdown) => {
         dropdown
           .addOption("all", "Every Month")
@@ -7869,9 +7858,28 @@ class MarkerSettingsModal extends Modal {
           });
       });
 
-    // Show or hide frequency dropdown based on month markers toggle
-    monthMarkerSetting.setClass("month-marker-frequency");
+    // Month markers setting (Toggle) - Now define the toggle that controls the frequency setting's visibility
+    new Setting(contentEl)
+      .setName("Month Markers")
+      .setDesc("Show month markers along the left side (Jan, Feb, Mar, ...)")
+      .addToggle((toggle) => {
+        toggle
+          .setValue(this.plugin.settings.showMonthMarkers)
+          .onChange(async (value) => {
+            this.plugin.settings.showMonthMarkers = value;
+            await this.plugin.saveSettings();
+            // Toggle visibility of the frequency dropdown setting
+            monthMarkerFrequencySetting.settingEl.classList.toggle(
+              "hidden",
+              !value
+            ); // MODIFIED
+            this.refreshCallback();
+          });
+      });
+
+    // Initial visibility for the frequency dropdown
     if (!this.plugin.settings.showMonthMarkers) {
+      monthMarkerFrequencySetting.settingEl.classList.add("hidden"); // MODIFIED
     }
 
     // Close button
