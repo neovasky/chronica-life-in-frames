@@ -2799,7 +2799,13 @@ class ManageEventTypesModal extends obsidian.Modal {
                 cls: `event-type-item ${type.isPreset ? "preset-type" : "custom-type"}`,
             });
             const colorBox = typeItem.createEl("span", { cls: "event-type-color" });
-            colorBox.style.backgroundColor = type.color;
+            if (type.color) {
+                // MODIFIED BLOCK
+                colorBox.style.setProperty("--event-type-list-color", type.color);
+            }
+            else {
+                colorBox.style.removeProperty("--event-type-list-color");
+            }
             const nameEl = typeItem.createEl("span", {
                 text: type.name,
                 cls: "event-type-name",
@@ -2815,7 +2821,6 @@ class ManageEventTypesModal extends obsidian.Modal {
                 attr: { title: `Edit '${type.name}'` },
             });
             obsidian.setIcon(editButton, "pencil");
-            editButton.style.marginLeft = "auto"; // Default margin
             editButton.addEventListener("click", () => {
                 this.showEditTypeModal(type);
             });
@@ -2826,8 +2831,6 @@ class ManageEventTypesModal extends obsidian.Modal {
                     attr: { title: `Delete '${type.name}'` },
                 });
                 obsidian.setIcon(deleteButton, "trash-2");
-                editButton.style.marginLeft = "0"; // Adjust margin when delete button present
-                // deleteButton.style.marginLeft = "auto"; // Push delete button right (or adjust layout via CSS flex)
                 deleteButton.addEventListener("click", async () => {
                     if (confirm(`Delete type "${type.name}"?\nEvents using it will be reassigned to "Major Life".`)) {
                         const defaultTypeId = "preset_major_life";
@@ -6949,6 +6952,32 @@ class ChornicaSettingTab extends obsidian.PluginSettingTab {
             // Views will read this on next open/render
         }));
         new obsidian.Setting(containerEl)
+            .setName("Default Panel Height")
+            .setDesc("Initial height of the statistics panel in pixels.")
+            .addSlider((slider) => slider
+            .setLimits(150, 600, 10) // Finer steps
+            .setValue(this.plugin.settings.statsPanelHeight)
+            .setDynamicTooltip()
+            .onChange(async (value) => {
+            this.plugin.settings.statsPanelHeight = value;
+            await this.plugin.saveSettings();
+            document.documentElement.style.setProperty("--stats-panel-height", `${value}px`);
+            this.refreshStatsPanelInOpenViews(); // Call to the new method
+        }));
+        new obsidian.Setting(containerEl)
+            .setName("Default Panel Width")
+            .setDesc("Initial width of the statistics panel in pixels.")
+            .addSlider((slider) => slider
+            .setLimits(400, 1200, 20) // Width range
+            .setValue(this.plugin.settings.statsPanelWidth)
+            .setDynamicTooltip()
+            .onChange(async (value) => {
+            this.plugin.settings.statsPanelWidth = value;
+            await this.plugin.saveSettings();
+            document.documentElement.style.setProperty("--stats-panel-width", `${value}px`);
+            this.refreshStatsPanelInOpenViews(); // Call to the new method
+        }));
+        new obsidian.Setting(containerEl)
             .setName("Default Panel Tab")
             .setDesc("Which tab the statistics panel opens to.")
             .addDropdown((dropdown) => {
@@ -6973,7 +7002,8 @@ class ChornicaSettingTab extends obsidian.PluginSettingTab {
             .onChange(async (value) => {
             this.plugin.settings.statsPanelHeight = value;
             await this.plugin.saveSettings();
-            // Update CSS variable if view is open? Or let view handle on open.
+            document.documentElement.style.setProperty("--stats-panel-height", `${value}px`); // ADDED
+            this.refreshStatsPanelInOpenViews(); // ADDED - Helper function call
         }));
         new obsidian.Setting(containerEl)
             .setName("Default Panel Width")
@@ -6985,6 +7015,8 @@ class ChornicaSettingTab extends obsidian.PluginSettingTab {
             .onChange(async (value) => {
             this.plugin.settings.statsPanelWidth = value;
             await this.plugin.saveSettings();
+            document.documentElement.style.setProperty("--stats-panel-width", `${value}px`); // ADDED
+            this.refreshStatsPanelInOpenViews(); // ADDED - Helper function call
         }));
         // --- NEW Data Management Section ---
         containerEl.createEl("h3", { text: "Data Management" });
@@ -7125,6 +7157,15 @@ class ChornicaSettingTab extends obsidian.PluginSettingTab {
         });
         navigationDetails.setAttribute("open", ""); // Open first tip by default
     } // End of display() method
+    refreshStatsPanelInOpenViews() {
+        this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE).forEach((leaf) => {
+            const view = leaf.view;
+            if (view && typeof view.updateStatsPanelLayout === "function") {
+                view.updateStatsPanelLayout();
+            }
+            // Removed the else if for brevity, assuming updateStatsPanelLayout is sufficient for now
+        });
+    }
     /**
      * Refresh all timeline views
      */

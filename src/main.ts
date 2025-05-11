@@ -8751,6 +8751,44 @@ class ChornicaSettingTab extends PluginSettingTab {
             // Views will read this on next open/render
           })
       );
+
+    new Setting(containerEl)
+      .setName("Default Panel Height")
+      .setDesc("Initial height of the statistics panel in pixels.")
+      .addSlider((slider) =>
+        slider
+          .setLimits(150, 600, 10) // Finer steps
+          .setValue(this.plugin.settings.statsPanelHeight)
+          .setDynamicTooltip()
+          .onChange(async (value) => {
+            this.plugin.settings.statsPanelHeight = value;
+            await this.plugin.saveSettings();
+            document.documentElement.style.setProperty(
+              "--stats-panel-height",
+              `${value}px`
+            );
+            this.refreshStatsPanelInOpenViews(); // Call to the new method
+          })
+      );
+    new Setting(containerEl)
+      .setName("Default Panel Width")
+      .setDesc("Initial width of the statistics panel in pixels.")
+      .addSlider((slider) =>
+        slider
+          .setLimits(400, 1200, 20) // Width range
+          .setValue(this.plugin.settings.statsPanelWidth)
+          .setDynamicTooltip()
+          .onChange(async (value) => {
+            this.plugin.settings.statsPanelWidth = value;
+            await this.plugin.saveSettings();
+            document.documentElement.style.setProperty(
+              "--stats-panel-width",
+              `${value}px`
+            );
+            this.refreshStatsPanelInOpenViews(); // Call to the new method
+          })
+      );
+
     new Setting(containerEl)
       .setName("Default Panel Tab")
       .setDesc("Which tab the statistics panel opens to.")
@@ -8766,33 +8804,6 @@ class ChornicaSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           });
       });
-    new Setting(containerEl)
-      .setName("Default Panel Height")
-      .setDesc("Initial height of the statistics panel in pixels.")
-      .addSlider((slider) =>
-        slider
-          .setLimits(150, 600, 10) // Finer steps
-          .setValue(this.plugin.settings.statsPanelHeight)
-          .setDynamicTooltip()
-          .onChange(async (value) => {
-            this.plugin.settings.statsPanelHeight = value;
-            await this.plugin.saveSettings();
-            // Update CSS variable if view is open? Or let view handle on open.
-          })
-      );
-    new Setting(containerEl)
-      .setName("Default Panel Width")
-      .setDesc("Initial width of the statistics panel in pixels.")
-      .addSlider((slider) =>
-        slider
-          .setLimits(400, 1200, 20) // Width range
-          .setValue(this.plugin.settings.statsPanelWidth)
-          .setDynamicTooltip()
-          .onChange(async (value) => {
-            this.plugin.settings.statsPanelWidth = value;
-            await this.plugin.saveSettings();
-          })
-      );
 
     // --- NEW Data Management Section ---
     containerEl.createEl("h3", { text: "Data Management" });
@@ -8950,6 +8961,16 @@ class ChornicaSettingTab extends PluginSettingTab {
     });
     navigationDetails.setAttribute("open", ""); // Open first tip by default
   } // End of display() method
+
+  refreshStatsPanelInOpenViews(): void {
+    this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE).forEach((leaf) => {
+      const view = leaf.view as ChornicaTimelineView;
+      if (view && typeof view.updateStatsPanelLayout === "function") {
+        view.updateStatsPanelLayout();
+      }
+      // Removed the else if for brevity, assuming updateStatsPanelLayout is sufficient for now
+    });
+  }
 
   /**
    * Refresh all timeline views
