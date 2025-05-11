@@ -7504,32 +7504,42 @@ class ChornicaTimelineView extends ItemView {
    * @returns True if an event style was applied, false otherwise.
    */
   applyEventStyling(cell: HTMLElement, weekKey: string): boolean {
-    // Ensure events and eventTypes arrays exist and have data
-    if (
-      !this.plugin.settings.events ||
-      this.plugin.settings.events.length === 0 ||
-      !this.plugin.settings.eventTypes ||
-      this.plugin.settings.eventTypes.length === 0
-    ) {
-      // Clear any lingering event styles if data is missing
-      cell.classList.remove("event", "future-event-highlight");
-      // Remove any event-type-id classes
+    // Ensure events and eventTypes arrays exist
+    if (!this.plugin.settings.events || !this.plugin.settings.eventTypes) {
+      // Minimal cleanup if essential settings are missing
+      cell.classList.remove(
+        "event",
+        "future-event-highlight",
+        "event-type-custom",
+        "event-unknown-type"
+      );
+      // Remove any other event-type-id classes
       for (let i = cell.classList.length - 1; i >= 0; i--) {
-        if (cell.classList[i].startsWith("event-type-")) {
+        if (cell.classList[i].startsWith("event-type-preset_")) {
           cell.classList.remove(cell.classList[i]);
         }
       }
-      cell.style.removeProperty("background-color");
-      cell.style.removeProperty("border-color");
-      cell.style.removeProperty("border-width");
-      cell.style.removeProperty("border-style");
+      cell.style.removeProperty("--custom-event-color");
       delete cell.dataset.eventFile;
       return false;
     }
 
     let eventApplied = false;
-    let eventDescription = "";
-    let appliedNotePath: string | undefined = undefined;
+    let appliedNotePath: string | undefined = undefined; // Keep this for dataset
+
+    // Always clean up previous event styling first
+    cell.classList.remove(
+      "event",
+      "future-event-highlight",
+      "event-type-custom",
+      "event-unknown-type"
+    );
+    for (let i = cell.classList.length - 1; i >= 0; i--) {
+      if (cell.classList[i].startsWith("event-type-preset_")) {
+        cell.classList.remove(cell.classList[i]);
+      }
+    }
+    cell.style.removeProperty("--custom-event-color"); // Remove custom color variable
 
     let matchedEvent: ChronicaEvent | null = null;
     for (const event of this.plugin.settings.events) {
@@ -7593,83 +7603,41 @@ class ChornicaTimelineView extends ItemView {
         (type) => type.id === matchedEvent!.typeId
       );
 
+      cell.classList.add("event"); // Add base event class
+
       if (eventType) {
-        cell.classList.add("event");
-        const safeTypeIdClass = `event-type-${eventType.id.replace(
-          /[^a-zA-Z0-9-_]/g,
-          "-"
-        )}`;
-        cell.addClass(safeTypeIdClass);
-
-        cell.style.setProperty(
-          "background-color",
-          eventType.color,
-          "important"
-        );
-        cell.style.setProperty("border-color", eventType.color, "important");
-        cell.style.setProperty("border-width", "2px", "important");
-        cell.style.setProperty("border-style", "solid", "important");
-
-        eventDescription = `${eventType.name}: ${matchedEvent.description}`;
-        if (
-          matchedEvent.endWeekKey &&
-          matchedEvent.endWeekKey !== matchedEvent.weekKey
-        ) {
-          eventDescription += ` (${matchedEvent.weekKey} to ${matchedEvent.endWeekKey})`;
+        const safeTypeId = eventType.id.replace(/[^a-zA-Z0-9-_]/g, "-");
+        if (eventType.isPreset) {
+          cell.classList.add(`event-type-${safeTypeId}`);
         } else {
-          eventDescription += ` (${matchedEvent.weekKey})`;
+          // Custom type: set CSS variable for color and add a general custom class
+          cell.classList.add("event-type-custom");
+          cell.style.setProperty("--custom-event-color", eventType.color);
         }
-        appliedNotePath = matchedEvent.notePath;
+        appliedNotePath = matchedEvent.notePath; // Store for dataset
         eventApplied = true;
       } else {
+        // Unknown event type
         console.warn(
           `Chronica: Type definition missing for typeId: ${matchedEvent.typeId}`
         );
-        cell.classList.add("event"); // Base style for unknown but existing event
-        cell.style.setProperty(
-          "border-color",
-          "var(--text-faint)",
-          "important"
-        );
-        cell.style.setProperty("border-width", "1px", "important");
-        cell.style.setProperty("border-style", "dashed", "important");
-        cell.style.removeProperty("background-color"); // No specific background
-        eventDescription = `Unknown Event Type: ${matchedEvent.description} (${matchedEvent.weekKey})`;
-        appliedNotePath = matchedEvent.notePath;
-        eventApplied = true;
+        cell.classList.add("event-unknown-type");
+        appliedNotePath = matchedEvent.notePath; // Store for dataset
+        eventApplied = true; // Still treat as an event for tooltip purposes
       }
     } else {
-      // No event found, ensure all event-specific styles and classes are cleared
-      cell.classList.remove("event");
-      for (let i = cell.classList.length - 1; i >= 0; i--) {
-        if (cell.classList[i].startsWith("event-type-")) {
-          cell.classList.remove(cell.classList[i]);
-        }
-      }
-      cell.style.removeProperty("background-color");
-      cell.style.removeProperty("border-color");
-      cell.style.removeProperty("border-width");
-      cell.style.removeProperty("border-style");
-      delete cell.dataset.eventFile;
+      // No event found
+      delete cell.dataset.eventFile; // Ensure this is cleared if no event
     }
 
-    // Tooltip Management:
-    const cellWeekNum = cell.dataset.cellWeekNum || "";
-    const cellIsoYear = cell.dataset.cellIsoYear || "";
-    const cellDateRange = cell.dataset.cellDateRange || "";
-    const baseCellInfo = `Cell: W${cellWeekNum}, ${cellIsoYear} (${cellDateRange})`;
-
+    // Tooltip Management (largely unchanged, but relies on eventApplied and matchedEvent correctly set above)
     if (eventApplied && matchedEvent) {
-      // matchedEvent implies an event was found
-      // Extract typeId to a local variable to satisfy TypeScript
       const typeId = matchedEvent.typeId;
-
-      // Use the local variable in the callback instead of directly accessing matchedEvent
       const currentEventType = this.plugin.settings.eventTypes.find(
         (type) => type.id === typeId
       );
 
-      let eventTitleForTooltip = matchedEvent.name;
+      let eventTitleForTooltip = matchedEvent.name || matchedEvent.description; // Ensure there's a title
       let eventDescriptionForTooltip = matchedEvent.description || "";
       let eventTypeNameForTooltip = "Unknown Type";
       let eventPeriodForTooltip = matchedEvent.weekKey;
@@ -7685,29 +7653,27 @@ class ChornicaTimelineView extends ItemView {
         eventPeriodForTooltip = `${matchedEvent.weekKey} to ${matchedEvent.endWeekKey}`;
       }
 
-      if (matchedEvent.notePath) {
-        cell.dataset.eventFile = matchedEvent.notePath;
+      if (appliedNotePath) {
+        // Use the variable we stored
+        cell.dataset.eventFile = appliedNotePath;
       } else {
         delete cell.dataset.eventFile;
       }
 
-      // Store event details in data attributes for the custom tooltip to pick up later
       cell.dataset.tooltipEventType = eventTypeNameForTooltip;
       cell.dataset.tooltipEventPeriod = eventPeriodForTooltip;
-      cell.dataset.tooltipEventTitle = eventTitleForTooltip; // Use name or description
-      cell.dataset.tooltipEventDescription = eventDescriptionForTooltip; // FIXED: Only set once
+      cell.dataset.tooltipEventTitle = eventTitleForTooltip;
+      cell.dataset.tooltipEventDescription = eventDescriptionForTooltip;
     } else {
-      // No event, or event data is incomplete
       delete cell.dataset.eventFile;
-      // Clear any event-specific data attributes if no event
       delete cell.dataset.tooltipEventType;
       delete cell.dataset.tooltipEventPeriod;
       delete cell.dataset.tooltipEventTitle;
-      delete cell.dataset.tooltipEventDescription; // ADDED: Clear description attribute too
+      delete cell.dataset.tooltipEventDescription;
     }
-    // Future Event Highlight
+
+    // Future Event Highlight (logic remains the same)
     if (eventApplied) {
-      // Only highlight if there's an event
       const now = new Date();
       let cellDate: Date | null = null;
       try {

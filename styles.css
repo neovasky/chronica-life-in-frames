@@ -538,10 +538,61 @@ Exp .chronica-sidebar-toggle:hover {
   ); /* Background for non-event filled cells from variable */
 }
 
-/* No separate .chronica-grid-cell.filled-week.event needed for border-color
-   if the general .filled-week rule above handles it with the CSS variable.
-   The event's specific background color (from applyEventStyling) will still show through
-   because this rule for background-color only applies to :not(.event). */
+/* ==== ADD THESE NEW RULES ==== */
+
+/* Base styling for any event cell (can augment existing .chronica-grid-cell.event) */
+/* The existing .chronica-grid-cell.event already handles border-width and border-style. */
+/* We primarily need to handle colors here. */
+
+/* Preset Event Type Styling */
+.chronica-grid-cell.event.event-type-preset_major_life {
+  background-color: var(--major-life-color); /* Variable from :root */
+  border-color: var(--major-life-color);
+}
+
+.chronica-grid-cell.event.event-type-preset_travel {
+  background-color: var(--travel-color); /* Variable from :root */
+  border-color: var(--travel-color);
+}
+
+.chronica-grid-cell.event.event-type-preset_relationship {
+  background-color: var(--relationship-color); /* Variable from :root */
+  border-color: var(--relationship-color);
+}
+
+.chronica-grid-cell.event.event-type-preset_education_career {
+  background-color: var(--education-career-color); /* Variable from :root */
+  border-color: var(--education-career-color);
+}
+
+/* Styling for Custom Event Types (uses local CSS variable) */
+.chronica-grid-cell.event.event-type-custom {
+  background-color: var(
+    --custom-event-color,
+    var(--interactive-accent)
+  ); /* Fallback color */
+  border-color: var(--custom-event-color, var(--interactive-accent));
+}
+
+/* Styling for Unknown Event Types */
+.chronica-grid-cell.event.event-unknown-type {
+  border-color: var(--text-faint); /* Different border style */
+  border-width: 1px;
+  border-style: dashed;
+  background-color: transparent; /* Or a neutral default */
+}
+
+/* Ensure filled week styling doesn't conflict harshly if an event is also on a filled week.
+   The event color should generally take precedence for the background.
+   The .filled-week class mainly adds a border if not an event, or a background.
+   If an event is on a filled week, the event's background color from above rules will apply.
+   The .filled-week border might still show if its border is different.
+   Your current .chronica-grid-cell.filled-week:not(.event) { background-color: var(--manual-fill-color); }
+   and .chronica-grid-cell.filled-week { border-color: var(--manual-fill-color); }
+   This interaction seems okay. Event background will override the filled-week background due to specificity or explicit setting.
+*/
+
+/* ==== END OF NEW RULES ==== */
 
 /* -----------------------------------------------------------------------------
      6. TIMELINE MARKERS (Decade, Week, Month, Birthday)
