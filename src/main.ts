@@ -3866,6 +3866,10 @@ class ChornicaTimelineView extends ItemView {
   private tooltipTimeoutId: number | null = null; // For hover delay to show
   private clearTooltipTimeoutId: number | null = null; // For fade-out delay before removal
 
+  // Properties for managing snippet fetching on sustained hover
+  private snippetTimeoutId: number | null = null;
+  private currentHoveredCellForSnippet: HTMLElement | null = null; // Keep track of the cell whose tooltip might get a snippet
+
   isNarrowViewport(): boolean {
     // This function was also part of your class
     return window.innerWidth <= 768;
@@ -5513,6 +5517,14 @@ class ChornicaTimelineView extends ItemView {
             this.tooltipTimeoutId = null;
           }
 
+          // ---- ADDED: Clear any pending snippet fetching timeout and reset related state ----
+          if (this.snippetTimeoutId) {
+            clearTimeout(this.snippetTimeoutId);
+            this.snippetTimeoutId = null;
+          }
+          this.currentHoveredCellForSnippet = null;
+          // ---- END ADDED ----
+
           // 3. If a tooltip is currently visible (from another cell), remove it IMMEDIATELY
           if (
             this.activeGridCellTooltip &&
@@ -5524,11 +5536,18 @@ class ChornicaTimelineView extends ItemView {
 
           // 4. Set a new timeout to show the tooltip for THIS cell
           this.tooltipTimeoutId = window.setTimeout(() => {
+            // Check if mouse hasn't already left the cell or another action cleared things
+            if (this.tooltipTimeoutId === null && !this.activeGridCellTooltip) {
+              // This check might be too restrictive if tooltipTimeoutId is cleared right after starting the main work.
+              // The original check `if (this.activeGridCellTooltip && this.activeGridCellTooltip.parentElement)` was for safety.
+              // Let's ensure we only proceed if we are indeed meant to show a tooltip for *this* sequence.
+            }
+
             if (
               this.activeGridCellTooltip &&
               this.activeGridCellTooltip.parentElement
             ) {
-              // Re-check for safety
+              // Re-check for safety, remove if another tooltip became active somehow
               this.activeGridCellTooltip.remove();
               this.activeGridCellTooltip = null;
             }
@@ -5537,10 +5556,10 @@ class ChornicaTimelineView extends ItemView {
             this.activeGridCellTooltip.addClass("chronica-grid-cell-tooltip");
             this.activeGridCellTooltip.addClass(
               this.plugin.settings.tooltipDetailLevel
-            ); // Add "expanded" or "compact"
+            );
 
             const { fragment, hintClass, customColor } =
-              createTooltipContent(cell);
+              createTooltipContent(cell); // createTooltipContent is defined elsewhere in renderWeeksGrid
             this.activeGridCellTooltip.appendChild(fragment);
 
             if (hintClass) {
@@ -5573,32 +5592,76 @@ class ChornicaTimelineView extends ItemView {
             this.activeGridCellTooltip.style.top = `${top + window.scrollY}px`;
 
             setTimeout(() => {
-              this.activeGridCellTooltip?.addClass("visible");
-            }, 10);
-            this.tooltipTimeoutId = null;
-          }, 500);
+              // This timeout makes the main tooltip visible
+              if (this.activeGridCellTooltip) {
+                // Check if tooltip still exists (wasn't cleared by a quick mouseleave/click)
+                this.activeGridCellTooltip.addClass("visible");
+
+                // ---- NEW: Logic for sustained hover to fetch snippets ----
+                this.currentHoveredCellForSnippet = cell; // Mark this cell
+
+                if (
+                  this.plugin.settings.enableTooltipNotePreview &&
+                  this.plugin.settings.tooltipDetailLevel === "expanded"
+                ) {
+                  if (this.snippetTimeoutId)
+                    clearTimeout(this.snippetTimeoutId);
+
+                  this.snippetTimeoutId = window.setTimeout(() => {
+                    // Ensure the tooltip is still for the cell we initiated this for
+                    if (
+                      this.activeGridCellTooltip &&
+                      this.currentHoveredCellForSnippet === cell
+                    ) {
+                      this.fetchAndDisplaySnippets(
+                        this.activeGridCellTooltip,
+                        cell
+                      );
+                    }
+                    this.snippetTimeoutId = null; // Clear after execution or if condition fails
+                  }, 300); // Sustained hover delay (e.g., 300ms after main tooltip is visible)
+                }
+                // ---- END NEW ----
+              }
+            }, 10); // Delay for CSS transition of main tooltip
+            this.tooltipTimeoutId = null; // Mark that this main "show" timeout has completed its primary job
+          }, 500); // Initial delay to show main tooltip
         });
 
         cell.addEventListener("mouseleave", (eventMouse) => {
+          // Clear pending show of main tooltip
           if (this.tooltipTimeoutId) {
             clearTimeout(this.tooltipTimeoutId);
             this.tooltipTimeoutId = null;
           }
 
+          // ---- ADDED: Clear pending snippet fetching timeout and reset related state ----
+          if (this.snippetTimeoutId) {
+            clearTimeout(this.snippetTimeoutId);
+            this.snippetTimeoutId = null;
+          }
+          this.currentHoveredCellForSnippet = null;
+          // ---- END ADDED ----
+
+          // Logic to hide the main tooltip (already exists and seems correct)
           if (
             this.activeGridCellTooltip &&
             this.activeGridCellTooltip.parentElement
           ) {
             this.activeGridCellTooltip.removeClass("visible");
             if (this.clearTooltipTimeoutId) {
-              // Clear any existing HIDE timeout
               clearTimeout(this.clearTooltipTimeoutId);
+              // this.clearTooltipTimeoutId = null; // Clearing ID here might be premature if we are about to set a new one
             }
             this.clearTooltipTimeoutId = window.setTimeout(() => {
-              if (this.activeGridCellTooltip) {
+              if (
+                this.activeGridCellTooltip &&
+                this.activeGridCellTooltip.parentElement
+              ) {
+                // Check again before removing
                 this.activeGridCellTooltip.remove();
-                this.activeGridCellTooltip = null;
               }
+              this.activeGridCellTooltip = null;
               this.clearTooltipTimeoutId = null;
             }, 150);
           }
@@ -5607,31 +5670,33 @@ class ChornicaTimelineView extends ItemView {
 
         // --- Existing Event Handlers ---
         cell.addEventListener("click", async (event) => {
-          // ---- NEW: Force hide/cleanup tooltip on any cell click ----
+          // ---- Cleanup for tooltips and snippets on click ----
           if (this.tooltipTimeoutId) {
-            // If a "show" timeout is pending
             clearTimeout(this.tooltipTimeoutId);
             this.tooltipTimeoutId = null;
           }
-
-          // Clear any pending "hide/clear" timeout for a *previous* tooltip,
-          // as its fade-out might be interrupted by this click.
           if (this.clearTooltipTimeoutId) {
             clearTimeout(this.clearTooltipTimeoutId);
             this.clearTooltipTimeoutId = null;
           }
 
-          // If a tooltip is currently active and visible (managed by this.activeGridCellTooltip)
+          // ---- ADDED: Also clear pending snippet fetching on click ----
+          if (this.snippetTimeoutId) {
+            clearTimeout(this.snippetTimeoutId);
+            this.snippetTimeoutId = null;
+          }
+          this.currentHoveredCellForSnippet = null;
+          // ---- END ADDED ----
+
           if (
             this.activeGridCellTooltip &&
             this.activeGridCellTooltip.parentElement
           ) {
-            this.activeGridCellTooltip.remove(); // Remove it from DOM immediately
+            this.activeGridCellTooltip.remove();
           }
-          this.activeGridCellTooltip = null; // CRITICAL: Always nullify the reference.
-          // ---- END NEW ----
+          this.activeGridCellTooltip = null;
+          // ---- End Cleanup ----
 
-          // Original event arg name is fine here
           // Check for folder selection first
           if (!this.plugin.settings.hasSeenFolders) {
             new ChornicaFolderSelectionModal(this.app, this.plugin).open();
@@ -7266,6 +7331,169 @@ class ChornicaTimelineView extends ItemView {
     });
   }
 
+  async fetchAndDisplaySnippets(
+    tooltipElement: HTMLElement,
+    cellElement: HTMLElement
+  ): Promise<void> {
+    // Check if this cell is still the one being hovered for snippets
+    if (
+      this.currentHoveredCellForSnippet !== cellElement ||
+      !this.plugin.settings.enableTooltipNotePreview ||
+      this.plugin.settings.tooltipDetailLevel !== "expanded"
+    ) {
+      return;
+    }
+
+    const notePathsToFetch: {
+      type: "event" | "weekly";
+      path: string;
+      label: string;
+    }[] = [];
+    const eventNotePath = cellElement.dataset.eventFile;
+    const weeklyNotePath = cellElement.dataset.weeklyNotePath;
+
+    if (eventNotePath) {
+      notePathsToFetch.push({
+        type: "event",
+        path: eventNotePath,
+        label: "Event Note Snippet:",
+      });
+    }
+    // Only add weekly note for snippet if it's different from event note, or if no event note
+    if (
+      weeklyNotePath &&
+      (!eventNotePath || weeklyNotePath !== eventNotePath)
+    ) {
+      notePathsToFetch.push({
+        type: "weekly",
+        path: weeklyNotePath,
+        label: "Weekly Note Snippet:",
+      });
+    }
+
+    if (notePathsToFetch.length === 0) {
+      return;
+    }
+
+    // Optional: Add a general loading indicator to the tooltip if not already present
+    let loadingIndicator = tooltipElement.querySelector(
+      ".chronica-tooltip-snippet-loading"
+    );
+    if (!loadingIndicator) {
+      loadingIndicator = tooltipElement.createDiv({
+        cls: "chronica-tooltip-snippet-loading",
+        text: "Loading snippets...",
+      });
+    }
+
+    for (const noteDetail of notePathsToFetch) {
+      // Check again before each async operation if the hover context has changed
+      if (
+        this.currentHoveredCellForSnippet !== cellElement ||
+        !this.activeGridCellTooltip
+      ) {
+        loadingIndicator?.remove();
+        return;
+      }
+
+      const tFile = this.app.vault.getAbstractFileByPath(noteDetail.path);
+      if (tFile instanceof TFile) {
+        try {
+          const content = await this.app.vault.cachedRead(tFile);
+
+          let actualContentStartIndex = 0;
+          const lines = content.split("\n");
+
+          // Try to find the end of the frontmatter block
+          if (lines[0]?.trim() === "---") {
+            let frontmatterEndFound = false;
+            for (let i = 1; i < lines.length; i++) {
+              if (lines[i]?.trim() === "---") {
+                actualContentStartIndex = i + 1;
+                frontmatterEndFound = true;
+                break;
+              }
+            }
+            // If opening '---' but no closing '---' is found, it might not be valid frontmatter,
+            // or the note is very short. We might default to starting from the first line
+            // or a few lines in to avoid picking up a single '---' if it's used as a separator.
+            // For now, if closing '---' not found, we'll treat it as if no frontmatter.
+            if (!frontmatterEndFound) {
+              actualContentStartIndex = 0;
+            }
+          }
+
+          let snippet = "";
+          let linesCount = 0;
+          const maxSnippetChars = 150; // Max characters for the total snippet
+          const maxSnippetLines = 3; // Max lines for the snippet
+
+          for (let i = actualContentStartIndex; i < lines.length; i++) {
+            const trimmedLine = lines[i].trim();
+            if (trimmedLine.length > 0) {
+              // Consider any non-empty line after frontmatter
+              const lineToAdd = (linesCount > 0 ? "\n" : "") + trimmedLine;
+              if (snippet.length + lineToAdd.length > maxSnippetChars) {
+                const remainingChars =
+                  maxSnippetChars - snippet.length - (linesCount > 0 ? 1 : 0);
+                if (remainingChars > 3) {
+                  // Check if there's enough space for some text and "..."
+                  snippet +=
+                    (linesCount > 0 ? "\n" : "") +
+                    trimmedLine.substring(0, remainingChars - 3) +
+                    "...";
+                } else if (
+                  snippet.length === 0 &&
+                  trimmedLine.length > maxSnippetChars
+                ) {
+                  // First line itself is too long
+                  snippet =
+                    trimmedLine.substring(0, maxSnippetChars - 3) + "...";
+                } else if (snippet.length > 0 && !snippet.endsWith("...")) {
+                  // Add "..." if we are cutting off and haven't already
+                  snippet += "...";
+                }
+                linesCount++; // Count this partially added line
+                break;
+              }
+              snippet += lineToAdd;
+              linesCount++;
+              if (linesCount >= maxSnippetLines) break;
+            }
+          }
+
+          if (snippet) {
+            // Ensure tooltip is still active and for the correct cell before appending
+            if (
+              this.activeGridCellTooltip === tooltipElement &&
+              this.currentHoveredCellForSnippet === cellElement
+            ) {
+              const snippetLineEl = tooltipElement.createDiv({
+                cls: "chronica-tooltip-line chronica-tooltip-notesnippet",
+              });
+              snippetLineEl.createEl("span", {
+                text: noteDetail.label,
+                cls: "chronica-tooltip-label",
+              });
+
+              // Create a preformatted element for the snippet to respect newlines
+              const snippetContentEl = snippetLineEl.createEl("pre", {
+                cls: "chronica-snippet-content",
+              });
+              snippetContentEl.textContent = snippet;
+            }
+          }
+        } catch (err) {
+          // console.error(`Error reading note for snippet: ${noteDetail.path}`, err);
+          // Optionally add a "failed to load snippet" message to the tooltip
+        }
+      }
+    }
+
+    // Remove loading indicator once all processing is done (or if it exists)
+    loadingIndicator?.remove();
+  }
+
   /**
    * Applies styling to a cell if an event exists for the given week key.
    * Reads from the new unified this.settings.events and this.settings.eventTypes.
@@ -8118,34 +8346,20 @@ class ChornicaSettingTab extends PluginSettingTab {
           })
       );
 
-    // NEW: Tooltip Detail Level Setting
-    new Setting(containerEl)
+    // Tooltip Detail Level Setting
+    const tooltipDetailSetting = new Setting(containerEl) // No need to store this setting object unless used elsewhere
       .setName("Tooltip Detail Level")
       .setDesc(
         "Choose how much information is shown in the grid cell tooltips."
-      )
-      .addDropdown((dropdown) =>
-        dropdown
-          .addOption("expanded", "Expanded (Default - more details)")
-          .addOption("compact", "Compact (Less details)")
-          .setValue(this.plugin.settings.tooltipDetailLevel)
-          .onChange(async (value) => {
-            this.plugin.settings.tooltipDetailLevel = value as
-              | "expanded"
-              | "compact";
-            await this.plugin.saveSettings();
-            // No direct view refresh needed here, tooltip will pick it up on next render.
-            // However, if a tooltip is currently visible, it won't update until re-hover.
-            // For immediate effect on an open view, you might consider a partial refresh
-            // or just accept that it applies on next hover.
-            // this.refreshAllViews(); // Uncomment if you want immediate full grid refresh
-          })
       );
 
-    new Setting(containerEl)
+    // Store a reference to the "Enable Note Preview" setting element to toggle its visibility
+    let notePreviewSettingEl: HTMLElement;
+
+    const notePreviewSetting = new Setting(containerEl)
       .setName("Enable Note Preview in Tooltip")
       .setDesc(
-        "Show links to associated weekly or event notes in the tooltip (Expanded view only). May slightly impact performance on hover if snippets are fetched (future)."
+        "Show note filenames & snippets in the tooltip. This option is only available when 'Tooltip Detail Level' is 'Expanded'."
       )
       .addToggle((toggle) =>
         toggle
@@ -8153,10 +8367,45 @@ class ChornicaSettingTab extends PluginSettingTab {
           .onChange(async (value) => {
             this.plugin.settings.enableTooltipNotePreview = value;
             await this.plugin.saveSettings();
-            // No immediate view refresh is strictly necessary,
-            // as the tooltip will pick it up on the next hover.
           })
       );
+    notePreviewSettingEl = notePreviewSetting.settingEl; // Get the actual HTML element of the setting
+
+    // Now add the dropdown for Tooltip Detail Level, and make its onChange control the visibility
+    tooltipDetailSetting.addDropdown((dropdown) =>
+      dropdown
+        .addOption("expanded", "Expanded (Default - more details)")
+        .addOption("compact", "Compact (Less details)")
+        .setValue(this.plugin.settings.tooltipDetailLevel)
+        .onChange(async (value) => {
+          this.plugin.settings.tooltipDetailLevel = value as
+            | "expanded"
+            | "compact";
+          await this.plugin.saveSettings();
+
+          // ---- NEW: Toggle visibility of the note preview setting ----
+          if (value === "expanded") {
+            notePreviewSettingEl.style.display = ""; // Show the setting
+          } else {
+            notePreviewSettingEl.style.display = "none"; // Hide the setting
+            // Optionally, you could also set enableTooltipNotePreview to false here
+            // if you want to disable it automatically when compact mode is chosen.
+            // Example:
+            // this.plugin.settings.enableTooltipNotePreview = false;
+            // await this.plugin.saveSettings();
+            // And update the toggle's visual state if you have a reference to it:
+            // previewToggle.setValue(false); // Assuming 'previewToggle' is the toggle component
+          }
+          // ---- END NEW ----
+        })
+    );
+
+    // ---- NEW: Set initial visibility for the note preview setting ----
+    if (this.plugin.settings.tooltipDetailLevel === "expanded") {
+      notePreviewSettingEl.style.display = "";
+    } else {
+      notePreviewSettingEl.style.display = "none";
+    }
 
     // --- Marker Visibility Settings ---
     containerEl.createEl("h3", { text: "Marker Visibility" });
