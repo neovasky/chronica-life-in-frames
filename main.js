@@ -6983,7 +6983,9 @@ class ChornicaSettingTab extends obsidian.PluginSettingTab {
             .onChange(async (value) => {
             this.plugin.settings.manualFillColor = value;
             await this.plugin.saveSettings();
-            document.documentElement.style.setProperty("--manual-fill-color", value);
+            document.documentElement.style.setProperty(
+            // Re-add this line
+            "--manual-fill-color", value);
             this.refreshAllViews(); // Refresh to see color change on grid
         }));
         // Create the initial status indicator text element AFTER all related settings
@@ -7087,7 +7089,6 @@ class ChornicaSettingTab extends obsidian.PluginSettingTab {
             .onChange(async (value) => {
             this.plugin.settings.statsPanelHeight = value;
             await this.plugin.saveSettings();
-            document.documentElement.style.setProperty("--stats-panel-height", `${value}px`);
             this.refreshStatsPanelInOpenViews(); // Call to the new method
         }));
         new obsidian.Setting(containerEl)
@@ -7100,7 +7101,6 @@ class ChornicaSettingTab extends obsidian.PluginSettingTab {
             .onChange(async (value) => {
             this.plugin.settings.statsPanelWidth = value;
             await this.plugin.saveSettings();
-            document.documentElement.style.setProperty("--stats-panel-width", `${value}px`);
             this.refreshStatsPanelInOpenViews(); // Call to the new method
         }));
         new obsidian.Setting(containerEl)

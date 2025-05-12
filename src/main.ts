@@ -8828,6 +8828,7 @@ class ChornicaSettingTab extends PluginSettingTab {
             this.plugin.settings.manualFillColor = value;
             await this.plugin.saveSettings();
             document.documentElement.style.setProperty(
+              // Re-add this line
               "--manual-fill-color",
               value
             );
@@ -8959,10 +8960,6 @@ class ChornicaSettingTab extends PluginSettingTab {
           .onChange(async (value) => {
             this.plugin.settings.statsPanelHeight = value;
             await this.plugin.saveSettings();
-            document.documentElement.style.setProperty(
-              "--stats-panel-height",
-              `${value}px`
-            );
             this.refreshStatsPanelInOpenViews(); // Call to the new method
           })
       );
@@ -8977,10 +8974,6 @@ class ChornicaSettingTab extends PluginSettingTab {
           .onChange(async (value) => {
             this.plugin.settings.statsPanelWidth = value;
             await this.plugin.saveSettings();
-            document.documentElement.style.setProperty(
-              "--stats-panel-width",
-              `${value}px`
-            );
             this.refreshStatsPanelInOpenViews(); // Call to the new method
           })
       );
