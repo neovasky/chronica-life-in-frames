@@ -1201,22 +1201,14 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
      * @returns Object with ISO week number (1-53) and ISO year
      */
     getISOWeekYearNumber(date) {
-        // Create a copy of the date to avoid modifying the original
-        const target = new Date(date.getTime());
-        target.setHours(0, 0, 0, 0);
-        // ISO week starts on Monday
-        const dayNumber = target.getDay() || 7; // Convert Sunday (0) to 7
-        // Move target to Thursday in the same week
-        target.setDate(target.getDate() - dayNumber + 4);
-        // Get the year of this Thursday (this is the ISO year for this week)
-        const weekYear = target.getFullYear();
-        // Get January 1st of the target's year
-        const yearStart = new Date(weekYear, 0, 1);
-        // Calculate the number of days since January 1st
-        const daysSinceFirstDay = Math.floor((target.getTime() - yearStart.getTime()) / 86400000);
-        // Calculate the week number
-        const weekNumber = 1 + Math.floor(daysSinceFirstDay / 7);
-        return { week: weekNumber, year: weekYear };
+        const workDate = new Date(date.valueOf());
+        const dayOfWeek = workDate.getUTCDay() || 7;
+        workDate.setUTCDate(workDate.getUTCDate() - dayOfWeek + 4);
+        const isoYear = workDate.getUTCFullYear();
+        const firstDayOfIsoYear = Date.UTC(isoYear, 0, 1);
+        const ordinalDayOfThursday = Math.floor((workDate.valueOf() - firstDayOfIsoYear) / 86400000) + 1;
+        const isoWeek = Math.floor((ordinalDayOfThursday - 1) / 7) + 1;
+        return { week: isoWeek, year: isoYear };
     }
     /**
      * Check if a year has 53 ISO weeks
