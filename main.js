@@ -261,46 +261,49 @@ class ChornicaFolderSelectionModal extends obsidian.Modal {
 class ChornicaTimelinePlugin extends obsidian.Plugin {
     /** Plugin settings */
     settings = DEFAULT_SETTINGS;
+    isPluginFullyLoaded = false; // Flag to fix race conditions
+    // ADDED: New public method for views to check readiness
+    isReady() {
+        return this.isPluginFullyLoaded;
+    }
     /**
      * Plugin initialization on load
      */
     async onload() {
-        // 1) Load settings FIRST. This is crucial.
+        this.isPluginFullyLoaded = false;
         await this.loadSettings();
-        // After await this.loadSettings();
         if (this.settings.manualFillColor) {
             document.documentElement.style.setProperty("--manual-fill-color", this.settings.manualFillColor);
         }
-        // --- Reset sync operation flag at the beginning of onload for a clean state ---
         this.isSyncOperation = false;
         if (this.syncOperationTimer) {
             clearTimeout(this.syncOperationTimer);
             this.syncOperationTimer = null;
         }
-        // --- End reset ---
-        // 2) Welcome modal check (uses loaded settings)
-        if (!this.settings.hasSeenWelcome) {
-            setTimeout(() => {
-                const welcomeModal = new ChronicaWelcomeModal(this.app, this);
-                welcomeModal.open();
-            }, 500);
-        }
-        // 3) Register the view type
-        try {
-            this.registerView(TIMELINE_VIEW_TYPE, (leaf) => new ChornicaTimelineView(leaf, this));
-        }
-        catch (e) {
-            /* ignore */
-        }
-        // 4) Vault event handlers
-        this.registerEvent(this.app.vault.on("create", async (file) => {
-            this.registerPotentialSyncOperation(); // Sets isSyncOperation = true briefly
-            if (!this.isChronicaRelatedFile(file) || this.isSyncOperation)
-                return; // Check sync op *after* registering
+        obsidian.addIcon("chronica-icon", Chornica_ICON);
+        this.registerView(TIMELINE_VIEW_TYPE, (leaf) => new ChornicaTimelineView(leaf, this));
+        this.app.workspace.onLayoutReady(async () => {
+            new obsidian.Notice("Chronica: Performing initial event scan...");
             await this.scanVaultForEvents();
-            this.refreshAllViewsAfterOperation(); // Checks isSyncOperation again
+            this.isPluginFullyLoaded = true;
+            new obsidian.Notice("Chronica: Event scan complete. Views updated.");
+            this.refreshAllViews();
+            if (this.checkAndAutoFill()) {
+                this.refreshAllViews();
+            }
+        });
+        this.registerEvent(this.app.vault.on("create", async (file) => {
+            if (!this.isPluginFullyLoaded)
+                return;
+            this.registerPotentialSyncOperation();
+            if (!this.isChronicaRelatedFile(file) || this.isSyncOperation)
+                return;
+            await this.scanVaultForEvents();
+            this.refreshAllViewsAfterOperation();
         }));
         this.registerEvent(this.app.vault.on("modify", async (file) => {
+            if (!this.isPluginFullyLoaded)
+                return;
             this.registerPotentialSyncOperation();
             if (this.isSyncOperation || !this.isChronicaRelatedFile(file))
                 return;
@@ -308,24 +311,15 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
             this.refreshAllViewsAfterOperation();
         }));
         this.registerEvent(this.app.vault.on("delete", async (file) => {
+            if (!this.isPluginFullyLoaded)
+                return;
             if (!(file instanceof obsidian.TFile) ||
                 !this.isChronicaRelatedFile(file) ||
                 this.isSyncOperation)
                 return;
             await this.handleFileDelete(file);
-            // refreshAllViewsAfterOperation is called within handleFileDelete if changes were made.
-            // If not, a general refresh might be needed if the deleted file affected view but not specific events.
             this.refreshAllViewsAfterOperation();
         }));
-        // 5) Other setup
-        obsidian.addIcon("chronica-icon", Chornica_ICON);
-        // Initial scan for events.
-        // Delay this initial scan slightly, especially for hot reloads, to give Obsidian time to settle.
-        setTimeout(async () => {
-            await this.scanVaultForEvents();
-            // Refresh views AFTER this crucial scan is complete.
-            this.refreshAllViewsAfterOperation();
-        }, 1000); // Increased delay for testing, e.g., 1 second. Can be tuned.
         this.addRibbonIcon("chronica-icon", "Open Chronica Timeline", () => this.activateView());
         this.addCommand({
             id: "open-chronica-timeline",
@@ -342,28 +336,30 @@ class ChornicaTimelinePlugin extends obsidian.Plugin {
             name: "Re-scan Vault for Chronica Events",
             callback: async () => {
                 new obsidian.Notice("Chronica: Re-scanning vault for events...");
-                await this.scanVaultForEvents();
+                await this.scanVaultForEvents(); // scanVaultForEvents now calls refreshAllViews itself
                 new obsidian.Notice("Chronica: Event scan complete. Views refreshed.");
             },
         });
         this.addSettingTab(new ChornicaSettingTab(this.app, this));
-        // checkAndAutoFill relies on settings, so should be after loadSettings.
-        // It also modifies settings, so subsequent refreshes might be needed if it acts.
-        if (this.checkAndAutoFill()) {
-            // If it did something
-            this.refreshAllViewsAfterOperation();
+        if (!this.settings.hasSeenWelcome) {
+            setTimeout(() => {
+                const welcomeModal = new ChronicaWelcomeModal(this.app, this);
+                welcomeModal.open();
+            }, 1500);
         }
         this.registerInterval(window.setInterval(() => {
-            if (this.checkAndAutoFill()) {
+            if (this.isPluginFullyLoaded && this.checkAndAutoFill()) {
                 this.refreshAllViewsAfterOperation();
             }
         }, 1000 * 60 * 60));
     }
-    // Helper method to avoid direct refresh if sync op is happening
+    // This method should exist somewhere in your ChornicaTimelinePlugin class
     refreshAllViewsAfterOperation() {
         if (this.isSyncOperation) {
+            // console.log("Chronica: Sync operation in progress, refreshAllViewsAfterOperation deferred.");
             return;
         }
+        // console.log("Chronica: refreshAllViewsAfterOperation executing refreshAllViews.");
         this.refreshAllViews();
     }
     /**
@@ -3382,22 +3378,27 @@ class ChornicaTimelineView extends obsidian.ItemView {
         const contentEl = this.containerEl.children[1];
         contentEl.empty();
         contentEl.addClass("chronica-timeline-container");
-        // Set initial CSS variables - this should be done regardless of panel state
         document.documentElement.style.setProperty("--stats-panel-height", `${this.plugin.settings.statsPanelHeight}px`);
-        // Additional setup only if stats panel is open
-        if (this.isStatsOpen) {
-            // Force content area padding update
-            const contentArea = this.containerEl.querySelector(".chronica-content-area");
-            if (contentArea) {
-                contentArea.classList.add("stats-expanded");
+        document.documentElement.style.setProperty("--stats-panel-width", `${this.plugin.settings.statsPanelWidth}px`);
+        // Check if the plugin's initial scan is complete
+        if (this.plugin.isReady()) {
+            this.renderView(); // Render the full view
+            if (this.plugin.settings.defaultFitToScreen) {
+                setTimeout(() => {
+                    if (this.plugin.isReady()) {
+                        // Double check before fitting
+                        this.fitToScreen();
+                    }
+                }, 100);
             }
         }
-        this.renderView();
-        if (this.plugin.settings.defaultFitToScreen) {
-            // Use setTimeout to ensure the grid is fully rendered before fitting
-            setTimeout(() => {
-                this.fitToScreen();
-            }, 100);
+        else {
+            // Plugin is not ready yet, show a loading message
+            contentEl.createEl("p", {
+                text: "Chronica is initializing and scanning events. Please wait a moment...",
+                cls: "chronica-loading-message", // Added class for potential styling
+            });
+            // The view will be refreshed by the plugin's onload once the scan is complete and isReady() is true.
         }
     }
     /**
@@ -3411,8 +3412,21 @@ class ChornicaTimelineView extends obsidian.ItemView {
      * Render the timeline view with all components using the new event structure.
      */
     renderView() {
+        const contentEl = this.containerEl.children[1]; // Keep access to contentEl
+        if (!contentEl)
+            return; // Safety check if view is closing or not fully setup
+        if (!this.plugin.isReady()) {
+            if (!contentEl.querySelector(".chronica-loading-message")) {
+                contentEl.empty();
+                contentEl.addClass("chronica-timeline-container");
+                contentEl.createEl("p", {
+                    text: "Chronica: Loading event data...",
+                    cls: "chronica-loading-message",
+                });
+            }
+            return;
+        }
         // Clear content
-        const contentEl = this.containerEl.children[1];
         contentEl.empty();
         contentEl.addClass("chronica-timeline-container");
         // Create main container with flexbox layout
