@@ -2022,6 +2022,8 @@ Exp .chronica-sidebar-toggle:hover {
   opacity: 0; /* Initially hidden */
   transform: scale(0.95) translateY(5px); /* Initial state for animation */
   transition: opacity 0.15s ease-out, transform 0.15s ease-out; /* Smooth transition */
+  left: var(--tooltip-left, 0px); /* Added: fallback to 0px if var not set */
+  top: var(--tooltip-top, 0px); /* Added: fallback to 0px if var not set */
 }
 
 .chronica-custom-tooltip.visible {

@@ -593,10 +593,8 @@ export default class ChornicaTimelinePlugin extends Plugin {
   // This method should exist somewhere in your ChornicaTimelinePlugin class
   refreshAllViewsAfterOperation(): void {
     if (this.isSyncOperation) {
-      // console.log("Chronica: Sync operation in progress, refreshAllViewsAfterOperation deferred.");
       return;
     }
-    // console.log("Chronica: refreshAllViewsAfterOperation executing refreshAllViews.");
     this.refreshAllViews();
   }
 
@@ -8327,8 +8325,8 @@ class ChornicaSettingTab extends PluginSettingTab {
             top = window.innerHeight - tooltipRect.height - 5;
           }
 
-          activeCustomTooltip.style.left = `${left}px`;
-          activeCustomTooltip.style.top = `${top}px`;
+          activeCustomTooltip.style.setProperty("--tooltip-left", `${left}px`);
+          activeCustomTooltip.style.setProperty("--tooltip-top", `${top}px`);
 
           // Trigger the animation by adding the visible class after a short delay
           setTimeout(() => {
