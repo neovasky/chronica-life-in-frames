@@ -848,6 +848,21 @@ Exp .chronica-sidebar-toggle:hover {
   background-color: var(--event-type-list-color, transparent);
 }
 
+/* Preset Event Type Colors for Manage Types Modal List */
+.event-type-item .event-type-color.list-preset-major-life {
+  background-color: var(--major-life-color);
+}
+.event-type-item .event-type-color.list-preset-travel {
+  background-color: var(--travel-color);
+}
+.event-type-item .event-type-color.list-preset-relationship {
+  background-color: var(--relationship-color);
+}
+.event-type-item .event-type-color.list-preset-education-career {
+  background-color: var(--education-career-color);
+}
+/* Custom types will still use the --event-type-list-color variable */
+
 .event-type-name {
   flex-grow: 1;
 }
@@ -2053,6 +2068,21 @@ Exp .chronica-sidebar-toggle:hover {
     transparent
   ); /* MODIFIED LINE: Use CSS variable, default to transparent */
 }
+
+/* Preset Event Type Indicator Colors for Event Modal Dropdown */
+.chronica-event-type-color-indicator.indicator-preset-major-life {
+  background-color: var(--major-life-color);
+}
+.chronica-event-type-color-indicator.indicator-preset-travel {
+  background-color: var(--travel-color);
+}
+.chronica-event-type-color-indicator.indicator-preset-relationship {
+  background-color: var(--relationship-color);
+}
+.chronica-event-type-color-indicator.indicator-preset-education-career {
+  background-color: var(--education-career-color);
+}
+/* Custom types will still use the --event-type-indicator-color variable */
 
 /* Optional: If you wrap indicator and dropdown in a flex container */
 .chronica-event-type-control-wrapper {

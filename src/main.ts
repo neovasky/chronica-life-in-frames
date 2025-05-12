@@ -2867,20 +2867,44 @@ class ChornicaEventModal extends Modal {
 
     // Helper to update the color indicator span
     const updateColorIndicatorUI = (typeId: string) => {
+      // Clear existing preset classes
+      const classesToRemove: string[] = [];
+      for (let i = 0; i < colorIndicator.classList.length; i++) {
+        const cls = colorIndicator.classList[i];
+        if (cls.startsWith("indicator-preset-")) {
+          classesToRemove.push(cls);
+        }
+      }
+      if (classesToRemove.length > 0) {
+        colorIndicator.classList.remove(...classesToRemove);
+      }
+      // Clear custom color variable
+      colorIndicator.style.removeProperty("--event-type-indicator-color");
+
       if (typeId === "CREATE_NEW_TYPE" || !typeId) {
-        colorIndicator.style.removeProperty("--event-type-indicator-color"); // MODIFIED: Use this to revert to default (transparent)
+        // No specific type selected or creating new, ensure transparent/default
+        // The removeProperty above already handles this, relying on CSS fallback
         return;
       }
+
       const selectedType = this.plugin.settings.eventTypes.find(
         (type) => type.id === typeId
       );
+
       if (selectedType) {
-        colorIndicator.style.setProperty(
-          "--event-type-indicator-color",
-          selectedType.color
-        ); // MODIFIED LINE
+        if (selectedType.isPreset) {
+          // For preset types, add the specific class
+          const safePresetId = selectedType.id.replace(/[^a-zA-Z0-9-_]/g, "-");
+          colorIndicator.classList.add(`indicator-${safePresetId}`);
+        } else {
+          // For custom types, set the CSS variable
+          colorIndicator.style.setProperty(
+            "--event-type-indicator-color",
+            selectedType.color
+          );
+        }
       } else {
-        colorIndicator.style.removeProperty("--event-type-indicator-color"); // MODIFIED: Use this to revert to default (transparent)
+        // Type not found, ensure transparent/default (already handled by clearing)
       }
     };
 
@@ -3721,13 +3745,34 @@ class ManageEventTypesModal extends Modal {
       const typeItem = container.createEl("div", {
         cls: `event-type-item ${type.isPreset ? "preset-type" : "custom-type"}`,
       });
+
       const colorBox = typeItem.createEl("span", { cls: "event-type-color" });
-      if (type.color) {
-        // MODIFIED BLOCK
-        colorBox.style.setProperty("--event-type-list-color", type.color);
-      } else {
-        colorBox.style.removeProperty("--event-type-list-color");
+      // Clear any existing preset classes
+      const classesToRemove: string[] = [];
+      for (let i = 0; i < colorBox.classList.length; i++) {
+        const cls = colorBox.classList[i];
+        if (cls.startsWith("list-preset-")) {
+          classesToRemove.push(cls);
+        }
       }
+      if (classesToRemove.length > 0) {
+        colorBox.classList.remove(...classesToRemove);
+      }
+      // Clear custom color variable
+      colorBox.style.removeProperty("--event-type-list-color");
+
+      if (type.color) {
+        if (type.isPreset) {
+          // For preset types, add the specific class
+          const safePresetId = type.id.replace(/[^a-zA-Z0-9-_]/g, "-");
+          colorBox.classList.add(`list-${safePresetId}`);
+        } else {
+          // For custom types, set the CSS variable
+          colorBox.style.setProperty("--event-type-list-color", type.color);
+        }
+      }
+      // If no type.color, it will default to transparent via CSS fallback
+
       const nameEl = typeItem.createEl("span", {
         text: type.name,
         cls: "event-type-name",
