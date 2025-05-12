@@ -1842,55 +1842,92 @@ class ChornicaEventModal extends obsidian.Modal {
     startDateInput;
     endDateInput;
     eventTypeDropdown;
-    // Reference for the description input element
-    eventDescriptionInputEl; // Or HTMLTextAreaElement if you change it
-    // Reference for the event name input element
+    eventDescriptionInputEl;
     eventNameInputEl;
-    // NEW Properties for Edit Mode
     originalEvent = null;
     isEditMode = false;
-    constructor(app, plugin, targetDataOrEvent // Can be weekKey for new, or event object for edit
-    ) {
+    // ADD THESE NEW PROPERTY DECLARATIONS:
+    initialSingleDateValue;
+    initialStartDateValue;
+    initialEndDateValue;
+    constructor(app, plugin, targetDataOrEvent) {
         super(app);
         this.plugin = plugin;
+        const todayStr = new Date().toISOString().split("T")[0];
+        this.initialSingleDateValue = todayStr;
+        this.initialStartDateValue = todayStr;
+        this.initialEndDateValue = todayStr;
         if (typeof targetDataOrEvent === "string") {
-            // It's a weekKey for a new event
-            this.selectedWeekKey = targetDataOrEvent;
+            // ADD MODE from a cell click (targetDataOrEvent is the cell's weekKey)
             this.isEditMode = false;
+            this.selectedWeekKey = targetDataOrEvent;
+            const firstDayOfCellWeek = this.convertWeekToDate(this.selectedWeekKey);
+            this.initialSingleDateValue = firstDayOfCellWeek;
+            this.initialStartDateValue = firstDayOfCellWeek;
+            this.initialEndDateValue = firstDayOfCellWeek;
+            // Default type for new event
+            this.selectedTypeId =
+                this.plugin.settings.eventTypes.length > 0
+                    ? this.plugin.settings.eventTypes[0].id
+                    : "preset_major_life";
         }
         else if (targetDataOrEvent && typeof targetDataOrEvent === "object") {
-            // It's a ChronicaEvent object for editing
-            this.originalEvent = targetDataOrEvent; // Explicitly cast
+            // EDIT MODE (targetDataOrEvent is a ChronicaEvent)
+            this.originalEvent = targetDataOrEvent;
             this.isEditMode = true;
-            // Pre-fill modal properties from the event being edited
             this.selectedWeekKey = this.originalEvent.weekKey;
             this.selectedEndWeekKey = this.originalEvent.endWeekKey || "";
-            this.eventName = this.originalEvent.name || ""; // Use stored name
-            this.eventDescription = this.originalEvent.description; // Use stored description
+            this.eventName = this.originalEvent.name || "";
+            this.eventDescription = this.originalEvent.description;
             this.selectedTypeId = this.originalEvent.typeId;
-            if (this.originalEvent.endWeekKey &&
-                this.originalEvent.endWeekKey !== this.originalEvent.weekKey) {
-                this.isDateRange = true;
+            // Prioritize actualStartDate and actualEndDate for date inputs
+            if (this.originalEvent.actualStartDate) {
+                this.initialSingleDateValue = this.originalEvent.actualStartDate;
+                this.initialStartDateValue = this.originalEvent.actualStartDate;
+                if (this.originalEvent.actualEndDate &&
+                    this.originalEvent.actualStartDate !==
+                        this.originalEvent.actualEndDate) {
+                    this.initialEndDateValue = this.originalEvent.actualEndDate;
+                    this.isDateRange = true;
+                }
+                else {
+                    this.initialEndDateValue = this.originalEvent.actualStartDate;
+                    this.isDateRange = false;
+                }
             }
             else {
-                this.isDateRange = false;
+                // Fallback if actualStartDate isn't available (e.g., older data not yet scanned/migrated)
+                // This will use the Monday of the weekKey, as before.
+                const firstDayOfEventWeek = this.convertWeekToDate(this.originalEvent.weekKey);
+                this.initialSingleDateValue = firstDayOfEventWeek;
+                this.initialStartDateValue = firstDayOfEventWeek;
+                if (this.originalEvent.endWeekKey &&
+                    this.originalEvent.endWeekKey !== this.originalEvent.weekKey) {
+                    this.initialEndDateValue = this.convertWeekToDate(this.originalEvent.endWeekKey);
+                    this.isDateRange = true;
+                }
+                else {
+                    this.initialEndDateValue = firstDayOfEventWeek;
+                    this.isDateRange = false;
+                }
             }
         }
         else {
-            // Default for new event if no targetDataOrEvent (e.g., "Add Event" from sidebar)
+            // ADD MODE (e.g., from "Add Event" button in sidebar, no specific cell/event targeted)
             this.isEditMode = false;
-            // selectedWeekKey might be set based on current view or a default,
-            // or could be initialized if needed (e.g., to current week).
+            // Initial values already set to todayStr
+            // selectedWeekKey will be determined when the user picks a date in the modal
+            this.selectedTypeId =
+                this.plugin.settings.eventTypes.length > 0
+                    ? this.plugin.settings.eventTypes[0].id
+                    : "preset_major_life";
         }
-        // Ensure eventTypes is loaded and selectedTypeId is valid
         if (!this.plugin.settings.eventTypes ||
             this.plugin.settings.eventTypes.length === 0) {
-            this.selectedTypeId = ""; // No types available
+            this.selectedTypeId = "";
         }
         else if (!this.plugin.settings.eventTypes.some((et) => et.id === this.selectedTypeId)) {
-            // If current selectedTypeId is invalid (e.g., from an old event or not set),
-            // default to the first available type.
-            this.selectedTypeId = this.plugin.settings.eventTypes[0].id;
+            this.selectedTypeId = this.plugin.settings.eventTypes[0]?.id || ""; // Fallback if current type invalid
         }
     }
     // Keep convertWeekToDate as it's used to set initial input values
@@ -1965,9 +2002,7 @@ class ChornicaEventModal extends obsidian.Modal {
         const singleDateSetting = new obsidian.Setting(singleDateContainer).setName("Date");
         this.singleDateInput = singleDateSetting.controlEl.createEl("input", {
             type: "date",
-            value: this.selectedWeekKey
-                ? this.convertWeekToDate(this.selectedWeekKey)
-                : new Date().toISOString().split("T")[0],
+            value: this.initialSingleDateValue, // MODIFIED
         });
         this.singleDateInput.addEventListener("change", () => {
             if (!this.isDateRange) {
@@ -1990,16 +2025,12 @@ class ChornicaEventModal extends obsidian.Modal {
         const startDateSetting = new obsidian.Setting(rangeDateContainer).setName("Start Date");
         this.startDateInput = startDateSetting.controlEl.createEl("input", {
             type: "date",
-            value: this.selectedWeekKey
-                ? this.convertWeekToDate(this.selectedWeekKey)
-                : new Date().toISOString().split("T")[0],
+            value: this.initialStartDateValue, // MODIFIED
         });
         const endDateSetting = new obsidian.Setting(rangeDateContainer).setName("End Date");
         this.endDateInput = endDateSetting.controlEl.createEl("input", {
             type: "date",
-            value: this.selectedEndWeekKey
-                ? this.convertWeekToDate(this.selectedEndWeekKey)
-                : this.startDateInput.value,
+            value: this.initialEndDateValue, // MODIFIED
         });
         // Create a small element for validation messages for the date range
         const rangeValidationMessageEl = rangeDateContainer.createEl("small", {
