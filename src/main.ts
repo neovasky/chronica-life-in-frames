@@ -42,8 +42,7 @@ interface ChronicaEventType {
   isPreset: boolean;
 }
 
-/** Interface for a single recorded event instance */
-interface ChronicaEvent {
+/** Interface for a single recorded event instance */ interface ChronicaEvent {
   /** The week key (YYYY-WXX) the event starts on */
   weekKey: string;
   /** Optional end week key for range events */
@@ -56,6 +55,10 @@ interface ChronicaEvent {
   typeId: string;
   /** Optional: Path to the note associated with this event */
   notePath?: string;
+  /** Optional: Precise start date of the event in YYYY-MM-DD format from frontmatter */
+  actualStartDate?: string;
+  /** Optional: Precise end date of the event in YYYY-MM-DD format from frontmatter, if a range */
+  actualEndDate?: string;
 }
 
 /** Interface for plugin settings */
@@ -666,28 +669,22 @@ export default class ChornicaTimelinePlugin extends Plugin {
    * Scan vault for notes with event metadata and populate the unified events array.
    */
   async scanVaultForEvents(): Promise<void> {
-    // Ensure settings (especially eventTypes) are loaded before scanning
     if (
       !this.settings ||
       !this.settings.eventTypes ||
       this.settings.eventTypes.length === 0
     ) {
-      await this.loadSettings(); // Attempt to load/migrate settings first
+      await this.loadSettings();
       if (
         !this.settings ||
         !this.settings.eventTypes ||
         this.settings.eventTypes.length === 0
       ) {
-        // Maybe notify user here?
         return;
       }
     }
 
-    // --- Clear ONLY the events array ---
-    const scannedEvents: ChronicaEvent[] = []; // Build new list here
-    // DO NOT save settings here yet, wait until scan is complete
-
-    // --- Find Files to Process ---
+    const scannedEvents: ChronicaEvent[] = [];
     const files = this.app.vault.getMarkdownFiles();
     const filesToProcess: TFile[] = [];
     const notesFolderPath = this.settings.notesFolder?.trim();
@@ -707,9 +704,8 @@ export default class ChornicaTimelinePlugin extends Plugin {
     for (const file of files) {
       let includeFile = false;
       if (!normalizedNotesFolder && !normalizedEventFolder) {
-        includeFile = true; // No folders specified, include all
+        includeFile = true;
       } else if (useSeparateFolders && normalizedEventFolder) {
-        // Separate folders: include if in event folder OR in notes folder (if different)
         if (file.path.startsWith(normalizedEventFolder)) {
           includeFile = true;
         } else if (
@@ -720,30 +716,25 @@ export default class ChornicaTimelinePlugin extends Plugin {
           includeFile = true;
         }
       } else if (normalizedNotesFolder) {
-        // Only notes folder specified
         if (file.path.startsWith(normalizedNotesFolder)) {
           includeFile = true;
         }
       }
-      // Note: If separate is false but event folder has value, event folder is ignored.
 
       if (includeFile) {
         filesToProcess.push(file);
       }
     }
-    // Remove duplicates if a file ended up matching multiple criteria
+
     const uniqueFilesToProcess = [
       ...new Map(filesToProcess.map((file) => [file.path, file])).values(),
     ];
-    // --- Process Files ---
-    let eventCount = 0;
+
     for (const file of uniqueFilesToProcess) {
       try {
         const fileCache = this.app.metadataCache.getFileCache(file);
         const frontmatter = fileCache?.frontmatter;
 
-        // Skip if no frontmatter (basic check, could be more robust)
-        // We need at least *some* relevant info (type, event, name) OR a date
         if (
           !frontmatter ||
           (!frontmatter.type &&
@@ -755,13 +746,11 @@ export default class ChornicaTimelinePlugin extends Plugin {
         }
 
         const eventName =
-          frontmatter.event || frontmatter.name || file.basename; // Use filename as fallback name
-        const eventTypeFromName = (frontmatter.type as string) || "Major Life"; // Default type if missing, ensure string
-        const description = frontmatter.description || eventName; // Use eventName if description missing
+          frontmatter.event || frontmatter.name || file.basename;
+        const eventTypeFromName = (frontmatter.type as string) || "Major Life";
+        const description = frontmatter.description || eventName;
 
-        // --- Find Type ID ---
         let typeId = "";
-        // Find the type definition by matching the name from frontmatter
         const foundType = this.settings.eventTypes.find(
           (et) => et.name.toLowerCase() === eventTypeFromName.toLowerCase()
         );
@@ -769,12 +758,10 @@ export default class ChornicaTimelinePlugin extends Plugin {
         if (foundType) {
           typeId = foundType.id;
         } else {
-          // Type name from frontmatter not found in settings, use fallback
           console.warn(
             `Chronica: Event type "${eventTypeFromName}" in note "${file.path}" not found in settings. Assigning to 'Major Life'.`
           );
-          typeId = "preset_major_life"; // Default to Major Life preset ID
-          // Ensure the fallback type actually exists
+          typeId = "preset_major_life";
           if (!this.settings.eventTypes.some((et) => et.id === typeId)) {
             console.error(
               `Chronica: Fallback type ID '${typeId}' does not exist! Skipping event.`
@@ -783,55 +770,51 @@ export default class ChornicaTimelinePlugin extends Plugin {
           }
         }
 
-        // --- Determine Week Keys ---
         let weekKey: string | null = null;
         let endWeekKey: string | null = null;
+        let actualStartDateString: string | undefined = undefined;
+        let actualEndDateString: string | undefined = undefined;
 
-        // Priority 1: Use startDate/endDate from frontmatter if available
         if (frontmatter.startDate) {
           try {
-            // Handle potential variations in date string format if necessary
             const startDate = new Date(frontmatter.startDate);
             if (isNaN(startDate.getTime()))
-              throw new Error("Invalid start date format"); // Check if date is valid
+              throw new Error("Invalid start date format from frontmatter");
 
-            weekKey = this.getWeekKeyFromDate(startDate); // <<< CORRECTED: Use 'this.' directly
+            weekKey = this.getWeekKeyFromDate(startDate);
+            actualStartDateString = startDate.toISOString().split("T")[0];
 
             if (frontmatter.endDate) {
               const endDate = new Date(frontmatter.endDate);
               if (isNaN(endDate.getTime()))
-                throw new Error("Invalid end date format");
+                throw new Error("Invalid end date format from frontmatter");
 
-              // Ensure end date is after start date
               if (endDate >= startDate) {
-                endWeekKey = this.getWeekKeyFromDate(endDate); // <<< CORRECTED: Use 'this.' directly
-                // If start and end are same week, treat as single event
+                endWeekKey = this.getWeekKeyFromDate(endDate);
+                actualEndDateString = endDate.toISOString().split("T")[0];
                 if (weekKey === endWeekKey) {
                   endWeekKey = null;
+                  actualEndDateString = undefined;
                 }
               } else {
-                console.warn(
-                  `Chronica: End date is before start date in note "${file.path}". Treating as single week event.`
-                );
-                endWeekKey = null; // Treat as single week
+                endWeekKey = null;
+                actualEndDateString = undefined;
               }
             }
           } catch (e: any) {
-            console.warn(
-              `Chronica: Could not parse startDate/endDate in note "${file.path}". ${e.message}. Attempting filename parse.`
-            );
-            weekKey = null; // Reset weekKey so filename parse is attempted
+            weekKey = null;
             endWeekKey = null;
+            actualStartDateString = undefined;
+            actualEndDateString = undefined;
           }
         }
 
-        // Priority 2: Use filename convention if no dates in frontmatter or parsing failed
         if (!weekKey) {
-          let normalizedBasename = file.basename.replace(/--W/g, "-W"); // Normalize '--W' to '-W'
+          let normalizedBasename = file.basename.replace(/--W/g, "-W");
           const rangeMatch = normalizedBasename.match(
             /(\d{4}-W\d{2})_to_(\d{4}-W\d{2})/
           );
-          const singleWeekMatch = normalizedBasename.match(/(\d{4}-W\d{2})/); // Match single after range
+          const singleWeekMatch = normalizedBasename.match(/(\d{4}-W\d{2})/);
 
           if (rangeMatch) {
             weekKey = rangeMatch[1];
@@ -841,39 +824,39 @@ export default class ChornicaTimelinePlugin extends Plugin {
           }
         }
 
-        // If no valid weekKey found from either source, skip this file
         if (!weekKey || !/\d{4}-W\d{2}/.test(weekKey)) {
-          // console.warn(`Chronica: Could not determine a valid weekKey for note "${file.path}". Skipping event.`);
-          continue; // Skip if no week key found
+          continue;
         }
 
-        // --- Create and Store Event Object ---
         const newEvent: ChronicaEvent = {
           weekKey: weekKey,
           name: eventName,
           description: description,
           typeId: typeId,
-          notePath: file.path, // Store path to link later
+          notePath: file.path,
+          actualStartDate: actualStartDateString,
+          actualEndDate: actualEndDateString,
         };
+
         if (endWeekKey && /\d{4}-W\d{2}/.test(endWeekKey)) {
-          // Validate endWeekKey format
           newEvent.endWeekKey = endWeekKey;
+        } else {
+          newEvent.endWeekKey = undefined;
+          if (
+            newEvent.actualStartDate &&
+            newEvent.actualEndDate &&
+            newEvent.actualStartDate === newEvent.actualEndDate
+          ) {
+            newEvent.actualEndDate = undefined;
+          }
         }
-
-        // Add to temporary events array
         scannedEvents.push(newEvent);
-        eventCount++;
       } catch (error) {}
-    } // End of file processing loop
+    }
 
-    // Replace the settings events array with the newly scanned ones
     this.settings.events = scannedEvents;
-
-    // Persist the newly built events list (important!)
     await this.saveSettings();
-
-    // Optional: Refresh views immediately after scan? Or let load sequence handle it.
-    this.refreshAllViews(); // Refresh views now that scan is done
+    this.refreshAllViews();
   }
 
   public refreshAllViews(): void {
@@ -5327,14 +5310,18 @@ class ChornicaTimelineView extends ItemView {
           nextBirthdayWeekStart.setDate(
             nextBirthdayWeekStart.getDate() - nextDaysToSub
           );
-          // End date is day before next birthday week starts
           cellEndDate.setTime(
             nextBirthdayWeekStart.getTime() - 24 * 60 * 60 * 1000
           );
         }
 
-        // Determine ISO week key for linking notes/events (might span across cell boundary)
-        // We use the start date of the cell's period to determine the primary week key
+        cell.dataset.cellActualStartDate = cellStartDate
+          .toISOString()
+          .split("T")[0]; // ADDED
+        cell.dataset.cellActualEndDate = cellEndDate
+          .toISOString()
+          .split("T")[0]; // ADDED
+
         const weekKey = this.plugin.getWeekKeyFromDate(cellStartDate);
         cell.dataset.weekKey = weekKey;
 
@@ -5360,7 +5347,6 @@ class ChornicaTimelineView extends ItemView {
           cellEndDate
         )}`;
         const isoWeekInfo = this.plugin.getISOWeekData(cellStartDate);
-        // Store individual parts for potential use in applyEventStyling
         cell.dataset.cellWeekNum = isoWeekInfo.week.toString();
         cell.dataset.cellIsoYear = isoWeekInfo.year.toString();
         cell.dataset.cellDateRange = dateRange;
@@ -5434,24 +5420,29 @@ class ChornicaTimelineView extends ItemView {
           const isCompact = settings.tooltipDetailLevel === "compact";
           const tooltipContainer = document.createDocumentFragment();
 
-          // Data from cell's dataset
           const cellWeekNum = hoveredCell.dataset.cellWeekNum || "";
           const cellIsoYear = hoveredCell.dataset.cellIsoYear || "";
-          const cellDateRange = hoveredCell.dataset.cellDateRange || "";
+          const cellDisplayDateRange = hoveredCell.dataset.cellDateRange || ""; // For general cell info
 
-          // **** CORRECTED LOCAL VARIABLE ASSIGNMENTS ****
-          const eventNameActual = hoveredCell.dataset.tooltipEventTitle; // This is the Event Name (from dataset.tooltipEventTitle)
+          const eventNameActual = hoveredCell.dataset.tooltipEventTitle;
           const eventDescriptionActual =
-            hoveredCell.dataset.tooltipEventDescription || ""; // This is the Event Description
-          const eventTypeNameActual = hoveredCell.dataset.tooltipEventType; // This is the Event Type Name
-          const eventPeriodActual = hoveredCell.dataset.tooltipEventPeriod;
-          // **** END CORRECTED LOCAL VARIABLE ASSIGNMENTS ****
+            hoveredCell.dataset.tooltipEventDescription || "";
+          const eventTypeNameActual = hoveredCell.dataset.tooltipEventType;
+          const eventPeriodActual = hoveredCell.dataset.tooltipEventPeriod; // ISO Week range
+
+          // NEW: Get event's actual YYYY-MM-DD start/end dates
+          const eventActualStartDateString =
+            hoveredCell.dataset.tooltipEventActualStartDate;
+          const eventActualEndDateString =
+            hoveredCell.dataset.tooltipEventActualEndDate;
+          // NEW: Get cell's actual YYYY-MM-DD start/end dates
+          const cellActualStartDateString =
+            hoveredCell.dataset.cellActualStartDate;
+          const cellActualEndDateString = hoveredCell.dataset.cellActualEndDate;
 
           let colorHintClass = "";
-          let eventTypeColor = "";
+          let eventTypeColorForBorder = ""; // Renamed for clarity
 
-          // --- Determine Event Color Hint ---
-          // Use eventNameActual to confirm it's an event context, and eventTypeNameActual for the type.
           if (eventNameActual && eventTypeNameActual) {
             const matchedEventType = settings.eventTypes.find(
               (t) =>
@@ -5464,33 +5455,27 @@ class ChornicaTimelineView extends ItemView {
                   "-"
                 )}`;
               } else {
-                eventTypeColor = matchedEventType.color;
+                eventTypeColorForBorder = matchedEventType.color; // Store for custom border
               }
             } else {
-              colorHintClass = "tooltip-event-generic";
+              colorHintClass = "tooltip-event-generic"; // Should ideally not happen if type is always set
             }
           }
 
-          // --- Build Tooltip Content ---
-
-          // 1. Event Name (as Title - Bolded)
           if (eventNameActual) {
-            // If there is an event name from dataset.tooltipEventTitle
             tooltipContainer.createEl("span", {
-              text: eventNameActual, // **** USE THE CORRECT VARIABLE FOR THE EVENT'S ACTUAL NAME ****
+              text: eventNameActual,
               cls: "chronica-tooltip-event-title",
             });
           }
 
-          // 2. Event Description (Italic, only in Expanded mode for events)
           if (eventDescriptionActual && !isCompact) {
             tooltipContainer.createEl("span", {
-              text: eventDescriptionActual, // Use the actual event description
+              text: eventDescriptionActual,
               cls: "chronica-tooltip-description chronica-tooltip-line",
             });
           }
 
-          // 3. Event Type Line (Full "Type: ..." line, only in Expanded mode for events)
           if (eventTypeNameActual && !isCompact && eventNameActual) {
             const typeLine = tooltipContainer.createEl("span", {
               cls: "chronica-tooltip-line",
@@ -5502,7 +5487,55 @@ class ChornicaTimelineView extends ItemView {
             typeLine.appendText(eventTypeNameActual);
           }
 
-          // 4. Event Period Line (Full "Period: ..." line, only for range events in Expanded mode)
+          // ADDED: Event Date / Event Start Date line
+          if (
+            eventNameActual &&
+            eventActualStartDateString &&
+            cellActualStartDateString &&
+            cellActualEndDateString
+          ) {
+            const eventStartDateObj = new Date(
+              eventActualStartDateString + "T00:00:00"
+            ); // Ensure parsed consistently
+            const cellStartDateObj = new Date(
+              cellActualStartDateString + "T00:00:00"
+            );
+            const cellEndDateObj = new Date(
+              cellActualEndDateString + "T00:00:00"
+            );
+
+            // Normalize to midnight to avoid time comparison issues
+            eventStartDateObj.setHours(0, 0, 0, 0);
+            cellStartDateObj.setHours(0, 0, 0, 0);
+            cellEndDateObj.setHours(0, 0, 0, 0);
+
+            const isRangedEventWithDifferentEnd =
+              eventActualEndDateString &&
+              eventActualStartDateString !== eventActualEndDateString;
+            const eventStartsWithinThisCell =
+              eventStartDateObj >= cellStartDateObj &&
+              eventStartDateObj <= cellEndDateObj;
+
+            let dateLineLabel = "";
+            let dateLineValue = eventActualStartDateString; // Default to showing event's own start date
+
+            if (!isRangedEventWithDifferentEnd || eventStartsWithinThisCell) {
+              dateLineLabel = "Event Date:";
+            } else {
+              // Is a ranged event, and its true start is NOT in this specific cell's period
+              dateLineLabel = "Event Start Date:";
+            }
+
+            const eventSpecificDateLine = tooltipContainer.createEl("span", {
+              cls: "chronica-tooltip-line",
+            });
+            eventSpecificDateLine.createEl("span", {
+              text: dateLineLabel,
+              cls: "chronica-tooltip-label",
+            });
+            eventSpecificDateLine.appendText(dateLineValue);
+          }
+
           if (
             eventPeriodActual &&
             eventPeriodActual.includes("to") &&
@@ -5513,32 +5546,28 @@ class ChornicaTimelineView extends ItemView {
               cls: "chronica-tooltip-line",
             });
             periodLine.createEl("span", {
-              text: "Period:",
+              text: "Period (ISO):",
               cls: "chronica-tooltip-label",
             });
             periodLine.appendText(eventPeriodActual);
           }
 
-          // 5. Cell Information (Date Range of the specific cell)
-          if (cellWeekNum && cellIsoYear && cellDateRange) {
-            if (
-              !eventNameActual || // It's a non-event cell
-              (eventNameActual && !isCompact) || // It's an event cell in Expanded mode
-              (eventNameActual && isCompact) // It's an event cell in Compact mode
-            ) {
+          if (cellWeekNum && cellIsoYear && cellDisplayDateRange) {
+            if (!eventNameActual || !isCompact) {
+              // Show for non-event cells, or for event cells in expanded mode
               const cellInfoLine = tooltipContainer.createEl("span", {
                 cls: "chronica-tooltip-line",
               });
-
               if (!isCompact || !eventNameActual) {
+                // Add "Cell:" label if not compact event
                 cellInfoLine.createEl("span", {
                   text: "Cell:",
                   cls: "chronica-tooltip-label",
                 });
               }
-
-              let formattedCellRange = cellDateRange;
-              const [startDateStr, endDateStr] = cellDateRange.split(" - ");
+              let formattedCellRange = cellDisplayDateRange;
+              const [startDateStr, endDateStr] =
+                cellDisplayDateRange.split(" - ");
               if (startDateStr && endDateStr) {
                 const startMonth = startDateStr.substring(0, 3);
                 const endMonth = endDateStr.substring(0, 3);
@@ -5558,8 +5587,8 @@ class ChornicaTimelineView extends ItemView {
             }
           }
 
-          // Determine color hint for non-event cells
           if (!eventNameActual) {
+            // Determine color hint for non-event cells
             if (hoveredCell.classList.contains("past"))
               colorHintClass = "tooltip-past";
             else if (hoveredCell.classList.contains("present"))
@@ -5568,13 +5597,10 @@ class ChornicaTimelineView extends ItemView {
               colorHintClass = "tooltip-future";
           }
 
-          // ---- REVISED: Add Note File Paths to Tooltip ----
           if (settings.enableTooltipNotePreview && !isCompact) {
             const eventNotePath = hoveredCell.dataset.eventFile;
             const weeklyNotePath = hoveredCell.dataset.weeklyNotePath;
-
-            let eventNoteDisplayed = false; // Flag to track if event note was shown
-
+            let eventNoteDisplayed = false;
             if (eventNotePath) {
               const eventNoteFilename = eventNotePath.substring(
                 eventNotePath.lastIndexOf("/") + 1
@@ -5589,8 +5615,6 @@ class ChornicaTimelineView extends ItemView {
               eventNoteLine.appendText(eventNoteFilename);
               eventNoteDisplayed = true;
             }
-
-            // Only show Weekly Note if NO Event Note was displayed for this cell, AND a weeklyNotePath exists.
             if (!eventNoteDisplayed && weeklyNotePath) {
               const weeklyNoteFilename = weeklyNotePath.substring(
                 weeklyNotePath.lastIndexOf("/") + 1
@@ -5605,44 +5629,28 @@ class ChornicaTimelineView extends ItemView {
               weeklyNoteLine.appendText(weeklyNoteFilename);
             }
           }
-          // ---- END REVISED ----
 
-          // Fallback content
           if (
             tooltipContainer.childElementCount === 0 &&
             cellWeekNum &&
             cellIsoYear &&
-            cellDateRange
+            cellDisplayDateRange
           ) {
-            const weekLineFallback = tooltipContainer.createEl("span", {
+            // Fallback basic info if nothing else was added
+            tooltipContainer.createEl("span", {
               cls: "chronica-tooltip-line",
+              text: `Week ${cellWeekNum}, ${cellIsoYear}`,
             });
-            weekLineFallback.appendText(`Week ${cellWeekNum}, ${cellIsoYear}`);
-            const rangeLineFallback = tooltipContainer.createEl("span", {
+            tooltipContainer.createEl("span", {
               cls: "chronica-tooltip-line",
+              text: cellDisplayDateRange,
             });
-            let formattedFallbackRange = cellDateRange;
-            const [startStr, endStr] = cellDateRange.split(" - ");
-            if (startStr && endStr) {
-              const startM = startStr.substring(0, 3);
-              const endM = endStr.substring(0, 3);
-              if (
-                startM === endM &&
-                startStr.length > 3 &&
-                endStr.includes(" ")
-              ) {
-                formattedFallbackRange = `${startStr} - ${endStr.substring(
-                  endStr.lastIndexOf(" ") + 1
-                )}`;
-              }
-            }
-            rangeLineFallback.appendText(formattedFallbackRange);
           }
 
           return {
             fragment: tooltipContainer,
             hintClass: colorHintClass,
-            customColor: eventTypeColor,
+            customColor: eventTypeColorForBorder, // Use the renamed variable
           };
         };
 
@@ -7771,7 +7779,7 @@ class ChornicaTimelineView extends ItemView {
         (type) => type.id === typeId
       );
 
-      let eventTitleForTooltip = matchedEvent.name || matchedEvent.description; // Ensure there's a title
+      let eventTitleForTooltip = matchedEvent.name || matchedEvent.description;
       let eventDescriptionForTooltip = matchedEvent.description || "";
       let eventTypeNameForTooltip = "Unknown Type";
       let eventPeriodForTooltip = matchedEvent.weekKey;
@@ -7788,7 +7796,6 @@ class ChornicaTimelineView extends ItemView {
       }
 
       if (appliedNotePath) {
-        // Use the variable we stored
         cell.dataset.eventFile = appliedNotePath;
       } else {
         delete cell.dataset.eventFile;
@@ -7798,12 +7805,26 @@ class ChornicaTimelineView extends ItemView {
       cell.dataset.tooltipEventPeriod = eventPeriodForTooltip;
       cell.dataset.tooltipEventTitle = eventTitleForTooltip;
       cell.dataset.tooltipEventDescription = eventDescriptionForTooltip;
+
+      // ADDED: Store actual start and end dates for tooltip
+      if (matchedEvent.actualStartDate) {
+        cell.dataset.tooltipEventActualStartDate = matchedEvent.actualStartDate;
+      } else {
+        delete cell.dataset.tooltipEventActualStartDate;
+      }
+      if (matchedEvent.actualEndDate) {
+        cell.dataset.tooltipEventActualEndDate = matchedEvent.actualEndDate;
+      } else {
+        delete cell.dataset.tooltipEventActualEndDate;
+      }
     } else {
       delete cell.dataset.eventFile;
       delete cell.dataset.tooltipEventType;
       delete cell.dataset.tooltipEventPeriod;
       delete cell.dataset.tooltipEventTitle;
       delete cell.dataset.tooltipEventDescription;
+      delete cell.dataset.tooltipEventActualStartDate; // ADDED: Ensure cleanup
+      delete cell.dataset.tooltipEventActualEndDate; // ADDED: Ensure cleanup
     }
 
     // Future Event Highlight (logic remains the same)
