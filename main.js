@@ -2501,47 +2501,74 @@ class ChornicaEventModal extends obsidian.Modal {
         this.refreshViews();
     }
     /** Creates an event note if it doesn't exist, or updates frontmatter if it does. */
-    async createOrUpdateEventNote(event, eventName, startDate, endDate) {
-        const eventType = this.plugin.settings.eventTypes.find((et) => et.id === event.typeId);
+    async createOrUpdateEventNote(event, // This IS the object from this.plugin.settings.events being updated
+    eventNameForDisplay, // The name/title from the modal, used for generating filename
+    startDate, // The actual start date from the modal
+    endDate // The actual end date from the modal, if it's a range
+    ) {
+        const plugin = this.plugin;
+        // --- 1. Get Original Note Info (if any) ---
+        const originalNotePathFromEvent = event.notePath; // The path stored in the event object *before* this save operation
+        let originalFileInstance = null;
+        let originalBodyContent = ""; // Default to empty; will be populated if an original note is found
+        if (originalNotePathFromEvent) {
+            const abstractFile = plugin.app.vault.getAbstractFileByPath(originalNotePathFromEvent);
+            if (abstractFile instanceof obsidian.TFile) {
+                originalFileInstance = abstractFile;
+                const rawContent = await plugin.app.vault.read(originalFileInstance);
+                // Extract content after frontmatter
+                const frontmatterMatch = rawContent.match(/^---\s*[\r\n]+([\s\S]*?)[\r\n]+---\s*[\r\n]*/);
+                originalBodyContent = frontmatterMatch
+                    ? rawContent.substring(frontmatterMatch[0].length)
+                    : rawContent;
+            }
+        }
+        // --- 2. Generate New Filename and Frontmatter based on current (potentially edited) event state ---
+        const eventType = plugin.settings.eventTypes.find((et) => et.id === event.typeId);
         if (!eventType) {
-            console.error(`Cannot find type definition for ID ${event.typeId}`);
+            new obsidian.Notice(`Chronica: Event type ID "${event.typeId}" not found. Cannot process note for event "${eventNameForDisplay}".`);
             return false;
         }
-        const sanitizedEventName = eventName
+        const sanitizedEventName = eventNameForDisplay
             .replace(/[/\\?%*:|"<>]/g, "-")
             .replace(/\s+/g, "_");
-        const dateStr = startDate.toISOString().split("T")[0];
-        // const year = event.weekKey.split("-")[0]; // Not needed if using new placeholders
-        // const week = event.weekKey.split("-W")[1]; // Not needed if using new placeholders
-        let fileName = "";
-        let defaultNoteContent = "";
-        const metadata = {
-            event: eventName,
-            name: eventName,
+        const newMetadata = {
+            event: eventNameForDisplay,
+            name: eventNameForDisplay,
             description: event.description,
             type: eventType.name,
-            startDate: dateStr,
+            startDate: startDate.toISOString().split("T")[0],
         };
-        if (event.endWeekKey && endDate) {
-            // This correctly checks if it's a range event
-            event.endWeekKey.split("-")[0];
-            event.endWeekKey.split("-W")[1];
-            const endDateStr = endDate.toISOString().split("T")[0];
-            metadata.endDate = endDateStr;
-            const values = {
-                eventName: sanitizedEventName,
-                startDate: dateStr,
-                endDate: endDateStr,
+        // Determine if it's effectively a range event for naming and metadata
+        const isRangeEvent = event.endWeekKey && endDate && event.weekKey !== event.endWeekKey;
+        if (isRangeEvent) {
+            newMetadata.endDate = endDate.toISOString().split("T")[0]; // endDate is asserted non-null by isRangeEvent
+        }
+        let newTargetFileName = "";
+        const basePlaceholders = {
+            eventName: sanitizedEventName,
+            startDate: newMetadata.startDate,
+            YYYY: startDate.getFullYear().toString(),
+            MM: (startDate.getMonth() + 1).toString().padStart(2, "0"),
+            DD: startDate.getDate().toString().padStart(2, "0"),
+            MMMM: startDate.toLocaleString("default", { month: "long" }),
+            MMM: startDate.toLocaleString("default", { month: "short" }),
+            YY: startDate.getFullYear().toString().slice(-2),
+        };
+        if (isRangeEvent) {
+            const rangePlaceholders = {
+                ...basePlaceholders,
+                endDate: newMetadata.endDate,
                 start_gggg: event.weekKey.split("-")[0],
                 start_ww: event.weekKey.split("-W")[1],
+                end_gggg: event.endWeekKey.split("-")[0],
+                end_ww: event.endWeekKey.split("-W")[1],
                 startDate_YYYY: startDate.getFullYear().toString(),
                 startDate_MM: (startDate.getMonth() + 1).toString().padStart(2, "0"),
                 startDate_DD: startDate.getDate().toString().padStart(2, "0"),
                 startDate_MMMM: startDate.toLocaleString("default", { month: "long" }),
                 startDate_MMM: startDate.toLocaleString("default", { month: "short" }),
                 startDate_YY: startDate.getFullYear().toString().slice(-2),
-                end_gggg: event.endWeekKey.split("-")[0],
-                end_ww: event.endWeekKey.split("-W")[1],
                 endDate_YYYY: endDate.getFullYear().toString(),
                 endDate_MM: (endDate.getMonth() + 1).toString().padStart(2, "0"),
                 endDate_DD: endDate.getDate().toString().padStart(2, "0"),
@@ -2549,57 +2576,119 @@ class ChornicaEventModal extends obsidian.Modal {
                 endDate_MMM: endDate.toLocaleString("default", { month: "short" }),
                 endDate_YY: endDate.getFullYear().toString().slice(-2),
             };
-            fileName = this.plugin.formatFileName(this.plugin.settings.rangeNoteTemplate, values);
-            // FURTHER MINIMIZED defaultNoteContent for range events:
-            defaultNoteContent = `\n## **Event Notes**\n\n`; // Starts with a newline for separation from frontmatter
+            newTargetFileName = plugin.formatFileName(plugin.settings.rangeNoteTemplate, rangePlaceholders);
         }
         else {
-            // This is for SINGLE events
-            const values = {
-                eventName: sanitizedEventName,
-                startDate: dateStr,
+            const singlePlaceholders = {
+                ...basePlaceholders,
                 gggg: event.weekKey.split("-")[0],
                 ww: event.weekKey.split("-W")[1],
-                YYYY: startDate.getFullYear().toString(),
-                MM: (startDate.getMonth() + 1).toString().padStart(2, "0"),
-                DD: startDate.getDate().toString().padStart(2, "0"),
-                MMMM: startDate.toLocaleString("default", { month: "long" }),
-                MMM: startDate.toLocaleString("default", { month: "short" }),
-                YY: startDate.getFullYear().toString().slice(-2),
             };
-            fileName = this.plugin.formatFileName(this.plugin.settings.eventNoteTemplate, values);
-            // FURTHER MINIMIZED defaultNoteContent for single events:
-            defaultNoteContent = `\n## **Event Notes**\n\n`; // Starts with a newline for separation from frontmatter
+            newTargetFileName = plugin.formatFileName(plugin.settings.eventNoteTemplate, singlePlaceholders);
         }
-        const fullPath = this.plugin.getFullPath(fileName, true);
-        let file = this.app.vault.getAbstractFileByPath(fullPath);
-        // let fileCreated = false; // Not used
-        if (file instanceof obsidian.TFile) {
-            await this.app.fileManager.processFrontMatter(file, (fm) => {
-                Object.assign(fm, metadata);
-            });
-            event.notePath = file.path;
-            return true;
-        }
-        else {
-            let folderPath = this.plugin.settings.useSeparateFolders
-                ? this.plugin.settings.eventNotesFolder
-                : this.plugin.settings.notesFolder;
-            if (folderPath && folderPath.trim() !== "") {
-                try {
-                    if (!(await this.app.vault.adapter.exists(folderPath)))
-                        await this.app.vault.createFolder(folderPath);
+        const newTargetFullPath = plugin.getFullPath(newTargetFileName, true);
+        const newFrontmatterString = plugin.formatFrontmatter(newMetadata);
+        // Use original body content if available, otherwise a default for new notes
+        const finalBodyContentToUse = originalFileInstance && originalNotePathFromEvent
+            ? originalBodyContent
+            : "\n## **Event Notes**\n\n";
+        const newConsolidatedContent = newFrontmatterString + finalBodyContentToUse;
+        // --- 3. Perform File Operations ---
+        if (originalFileInstance) {
+            if (originalFileInstance.path === newTargetFullPath) {
+                // Filename is the same, just update content if it has changed
+                if ((await plugin.app.vault.cachedRead(originalFileInstance)) !==
+                    newConsolidatedContent) {
+                    await plugin.app.vault.modify(originalFileInstance, newConsolidatedContent);
                 }
-                catch (err) {
-                    console.error(`Chronica: Failed to create folder ${folderPath}`, err);
-                    new obsidian.Notice(`Error creating folder: ${folderPath}. Note saved in vault root.`);
+                event.notePath = originalFileInstance.path; // Ensure event.notePath is correctly set
+            }
+            else {
+                // Filename needs to change. Check for conflicts at the new path.
+                const conflictingFile = plugin.app.vault.getAbstractFileByPath(newTargetFullPath);
+                if (conflictingFile &&
+                    conflictingFile.path !== originalFileInstance.path) {
+                    // A *different* file already exists at the new target path.
+                    // Update original note in place, do not rename, inform user.
+                    new obsidian.Notice(`Chronica: Cannot rename to "${newTargetFileName}". A different file already exists at that location.`);
+                    new obsidian.Notice(`Chronica: Updating current event note "${originalFileInstance.name}" with new details. Its filename will not reflect the changes.`);
+                    if ((await plugin.app.vault.cachedRead(originalFileInstance)) !==
+                        newConsolidatedContent) {
+                        await plugin.app.vault.modify(originalFileInstance, newConsolidatedContent);
+                    }
+                    event.notePath = originalFileInstance.path; // Keep event linked to the original, un-renamed file
+                }
+                else {
+                    // New path is available or conflictingFile is the originalFile itself (which means no actual conflict for rename)
+                    try {
+                        await plugin.app.fileManager.renameFile(originalFileInstance, newTargetFullPath);
+                        event.notePath = newTargetFullPath; // Update event to point to the new path
+                        // After renaming, get a fresh handle to the file at the new path to modify its content
+                        const fileHandleAfterRename = plugin.app.vault.getAbstractFileByPath(newTargetFullPath);
+                        if (fileHandleAfterRename instanceof obsidian.TFile) {
+                            if ((await plugin.app.vault.cachedRead(fileHandleAfterRename)) !==
+                                newConsolidatedContent) {
+                                await plugin.app.vault.modify(fileHandleAfterRename, newConsolidatedContent);
+                            }
+                        }
+                        else {
+                            // This case should ideally not be reached if renameFile succeeded without error.
+                            console.error(`Chronica: File not found at "${newTargetFullPath}" after a supposedly successful rename from "${originalFileInstance.path}". Cannot update content.`);
+                            new obsidian.Notice(`Chronica: Note renamed to "${newTargetFileName}", but failed to update its content post-rename. Please check the file.`);
+                            // event.notePath is already set to newTargetFullPath. Content might be stale if modify failed.
+                        }
+                    }
+                    catch (e) {
+                        console.error(`Chronica: Error renaming note from "${originalNotePathFromEvent}" to "${newTargetFullPath}". Attempting to update original note. Error: ${e.message}`);
+                        new obsidian.Notice(`Error renaming note. Content with new details saved in original note: "${originalNotePathFromEvent}".`);
+                        // Fallback: update original file's content if rename failed, and ensure event still points to it.
+                        if (originalFileInstance) {
+                            // Check if originalFileInstance is still valid
+                            if ((await plugin.app.vault.cachedRead(originalFileInstance)) !==
+                                newConsolidatedContent) {
+                                await plugin.app.vault.modify(originalFileInstance, newConsolidatedContent);
+                            }
+                            event.notePath = originalNotePathFromEvent; // Reaffirm event points to the file that was actually modified
+                        }
+                    }
                 }
             }
-            const finalContent = this.plugin.formatFrontmatter(metadata) + defaultNoteContent;
-            const newFile = await this.app.vault.create(fullPath, finalContent);
-            event.notePath = newFile.path;
-            return true;
         }
+        else {
+            // No original file was linked, or the linked file was missing. Create a new note.
+            const folderPathForNewNote = newTargetFullPath.substring(0, newTargetFullPath.lastIndexOf("/"));
+            // Ensure the target folder exists before creating the note
+            if (folderPathForNewNote && folderPathForNewNote.trim() !== "") {
+                const folderShouldBe = plugin.settings.useSeparateFolders
+                    ? plugin.settings.eventNotesFolder
+                    : plugin.settings.notesFolder;
+                if (folderPathForNewNote.replace(/\/$/, "") ===
+                    folderShouldBe.replace(/\/$/, "")) {
+                    // Check if target folder is the configured one
+                    try {
+                        const folderExists = plugin.app.vault.getAbstractFileByPath(folderPathForNewNote);
+                        if (!folderExists) {
+                            await plugin.app.vault.createFolder(folderPathForNewNote);
+                        }
+                    }
+                    catch (err) {
+                        console.warn(`Chronica: Could not create folder ${folderPathForNewNote}. Note will be saved in vault root if path is root, or creation might fail. Error: ${err.message}`);
+                    }
+                }
+            }
+            try {
+                // Use Obsidian's create method which handles filename conflicts by appending (1), (2), etc.
+                const newCreatedFile = await plugin.app.vault.create(newTargetFullPath, newConsolidatedContent);
+                event.notePath = newCreatedFile.path; // Path might include (1) if there was an unrelated conflict
+            }
+            catch (e) {
+                console.error(`Chronica: Error creating new note at "${newTargetFullPath}". Error: ${e.message}`);
+                new obsidian.Notice(`Error creating new event note. Event data saved, but note creation failed.`);
+                event.notePath = undefined; // Ensure notePath is not set if creation fails
+                return false; // Indicate failure
+            }
+        }
+        return true; // Indicate success
     }
     refreshViews() {
         /* ... keep refresh logic ... */
