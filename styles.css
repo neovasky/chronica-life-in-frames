@@ -2154,6 +2154,7 @@ Exp .chronica-sidebar-toggle:hover {
 /* -----------------------------------------------------------------------------
      14. GRID CELL TOOLTIPS
      ----------------------------------------------------------------------------- */
+/* styles.css - NEW MODIFIED VERSION */
 .chronica-grid-cell-tooltip {
   position: absolute;
   background-color: var(--background-secondary-alt);
@@ -2175,6 +2176,9 @@ Exp .chronica-sidebar-toggle:hover {
   /* Add padding to the right of the accent bar if the bar is inside the padding area.
      If border-left is outside, then this main padding: 10px 15px; is fine.
      Assuming border-left is part of the overall border. */
+  /* Added lines for positioning via CSS variables */
+  left: var(--tooltip-left, 0px);
+  top: var(--tooltip-top, 0px);
 }
 
 .chronica-grid-cell-tooltip.visible {

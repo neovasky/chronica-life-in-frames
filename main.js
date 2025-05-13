@@ -4034,7 +4034,7 @@ class ChornicaTimelineView extends obsidian.ItemView {
                 this.tooltipTimeoutId = window.setTimeout(() => {
                     if (this.activeGridCellTooltip &&
                         this.activeGridCellTooltip.parentElement) {
-                        this.activeGridCellTooltip.remove(); // Ensure any existing one is gone
+                        this.activeGridCellTooltip.remove();
                     }
                     this.activeGridCellTooltip = document.createElement("div");
                     this.activeGridCellTooltip.addClass("chronica-grid-cell-tooltip");
@@ -4058,8 +4058,8 @@ class ChornicaTimelineView extends obsidian.ItemView {
                     }
                     if (top < 5)
                         top = 5;
-                    this.activeGridCellTooltip.style.left = `${left + window.scrollX}px`;
-                    this.activeGridCellTooltip.style.top = `${top + window.scrollY}px`;
+                    this.activeGridCellTooltip.style.setProperty("--tooltip-left", `${left + window.scrollX}px`);
+                    this.activeGridCellTooltip.style.setProperty("--tooltip-top", `${top + window.scrollY}px`);
                     setTimeout(() => {
                         this.activeGridCellTooltip?.addClass("visible");
                     }, 10);
