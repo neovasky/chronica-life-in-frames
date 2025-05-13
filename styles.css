@@ -631,11 +631,15 @@ Exp .chronica-sidebar-toggle:hover {
 .chronica-decade-markers {
   position: absolute;
   top: 0;
-  left: 0; /* Keep original value */
-  width: calc(100% - var(--left-offset));
+  left: var(
+    --left-offset
+  ); /* Changed from 0 to use the CSS variable directly */
+  width: calc(
+    100% - var(--left-offset)
+  ); /* This width is then correct relative to the new left */
   height: var(--top-offset);
   pointer-events: none;
-  z-index: 20; /* Keep original value */
+  z-index: 20;
   transition: transform 0.2s ease;
 }
 

@@ -3920,8 +3920,6 @@ class ChornicaTimelineView extends obsidian.ItemView {
             const decadeMarkersContainer = container.createEl("div", {
                 cls: `chronica-decade-markers ${isPortrait ? "portrait-mode" : ""}`,
             });
-            if (!isPortrait)
-                decadeMarkersContainer.style.left = `${leftOffset}px`; // This line is for the container.
             for (let decade = 10; decade <= lifespan; decade += 10) {
                 const marker = decadeMarkersContainer.createEl("div", {
                     cls: `chronica-decade-marker ${isPortrait ? "portrait-mode" : ""}`,
@@ -3933,7 +3931,7 @@ class ChornicaTimelineView extends obsidian.ItemView {
                 const centerPosition = decadePosition + cellSize / 2;
                 if (isPortrait) {
                     marker.style.setProperty("--marker-top", `${centerPosition}px`);
-                    marker.style.setProperty("--marker-left", "15px");
+                    marker.style.setProperty("--marker-left", "25px");
                     marker.style.setProperty("--marker-transform", "translateY(-50%)");
                 }
                 else {
