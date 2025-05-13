@@ -737,9 +737,10 @@ Exp .chronica-sidebar-toggle:hover {
 .chronica-birthday-marker-container {
   position: absolute;
   z-index: 15;
-  transform: translate(-50%, -50%);
-  left: var(--cake-dynamic-left, 0px);
-  top: var(--cake-dynamic-top, 0px);
+  /* Apply styles using CSS variables set by JavaScript */
+  top: var(--birthday-marker-top);
+  left: var(--birthday-marker-left);
+  transform: var(--birthday-marker-transform);
 }
 
 .birthday-cake-marker:hover {

@@ -3986,21 +3986,19 @@ class ChornicaTimelineView extends obsidian.ItemView {
             const birthdayMarkerContainer = container.createEl("div", {
                 cls: "chronica-birthday-marker-container",
             });
-            // YOUR EXACT POSITIONING LOGIC:
-            birthdayMarkerContainer.style.position = "absolute";
-            birthdayMarkerContainer.style.zIndex = "15";
+            // CSS will handle position: absolute and z-index: 15 for .chronica-birthday-marker-container
             if (isPortrait) {
                 // In portrait, weeks are horizontal. Cake should be above the first week column.
-                birthdayMarkerContainer.style.top = `${topOffset}px`;
-                birthdayMarkerContainer.style.left = `${leftOffset - 13}px`; // Position it above month markers, adjust offset if needed
-                birthdayMarkerContainer.style.transform = "translateX(-50%)";
+                birthdayMarkerContainer.style.setProperty("--birthday-marker-top", `${topOffset}px`);
+                birthdayMarkerContainer.style.setProperty("--birthday-marker-left", `${leftOffset - 13}px`);
+                birthdayMarkerContainer.style.setProperty("--birthday-marker-transform", "translateX(-50%)");
             }
             else {
                 // Landscape
                 // In landscape, weeks are vertical. Cake should be to the left of the first week row.
-                birthdayMarkerContainer.style.top = `${topOffset + 10}px`;
-                birthdayMarkerContainer.style.left = `${leftOffset - 25}px`; // Position left of other markers, adjust offset if needed
-                birthdayMarkerContainer.style.transform = "translateY(-50%)";
+                birthdayMarkerContainer.style.setProperty("--birthday-marker-top", `${topOffset + 10}px`);
+                birthdayMarkerContainer.style.setProperty("--birthday-marker-left", `${leftOffset - 25}px`);
+                birthdayMarkerContainer.style.setProperty("--birthday-marker-transform", "translateY(-50%)");
             }
             const cakeEl = birthdayMarkerContainer.createEl("div", {
                 cls: "birthday-cake-marker",
