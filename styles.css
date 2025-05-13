@@ -678,12 +678,16 @@ Exp .chronica-sidebar-toggle:hover {
   color: var(--text-muted);
   font-weight: 400;
   font-style: italic;
-  left: 3px; /* Original value from your file */
-  opacity: 0.8; /* Original value from your file */
-  transform: translateY(-50%); /* Original value from your file */
+  opacity: 0.8;
   transition: opacity 0.2s, color 0.2s;
-  text-align: left;
-  width: 30px; /* Original value from your file */
+  /* text-align and width might be further refined by .portrait-mode or if universally applicable */
+  text-align: left; /* Default, can be overridden by .portrait-mode */
+  width: 30px; /* Default, can be overridden or set to auto */
+
+  /* Apply styles using CSS variables set by JavaScript */
+  top: var(--marker-top);
+  left: var(--marker-left);
+  transform: var(--marker-transform);
 }
 
 .chronica-month-marker:hover {
@@ -697,8 +701,6 @@ Exp .chronica-sidebar-toggle:hover {
 }
 
 .chronica-month-marker.birth-month {
-  right: auto;
-  left: 5px;
   color: #e91e63;
   font-weight: 500;
 }
@@ -2102,7 +2104,6 @@ Exp .chronica-sidebar-toggle:hover {
      13. PORTRAIT MODE SPECIFIC STYLES
      ----------------------------------------------------------------------------- */
 
-/* styles.css */
 .chronica-vertical-markers.portrait-mode {
   transform: none;
   width: calc(100% - var(--top-offset));
@@ -2131,9 +2132,6 @@ Exp .chronica-sidebar-toggle:hover {
 /* styles.css */
 .chronica-month-marker.portrait-mode {
   text-align: center;
-  font-size: 10px; /* Was present in the original file */
-  position: absolute; /* Was present in the original file */
-  transform: translateX(-50%); /* Was present in the original file */
 }
 
 .chronica-month-markers.portrait-mode {

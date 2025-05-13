@@ -4203,16 +4203,17 @@ class ChornicaTimelineView extends obsidian.ItemView {
                 });
                 const position = markerGridIndex * (cellSize + cellGap) + cellSize / 2;
                 markerEl.setAttribute("title", marker.fullLabel);
+                // position: "absolute" will be handled by CSS for .chronica-month-marker
                 if (isPortrait) {
-                    markerEl.style.left = `${position + 2}px`;
-                    markerEl.style.top = `${topOffset - 60}px`;
-                    markerEl.style.transform = "translateX(-50%)";
+                    markerEl.style.setProperty("--marker-left", `${position + 2}px`);
+                    markerEl.style.setProperty("--marker-top", `${topOffset - 60}px`);
+                    markerEl.style.setProperty("--marker-transform", "translateX(-50%)");
                 }
                 else {
                     // Landscape
-                    markerEl.style.top = `${position}px`;
-                    markerEl.style.left = "5px";
-                    markerEl.style.transform = "translateY(-50%)";
+                    markerEl.style.setProperty("--marker-top", `${position}px`);
+                    markerEl.style.setProperty("--marker-left", "5px");
+                    markerEl.style.setProperty("--marker-transform", "translateY(-50%)");
                 }
             });
         }
