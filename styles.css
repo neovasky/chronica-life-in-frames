@@ -657,13 +657,23 @@ Exp .chronica-sidebar-toggle:hover {
   font-size: 12px;
   color: var(--text-muted);
   font-weight: 600;
-  right: 4px; /* Keep original value */
-  transform: translateY(-50%);
-  padding: 1px 3px; /* Keep original value */
+  padding: 1px 3px;
   border-radius: 3px;
-  z-index: 15; /* Keep original value */
-  text-align: right;
-  width: 25px; /* Keep original value */
+  z-index: 15;
+  text-align: right; /* Default, portrait might override if needed */
+  width: 25px; /* Default, portrait might override if needed */
+
+  /* Apply styles using CSS variables set by JavaScript */
+  top: var(--marker-top);
+  left: var(
+    --marker-left,
+    auto
+  ); /* Use 'auto' as fallback if --marker-left is not set */
+  right: var(
+    --marker-right,
+    auto
+  ); /* Use 'auto' as fallback if --marker-right is not set */
+  transform: var(--marker-transform);
 }
 
 .chronica-week-marker:hover {
@@ -2122,11 +2132,7 @@ Exp .chronica-sidebar-toggle:hover {
 }
 
 .chronica-week-marker.portrait-mode {
-  transform: none;
-  text-align: right;
-  right: auto;
-  top: 50%;
-  transform-origin: left center;
+  text-align: center;
 }
 
 /* styles.css */

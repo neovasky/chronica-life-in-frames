@@ -3954,24 +3954,28 @@ class ChornicaTimelineView extends obsidian.ItemView {
             cls: "chronica-month-markers",
         });
         // Week Markers (Numbers 10, 20...)
+        // Week Markers (Numbers 10, 20...)
         if (settings.showWeekMarkers) {
             for (let week = 10; week <= 50; week += 10) {
                 const marker = weekMarkersContainer.createEl("div", {
                     cls: `chronica-week-marker ${isPortrait ? "portrait-mode" : ""}`,
                     text: week.toString(),
                 });
-                // Position based on cellIndex (0-51), adjusting for center alignment
+                // position: "absolute" will be handled by CSS for .chronica-week-marker
                 const position = (week - 1) * (cellSize + cellGap) + cellSize / 2; // Center on the week line
                 if (isPortrait) {
-                    marker.style.left = `${position}px`;
-                    marker.style.top = `${topOffset - 25}px`;
-                    marker.style.transform = "translateX(-50%)";
-                } // Position above grid
+                    marker.style.setProperty("--marker-left", `${position + 3}px`);
+                    marker.style.setProperty("--marker-top", `${topOffset - 25}px`);
+                    marker.style.setProperty("--marker-transform", "translateX(-50%)");
+                    marker.style.removeProperty("--marker-right"); // Ensure right is not set
+                }
                 else {
-                    marker.style.top = `${position}px`;
-                    marker.style.right = "4px";
-                    marker.style.transform = "translateY(-50%)";
-                } // Position left of grid
+                    // Landscape
+                    marker.style.setProperty("--marker-top", `${position}px`);
+                    marker.style.setProperty("--marker-right", "4px");
+                    marker.style.setProperty("--marker-transform", "translateY(-50%)");
+                    marker.style.removeProperty("--marker-left"); // Ensure left is not set
+                }
             }
         }
         // Birthday Marker (Cake Icon) - Placed relative to the *grid* start
