@@ -3901,14 +3901,13 @@ class ChornicaTimelineView extends obsidian.ItemView {
      */
     renderWeeksGrid(container) {
         container.empty(); // Clear previous grid
-        // Get necessary settings and calculated values
         const { settings } = this.plugin;
         const { birthday, lifespan, gridOrientation, cellShape, startWeekOnMonday, } = settings;
         const root = document.documentElement;
         const baseSize = parseInt(getComputedStyle(root).getPropertyValue("--base-cell-size")) ||
             16;
         const cellSize = Math.round(baseSize * settings.zoomLevel);
-        root.style.setProperty("--cell-size", `${cellSize}px`); // Ensure CSS var is set
+        root.style.setProperty("--cell-size", `${cellSize}px`);
         const cellGap = parseInt(getComputedStyle(root).getPropertyValue("--cell-gap")) || 2;
         const leftOffset = parseInt(getComputedStyle(root).getPropertyValue("--left-offset")) || 70;
         const topOffset = parseInt(getComputedStyle(root).getPropertyValue("--top-offset")) || 50;
@@ -4221,9 +4220,6 @@ class ChornicaTimelineView extends obsidian.ItemView {
         const gridEl = container.createEl("div", { cls: "chronica-grid" });
         gridEl.toggleClass("shape-circle", cellShape === "circle");
         gridEl.toggleClass("shape-diamond", cellShape === "diamond");
-        gridEl.style.position = "absolute";
-        gridEl.style.top = `${topOffset}px`;
-        gridEl.style.left = `${leftOffset}px`;
         const now = new Date();
         const [birthYearNum, birthMonthNum, birthDayNum] = settings.birthday
             .split("-")
@@ -4533,49 +4529,37 @@ class ChornicaTimelineView extends obsidian.ItemView {
                     };
                 };
                 cell.addEventListener("mouseenter", (eventMouse) => {
-                    // 1. Clear any timeout that was set to HIDE a previous tooltip
                     if (this.clearTooltipTimeoutId) {
                         clearTimeout(this.clearTooltipTimeoutId);
                         this.clearTooltipTimeoutId = null;
                     }
-                    // 2. Clear any timeout that was previously set to SHOW a tooltip
                     if (this.tooltipTimeoutId) {
                         clearTimeout(this.tooltipTimeoutId);
                         this.tooltipTimeoutId = null;
                     }
-                    // ---- ADDED: Clear any pending snippet fetching timeout and reset related state ----
                     if (this.snippetTimeoutId) {
                         clearTimeout(this.snippetTimeoutId);
                         this.snippetTimeoutId = null;
                     }
                     this.currentHoveredCellForSnippet = null;
-                    // ---- END ADDED ----
-                    // 3. If a tooltip is currently visible (from another cell), remove it IMMEDIATELY
                     if (this.activeGridCellTooltip &&
                         this.activeGridCellTooltip.parentElement) {
                         this.activeGridCellTooltip.remove();
                         this.activeGridCellTooltip = null;
                     }
-                    // 4. Set a new timeout to show the tooltip for THIS cell
                     this.tooltipTimeoutId = window.setTimeout(() => {
-                        // Check if mouse hasn't already left the cell or another action cleared things
-                        if (this.tooltipTimeoutId === null && !this.activeGridCellTooltip) ;
                         if (this.activeGridCellTooltip &&
                             this.activeGridCellTooltip.parentElement) {
-                            // Re-check for safety, remove if another tooltip became active somehow
                             this.activeGridCellTooltip.remove();
                             this.activeGridCellTooltip = null;
                         }
                         this.activeGridCellTooltip = document.createElement("div");
                         this.activeGridCellTooltip.addClass("chronica-grid-cell-tooltip");
                         this.activeGridCellTooltip.addClass(this.plugin.settings.tooltipDetailLevel);
-                        const { fragment, hintClass, customColor } = createTooltipContent(cell); // createTooltipContent is defined elsewhere in renderWeeksGrid
+                        const { fragment, hintClass, customColor } = createTooltipContent(cell);
                         this.activeGridCellTooltip.appendChild(fragment);
                         if (hintClass) {
                             this.activeGridCellTooltip.addClass(hintClass);
-                        }
-                        else if (customColor) {
-                            this.activeGridCellTooltip.style.borderLeftColor = customColor;
                         }
                         document.body.appendChild(this.activeGridCellTooltip);
                         const cellRect = cell.getBoundingClientRect();
@@ -4592,33 +4576,28 @@ class ChornicaTimelineView extends obsidian.ItemView {
                         }
                         if (top < 5)
                             top = 5;
-                        this.activeGridCellTooltip.style.left = `${left + window.scrollX}px`;
-                        this.activeGridCellTooltip.style.top = `${top + window.scrollY}px`;
+                        this.activeGridCellTooltip.style.setProperty("--tooltip-left", `${left + window.scrollX}px`);
+                        this.activeGridCellTooltip.style.setProperty("--tooltip-top", `${top + window.scrollY}px`);
                         setTimeout(() => {
-                            // This timeout makes the main tooltip visible
                             if (this.activeGridCellTooltip) {
-                                // Check if tooltip still exists (wasn't cleared by a quick mouseleave/click)
                                 this.activeGridCellTooltip.addClass("visible");
-                                // ---- NEW: Logic for sustained hover to fetch snippets ----
-                                this.currentHoveredCellForSnippet = cell; // Mark this cell
+                                this.currentHoveredCellForSnippet = cell;
                                 if (this.plugin.settings.enableTooltipNotePreview &&
                                     this.plugin.settings.tooltipDetailLevel === "expanded") {
                                     if (this.snippetTimeoutId)
                                         clearTimeout(this.snippetTimeoutId);
                                     this.snippetTimeoutId = window.setTimeout(() => {
-                                        // Ensure the tooltip is still for the cell we initiated this for
                                         if (this.activeGridCellTooltip &&
                                             this.currentHoveredCellForSnippet === cell) {
                                             this.fetchAndDisplaySnippets(this.activeGridCellTooltip, cell);
                                         }
-                                        this.snippetTimeoutId = null; // Clear after execution or if condition fails
-                                    }, 300); // Sustained hover delay (e.g., 300ms after main tooltip is visible)
+                                        this.snippetTimeoutId = null;
+                                    }, 300);
                                 }
-                                // ---- END NEW ----
                             }
-                        }, 10); // Delay for CSS transition of main tooltip
-                        this.tooltipTimeoutId = null; // Mark that this main "show" timeout has completed its primary job
-                    }, 500); // Initial delay to show main tooltip
+                        }, 10);
+                        this.tooltipTimeoutId = null;
+                    }, 500);
                 });
                 cell.addEventListener("mouseleave", (eventMouse) => {
                     // Clear pending show of main tooltip
