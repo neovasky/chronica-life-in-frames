@@ -645,7 +645,10 @@ Exp .chronica-sidebar-toggle:hover {
   color: var(--text-muted);
   font-weight: 500;
   text-align: center;
-  transform: translateX(-50%);
+  /* Apply styles using CSS variables set by JavaScript */
+  top: var(--marker-top);
+  left: var(--marker-left);
+  transform: var(--marker-transform);
 }
 
 /* Week Number Markers (Left) */
@@ -675,12 +678,12 @@ Exp .chronica-sidebar-toggle:hover {
   color: var(--text-muted);
   font-weight: 400;
   font-style: italic;
-  left: 3px; /* Keep original value */
-  opacity: 0.8; /* Keep original value */
-  transform: translateY(-50%);
+  left: 3px; /* Original value from your file */
+  opacity: 0.8; /* Original value from your file */
+  transform: translateY(-50%); /* Original value from your file */
   transition: opacity 0.2s, color 0.2s;
   text-align: left;
-  width: 30px; /* Keep original value */
+  width: 30px; /* Original value from your file */
 }
 
 .chronica-month-marker:hover {
@@ -2099,13 +2102,14 @@ Exp .chronica-sidebar-toggle:hover {
      13. PORTRAIT MODE SPECIFIC STYLES
      ----------------------------------------------------------------------------- */
 
+/* styles.css */
 .chronica-vertical-markers.portrait-mode {
-  transform: none; /* Keep original value */
+  transform: none;
   width: calc(100% - var(--top-offset));
   height: var(--left-offset);
   top: 0;
   left: var(--top-offset);
-  flex-direction: column; /* Keep original value */
+  flex-direction: column;
 }
 
 .chronica-decade-markers.portrait-mode {
@@ -2116,11 +2120,6 @@ Exp .chronica-sidebar-toggle:hover {
   /* flex-direction: column; <-- This was incorrect, remove */
 }
 
-.chronica-decade-marker.portrait-mode {
-  top: auto;
-  left: 50% !important;
-}
-
 .chronica-week-marker.portrait-mode {
   transform: none;
   text-align: right;
@@ -2129,11 +2128,12 @@ Exp .chronica-sidebar-toggle:hover {
   transform-origin: left center;
 }
 
+/* styles.css */
 .chronica-month-marker.portrait-mode {
   text-align: center;
-  font-size: 10px;
-  position: absolute;
-  transform: translateX(-50%);
+  font-size: 10px; /* Was present in the original file */
+  position: absolute; /* Was present in the original file */
+  transform: translateX(-50%); /* Was present in the original file */
 }
 
 .chronica-month-markers.portrait-mode {

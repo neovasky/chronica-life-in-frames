@@ -4993,13 +4993,14 @@ class ChornicaTimelineView extends ItemView {
       const decadeMarkersContainer = container.createEl("div", {
         cls: `chronica-decade-markers ${isPortrait ? "portrait-mode" : ""}`,
       });
-      if (!isPortrait) decadeMarkersContainer.style.left = `${leftOffset}px`;
+      if (!isPortrait) decadeMarkersContainer.style.left = `${leftOffset}px`; // This line is for the container.
       for (let decade = 10; decade <= lifespan; decade += 10) {
         const marker = decadeMarkersContainer.createEl("div", {
           cls: `chronica-decade-marker ${isPortrait ? "portrait-mode" : ""}`,
           text: decade.toString(),
         });
-        marker.style.position = "absolute";
+        // position: "absolute" will be handled by CSS for .chronica-decade-marker
+
         const lastYearOfPrevDecade = decade - 1;
         const decadePosition = this.plugin.calculateYearPosition(
           lastYearOfPrevDecade,
@@ -5007,16 +5008,16 @@ class ChornicaTimelineView extends ItemView {
           regularGap
         );
         const centerPosition = decadePosition + cellSize / 2;
+
         if (isPortrait) {
-          marker.style.top = `${centerPosition}px`;
-          marker.style.left = "15px";
-          marker.style.transform = "translateY(-50%)";
-        } // Adjust left for portrait
-        else {
-          marker.style.left = `${centerPosition}px`;
-          marker.style.top = "15px";
-          marker.style.transform = "translateX(-50%)";
-        } // Adjust top
+          marker.style.setProperty("--marker-top", `${centerPosition}px`);
+          marker.style.setProperty("--marker-left", "15px");
+          marker.style.setProperty("--marker-transform", "translateY(-50%)");
+        } else {
+          marker.style.setProperty("--marker-left", `${centerPosition}px`);
+          marker.style.setProperty("--marker-top", "15px");
+          marker.style.setProperty("--marker-transform", "translateX(-50%)");
+        }
       }
     }
 
@@ -5093,7 +5094,6 @@ class ChornicaTimelineView extends ItemView {
       setIcon(cakeEl, "cake");
       // REMOVED: cakeEl.setAttribute("title", ...);
 
-      // ---- NEW: Custom Tooltip for Birthday Marker ----
       const createBirthdayTooltipContent = () => {
         const tooltipContainer = document.createDocumentFragment();
         tooltipContainer.createEl("span", {
@@ -5329,19 +5329,23 @@ class ChornicaTimelineView extends ItemView {
       finalRenderMap.forEach((marker) => {
         // marker.weekIndex is the gridIndex
         const markerGridIndex = marker.weekIndex; // Use the stored gridIndex for positioning
+        // Inside finalRenderMap.forEach((marker) => { ... })
+        // Inside finalRenderMap.forEach((marker) => { ... })
         const markerEl = monthMarkersContainer.createEl("div", {
           cls: `chronica-month-marker ${isPortrait ? "portrait-mode" : ""} ${
             marker.isFirstOfYear ? "first-of-year" : ""
-          } ${marker.isBirthMonth ? "birth-month" : ""}`, // Use isBirthMonth flag from marker
+          } ${marker.isBirthMonth ? "birth-month" : ""}`,
           text: marker.label,
         });
         const position = markerGridIndex * (cellSize + cellGap) + cellSize / 2;
         markerEl.setAttribute("title", marker.fullLabel);
+
         if (isPortrait) {
-          markerEl.style.left = `${position}px`;
-          markerEl.style.top = `${topOffset - 25}px`;
+          markerEl.style.left = `${position + 2}px`;
+          markerEl.style.top = `${topOffset - 60}px`;
           markerEl.style.transform = "translateX(-50%)";
         } else {
+          // Landscape
           markerEl.style.top = `${position}px`;
           markerEl.style.left = "5px";
           markerEl.style.transform = "translateY(-50%)";
