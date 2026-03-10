@@ -1,114 +1,95 @@
-# Chronica: Life in Frames v1.0.0
+# Chronica: Life in Frames
 
-> Visualize, navigate, and reflect on your life across multiple time scales.
+Visualize your life as a grid of weeks with color-coded events, markers, and linked notes.
 
-Chronica transforms your Obsidian vault into a customizable life timeline—displaying your weeks as frames in a grid, complete with color-coded eras, milestone markers, and manual or automatic event fills.
-
----
-
-## 🛠️ Technology
-
-This plugin is built with TypeScript for type safety and documentation. It depends on the latest Obsidian plugin API (`obsidian.d.ts`), which includes TSDoc comments describing available classes and methods.
+Chronica transforms your Obsidian vault into a life timeline — each cell in the grid represents one week of your life, letting you see the big picture at a glance.
 
 ---
 
-## ⚡ Features
+## Features
 
-- **Ribbon Icon**: Adds a toolbar icon that opens Chronica’s main view.
-- **Commands**: Provides a command in the Command Palette to open the Chronica timeline view.
-- **Settings Tab**: Registers a settings pane under Settings → Community Plugins → Chronica: Life in Frames.
-- **Global Click Event**: Captures clicks on the grid to toggle manual fills and logs events to the console.
-- **Global Interval**: Sets an interval to refresh dates and output logs for debugging.
-- **Multiple Visual Modes**: Choose between square, circle, or diamond cells, and landscape or portrait orientation.
-- **Color-Coded Eras**: Configure distinct colors for past, present, and future cells.
-- **Milestone Markers**: Enable decade, year, month, and birthday dividers at configurable intervals.
-- **Custom Events**: Define event categories with names and colors, then map dates or ranges to them.
-
----
-
-## 🚀 Quick Start for Plugin Developers
-
-1. **Check existing plugins**—avoid reinventing the wheel.
-2. **Use this repo as a template**: click “Use this template” on GitHub, fork, then clone your fork locally.
-3. **Plugin folder**: place your cloned repo under `~/.obsidian/plugins/chronica-life-in-frames` for live testing.
-4. **Install dependencies**:
-   npm install
-5. **Watch & build**:
-   npm run dev
-6. **Reload Obsidian** and enable Chronica via Community Plugins.
-7. **Iterate**: modify `.ts` files, let the watcher compile, and reload the vault.
-8. **Update API**: when the API changes, run:
-   npm update obsidian
+- **Life grid visualization** — see your entire life as a grid of week-cells, from birth to your configured lifespan
+- **Color-coded events** — create events with custom types and colors (Major Life, Travel, Relationship, Education/Career, or your own)
+- **Date ranges** — events can span single weeks or entire date ranges
+- **Linked notes** — create Obsidian notes directly from events with configurable templates and folder paths
+- **Vault scanning** — automatically detects events from frontmatter in your markdown files
+- **Visual markers** — toggle decade, year, month, and birthday dividers on the grid
+- **Multiple display modes** — square, circle, or diamond cells in landscape or portrait orientation
+- **Statistics panel** — view event breakdowns, seasonal analysis, and timeline charts
+- **Manual week filling** — click cells to mark weeks as memorable
+- **Sidebar navigation** — collapsible sidebar with legend and event list
+- **Mobile support** — works on both desktop and mobile Obsidian
 
 ---
 
-## 📦 Releasing New Versions
+## Getting started
 
-1. **Bump version** in `manifest.json` and `package.json` (e.g., to 1.0.1).
-2. **Update** `versions.json` with an entry like:
-   "1.0.1": "1.8.5"
-3. **Create GitHub Release**:
-   - Tag: 1.0.1 (no “v” prefix)
-   - Attach: `manifest.json`, `main.js`, `styles.css`
-4. **Publish** the release.
-
-*Tip:* use `npm version patch|minor|major` to automate JSON bumps and update `versions.json`.
+1. Install from **Settings > Community plugins > Browse** and search for "Chronica"
+2. Enable the plugin
+3. Open Chronica from the ribbon icon or the command palette (`Open Chronica timeline`)
+4. Set your birthday in the welcome dialog or settings
+5. Start adding events to your timeline
 
 ---
 
-## 📑 Adding to the Community Plugin List
+## Creating events
 
-1. **Follow** Obsidian’s plugin guidelines (docs).
-2. **Publish** an initial GitHub release.
-3. Ensure your repo root has a **README.md**.
-4. **Submit** a PR to `obsidianmd/obsidian-releases` adding your plugin ID.
+### From the timeline
+
+Click any cell on the grid and select **Create event** to add a new event at that week.
+
+### From notes (vault scanning)
+
+Add frontmatter to any markdown file in your configured events folder:
+
+```yaml
+---
+event: Graduation
+type: "Major Life"
+description: Finished university
+startDate: 2025-06-15
+endDate: 2025-06-22
+---
+```
+
+Chronica will automatically detect and display these events on the grid.
 
 ---
 
-## ⚙️ How to Use
+## Commands
 
-Clone the repo:
-    git clone https://github.com/neovasky/chronica-life-in-frames.git
-Install & build:
-  npm install
-  npm run dev
-Reload Obsidian and enable the plugin.
-
----
-
-## 📂 Manual Installation
-
-1. Build with:
-   npm run build
-2. Copy `main.js`, `manifest.json`, and `styles.css` into:
-   <Vault>/.obsidian/plugins/chronica-life-in-frames/
-3. Reload Obsidian and enable Chronica.
+| Command | Description |
+|---|---|
+| Open Chronica timeline | Opens the life grid view |
+| Create weekly note | Creates or opens a note for the current week |
+| Rescan Chronica events | Manually re-scans your vault for event notes |
 
 ---
 
-## 🔍 Improve Code Quality with ESLint (Optional)
+## Settings
 
-Install ESLint globally:
-  npm install -g eslint
-Run against your code:
-  eslint main.ts
-  eslint ./src
+Configure Chronica under **Settings > Community plugins > Chronica: Life in Frames**:
 
----
-
----
-
-## 📚 API Documentation
-
-See Obsidian API docs: https://github.com/obsidianmd/obsidian-api
+- **Core setup** — birthday, expected lifespan
+- **Folders & note naming** — where event notes and weekly notes are stored
+- **File naming templates** — customize how note files are named
+- **Appearance** — cell shape, orientation, colors
+- **Marker visibility** — toggle decade/year/month/birthday markers
+- **Event types** — create and manage custom event categories
+- **Week filling** — configure manual fill color
+- **Statistics panel** — resize and position the stats panel
 
 ---
 
-## ℹ️ About
+## Manual installation
 
-No description, website, or topics provided.
+1. Download `main.js`, `manifest.json`, and `styles.css` from the [latest release](https://github.com/neovasky/chronica-life-in-frames/releases)
+2. Create a folder: `<your vault>/.obsidian/plugins/chronica-life-in-frames/`
+3. Copy the three files into that folder
+4. Reload Obsidian and enable the plugin under **Settings > Community plugins**
 
-## 📄 License
+---
 
-This project is licensed under the MIT License. See LICENSE for details.
+## License
 
+This project is licensed under the [MIT License](LICENSE).
