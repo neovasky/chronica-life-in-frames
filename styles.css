@@ -6,36 +6,36 @@
    1. CSS VARIABLES / CONFIGURATION
    ----------------------------------------------------------------------------- */
 :root {
-  --base-cell-size: 16px;
-  --cell-size: 16px;
-  --cell-gap: 2px;
-  --total-years: 90;
-  --left-offset: 45px;
-  --top-offset: 40px;
-  --marker-week-column: 25px;
-  --marker-month-column: 10px;
-  --sidebar-width: 240px;
-  --sidebar-collapsed-width: 0px;
-  --sidebar-toggle-size: 18px;
-  --cell-border-radius: 2px;
-  --container-border-radius: 6px;
-  --card-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-  --hover-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-  --transition-speed: 0.2s;
-  --present-color: var(--text-accent);
-  --past-cell-color: #6a7ba3;
-  --present-cell-color: #a882ff;
-  --future-cell-color: #d8e2e6;
-  --future-event-color: rgba(255, 215, 0, 0.5);
-  --relationship-color: #e91e63;
-  --travel-color: #2196f3;
-  --education-career-color: #d2b55b;
-  --major-life-color: #4caf50;
-  --manual-fill-color: #8bc34a;
-  --stats-panel-height: 170px;
-  --stats-panel-min-height: 150px;
-  --stats-panel-max-height: 600px;
-  --stats-panel-width: 700px;
+  --chronica-base-cell-size: 16px;
+  --chronica-cell-size: 16px;
+  --chronica-cell-gap: 2px;
+  --chronica-total-years: 90;
+  --chronica-left-offset: 45px;
+  --chronica-top-offset: 40px;
+  --chronica-marker-week-column: 25px;
+  --chronica-marker-month-column: 10px;
+  --chronica-sidebar-width: 240px;
+  --chronica-sidebar-collapsed-width: 0px;
+  --chronica-sidebar-toggle-size: 18px;
+  --chronica-cell-border-radius: 2px;
+  --chronica-container-border-radius: 6px;
+  --chronica-card-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  --chronica-hover-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  --chronica-transition-speed: 0.2s;
+  --chronica-present-color: var(--text-accent);
+  --chronica-past-cell-color: #6a7ba3;
+  --chronica-present-cell-color: #a882ff;
+  --chronica-future-cell-color: #d8e2e6;
+  --chronica-future-event-color: rgba(255, 215, 0, 0.5);
+  --chronica-relationship-color: #e91e63;
+  --chronica-travel-color: #2196f3;
+  --chronica-education-career-color: #d2b55b;
+  --chronica-major-life-color: #4caf50;
+  --chronica-manual-fill-color: #8bc34a;
+  --chronica-stats-panel-height: 170px;
+  --chronica-stats-panel-min-height: 150px;
+  --chronica-stats-panel-max-height: 600px;
+  --chronica-stats-panel-width: 700px;
 }
 
 /* -----------------------------------------------------------------------------
@@ -79,9 +79,9 @@
   overflow: auto;
   flex-grow: 1;
   background-color: var(--background-primary);
-  border-radius: var(--container-border-radius);
-  box-shadow: var(--card-shadow);
-  padding: var(--top-offset) 20px 20px 0; /* Keep original value */
+  border-radius: var(--chronica-container-border-radius);
+  box-shadow: var(--chronica-card-shadow);
+  padding: var(--chronica-top-offset) 20px 20px 0; /* Keep original value */
   padding-bottom: 0; /* Keep original value */
   min-height: 400px;
   min-width: 600px;
@@ -100,21 +100,21 @@
   flex-direction: column;
   background-color: var(--background-primary-alt);
   border-right: 1px solid var(--background-modifier-border-hover);
-  border-radius: var(--container-border-radius) 0 0
-    var(--container-border-radius); /* Keep original value */
+  border-radius: var(--chronica-container-border-radius) 0 0
+    var(--chronica-container-border-radius); /* Keep original value */
   transition: width 0.3s ease, min-width 0.3s ease, transform 0.3s ease;
   position: relative;
   z-index: 20;
 }
 
 /* Expanded sidebar */
-.chronica-sidebar.expanded {
-  width: var(--sidebar-width);
-  min-width: var(--sidebar-width);
+.chronica-sidebar.chronica-expanded {
+  width: var(--chronica-sidebar-width);
+  min-width: var(--chronica-sidebar-width);
 }
 
 /* Collapsed sidebar */
-.chronica-sidebar.collapsed {
+.chronica-sidebar.chronica-collapsed {
   width: 0;
   min-width: 0;
   overflow: hidden;
@@ -147,7 +147,7 @@
   color: var(--text-normal);
 }
 
-.section-header {
+.chronica-section-header {
   font-size: 16px;
   font-weight: 600;
   margin: 0 0 10px 0;
@@ -157,7 +157,7 @@
   letter-spacing: 0.05em;
 }
 
-.subsection-header {
+.chronica-subsection-header {
   font-size: 14px;
   font-weight: 500;
   margin: 10px 0 5px 0;
@@ -167,8 +167,8 @@
 }
 
 /* Ensure specific heading overrides work */
-.chronica-sidebar-section h3.section-header + div .cell-shape-heading,
-.chronica-sidebar-section h3.section-header + div .grid-orientation-heading {
+.chronica-sidebar-section h3.chronica-section-header + div .chronica-cell-shape-heading,
+.chronica-sidebar-section h3.chronica-section-header + div .chronica-grid-orientation-heading {
   text-transform: none;
 }
 
@@ -200,11 +200,11 @@
   background-color: var(--background-modifier-border);
   color: var(--text-normal);
   border: none;
-  border-radius: var(--container-border-radius);
+  border-radius: var(--chronica-container-border-radius);
   padding: 10px 16px;
   cursor: pointer;
   font-size: 16px;
-  transition: all var(--transition-speed) ease;
+  transition: all var(--chronica-transition-speed) ease;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -218,7 +218,7 @@
   background-color: var(--interactive-accent);
   color: var(--text-on-accent);
   transform: translateY(-1px);
-  box-shadow: var(--hover-shadow);
+  box-shadow: var(--chronica-hover-shadow);
 }
 
 .chronica-btn-primary {
@@ -234,8 +234,8 @@
 .chronica-sidebar-toggle {
   background-color: transparent;
   border: none;
-  width: var(--sidebar-toggle-size); /* Use CSS variable */
-  height: var(--sidebar-toggle-size); /* Use CSS variable */
+  width: var(--chronica-sidebar-toggle-size); /* Use CSS variable */
+  height: var(--chronica-sidebar-toggle-size); /* Use CSS variable */
   padding: 0;
   cursor: pointer;
   display: flex;
@@ -354,7 +354,7 @@ Exp .chronica-sidebar-toggle:hover {
   width: 100%;
 }
 
-.chronica-fit-to-screen.active {
+.chronica-fit-to-screen.chronica-active {
   background-color: var(--interactive-accent);
   color: var(--text-on-accent);
 }
@@ -367,7 +367,7 @@ Exp .chronica-sidebar-toggle:hover {
   background-color: var(--background-secondary);
   color: var(--text-normal);
   border: 1px solid var(--background-modifier-border);
-  border-radius: var(--container-border-radius);
+  border-radius: var(--chronica-container-border-radius);
   margin-bottom: 12px;
   cursor: pointer;
   appearance: menulist;
@@ -385,7 +385,7 @@ Exp .chronica-sidebar-toggle:hover {
 }
 
 /* Styling for the auto-fill day selector in settings */
-.auto-fill-day-selector select {
+.chronica-auto-fill-day-selector select {
   width: 120px;
 }
 
@@ -429,10 +429,10 @@ Exp .chronica-sidebar-toggle:hover {
 /* Grid Container */
 .chronica-grid {
   display: grid;
-  grid-gap: var(--cell-gap);
+  grid-gap: var(--chronica-cell-gap);
   position: absolute;
-  top: var(--top-offset);
-  left: var(--left-offset);
+  top: var(--chronica-top-offset);
+  left: var(--chronica-left-offset);
   margin: 0;
   grid-auto-flow: dense;
   counter-reset: none;
@@ -450,50 +450,50 @@ Exp .chronica-sidebar-toggle:hover {
 
 /* Individual Grid Cells */
 .chronica-grid-cell {
-  width: var(--cell-size);
-  height: var(--cell-size);
-  border-radius: var(--cell-border-radius);
+  width: var(--chronica-cell-size);
+  height: var(--chronica-cell-size);
+  border-radius: var(--chronica-cell-border-radius);
   cursor: pointer;
-  transition: transform var(--transition-speed) ease,
-    box-shadow var(--transition-speed) ease,
-    background-color var(--transition-speed) ease;
+  transition: transform var(--chronica-transition-speed) ease,
+    box-shadow var(--chronica-transition-speed) ease,
+    background-color var(--chronica-transition-speed) ease;
   position: relative; /* Keep original value */
 }
 
 /* Cell Shape Variants */
-.chronica-grid.shape-circle .chronica-grid-cell {
+.chronica-grid.chronica-shape-circle .chronica-grid-cell {
   border-radius: 50%;
   clip-path: none; /* Keep original value */
 }
 
-.chronica-grid.shape-diamond .chronica-grid-cell {
+.chronica-grid.chronica-shape-diamond .chronica-grid-cell {
   border-radius: 0;
   clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
 }
 
 .chronica-grid-cell:hover {
   transform: scale(1.15);
-  box-shadow: var(--hover-shadow);
+  box-shadow: var(--chronica-hover-shadow);
   z-index: 10; /* Keep original value */
 }
 
 /* Cell States & Colors */
-.chronica-grid-cell.present {
+.chronica-grid-cell.chronica-present {
   z-index: 5;
-  box-shadow: 0 0 8px var(--present-color);
-  border-color: var(--present-color);
-  background-color: var(--present-cell-color);
+  box-shadow: 0 0 8px var(--chronica-present-color);
+  border-color: var(--chronica-present-color);
+  background-color: var(--chronica-present-cell-color);
 }
 
-.chronica-grid-cell.past {
-  background-color: var(--past-cell-color);
+.chronica-grid-cell.chronica-past {
+  background-color: var(--chronica-past-cell-color);
 }
 
-.chronica-grid-cell.future {
-  background-color: var(--future-cell-color);
+.chronica-grid-cell.chronica-future {
+  background-color: var(--chronica-future-cell-color);
 }
 
-.chronica-grid-cell.event {
+.chronica-grid-cell.chronica-event {
   border-width: 2px !important; /* Or remove !important if not needed */
   border-style: solid; /* Make sure this is present */
   box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
@@ -501,13 +501,13 @@ Exp .chronica-sidebar-toggle:hover {
 }
 
 /* Future event highlight - subtle indicator */
-.chronica-grid-cell.future-event-highlight {
-  border: 1px solid var(--future-event-color);
+.chronica-grid-cell.chronica-future-event-highlight {
+  border: 1px solid var(--chronica-future-event-color);
   position: relative;
 }
 
-.chronica-grid-cell.future-event-highlight:hover {
-  box-shadow: 0 0 5px var(--future-event-color);
+.chronica-grid-cell.chronica-future-event-highlight:hover {
+  box-shadow: 0 0 5px var(--chronica-future-event-color);
   animation: subtle-pulse 1.5s infinite;
 }
 
@@ -524,49 +524,49 @@ Exp .chronica-sidebar-toggle:hover {
 }
 
 /* Manual/Auto Fill Styling */
-.chronica-grid-cell.filled-week {
+.chronica-grid-cell.chronica-filled-week {
   border-width: 2px; /* Define structure */
   border-style: solid; /* Define structure */
   border-color: var(
-    --manual-fill-color
+    --chronica-manual-fill-color
   ); /* Color from variable for ALL filled cells */
 }
 
-.chronica-grid-cell.filled-week:not(.event) {
+.chronica-grid-cell.chronica-filled-week:not(.chronica-event) {
   background-color: var(
-    --manual-fill-color
+    --chronica-manual-fill-color
   ); /* Background for non-event filled cells from variable */
 }
 
 /* ==== ADD THESE NEW RULES ==== */
 
-/* Base styling for any event cell (can augment existing .chronica-grid-cell.event) */
-/* The existing .chronica-grid-cell.event already handles border-width and border-style. */
+/* Base styling for any event cell (can augment existing .chronica-grid-cell.chronica-event) */
+/* The existing .chronica-grid-cell.chronica-event already handles border-width and border-style. */
 /* We primarily need to handle colors here. */
 
 /* Preset Event Type Styling */
-.chronica-grid-cell.event.event-type-preset_major_life {
-  background-color: var(--major-life-color); /* Variable from :root */
-  border-color: var(--major-life-color);
+.chronica-grid-cell.chronica-event.chronica-event-type-preset_major_life {
+  background-color: var(--chronica-major-life-color); /* Variable from :root */
+  border-color: var(--chronica-major-life-color);
 }
 
-.chronica-grid-cell.event.event-type-preset_travel {
-  background-color: var(--travel-color); /* Variable from :root */
-  border-color: var(--travel-color);
+.chronica-grid-cell.chronica-event.chronica-event-type-preset_travel {
+  background-color: var(--chronica-travel-color); /* Variable from :root */
+  border-color: var(--chronica-travel-color);
 }
 
-.chronica-grid-cell.event.event-type-preset_relationship {
-  background-color: var(--relationship-color); /* Variable from :root */
-  border-color: var(--relationship-color);
+.chronica-grid-cell.chronica-event.chronica-event-type-preset_relationship {
+  background-color: var(--chronica-relationship-color); /* Variable from :root */
+  border-color: var(--chronica-relationship-color);
 }
 
-.chronica-grid-cell.event.event-type-preset_education_career {
-  background-color: var(--education-career-color); /* Variable from :root */
-  border-color: var(--education-career-color);
+.chronica-grid-cell.chronica-event.chronica-event-type-preset_education_career {
+  background-color: var(--chronica-education-career-color); /* Variable from :root */
+  border-color: var(--chronica-education-career-color);
 }
 
 /* Styling for Custom Event Types (uses local CSS variable) */
-.chronica-grid-cell.event.event-type-custom {
+.chronica-grid-cell.chronica-event.chronica-event-type-custom {
   background-color: var(
     --custom-event-color,
     var(--interactive-accent)
@@ -575,7 +575,7 @@ Exp .chronica-sidebar-toggle:hover {
 }
 
 /* Styling for Unknown Event Types */
-.chronica-grid-cell.event.event-unknown-type {
+.chronica-grid-cell.chronica-event.chronica-event-unknown-type {
   border-color: var(--text-faint); /* Different border style */
   border-width: 1px;
   border-style: dashed;
@@ -584,11 +584,11 @@ Exp .chronica-sidebar-toggle:hover {
 
 /* Ensure filled week styling doesn't conflict harshly if an event is also on a filled week.
    The event color should generally take precedence for the background.
-   The .filled-week class mainly adds a border if not an event, or a background.
+   The .chronica-filled-week class mainly adds a border if not an event, or a background.
    If an event is on a filled week, the event's background color from above rules will apply.
-   The .filled-week border might still show if its border is different.
-   Your current .chronica-grid-cell.filled-week:not(.event) { background-color: var(--manual-fill-color); }
-   and .chronica-grid-cell.filled-week { border-color: var(--manual-fill-color); }
+   The .chronica-filled-week border might still show if its border is different.
+   Your current .chronica-grid-cell.chronica-filled-week:not(.chronica-event) { background-color: var(--chronica-manual-fill-color); }
+   and .chronica-grid-cell.chronica-filled-week { border-color: var(--chronica-manual-fill-color); }
    This interaction seems okay. Event background will override the filled-week background due to specificity or explicit setting.
 */
 
@@ -601,10 +601,10 @@ Exp .chronica-sidebar-toggle:hover {
 /* Container for markers positioned relative to the view */
 .chronica-vertical-markers {
   position: absolute;
-  top: var(--top-offset);
+  top: var(--chronica-top-offset);
   left: 0;
-  width: var(--left-offset);
-  height: calc(100% - var(--top-offset));
+  width: var(--chronica-left-offset);
+  height: calc(100% - var(--chronica-top-offset));
   pointer-events: none;
   z-index: 10; /* Keep original value */
   display: flex;
@@ -615,14 +615,14 @@ Exp .chronica-sidebar-toggle:hover {
 /* Week markers container */
 .chronica-week-markers {
   position: relative;
-  width: var(--marker-week-column);
+  width: var(--chronica-marker-week-column);
   height: 100%;
 }
 
 /* Month markers container */
 .chronica-month-markers {
   position: relative;
-  width: var(--marker-month-column);
+  width: var(--chronica-marker-month-column);
   flex-grow: 1;
   height: 100%;
 }
@@ -632,12 +632,12 @@ Exp .chronica-sidebar-toggle:hover {
   position: absolute;
   top: 0;
   left: var(
-    --left-offset
+    --chronica-left-offset
   ); /* Changed from 0 to use the CSS variable directly */
   width: calc(
-    100% - var(--left-offset)
+    100% - var(--chronica-left-offset)
   ); /* This width is then correct relative to the new left */
-  height: var(--top-offset);
+  height: var(--chronica-top-offset);
   pointer-events: none;
   z-index: 20;
   transition: transform 0.2s ease;
@@ -694,8 +694,8 @@ Exp .chronica-sidebar-toggle:hover {
   font-style: italic;
   opacity: 0.8;
   transition: opacity 0.2s, color 0.2s;
-  /* text-align and width might be further refined by .portrait-mode or if universally applicable */
-  text-align: left; /* Default, can be overridden by .portrait-mode */
+  /* text-align and width might be further refined by .chronica-portrait-mode or if universally applicable */
+  text-align: left; /* Default, can be overridden by .chronica-portrait-mode */
   width: 30px; /* Default, can be overridden or set to auto */
 
   /* Apply styles using CSS variables set by JavaScript */
@@ -708,22 +708,22 @@ Exp .chronica-sidebar-toggle:hover {
   opacity: 1;
 }
 
-.chronica-month-marker.first-of-year {
+.chronica-month-marker.chronica-first-of-year {
   font-weight: 500;
   opacity: 0.9;
   color: var(--text-accent);
 }
 
-.chronica-month-marker.birth-month {
+.chronica-month-marker.chronica-birth-month {
   color: #e91e63;
   font-weight: 500;
 }
 
-.chronica-month-marker.birth-month svg {
+.chronica-month-marker.chronica-birth-month svg {
   color: #e91e63; /* Keep original value */
 }
 
-.birthday-cake-marker {
+.chronica-birthday-cake-marker {
   color: #f48fb1;
   padding: 3px;
   width: 24px;
@@ -747,11 +747,11 @@ Exp .chronica-sidebar-toggle:hover {
   transform: var(--birthday-marker-transform);
 }
 
-.birthday-cake-marker:hover {
+.chronica-birthday-cake-marker:hover {
   transform: scale(1.2);
 }
 
-.birthday-cake-marker svg {
+.chronica-birthday-cake-marker svg {
   color: #f48fb1; /* Keep original value */
 }
 
@@ -782,10 +782,10 @@ Exp .chronica-sidebar-toggle:hover {
   flex-shrink: 0;
 }
 
-.chronica-legend-color.future-event-highlight-legend {
-  border: 1px solid var(--future-event-color); /* Mimics the border of future-event-highlight cells */
+.chronica-legend-color.chronica-future-event-highlight-legend {
+  border: 1px solid var(--chronica-future-event-color); /* Mimics the border of future-event-highlight cells */
   background-color: var(
-    --future-cell-color
+    --chronica-future-cell-color
   ); /* Shows the base future cell color */
 }
 
@@ -814,15 +814,15 @@ Exp .chronica-sidebar-toggle:hover {
 }
 
 /* Event type management UI (Manage Types Modal) */
-.event-type-add-section,
-.event-type-existing-section {
+.chronica-event-type-add-section,
+.chronica-event-type-existing-section {
   margin-bottom: 20px;
   padding: 10px;
   border-radius: 5px;
   background-color: var(--background-secondary);
 }
 
-.event-type-item {
+.chronica-event-type-item {
   display: flex;
   align-items: center;
   margin: 8px 0;
@@ -830,37 +830,37 @@ Exp .chronica-sidebar-toggle:hover {
   border-radius: 4px;
 }
 
-.event-type-item.built-in {
+.chronica-event-type-item.chronica-built-in {
   background-color: var(--background-secondary-alt);
 }
 
-.event-type-item.custom {
+.chronica-event-type-item.chronica-custom {
   background-color: var(--background-primary);
 }
 
 /* Optional: Style preset vs custom types in Manage Types modal */
-.chronica-manage-types-modal .event-type-item.preset-type {
+.chronica-manage-types-modal .chronica-event-type-item.chronica-preset-type {
   background-color: var(
     --background-secondary-alt
   ); /* Slightly different background */
   /* Add other styles like italics or an icon if desired */
 }
 
-.chronica-manage-types-modal .event-type-item .event-type-actions {
+.chronica-manage-types-modal .chronica-event-type-item .chronica-event-type-actions {
   margin-left: auto; /* Push buttons to the right */
   display: flex;
   gap: 5px;
   justify-content: flex-end;
 }
 
-.chronica-manage-types-modal .delete-type-button {
+.chronica-manage-types-modal .chronica-delete-type-button {
   background-color: var(--background-modifier-error); /* Use error color */
 }
-.chronica-manage-types-modal .delete-type-button:hover {
+.chronica-manage-types-modal .chronica-delete-type-button:hover {
   background-color: var(--background-modifier-error-hover);
 }
 
-.event-type-color {
+.chronica-event-type-color {
   width: 16px;
   height: 16px;
   border-radius: 3px;
@@ -869,31 +869,31 @@ Exp .chronica-sidebar-toggle:hover {
 }
 
 /* Preset Event Type Colors for Manage Types Modal List */
-.event-type-item .event-type-color.list-preset-major-life {
-  background-color: var(--major-life-color);
+.chronica-event-type-item .chronica-event-type-color.chronica-list-preset-major-life {
+  background-color: var(--chronica-major-life-color);
 }
-.event-type-item .event-type-color.list-preset-travel {
-  background-color: var(--travel-color);
+.chronica-event-type-item .chronica-event-type-color.chronica-list-preset-travel {
+  background-color: var(--chronica-travel-color);
 }
-.event-type-item .event-type-color.list-preset-relationship {
-  background-color: var(--relationship-color);
+.chronica-event-type-item .chronica-event-type-color.chronica-list-preset-relationship {
+  background-color: var(--chronica-relationship-color);
 }
-.event-type-item .event-type-color.list-preset-education-career {
-  background-color: var(--education-career-color);
+.chronica-event-type-item .chronica-event-type-color.chronica-list-preset-education-career {
+  background-color: var(--chronica-education-career-color);
 }
 /* Custom types will still use the --event-type-list-color variable */
 
-.event-type-name {
+.chronica-event-type-name {
   flex-grow: 1;
 }
 
 /* Buttons within Manage Types Modal */
-.edit-type-button,
-.delete-type-button,
-.add-type-button,
-.close-button,
-.save-edit-button,
-.cancel-edit-button {
+.chronica-edit-type-button,
+.chronica-delete-type-button,
+.chronica-add-type-button,
+.chronica-close-button,
+.chronica-save-edit-button,
+.chronica-cancel-edit-button {
   padding: 4px 8px;
   border-radius: 4px;
   border: none;
@@ -903,22 +903,22 @@ Exp .chronica-sidebar-toggle:hover {
   color: var(--text-on-accent);
 }
 
-.delete-type-button {
+.chronica-delete-type-button {
   background-color: var(--text-error-hover);
 }
 
-.cancel-edit-button {
+.chronica-cancel-edit-button {
   background-color: var(--text-muted);
 }
 
 /* Form inputs within Manage Types Modal */
-.edit-name-container,
-.edit-color-container {
+.chronica-edit-name-container,
+.chronica-edit-color-container {
   margin-bottom: 15px;
 }
 
-.edit-name-container label,
-.edit-color-container label {
+.chronica-edit-name-container label,
+.chronica-edit-color-container label {
   display: block;
   margin-bottom: 5px;
   font-weight: 500;
@@ -1070,7 +1070,7 @@ Exp .chronica-sidebar-toggle:hover {
   cursor: pointer;
 }
 
-.hidden {
+.chronica-hidden {
   display: none !important;
 }
 
@@ -1125,7 +1125,7 @@ Exp .chronica-sidebar-toggle:hover {
 
 /* Main Stats Panel Container */
 .chronica-stats-panel {
-  width: var(--stats-panel-width);
+  width: var(--chronica-stats-panel-width);
   max-width: 1500px; /* Keep original value */
   min-width: 200px; /* Keep original value */
   padding: 0;
@@ -1146,12 +1146,12 @@ Exp .chronica-sidebar-toggle:hover {
   will-change: height, left, transform;
 }
 
-.chronica-stats-panel.expanded {
-  height: var(--stats-panel-height);
-  min-height: var(--stats-panel-min-height);
+.chronica-stats-panel.chronica-expanded {
+  height: var(--chronica-stats-panel-height);
+  min-height: var(--chronica-stats-panel-min-height);
 }
 
-.chronica-stats-panel.collapsed {
+.chronica-stats-panel.chronica-collapsed {
   height: 0;
   min-height: 0;
   overflow: hidden;
@@ -1244,7 +1244,7 @@ Exp .chronica-sidebar-toggle:hover {
   color: var(--text-normal);
 }
 
-.chronica-stats-tab.active {
+.chronica-stats-tab.chronica-active {
   background-color: var(--interactive-accent);
   color: var(--text-on-accent);
 }
@@ -1279,7 +1279,7 @@ Exp .chronica-sidebar-toggle:hover {
   display: none;
 }
 
-.chronica-stats-tab-content.active {
+.chronica-stats-tab-content.chronica-active {
   display: block;
 }
 
@@ -1311,7 +1311,7 @@ Exp .chronica-sidebar-toggle:hover {
   background-color: var(--background-secondary);
   border-radius: 6px;
   padding: 15px;
-  box-shadow: var(--card-shadow);
+  box-shadow: var(--chronica-card-shadow);
   /* Added from later styles */
   padding: 12px;
   margin-bottom: 15px;
@@ -1465,10 +1465,10 @@ Exp .chronica-sidebar-toggle:hover {
   border-bottom: none;
 }
 
-.chronica-event-item.clickable-event {
+.chronica-event-item.chronica-clickable-event {
   cursor: pointer;
 }
-.chronica-event-item.clickable-event:hover {
+.chronica-event-item.chronica-clickable-event:hover {
   background-color: var(--background-modifier-hover);
 }
 
@@ -1609,11 +1609,11 @@ Exp .chronica-sidebar-toggle:hover {
   border-bottom: 2px solid var(--background-modifier-border);
 }
 
-.milestone-past {
+.chronica-milestone-past {
   color: var(--text-success);
 }
 
-.milestone-future {
+.chronica-milestone-future {
   color: var(--text-muted);
 }
 
@@ -1941,7 +1941,7 @@ Exp .chronica-sidebar-toggle:hover {
     flex-direction: column;
   }
 
-  .chronica-sidebar:not(.collapsed) {
+  .chronica-sidebar:not(.chronica-collapsed) {
     width: 100%;
     min-width: 0;
     height: auto;
@@ -1952,7 +1952,7 @@ Exp .chronica-sidebar-toggle:hover {
     padding: 10px;
   }
 
-  .chronica-sidebar.collapsed {
+  .chronica-sidebar.chronica-collapsed {
     max-height: 0;
     padding: 0;
   }
@@ -2045,10 +2045,10 @@ Exp .chronica-sidebar-toggle:hover {
   color: var(--text-normal);
   border: 1px solid var(--background-modifier-border);
   border-radius: var(
-    --container-border-radius
+    --chronica-container-border-radius
   ); /* UPDATED: Use variable for consistency */
   padding: 10px 15px; /* UPDATED: Slightly more padding */
-  box-shadow: var(--card-shadow); /* UPDATED: Use variable for consistency */
+  box-shadow: var(--chronica-card-shadow); /* UPDATED: Use variable for consistency */
   z-index: 1000;
   font-size: var(--font-ui-small); /* UPDATED: Consistent font size */
   max-width: 350px; /* UPDATED: Slightly wider */
@@ -2061,7 +2061,7 @@ Exp .chronica-sidebar-toggle:hover {
   top: var(--tooltip-top, 0px); /* Added: fallback to 0px if var not set */
 }
 
-.chronica-custom-tooltip.visible {
+.chronica-custom-tooltip.chronica-visible {
   /* NEW class to control visibility and animation */
   opacity: 1;
   transform: scale(1) translateY(0);
@@ -2091,16 +2091,16 @@ Exp .chronica-sidebar-toggle:hover {
 
 /* Preset Event Type Indicator Colors for Event Modal Dropdown */
 .chronica-event-type-color-indicator.indicator-preset-major-life {
-  background-color: var(--major-life-color);
+  background-color: var(--chronica-major-life-color);
 }
 .chronica-event-type-color-indicator.indicator-preset-travel {
-  background-color: var(--travel-color);
+  background-color: var(--chronica-travel-color);
 }
 .chronica-event-type-color-indicator.indicator-preset-relationship {
-  background-color: var(--relationship-color);
+  background-color: var(--chronica-relationship-color);
 }
 .chronica-event-type-color-indicator.indicator-preset-education-career {
-  background-color: var(--education-career-color);
+  background-color: var(--chronica-education-career-color);
 }
 /* Custom types will still use the --event-type-indicator-color variable */
 
@@ -2119,38 +2119,38 @@ Exp .chronica-sidebar-toggle:hover {
      13. PORTRAIT MODE SPECIFIC STYLES
      ----------------------------------------------------------------------------- */
 
-.chronica-vertical-markers.portrait-mode {
+.chronica-vertical-markers.chronica-portrait-mode {
   transform: none;
-  width: calc(100% - var(--top-offset));
-  height: var(--left-offset);
+  width: calc(100% - var(--chronica-top-offset));
+  height: var(--chronica-left-offset);
   top: 0;
-  left: var(--top-offset);
+  left: var(--chronica-top-offset);
   flex-direction: column;
 }
 
-.chronica-decade-markers.portrait-mode {
+.chronica-decade-markers.chronica-portrait-mode {
   top: auto;
   left: 0;
-  width: var(--left-offset); /* Keep original value */
-  height: calc(100% - var(--top-offset));
+  width: var(--chronica-left-offset); /* Keep original value */
+  height: calc(100% - var(--chronica-top-offset));
   /* flex-direction: column; <-- This was incorrect, remove */
 }
 
-.chronica-week-marker.portrait-mode {
+.chronica-week-marker.chronica-portrait-mode {
   text-align: center;
 }
 
 /* styles.css */
-.chronica-month-marker.portrait-mode {
+.chronica-month-marker.chronica-portrait-mode {
   text-align: center;
 }
 
-.chronica-month-markers.portrait-mode {
+.chronica-month-markers.chronica-portrait-mode {
   position: absolute;
   top: 0;
-  left: var(--left-offset);
-  width: calc(100% - var(--left-offset));
-  height: var(--top-offset);
+  left: var(--chronica-left-offset);
+  width: calc(100% - var(--chronica-left-offset));
+  height: var(--chronica-top-offset);
   display: block;
   padding-top: 5px;
 }
@@ -2164,9 +2164,9 @@ Exp .chronica-sidebar-toggle:hover {
   background-color: var(--background-secondary-alt);
   color: var(--text-normal);
   border: 1px solid var(--background-modifier-border);
-  border-radius: var(--container-border-radius);
+  border-radius: var(--chronica-container-border-radius);
   padding: 10px 15px;
-  box-shadow: var(--card-shadow);
+  box-shadow: var(--chronica-card-shadow);
   z-index: 10000;
   font-size: var(--font-ui-small);
   max-width: 350px;
@@ -2185,37 +2185,37 @@ Exp .chronica-sidebar-toggle:hover {
   top: var(--tooltip-top, 0px);
 }
 
-.chronica-grid-cell-tooltip.visible {
+.chronica-grid-cell-tooltip.chronica-visible {
   opacity: 1;
   transform: scale(1) translateY(0);
 }
 
 /* Color Hint Styling - ADD THESE NEW RULES */
 .chronica-grid-cell-tooltip.tooltip-past {
-  border-left-color: var(--past-cell-color);
+  border-left-color: var(--chronica-past-cell-color);
 }
 .chronica-grid-cell-tooltip.tooltip-present {
-  border-left-color: var(--present-cell-color);
+  border-left-color: var(--chronica-present-cell-color);
 }
 .chronica-grid-cell-tooltip.tooltip-future {
-  border-left-color: var(--future-cell-color);
+  border-left-color: var(--chronica-future-cell-color);
 }
 /* Event type colors will be added dynamically if needed, or we can predefine some for presets */
 /* Example for a preset event type (ID: preset_travel) */
 .chronica-grid-cell-tooltip.tooltip-event-type-preset_travel {
   border-left-color: var(
-    --travel-color
-  ); /* Assuming --travel-color is defined */
+    --chronica-travel-color
+  ); /* Assuming --chronica-travel-color is defined */
 }
 /* Add similar rules for other preset event types using their IDs and color variables */
 .chronica-grid-cell-tooltip.tooltip-event-type-preset_major_life {
-  border-left-color: var(--major-life-color);
+  border-left-color: var(--chronica-major-life-color);
 }
 .chronica-grid-cell-tooltip.tooltip-event-type-preset_relationship {
-  border-left-color: var(--relationship-color);
+  border-left-color: var(--chronica-relationship-color);
 }
 .chronica-grid-cell-tooltip.tooltip-event-type-preset_education_career {
-  border-left-color: var(--education-career-color);
+  border-left-color: var(--chronica-education-career-color);
 }
 /* Style for the birthday marker's tooltip hint */
 .chronica-grid-cell-tooltip.tooltip-birthday {

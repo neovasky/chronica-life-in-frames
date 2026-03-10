@@ -6,7 +6,15 @@
 node_modules
 
 # build
+main.js
 *.js.map
+
+# data
+data.json
+
+# Claude
+CLAUDE.md
+.claude/
 
 # macOS
 .DS_Store

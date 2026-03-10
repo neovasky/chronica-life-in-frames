@@ -3,9 +3,8 @@
   "name": "Chronica – Life in Frames",
   "version": "1.0.0",
   "minAppVersion": "1.8.5",
-  "description": "Chronica: Life in Frames — visualize, navigate, and reflect on your life across multiple time scales",
+  "description": "Visualize your life as a grid of weeks with color-coded events, markers, and linked notes.",
   "author": "Neovasky Labs",
   "authorUrl": "https://github.com/neovasky",
-  "isDesktopOnly": false,
-  "main": "main.js"
+  "isDesktopOnly": false
 }
